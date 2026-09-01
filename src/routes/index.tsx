@@ -222,13 +222,13 @@ function ObjectsPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
+                <td colSpan={11} className="px-5 py-12 text-center text-muted-foreground">
                   Загрузка...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
+                <td colSpan={11} className="px-5 py-12 text-center text-muted-foreground">
                   Объекты не найдены
                 </td>
               </tr>
