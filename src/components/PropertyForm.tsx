@@ -51,6 +51,19 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [uploading, setUploading] = useState(false);
+  const [priceMonth, setPriceMonth] = useState(
+    initial?.price_month != null ? String(initial.price_month) : "",
+  );
+  const [seasonal, setSeasonal] = useState(Boolean(initial?.seasonal_pricing));
+  const [summerPrice, setSummerPrice] = useState(
+    initial?.summer_price_month != null ? String(initial.summer_price_month) : "",
+  );
+  const [deposit, setDeposit] = useState(initial?.deposit != null ? String(initial.deposit) : "");
+  const [commission, setCommission] = useState(
+    initial?.commission != null ? String(initial.commission) : "",
+  );
+  const toNum = (v: string) => (v.trim() === "" ? null : Number(v));
+
 
   useEffect(() => {
     if (!initial) return;
