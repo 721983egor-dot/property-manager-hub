@@ -124,7 +124,13 @@ export type PropertyInput = {
   status: PropertyStatus;
   description: string;
   photos: PropertyPhoto[];
+  price_month: number | null;
+  seasonal_pricing: boolean;
+  summer_price_month: number | null;
+  deposit: number | null;
+  commission: number | null;
 };
+
 
 export async function createProperty(input: PropertyInput) {
   const { data, error } = await supabase
