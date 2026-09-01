@@ -124,6 +124,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       title: title.trim(),
       type,
       complex_name: complexName.trim(),
+      address: address.trim(),
       floor: floor === "" ? null : Number(floor),
       total_floors: totalFloors === "" ? null : Number(totalFloors),
       rooms: Number(rooms),
@@ -174,6 +175,14 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               onChange={(e) => setComplexName(e.target.value)}
               placeholder="ЖК Кислород"
               list="complex-options"
+            />
+          </Field>
+
+          <Field label="Адрес объекта" className="md:col-span-2">
+            <Input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Сочи, ул. Северная, 12"
             />
           </Field>
 
