@@ -211,8 +211,12 @@ function ObjectsPage() {
               <th className="px-4 py-3 font-medium">Этаж</th>
               <th className="px-4 py-3 font-medium">Планировка</th>
               <th className="px-4 py-3 font-medium">Санузлы</th>
+              <th className="px-4 py-3 font-medium">Цена в месяц</th>
+              <th className="px-4 py-3 font-medium">Депозит</th>
+              <th className="px-4 py-3 font-medium">Комиссия</th>
               <th className="px-4 py-3 font-medium">Статус</th>
               <th className="px-4 py-3 text-right font-medium">Действия</th>
+
             </tr>
           </thead>
           <tbody>
