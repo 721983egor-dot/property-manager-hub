@@ -219,6 +219,16 @@ function ObjectsPage() {
           placeholder="Статус"
           options={PROPERTY_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
         />
+        <FilterSelect
+          value={sort}
+          onChange={setSort}
+          placeholder="Сортировка"
+          options={[
+            { value: "price_asc", label: "Сначала дешевле" },
+            { value: "price_desc", label: "Сначала дороже" },
+          ]}
+        />
+
 
         {hasFilters ? (
           <Button variant="ghost" onClick={resetFilters} className="h-10 text-muted-foreground">
@@ -264,8 +274,7 @@ function ObjectsPage() {
                   key={p.id}
                   property={p}
                   photoUrl={p.photos[0]?.path ? urls[p.photos[0].path] : undefined}
-                  onArchive={() => statusMutation.mutate({ id: p.id, next: "archived" })}
-                  onRestore={() => statusMutation.mutate({ id: p.id, next: "free" })}
+                  onStatus={(next) => statusMutation.mutate({ id: p.id, next })}
                 />
               ))
             )}
