@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      properties: {
+        Row: {
+          bathrooms: number
+          complex_id: string | null
+          complex_name: string
+          created_at: string
+          description: string
+          floor: number | null
+          id: string
+          photos: Json
+          ref_id: number
+          rooms: number
+          status: Database["public"]["Enums"]["property_status"]
+          title: string
+          total_floors: number | null
+          type: Database["public"]["Enums"]["property_type"]
+          updated_at: string
+        }
+        Insert: {
+          bathrooms?: number
+          complex_id?: string | null
+          complex_name?: string
+          created_at?: string
+          description?: string
+          floor?: number | null
+          id?: string
+          photos?: Json
+          ref_id?: number
+          rooms?: number
+          status?: Database["public"]["Enums"]["property_status"]
+          title: string
+          total_floors?: number | null
+          type?: Database["public"]["Enums"]["property_type"]
+          updated_at?: string
+        }
+        Update: {
+          bathrooms?: number
+          complex_id?: string | null
+          complex_name?: string
+          created_at?: string
+          description?: string
+          floor?: number | null
+          id?: string
+          photos?: Json
+          ref_id?: number
+          rooms?: number
+          status?: Database["public"]["Enums"]["property_status"]
+          title?: string
+          total_floors?: number | null
+          type?: Database["public"]["Enums"]["property_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +76,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      property_status: "free" | "rented" | "booked" | "archived"
+      property_type: "apartment" | "aparts" | "house" | "villa" | "townhouse"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +204,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      property_status: ["free", "rented", "booked", "archived"],
+      property_type: ["apartment", "aparts", "house", "villa", "townhouse"],
+    },
   },
 } as const
