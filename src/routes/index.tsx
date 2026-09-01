@@ -283,7 +283,7 @@ function Row({
   onRestore,
 }: {
   property: Property;
-  photoUrl?: string;
+  photoUrl?: string | undefined;
   onArchive: () => void;
   onRestore: () => void;
 }) {
