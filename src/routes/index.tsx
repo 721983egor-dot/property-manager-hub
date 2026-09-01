@@ -345,7 +345,7 @@ function Row({
           </div>
           <div className="min-w-0">
             <Link
-              to="/objects/$id/edit"
+              to="/objects/$id"
               params={{ id: property.id }}
               className="block truncate font-medium hover:text-primary"
             >
@@ -375,36 +375,34 @@ function Row({
       </td>
 
       <td className="px-4 py-4">
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/objects/$id/edit" params={{ id: property.id }} aria-label="Редактировать">
-              <Pencil className="size-4" />
-            </Link>
-          </Button>
+        <div className="flex items-center justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Ещё">
-                <MoreHorizontal className="size-4" />
+              <Button variant="outline" size="sm">
+                Действия
+                <ChevronDown className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem asChild>
                 <Link to="/objects/$id/edit" params={{ id: property.id }}>
                   <Pencil className="size-4" />
                   Редактировать
                 </Link>
               </DropdownMenuItem>
-              {archived ? (
-                <DropdownMenuItem onSelect={onRestore}>
-                  <RotateCcw className="size-4" />
-                  Восстановить объект
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Статус
+              </DropdownMenuLabel>
+              {PROPERTY_STATUSES.map((s) => (
+                <DropdownMenuItem
+                  key={s.value}
+                  disabled={s.value === property.status}
+                  onSelect={() => onStatus(s.value)}
+                >
+                  {s.label}
                 </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onSelect={onArchive}>
-                  <Archive className="size-4" />
-                  Переместить в архив
-                </DropdownMenuItem>
-              )}
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
