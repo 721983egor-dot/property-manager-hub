@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ObjectsNewRouteImport } from './routes/objects.new'
+import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ObjectsNewRoute = ObjectsNewRouteImport.update({
+  id: '/objects/new',
+  path: '/objects/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObjectsIdEditRoute = ObjectsIdEditRouteImport.update({
+  id: '/objects/$id/edit',
+  path: '/objects/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/objects/new': typeof ObjectsNewRoute
+  '/objects/$id/edit': typeof ObjectsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/objects/new': typeof ObjectsNewRoute
+  '/objects/$id/edit': typeof ObjectsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/objects/new': typeof ObjectsNewRoute
+  '/objects/$id/edit': typeof ObjectsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/objects/new' | '/objects/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/objects/new' | '/objects/$id/edit'
+  id: '__root__' | '/' | '/objects/new' | '/objects/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ObjectsNewRoute: typeof ObjectsNewRoute
+  ObjectsIdEditRoute: typeof ObjectsIdEditRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/objects/new': {
+      id: '/objects/new'
+      path: '/objects/new'
+      fullPath: '/objects/new'
+      preLoaderRoute: typeof ObjectsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/objects/$id/edit': {
+      id: '/objects/$id/edit'
+      path: '/objects/$id/edit'
+      fullPath: '/objects/$id/edit'
+      preLoaderRoute: typeof ObjectsIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ObjectsNewRoute: ObjectsNewRoute,
+  ObjectsIdEditRoute: ObjectsIdEditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
