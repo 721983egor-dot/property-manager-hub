@@ -321,15 +321,12 @@ function FilterSelect({
 function Row({
   property,
   photoUrl,
-  onArchive,
-  onRestore,
+  onStatus,
 }: {
   property: Property;
   photoUrl?: string | undefined;
-  onArchive: () => void;
-  onRestore: () => void;
+  onStatus: (next: PropertyStatus) => void;
 }) {
-  const archived = property.status === "archived";
   return (
     <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
       <td className="px-5 py-4">
