@@ -12,6 +12,7 @@ export type Property = {
   type: PropertyType;
   complex_name: string;
   complex_id: string | null;
+  address: string;
   floor: number | null;
   total_floors: number | null;
   rooms: number;
@@ -35,6 +36,11 @@ export const SUMMER_SEASON_LABEL = "июнь — сентябрь";
 export function formatMoney(value: number | null | undefined) {
   if (value == null) return "—";
   return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
+}
+
+/** Ссылка на Яндекс.Карты с поиском по адресу объекта. */
+export function yandexMapsUrl(address: string) {
+  return `https://yandex.ru/maps/?text=${encodeURIComponent(address)}`;
 }
 
 
@@ -117,6 +123,7 @@ export type PropertyInput = {
   title: string;
   type: PropertyType;
   complex_name: string;
+  address: string;
   floor: number | null;
   total_floors: number | null;
   rooms: number;

@@ -43,6 +43,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [type, setType] = useState<PropertyType>(initial?.type ?? "apartment");
   const [complexName, setComplexName] = useState(initial?.complex_name ?? "");
+  const [address, setAddress] = useState(initial?.address ?? "");
   const [floor, setFloor] = useState(initial?.floor != null ? String(initial.floor) : "");
   const [totalFloors, setTotalFloors] = useState(
     initial?.total_floors != null ? String(initial.total_floors) : "",
