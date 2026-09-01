@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Archive, ImageIcon, MoreHorizontal, Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, ImageIcon, Pencil, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
