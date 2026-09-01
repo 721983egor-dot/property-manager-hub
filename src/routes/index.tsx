@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
-  BATHROOM_OPTIONS,
+
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
