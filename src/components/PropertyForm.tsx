@@ -43,6 +43,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [type, setType] = useState<PropertyType>(initial?.type ?? "apartment");
   const [complexName, setComplexName] = useState(initial?.complex_name ?? "");
+  const [address, setAddress] = useState(initial?.address ?? "");
   const [floor, setFloor] = useState(initial?.floor != null ? String(initial.floor) : "");
   const [totalFloors, setTotalFloors] = useState(
     initial?.total_floors != null ? String(initial.total_floors) : "",
@@ -123,6 +124,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       title: title.trim(),
       type,
       complex_name: complexName.trim(),
+      address: address.trim(),
       floor: floor === "" ? null : Number(floor),
       total_floors: totalFloors === "" ? null : Number(totalFloors),
       rooms: Number(rooms),
@@ -173,6 +175,14 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               onChange={(e) => setComplexName(e.target.value)}
               placeholder="ЖК Кислород"
               list="complex-options"
+            />
+          </Field>
+
+          <Field label="Адрес объекта" className="md:col-span-2">
+            <Input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Сочи, ул. Северная, 12"
             />
           </Field>
 

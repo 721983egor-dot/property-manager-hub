@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Archive, ImageIcon, MoreHorizontal, Pencil, Plus, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, ImageIcon, Pencil, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -33,6 +35,7 @@ import {
   signedUrls,
   typeLabel,
   type Property,
+  type PropertyStatus,
 } from "@/lib/properties";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +77,7 @@ function ObjectsPage() {
   const [complex, setComplex] = useState<string>(ALL);
   const [rooms, setRooms] = useState<string>(ALL);
   const [status, setStatus] = useState<string>(ALL);
+  const [sort, setSort] = useState<string>(ALL);
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
@@ -90,7 +94,7 @@ function ObjectsPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return properties.filter((p) => {
+    const rows = properties.filter((p) => {
       if (tab === "active" && p.status === "archived") return false;
       if (tab === "archive" && p.status !== "archived") return false;
       if (q && !`${p.title} ${p.complex_name}`.toLowerCase().includes(q)) return false;
@@ -100,7 +104,21 @@ function ObjectsPage() {
       if (status !== ALL && p.status !== status) return false;
       return true;
     });
-  }, [properties, tab, search, type, complex, rooms, status]);
+
+    if (sort === "price_asc" || sort === "price_desc") {
+      const dir = sort === "price_asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        const av = a.price_month;
+        const bv = b.price_month;
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return (av - bv) * dir;
+      });
+    }
+
+    return rows;
+  }, [properties, tab, search, type, complex, rooms, status, sort]);
 
   const photoPaths = filtered.map((p) => p.photos[0]?.path).filter(Boolean) as string[];
   const { data: urls = {} } = useQuery({
@@ -110,17 +128,22 @@ function ObjectsPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, next }: { id: string; next: "archived" | "free" }) =>
+    mutationFn: ({ id, next }: { id: string; next: PropertyStatus }) =>
       setPropertyStatus(id, next),
-    onSuccess: (_d, vars) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
-      toast.success(vars.next === "archived" ? "Объект перемещён в архив" : "Объект восстановлен");
+      toast.success("Статус объекта обновлён");
     },
     onError: () => toast.error("Не удалось изменить статус объекта"),
   });
 
   const hasFilters =
-    search !== "" || type !== ALL || complex !== ALL || rooms !== ALL || status !== ALL;
+    search !== "" ||
+    type !== ALL ||
+    complex !== ALL ||
+    rooms !== ALL ||
+    status !== ALL ||
+    sort !== ALL;
 
   const resetFilters = () => {
     setSearch("");
@@ -128,6 +151,7 @@ function ObjectsPage() {
     setComplex(ALL);
     setRooms(ALL);
     setStatus(ALL);
+    setSort(ALL);
   };
 
   return (
@@ -195,6 +219,16 @@ function ObjectsPage() {
           placeholder="Статус"
           options={PROPERTY_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
         />
+        <FilterSelect
+          value={sort}
+          onChange={setSort}
+          placeholder="Сортировка"
+          options={[
+            { value: "price_asc", label: "Сначала дешевле" },
+            { value: "price_desc", label: "Сначала дороже" },
+          ]}
+        />
+
 
         {hasFilters ? (
           <Button variant="ghost" onClick={resetFilters} className="h-10 text-muted-foreground">
@@ -240,8 +274,7 @@ function ObjectsPage() {
                   key={p.id}
                   property={p}
                   photoUrl={p.photos[0]?.path ? urls[p.photos[0].path] : undefined}
-                  onArchive={() => statusMutation.mutate({ id: p.id, next: "archived" })}
-                  onRestore={() => statusMutation.mutate({ id: p.id, next: "free" })}
+                  onStatus={(next) => statusMutation.mutate({ id: p.id, next })}
                 />
               ))
             )}
@@ -288,15 +321,12 @@ function FilterSelect({
 function Row({
   property,
   photoUrl,
-  onArchive,
-  onRestore,
+  onStatus,
 }: {
   property: Property;
   photoUrl?: string | undefined;
-  onArchive: () => void;
-  onRestore: () => void;
+  onStatus: (next: PropertyStatus) => void;
 }) {
-  const archived = property.status === "archived";
   return (
     <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
       <td className="px-5 py-4">
@@ -315,7 +345,7 @@ function Row({
           </div>
           <div className="min-w-0">
             <Link
-              to="/objects/$id/edit"
+              to="/objects/$id"
               params={{ id: property.id }}
               className="block truncate font-medium hover:text-primary"
             >
@@ -345,36 +375,34 @@ function Row({
       </td>
 
       <td className="px-4 py-4">
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/objects/$id/edit" params={{ id: property.id }} aria-label="Редактировать">
-              <Pencil className="size-4" />
-            </Link>
-          </Button>
+        <div className="flex items-center justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Ещё">
-                <MoreHorizontal className="size-4" />
+              <Button variant="outline" size="sm">
+                Действия
+                <ChevronDown className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem asChild>
                 <Link to="/objects/$id/edit" params={{ id: property.id }}>
                   <Pencil className="size-4" />
                   Редактировать
                 </Link>
               </DropdownMenuItem>
-              {archived ? (
-                <DropdownMenuItem onSelect={onRestore}>
-                  <RotateCcw className="size-4" />
-                  Восстановить объект
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Статус
+              </DropdownMenuLabel>
+              {PROPERTY_STATUSES.map((s) => (
+                <DropdownMenuItem
+                  key={s.value}
+                  disabled={s.value === property.status}
+                  onSelect={() => onStatus(s.value)}
+                >
+                  {s.label}
                 </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onSelect={onArchive}>
-                  <Archive className="size-4" />
-                  Переместить в архив
-                </DropdownMenuItem>
-              )}
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

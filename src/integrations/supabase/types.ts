@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       properties: {
         Row: {
+          address: string
           bathrooms: number
           commission: number | null
           complex_id: string | null
@@ -38,6 +39,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string
           bathrooms?: number
           commission?: number | null
           complex_id?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string
           bathrooms?: number
           commission?: number | null
           complex_id?: string | null
