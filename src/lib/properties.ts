@@ -77,10 +77,25 @@ export function floorLabel(p: Pick<Property, "floor" | "total_floors">) {
   return `${p.floor ?? "—"}/${p.total_floors ?? "—"}`;
 }
 
+function num(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function normalize(row: Record<string, unknown>): Property {
   const photos = Array.isArray(row['photos']) ? (row['photos'] as PropertyPhoto[]) : [];
-  return { ...(row as unknown as Property), photos };
+  return {
+    ...(row as unknown as Property),
+    photos,
+    price_month: num(row['price_month']),
+    summer_price_month: num(row['summer_price_month']),
+    deposit: num(row['deposit']),
+    commission: num(row['commission']),
+    seasonal_pricing: Boolean(row['seasonal_pricing']),
+  };
 }
+
 
 export async function fetchProperties(): Promise<Property[]> {
   const { data, error } = await supabase
