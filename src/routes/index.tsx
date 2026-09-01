@@ -261,11 +261,14 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-10 min-w-[160px]">
-        <SelectValue placeholder={placeholder} />
+      <SelectTrigger className="h-10 w-[180px] shrink-0">
+        <SelectValue placeholder={placeholder}>
+          {value === ALL ? placeholder : (options.find((o) => o.value === value)?.label ?? value)}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={ALL}>Все</SelectItem>
+        <SelectItem value={ALL}>{placeholder}: все</SelectItem>
+
         {options.map((o) => (
           <SelectItem key={o.value} value={o.value}>
             {o.label}
