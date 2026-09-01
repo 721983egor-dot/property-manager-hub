@@ -77,6 +77,7 @@ function ObjectsPage() {
   const [complex, setComplex] = useState<string>(ALL);
   const [rooms, setRooms] = useState<string>(ALL);
   const [status, setStatus] = useState<string>(ALL);
+  const [sort, setSort] = useState<string>(ALL);
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
@@ -93,7 +94,7 @@ function ObjectsPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return properties.filter((p) => {
+    const rows = properties.filter((p) => {
       if (tab === "active" && p.status === "archived") return false;
       if (tab === "archive" && p.status !== "archived") return false;
       if (q && !`${p.title} ${p.complex_name}`.toLowerCase().includes(q)) return false;
