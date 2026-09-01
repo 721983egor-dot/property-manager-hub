@@ -104,7 +104,21 @@ function ObjectsPage() {
       if (status !== ALL && p.status !== status) return false;
       return true;
     });
-  }, [properties, tab, search, type, complex, rooms, status]);
+
+    if (sort === "price_asc" || sort === "price_desc") {
+      const dir = sort === "price_asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        const av = a.price_month;
+        const bv = b.price_month;
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return (av - bv) * dir;
+      });
+    }
+
+    return rows;
+  }, [properties, tab, search, type, complex, rooms, status, sort]);
 
   const photoPaths = filtered.map((p) => p.photos[0]?.path).filter(Boolean) as string[];
   const { data: urls = {} } = useQuery({
@@ -114,17 +128,22 @@ function ObjectsPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, next }: { id: string; next: "archived" | "free" }) =>
+    mutationFn: ({ id, next }: { id: string; next: PropertyStatus }) =>
       setPropertyStatus(id, next),
-    onSuccess: (_d, vars) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
-      toast.success(vars.next === "archived" ? "Объект перемещён в архив" : "Объект восстановлен");
+      toast.success("Статус объекта обновлён");
     },
     onError: () => toast.error("Не удалось изменить статус объекта"),
   });
 
   const hasFilters =
-    search !== "" || type !== ALL || complex !== ALL || rooms !== ALL || status !== ALL;
+    search !== "" ||
+    type !== ALL ||
+    complex !== ALL ||
+    rooms !== ALL ||
+    status !== ALL ||
+    sort !== ALL;
 
   const resetFilters = () => {
     setSearch("");
@@ -132,6 +151,7 @@ function ObjectsPage() {
     setComplex(ALL);
     setRooms(ALL);
     setStatus(ALL);
+    setSort(ALL);
   };
 
   return (
