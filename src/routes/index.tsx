@@ -21,12 +21,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
-
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
+  SUMMER_SEASON_LABEL,
   fetchProperties,
   floorLabel,
+  formatMoney,
   roomsLabel,
   setPropertyStatus,
   signedUrls,
@@ -34,6 +35,7 @@ import {
   type Property,
 } from "@/lib/properties";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -211,20 +213,24 @@ function ObjectsPage() {
               <th className="px-4 py-3 font-medium">Этаж</th>
               <th className="px-4 py-3 font-medium">Планировка</th>
               <th className="px-4 py-3 font-medium">Санузлы</th>
+              <th className="px-4 py-3 font-medium">Цена в месяц</th>
+              <th className="px-4 py-3 font-medium">Депозит</th>
+              <th className="px-4 py-3 font-medium">Комиссия</th>
               <th className="px-4 py-3 font-medium">Статус</th>
               <th className="px-4 py-3 text-right font-medium">Действия</th>
+
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
+                <td colSpan={11} className="px-5 py-12 text-center text-muted-foreground">
                   Загрузка...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
+                <td colSpan={11} className="px-5 py-12 text-center text-muted-foreground">
                   Объекты не найдены
                 </td>
               </tr>
@@ -325,8 +331,19 @@ function Row({
       <td className="px-4 py-4 text-muted-foreground">{roomsLabel(property.rooms)}</td>
       <td className="px-4 py-4 text-muted-foreground">{property.bathrooms}</td>
       <td className="px-4 py-4">
+        <div className="font-medium text-foreground">{formatMoney(property.price_month)}</div>
+        {property.seasonal_pricing && property.summer_price_month != null ? (
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            Лето ({SUMMER_SEASON_LABEL}): {formatMoney(property.summer_price_month)}
+          </div>
+        ) : null}
+      </td>
+      <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.deposit)}</td>
+      <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.commission)}</td>
+      <td className="px-4 py-4">
         <StatusBadge status={property.status} />
       </td>
+
       <td className="px-4 py-4">
         <div className="flex items-center justify-end gap-1">
           <Button variant="ghost" size="icon" asChild>

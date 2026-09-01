@@ -17,16 +17,21 @@ export type Database = {
       properties: {
         Row: {
           bathrooms: number
+          commission: number | null
           complex_id: string | null
           complex_name: string
           created_at: string
+          deposit: number | null
           description: string
           floor: number | null
           id: string
           photos: Json
+          price_month: number | null
           ref_id: number
           rooms: number
+          seasonal_pricing: boolean
           status: Database["public"]["Enums"]["property_status"]
+          summer_price_month: number | null
           title: string
           total_floors: number | null
           type: Database["public"]["Enums"]["property_type"]
@@ -34,16 +39,21 @@ export type Database = {
         }
         Insert: {
           bathrooms?: number
+          commission?: number | null
           complex_id?: string | null
           complex_name?: string
           created_at?: string
+          deposit?: number | null
           description?: string
           floor?: number | null
           id?: string
           photos?: Json
+          price_month?: number | null
           ref_id?: number
           rooms?: number
+          seasonal_pricing?: boolean
           status?: Database["public"]["Enums"]["property_status"]
+          summer_price_month?: number | null
           title: string
           total_floors?: number | null
           type?: Database["public"]["Enums"]["property_type"]
@@ -51,16 +61,21 @@ export type Database = {
         }
         Update: {
           bathrooms?: number
+          commission?: number | null
           complex_id?: string | null
           complex_name?: string
           created_at?: string
+          deposit?: number | null
           description?: string
           floor?: number | null
           id?: string
           photos?: Json
+          price_month?: number | null
           ref_id?: number
           rooms?: number
+          seasonal_pricing?: boolean
           status?: Database["public"]["Enums"]["property_status"]
+          summer_price_month?: number | null
           title?: string
           total_floors?: number | null
           type?: Database["public"]["Enums"]["property_type"]

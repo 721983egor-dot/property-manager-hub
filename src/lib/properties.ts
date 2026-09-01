@@ -19,9 +19,24 @@ export type Property = {
   status: PropertyStatus;
   description: string;
   photos: PropertyPhoto[];
+  price_month: number | null;
+  seasonal_pricing: boolean;
+  summer_price_month: number | null;
+  deposit: number | null;
+  commission: number | null;
   created_at: string;
   updated_at: string;
 };
+
+/** Летний (высокий) сезон: июнь — сентябрь. */
+export const SUMMER_MONTHS = [6, 7, 8, 9];
+export const SUMMER_SEASON_LABEL = "июнь — сентябрь";
+
+export function formatMoney(value: number | null | undefined) {
+  if (value == null) return "—";
+  return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
+}
+
 
 export const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: "apartment", label: "Квартира" },
@@ -62,10 +77,25 @@ export function floorLabel(p: Pick<Property, "floor" | "total_floors">) {
   return `${p.floor ?? "—"}/${p.total_floors ?? "—"}`;
 }
 
+function num(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function normalize(row: Record<string, unknown>): Property {
   const photos = Array.isArray(row['photos']) ? (row['photos'] as PropertyPhoto[]) : [];
-  return { ...(row as unknown as Property), photos };
+  return {
+    ...(row as unknown as Property),
+    photos,
+    price_month: num(row['price_month']),
+    summer_price_month: num(row['summer_price_month']),
+    deposit: num(row['deposit']),
+    commission: num(row['commission']),
+    seasonal_pricing: Boolean(row['seasonal_pricing']),
+  };
 }
+
 
 export async function fetchProperties(): Promise<Property[]> {
   const { data, error } = await supabase
@@ -94,7 +124,13 @@ export type PropertyInput = {
   status: PropertyStatus;
   description: string;
   photos: PropertyPhoto[];
+  price_month: number | null;
+  seasonal_pricing: boolean;
+  summer_price_month: number | null;
+  deposit: number | null;
+  commission: number | null;
 };
+
 
 export async function createProperty(input: PropertyInput) {
   const { data, error } = await supabase

@@ -20,7 +20,9 @@ import {
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
+  SUMMER_SEASON_LABEL,
   roomsLabel,
+
   signedUrls,
   uploadPhoto,
   type Property,
@@ -51,6 +53,19 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [uploading, setUploading] = useState(false);
+  const [priceMonth, setPriceMonth] = useState(
+    initial?.price_month != null ? String(initial.price_month) : "",
+  );
+  const [seasonal, setSeasonal] = useState(Boolean(initial?.seasonal_pricing));
+  const [summerPrice, setSummerPrice] = useState(
+    initial?.summer_price_month != null ? String(initial.summer_price_month) : "",
+  );
+  const [deposit, setDeposit] = useState(initial?.deposit != null ? String(initial.deposit) : "");
+  const [commission, setCommission] = useState(
+    initial?.commission != null ? String(initial.commission) : "",
+  );
+  const toNum = (v: string) => (v.trim() === "" ? null : Number(v));
+
 
   useEffect(() => {
     if (!initial) return;
@@ -115,7 +130,13 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       status,
       description,
       photos,
+      price_month: toNum(priceMonth),
+      seasonal_pricing: seasonal,
+      summer_price_month: seasonal ? toNum(summerPrice) : null,
+      deposit: toNum(deposit),
+      commission: toNum(commission),
     });
+
   };
 
   return (
@@ -221,6 +242,78 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Field>
         </div>
       </section>
+
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Стоимость</h2>
+        <div className="mt-5 grid gap-5 md:grid-cols-3">
+          <Field label={seasonal ? "Цена в месяц (не сезон)" : "Цена в месяц"}>
+            <Input
+              type="number"
+              min={0}
+              step={1000}
+              value={priceMonth}
+              onChange={(e) => setPriceMonth(e.target.value)}
+              placeholder="100000"
+            />
+          </Field>
+          <Field label="Страховой депозит">
+            <Input
+              type="number"
+              min={0}
+              step={1000}
+              value={deposit}
+              onChange={(e) => setDeposit(e.target.value)}
+              placeholder="100000"
+            />
+          </Field>
+          <Field label="Комиссия">
+            <Input
+              type="number"
+              min={0}
+              step={1000}
+              value={commission}
+              onChange={(e) => setCommission(e.target.value)}
+              placeholder="50000"
+            />
+          </Field>
+        </div>
+
+        <div className="mt-6 rounded-lg border border-border p-4">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={seasonal}
+              onChange={(e) => setSeasonal(e.target.checked)}
+              className="mt-1 size-4 accent-[hsl(var(--primary))]"
+            />
+            <span>
+              <span className="block text-sm font-medium">
+                Повышение цены на лето ({SUMMER_SEASON_LABEL})
+              </span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">
+                В остальные месяцы действует базовая цена.
+              </span>
+            </span>
+          </label>
+
+          {seasonal ? (
+            <div className="mt-4 max-w-xs">
+              <Field label="Цена в месяц летом">
+                <Input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  value={summerPrice}
+                  onChange={(e) => setSummerPrice(e.target.value)}
+                  placeholder="150000"
+                />
+              </Field>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+
 
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Описание</h2>
