@@ -329,8 +329,19 @@ function Row({
       <td className="px-4 py-4 text-muted-foreground">{roomsLabel(property.rooms)}</td>
       <td className="px-4 py-4 text-muted-foreground">{property.bathrooms}</td>
       <td className="px-4 py-4">
+        <div className="font-medium text-foreground">{formatMoney(property.price_month)}</div>
+        {property.seasonal_pricing && property.summer_price_month != null ? (
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            Лето ({SUMMER_SEASON_LABEL}): {formatMoney(property.summer_price_month)}
+          </div>
+        ) : null}
+      </td>
+      <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.deposit)}</td>
+      <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.commission)}</td>
+      <td className="px-4 py-4">
         <StatusBadge status={property.status} />
       </td>
+
       <td className="px-4 py-4">
         <div className="flex items-center justify-end gap-1">
           <Button variant="ghost" size="icon" asChild>
