@@ -21,12 +21,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
-
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
+  SUMMER_SEASON_LABEL,
   fetchProperties,
   floorLabel,
+  formatMoney,
   roomsLabel,
   setPropertyStatus,
   signedUrls,
@@ -34,6 +35,7 @@ import {
   type Property,
 } from "@/lib/properties";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
