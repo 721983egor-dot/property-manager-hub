@@ -20,7 +20,9 @@ import {
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
+  SUMMER_SEASON_LABEL,
   roomsLabel,
+
   signedUrls,
   uploadPhoto,
   type Property,
