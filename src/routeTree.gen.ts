@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ObjectsNewRouteImport } from './routes/objects.new'
+import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const ObjectsNewRoute = ObjectsNewRouteImport.update({
   path: '/objects/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ObjectsIdIndexRoute = ObjectsIdIndexRouteImport.update({
+  id: '/objects/$id/',
+  path: '/objects/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ObjectsIdEditRoute = ObjectsIdEditRouteImport.update({
   id: '/objects/$id/edit',
   path: '/objects/$id/edit',
@@ -33,30 +39,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/objects/new': typeof ObjectsNewRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
+  '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/objects/new': typeof ObjectsNewRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
+  '/objects/$id': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/objects/new': typeof ObjectsNewRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
+  '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/objects/new' | '/objects/$id/edit'
+  fullPaths: '/' | '/objects/new' | '/objects/$id/edit' | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/objects/new' | '/objects/$id/edit'
-  id: '__root__' | '/' | '/objects/new' | '/objects/$id/edit'
+  to: '/' | '/objects/new' | '/objects/$id/edit' | '/objects/$id'
+  id: '__root__' | '/' | '/objects/new' | '/objects/$id/edit' | '/objects/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ObjectsNewRoute: typeof ObjectsNewRoute
   ObjectsIdEditRoute: typeof ObjectsIdEditRoute
+  ObjectsIdIndexRoute: typeof ObjectsIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObjectsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/objects/$id/': {
+      id: '/objects/$id/'
+      path: '/objects/$id'
+      fullPath: '/objects/$id/'
+      preLoaderRoute: typeof ObjectsIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/objects/$id/edit': {
       id: '/objects/$id/edit'
       path: '/objects/$id/edit'
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ObjectsNewRoute: ObjectsNewRoute,
   ObjectsIdEditRoute: ObjectsIdEditRoute,
+  ObjectsIdIndexRoute: ObjectsIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

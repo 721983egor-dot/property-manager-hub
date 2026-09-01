@@ -17,6 +17,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -33,6 +35,7 @@ import {
   signedUrls,
   typeLabel,
   type Property,
+  type PropertyStatus,
 } from "@/lib/properties";
 import { cn } from "@/lib/utils";
 
