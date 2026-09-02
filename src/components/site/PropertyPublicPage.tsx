@@ -213,6 +213,54 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
           </div>
         </div>
 
+        {complex ? (
+          <section className="mt-14 border-t border-site-line pt-10">
+            <h2 className="text-2xl font-bold tracking-tight">О жилом комплексе</h2>
+            <p className="mt-4 text-lg font-semibold">{complex.name}</p>
+
+            {complexPhotos.length > 0 ? (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {complexPhotos.slice(0, 6).map((p, i) => (
+                  <div
+                    key={p.path}
+                    className="aspect-[4/3] overflow-hidden rounded-2xl bg-muted"
+                  >
+                    {photoUrls[p.path] ? (
+                      <img
+                        src={photoUrls[p.path]}
+                        alt={`${complex.name} — фото ${i + 1}`}
+                        loading="lazy"
+                        className="size-full object-cover"
+                      />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {complex.description ? (
+              <p className="mt-6 max-w-[70ch] whitespace-pre-line text-base leading-relaxed text-site-muted">
+                {complex.description}
+              </p>
+            ) : null}
+
+            {complex.infrastructure.length > 0 ? (
+              <>
+                <h3 className="mt-8 text-base font-semibold">Инфраструктура</h3>
+                <ul className="mt-4 grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {complex.infrastructure.map((i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm">
+                      <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
+                      {infrastructureLabel(i)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </section>
+        ) : null}
+
+
         {features.length > 0 ? (
           <section className="mt-14 border-t border-site-line pt-10">
             <h2 className="text-2xl font-bold tracking-tight">Дополнительно</h2>
