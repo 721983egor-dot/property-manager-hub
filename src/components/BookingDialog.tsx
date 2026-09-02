@@ -68,10 +68,11 @@ type FormState = {
   periods: BookingPricePeriod[];
 };
 
-function emptyForm(propertyId = ""): FormState {
+function emptyForm(propertyId = "", clientId = ""): FormState {
   return {
     property_id: propertyId,
-    client_id: "",
+    client_id: clientId,
+
     start_date: toISODate(new Date()),
     end_date: toISODate(new Date()),
     price_type: "fixed",
