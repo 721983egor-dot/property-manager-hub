@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { BookingDialog } from "@/components/BookingDialog";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { fetchComplexes } from "@/lib/complexes";
+import { type Booking, fetchBookings, shortName } from "@/lib/bookings";
 import {
   MONTHS,
   WEEKDAYS_SHORT,
   addDays,
   eachDay,
-  fetchRentals,
   formatDateRu,
   parseISODate,
   toISODate,
