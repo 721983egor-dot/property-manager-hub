@@ -196,6 +196,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       status,
       description,
       photos,
+      published,
       price_month: toNum(priceMonth),
       seasonal_pricing: seasonal,
       summer_price_month: seasonal ? toNum(summerPrice) : null,
