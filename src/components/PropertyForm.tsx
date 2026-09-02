@@ -94,6 +94,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [locationDescription, setLocationDescription] = useState(
     initial?.location_description ?? "",
   );
+  const [rentTerms, setRentTerms] = useState(
+    initial ? (initial.rent_terms || DEFAULT_RENT_TERMS) : DEFAULT_RENT_TERMS,
+  );
   const addCustomFeature = () => {
     const value = customFeature.trim();
     if (!value || extraFeatures.includes(value)) {
