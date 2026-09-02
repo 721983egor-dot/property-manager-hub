@@ -120,6 +120,9 @@ export type Database = {
       }
       clients: {
         Row: {
+          blacklist_reason: string
+          blacklisted: boolean
+          comment: string
           created_at: string
           full_name: string
           id: string
@@ -127,6 +130,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          blacklist_reason?: string
+          blacklisted?: boolean
+          comment?: string
           created_at?: string
           full_name: string
           id?: string
@@ -134,6 +140,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          blacklist_reason?: string
+          blacklisted?: boolean
+          comment?: string
           created_at?: string
           full_name?: string
           id?: string
