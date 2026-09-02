@@ -32,6 +32,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Building2 className="size-4" />
             Объекты
           </Link>
+          <Link
+            to="/calendar"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
+          >
+            <CalendarDays className="size-4" />
+            Календарь
+          </Link>
         </nav>
       </aside>
       <main className="min-w-0 flex-1">{children}</main>
