@@ -48,7 +48,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [type, setType] = useState<PropertyType>(initial?.type ?? "apartment");
-  const [complexName, setComplexName] = useState(initial?.complex_name ?? "");
+  const [complexId, setComplexId] = useState<string | null>(initial?.complex_id ?? null);
+  const [complexDialog, setComplexDialog] = useState(false);
   const [address, setAddress] = useState(initial?.address ?? "");
   const [floor, setFloor] = useState(initial?.floor != null ? String(initial.floor) : "");
   const [totalFloors, setTotalFloors] = useState(
@@ -209,12 +210,33 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Field>
 
           <Field label="Комплекс">
-            <Input
-              value={complexName}
-              onChange={(e) => setComplexName(e.target.value)}
-              placeholder="ЖК Кислород"
-              list="complex-options"
-            />
+            <div className="flex gap-2">
+              <Select
+                value={complexId ?? NO_COMPLEX}
+                onValueChange={(v) => setComplexId(v === NO_COMPLEX ? null : v)}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Выберите комплекс" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_COMPLEX}>Без комплекса</SelectItem>
+                  {complexes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setComplexDialog(true)}
+                aria-label="Добавить комплекс"
+              >
+                <Plus className="size-4" />
+                Комплекс
+              </Button>
+            </div>
           </Field>
 
           <Field label="Адрес объекта" className="md:col-span-2">
