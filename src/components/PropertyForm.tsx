@@ -153,6 +153,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     queryFn: fetchComplexes,
   });
   const [creatingComplex, setCreatingComplex] = useState(false);
+  const selectedComplex = complexes.find((c) => c.id === complexId) ?? null;
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
