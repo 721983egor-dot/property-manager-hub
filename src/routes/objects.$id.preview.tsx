@@ -84,7 +84,7 @@ function PreviewPage() {
               Объект в архиве и не предназначен для публикации на сайте.
             </p>
           ) : null}
-          <PropertyPublicPage property={data} photoUrls={urls} />
+          <PropertyPublicPage property={data} complex={complex ?? null} photoUrls={urls} />
         </>
       )}
     </div>
