@@ -480,58 +480,60 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
               {/* Левая колонка: примечания */}
               <ul className="space-y-2.5">
+                {rentTermsLines.map((l, i) => (
+                  <Bullet key={i}>{l}</Bullet>
+                ))}
                 {property.utilities_month != null ? (
                   <Bullet>
-                    Коммунальные платежи оплачиваются отдельно, ориентировочно ≈{" "}
-                    {formatMoney(property.utilities_month)} в месяц
+                    Коммунальные платежи ориентировочно ≈ {formatMoney(property.utilities_month)} в
+                    месяц
                   </Bullet>
-                ) : null}
-                <Bullet>Проживание с домашними животными обсуждается индивидуально</Bullet>
-                {property.deposit != null ? (
-                  <Bullet>
-                    Страховой депозит вносится при заселении и возвращается при выезде, при
-                    условии сохранности имущества
-                  </Bullet>
-                ) : null}
-                {property.commission != null ? (
-                  <Bullet>Комиссия агентства — {formatMoney(property.commission)}</Bullet>
                 ) : null}
               </ul>
 
-              {/* Правая колонка: цены */}
-              <div>
-                {seasonRows.length > 0 ? (
-                  <>
-                    <p className="text-[15px] font-semibold text-site-navy">
-                      Стоимость при долгосрочной аренде:
-                    </p>
-                    <ul className="mt-3 space-y-2">
-                      {seasonRows.map((r) => (
-                        <li key={r.label} className="flex items-baseline gap-2 text-[15px]">
-                          <span className="mt-[8px] size-1.5 shrink-0 self-start bg-site-gold" />
-                          <span className="capitalize text-site-muted">{r.label}</span>
-                          <span className="whitespace-nowrap font-medium text-site-navy">
-                            {formatMoney(r.value)} в месяц
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-                {property.deposit != null ? (
-                  <p className="mt-4 text-right text-[15px] text-site-muted">
-                    Страховой депозит{" "}
-                    <span className="ml-2 whitespace-nowrap font-medium text-site-navy">
-                      {formatMoney(property.deposit)}
-                    </span>
-                  </p>
-                ) : null}
+              {/* Правая колонка: финансовые условия в один ряд */}
+              <div className="divide-y divide-site-line border-y border-site-line">
+                <div className="flex items-baseline justify-between gap-6 py-4">
+                  <span className="text-[15px] text-site-muted">Стоимость</span>
+                  <div className="text-right">
+                    {seasonRows.length > 0 ? (
+                      <ul className="space-y-1">
+                        {seasonRows.map((r) => (
+                          <li key={r.label} className="text-[15px] whitespace-nowrap">
+                            <span className="capitalize text-site-muted">{r.label}</span>
+                            <span className="ml-3 font-semibold text-site-navy">
+                              {formatMoney(r.value)} / мес
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="whitespace-nowrap text-[17px] font-semibold text-site-navy">
+                        {formatMoney(property.price_month)} / мес
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-baseline justify-between gap-6 py-4">
+                  <span className="text-[15px] text-site-muted">Страховой депозит</span>
+                  <span className="whitespace-nowrap text-[17px] font-semibold text-site-navy">
+                    {formatMoney(property.deposit)}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline justify-between gap-6 py-4">
+                  <span className="text-[15px] text-site-muted">Комиссия</span>
+                  <span className="whitespace-nowrap text-[17px] font-semibold text-site-navy">
+                    {formatMoney(property.commission)}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Итоговая строка: кнопки + цена */}
             <div className="mt-8 flex flex-wrap items-center justify-between gap-5">
-              <div className="flex flex-1 items-center gap-3">
+              <div className="flex items-center gap-3">
                 {contactButton()}
                 {shareButton}
               </div>
