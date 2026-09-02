@@ -20,6 +20,7 @@ export type Database = {
           description: string
           id: string
           infrastructure: string[]
+          location_description: string
           main_photo: string | null
           name: string
           photos: Json
@@ -30,6 +31,7 @@ export type Database = {
           description?: string
           id?: string
           infrastructure?: string[]
+          location_description?: string
           main_photo?: string | null
           name: string
           photos?: Json
@@ -40,6 +42,7 @@ export type Database = {
           description?: string
           id?: string
           infrastructure?: string[]
+          location_description?: string
           main_photo?: string | null
           name?: string
           photos?: Json
