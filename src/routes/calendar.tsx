@@ -290,7 +290,7 @@ function CalendarPage() {
 
           {/* Строки объектов */}
           {rows.map((property) => {
-            const list = rentalsByProperty.get(property.id) ?? [];
+            const list = bookingsByProperty.get(property.id) ?? [];
             const complexName =
               (property.complex_id ? complexMap.get(property.complex_id) : null) ??
               property.complex_name;
