@@ -39,9 +39,16 @@ export type PublicPropertyView = Pick<
   | "photos"
 >;
 
+export type PublicComplexView = Pick<
+  Complex,
+  "name" | "description" | "infrastructure" | "photos" | "main_photo"
+>;
+
 type Props = {
   property: PublicPropertyView;
-  /** path фотографии → готовый URL картинки */
+  /** Данные связанного жилого комплекса (по complex_id). */
+  complex?: PublicComplexView | null;
+  /** path фотографии → готовый URL картинки (объект + комплекс) */
   photoUrls: Record<string, string>;
 };
 
