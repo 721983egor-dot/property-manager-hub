@@ -356,6 +356,22 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </Select>
           </Field>
         </div>
+
+        <div className="flex items-start gap-3 md:col-span-2">
+          <input
+            type="checkbox"
+            id="published"
+            checked={published}
+            onChange={(e) => setPublished(e.target.checked)}
+            className="mt-1 size-5 accent-[hsl(var(--primary))]"
+          />
+          <label htmlFor="published" className="cursor-pointer text-sm">
+            <span className="block font-medium">Опубликовать на сайте Residence More</span>
+            <span className="mt-0.5 block text-muted-foreground">
+              Объект появится на публичной странице со списком аренды.
+            </span>
+          </label>
+        </div>
       </section>
 
       <section className="rounded-xl border border-border bg-card p-6">
