@@ -75,10 +75,13 @@ function CalendarPage() {
     queryKey: ["complexes"],
     queryFn: fetchComplexes,
   });
-  const { data: rentals = [] } = useQuery({
-    queryKey: ["rentals", from, to],
-    queryFn: () => fetchRentals(from, to),
+  const { data: bookings = [] } = useQuery({
+    queryKey: ["bookings", from, to],
+    queryFn: () => fetchBookings(from, to),
   });
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
 
   const complexMap = useMemo(
     () => new Map(complexes.map((c) => [c.id, c.name])),
