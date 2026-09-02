@@ -67,6 +67,12 @@
   --color-status-booked-soft: var(--status-booked-soft);
   --color-status-archived: var(--status-archived);
   --color-status-archived-soft: var(--status-archived-soft);
+  --color-site-navy: var(--site-navy);
+  --color-site-navy-foreground: var(--site-navy-foreground);
+  --color-site-gold: var(--site-gold);
+  --color-site-green: var(--site-green);
+  --color-site-line: var(--site-line);
+  --color-site-muted: var(--site-muted);
 }
 
 :root {
@@ -111,6 +117,12 @@
   --status-booked-soft: oklch(0.95 0.05 80);
   --status-archived: oklch(0.5 0.01 258);
   --status-archived-soft: oklch(0.95 0.004 258);
+  --site-navy: oklch(0.24 0.045 260);
+  --site-navy-foreground: oklch(0.99 0 0);
+  --site-gold: oklch(0.72 0.07 85);
+  --site-green: oklch(0.55 0.14 150);
+  --site-line: oklch(0.9 0.01 260);
+  --site-muted: oklch(0.5 0.02 260);
 }
 
 
