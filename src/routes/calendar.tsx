@@ -12,8 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SectionTabs } from "@/components/SectionTabs";
-import { fetchProperties } from "@/lib/properties";
+import { fetchProperties, internalTitle } from "@/lib/properties";
 import { fetchComplexes } from "@/lib/complexes";
 import {
   MONTHS,
@@ -85,10 +84,7 @@ function CalendarPage() {
     [complexes],
   );
 
-  const rows = useMemo(
-    () => properties.filter((p) => p.status !== "archived"),
-    [properties],
-  );
+  const rows = properties;
 
   const todayIso = toISODate(today);
   const rentalsByProperty = useMemo(() => {
@@ -144,7 +140,6 @@ function CalendarPage() {
       <p className="mt-1.5 text-sm text-muted-foreground">
         Шахматка занятости объектов по дням.
       </p>
-      <SectionTabs active="calendar" />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" onClick={goToday}>
@@ -249,6 +244,7 @@ function CalendarPage() {
               <div className="flex border-t border-border">
                 {days.map((d) => {
                   const weekend = d.getDay() === 0 || d.getDay() === 6;
+                  const isToday = toISODate(d) === todayIso;
                   return (
                     <div
                       key={d.toISOString()}
@@ -256,6 +252,7 @@ function CalendarPage() {
                       className={cn(
                         "shrink-0 border-r border-border py-1 text-center",
                         weekend && "bg-muted/50",
+                        isToday && "bg-sky-100",
                       )}
                     >
                       <div className="text-[13px] font-medium leading-4">{d.getDate()}</div>
@@ -272,9 +269,6 @@ function CalendarPage() {
           {/* Строки объектов */}
           {rows.map((property) => {
             const list = rentalsByProperty.get(property.id) ?? [];
-            const busyNow = list.some(
-              (r) => r.start_date <= todayIso && r.end_date >= todayIso,
-            );
             const complexName =
               (property.complex_id ? complexMap.get(property.complex_id) : null) ??
               property.complex_name;
@@ -282,20 +276,10 @@ function CalendarPage() {
             return (
               <div key={property.id} className="flex">
                 <div className="sticky left-0 z-20 w-[260px] shrink-0 border-b border-r border-border bg-card px-4 py-3">
-                  <div className="truncate text-sm font-medium">{property.title}</div>
+                  <div className="truncate text-sm font-medium">{internalTitle(property)}</div>
                   {complexName ? (
                     <div className="truncate text-xs text-muted-foreground">{complexName}</div>
                   ) : null}
-                  <span
-                    className={cn(
-                      "mt-1 inline-flex rounded px-1.5 py-0.5 text-[11px] font-medium",
-                      busyNow
-                        ? "bg-status-rented-soft text-status-rented"
-                        : "bg-status-free-soft text-status-free",
-                    )}
-                  >
-                    {busyNow ? "Занят" : "Свободен"}
-                  </span>
                 </div>
 
                 <div
@@ -313,12 +297,9 @@ function CalendarPage() {
                           className={cn(
                             "relative h-[68px] shrink-0 border-r border-border",
                             weekend && "bg-muted/40",
+                            isToday && "bg-sky-100",
                           )}
-                        >
-                          {isToday ? (
-                            <span className="absolute inset-y-0 left-0 w-px bg-site-gold" />
-                          ) : null}
-                        </div>
+                        />
                       );
                     })}
                   </div>

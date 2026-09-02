@@ -67,6 +67,7 @@ export type Database = {
           extra_features: string[]
           floor: number | null
           id: string
+          internal_name: string
           location_description: string
           outdoor_spaces: string[]
           photos: Json
@@ -100,6 +101,7 @@ export type Database = {
           extra_features?: string[]
           floor?: number | null
           id?: string
+          internal_name?: string
           location_description?: string
           outdoor_spaces?: string[]
           photos?: Json
@@ -133,6 +135,7 @@ export type Database = {
           extra_features?: string[]
           floor?: number | null
           id?: string
+          internal_name?: string
           location_description?: string
           outdoor_spaces?: string[]
           photos?: Json

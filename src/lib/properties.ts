@@ -10,6 +10,7 @@ export type Property = {
   published: boolean;
   ref_id: number;
   title: string;
+  internal_name: string;
   type: PropertyType;
   complex_name: string;
   complex_id: string | null;
@@ -131,6 +132,11 @@ export const BATHROOM_OPTIONS = [1, 2, 3, 4, 5];
 
 export const PHOTO_BUCKET = "property-photos";
 
+/** Название объекта для внутренних экранов RM OS. */
+export function internalTitle(p: { internal_name?: string | null; title: string }) {
+  return p.internal_name?.trim() ? p.internal_name : p.title;
+}
+
 export function typeLabel(value: PropertyType) {
   return PROPERTY_TYPES.find((t) => t.value === value)?.label ?? value;
 }
@@ -179,6 +185,8 @@ function normalize(row: Record<string, unknown>): Property {
       ? (row['location_description'] as string)
       : "",
     rent_terms: typeof row['rent_terms'] === "string" ? (row['rent_terms'] as string) : "",
+    internal_name:
+      typeof row['internal_name'] === "string" ? (row['internal_name'] as string) : "",
     card_highlights: Array.isArray(row['card_highlights'])
       ? (row['card_highlights'] as string[])
       : [],
@@ -214,6 +222,7 @@ export async function fetchProperty(id: string): Promise<Property> {
 
 export type PropertyInput = {
   title: string;
+  internal_name: string;
   type: PropertyType;
   complex_id: string | null;
   complex_name: string;

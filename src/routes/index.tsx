@@ -31,6 +31,7 @@ import {
   fetchProperties,
   floorLabel,
   formatMoney,
+  internalTitle,
   roomsLabel,
   setPropertyStatus,
   signedUrls,
@@ -98,7 +99,8 @@ function ObjectsPage() {
     const rows = properties.filter((p) => {
       if (tab === "active" && p.status === "archived") return false;
       if (tab === "archive" && p.status !== "archived") return false;
-      if (q && !`${p.title} ${p.complex_name}`.toLowerCase().includes(q)) return false;
+      if (q && !`${p.title} ${p.internal_name} ${p.complex_name}`.toLowerCase().includes(q))
+        return false;
       if (type !== ALL && p.type !== type) return false;
       if (complex !== ALL && p.complex_name !== complex) return false;
       if (rooms !== ALL && p.rooms !== Number(rooms)) return false;
@@ -352,7 +354,7 @@ function Row({
               params={{ id: property.id }}
               className="block truncate font-medium hover:text-primary"
             >
-              {property.title}
+              {internalTitle(property)}
             </Link>
             <div className="mt-0.5 text-xs text-muted-foreground">ID: {property.ref_id}</div>
           </div>
