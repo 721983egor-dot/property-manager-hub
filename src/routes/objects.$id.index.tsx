@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { BookingDialog } from "@/components/BookingDialog";
+import { fetchCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
+import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
 import {
   APPLIANCE_OPTIONS,
