@@ -191,6 +191,25 @@ function ObjectViewPage() {
   );
 }
 
+function Chips({ title, items }: { title: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{title}</p>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {items.map((i) => (
+          <li
+            key={i}
+            className="rounded-md border border-border bg-muted px-2.5 py-1 text-sm text-foreground"
+          >
+            {i}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Item({ label, value }: { label: string; value: string }) {
   return (
     <div>
