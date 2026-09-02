@@ -70,6 +70,7 @@ export type Database = {
           outdoor_spaces: string[]
           photos: Json
           price_month: number | null
+          published: boolean
           ref_id: number
           rent_terms: string
           rooms: number
@@ -101,6 +102,7 @@ export type Database = {
           outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null
+          published?: boolean
           ref_id?: number
           rent_terms?: string
           rooms?: number
@@ -132,6 +134,7 @@ export type Database = {
           outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null
+          published?: boolean
           ref_id?: number
           rent_terms?: string
           rooms?: number
