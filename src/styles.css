@@ -4,6 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --font-display: "Space Grotesk", "DM Sans", sans-serif;
+  --font-body: "DM Sans", sans-serif;
+}
+
 /*
  * Design system definition.
  *
@@ -73,6 +78,8 @@
   --color-site-green: var(--site-green);
   --color-site-line: var(--site-line);
   --color-site-muted: var(--site-muted);
+  --color-site-navy-soft: var(--site-navy-soft);
+  --color-site-gold-soft: var(--site-gold-soft);
 }
 
 :root {
@@ -123,6 +130,8 @@
   --site-green: oklch(0.55 0.14 150);
   --site-line: oklch(0.9 0.01 260);
   --site-muted: oklch(0.5 0.02 260);
+  --site-navy-soft: oklch(0.955 0.008 250);
+  --site-gold-soft: oklch(0.94 0.03 90);
 }
 
 
