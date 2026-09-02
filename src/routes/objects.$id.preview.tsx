@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
+import { fetchComplex } from "@/lib/complexes";
 import { fetchProperty, signedUrls } from "@/lib/properties";
 
 export const Route = createFileRoute("/objects/$id/preview")({
@@ -32,7 +33,18 @@ function PreviewPage() {
     queryFn: () => fetchProperty(id),
   });
 
-  const paths = (data?.photos ?? []).map((p) => p.path);
+  const complexId = data?.complex_id ?? null;
+  const { data: complex } = useQuery({
+    queryKey: ["complexes", complexId],
+    queryFn: () => fetchComplex(complexId!),
+    enabled: Boolean(complexId),
+  });
+
+  const paths = [
+    ...(data?.photos ?? []).map((p) => p.path),
+    ...(complex?.photos ?? []).map((p) => p.path),
+    ...(complex?.main_photo ? [complex.main_photo] : []),
+  ];
   const { data: urls = {} } = useQuery({
     queryKey: ["photo-urls", paths.slice().sort().join("|")],
     queryFn: () => signedUrls(paths),
