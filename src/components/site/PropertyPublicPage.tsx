@@ -116,7 +116,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
       onClick={copyLink}
       aria-label="Поделиться"
       title={copied ? "Ссылка скопирована" : "Поделиться"}
-      className="grid size-13 h-13 w-13 shrink-0 place-items-center rounded-xl border border-site-navy/15 bg-background text-site-navy transition-colors hover:border-site-gold hover:text-site-gold"
+      className="grid size-13 shrink-0 place-items-center rounded-xl border border-site-navy/15 bg-background text-site-navy transition-colors hover:border-site-gold hover:text-site-gold"
     >
       {copied ? <Check className="size-5 text-site-green" /> : <Share2 className="size-5" />}
     </button>
