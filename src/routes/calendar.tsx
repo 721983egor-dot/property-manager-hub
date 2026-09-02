@@ -141,10 +141,27 @@ function CalendarPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] px-8 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Календарь</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">
-        Шахматка занятости объектов по дням.
-      </p>
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Календарь</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Шахматка занятости объектов по дням.
+          </p>
+        </div>
+        <Button
+          size="lg"
+          onClick={() => {
+            setActiveBooking(null);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus className="size-4" />
+          Создать бронирование
+        </Button>
+      </div>
+
+      <BookingDialog open={dialogOpen} onOpenChange={setDialogOpen} booking={activeBooking} />
+
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" onClick={goToday}>
