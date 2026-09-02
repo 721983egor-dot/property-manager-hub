@@ -7,6 +7,7 @@ export type PropertyPhoto = { path: string };
 
 export type Property = {
   id: string;
+  published: boolean;
   ref_id: number;
   title: string;
   type: PropertyType;
