@@ -3,10 +3,15 @@ import { Link } from "@tanstack/react-router";
 const ITEMS = [
   { to: "/", label: "Объекты" },
   { to: "/complexes", label: "Комплексы" },
+  { to: "/calendar", label: "Календарь" },
 ] as const;
 
 /** Вкладки верхнего уровня внутри раздела «Объекты». */
-export function SectionTabs({ active }: { active: "objects" | "complexes" }) {
+export function SectionTabs({
+  active,
+}: {
+  active: "objects" | "complexes" | "calendar";
+}) {
   return (
     <div className="mt-6 border-b border-border">
       <div className="flex gap-6">
