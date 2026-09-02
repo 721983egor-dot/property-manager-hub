@@ -16,7 +16,7 @@ import { infrastructureLabel, type Complex } from "@/lib/complexes";
 
 /**
  * Публичная страница объекта — макет сайта Residence More.
- * Палитра: глубокий синий + латунь + зелёный статус. Шрифты: Space Grotesk + DM Sans.
+ * Палитра: глубокий синий + латунь + зелёный статус. Шрифт: DM Sans.
  *
  * Компонент не обращается к базе напрямую — он полностью управляется props,
  * поэтому его можно переиспользовать и для реальной публичной страницы
@@ -77,7 +77,7 @@ function Bullet({ children }: { children: React.ReactNode }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="font-display text-[26px] font-semibold tracking-tight text-site-navy">
+    <h2 className="font-body text-[26px] font-bold tracking-tight text-site-navy">
       {children}
     </h2>
   );
@@ -261,7 +261,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
               {STATUS_TEXT[property.status] ?? ""}
             </p>
 
-            <h1 className="mt-2 font-display text-[36px] font-semibold leading-[1.1] tracking-tight lg:text-[42px]">
+            <h1 className="mt-2 font-body text-[36px] font-bold leading-[1.1] tracking-tight lg:text-[42px]">
               {property.title}
             </h1>
 
@@ -300,7 +300,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             </div>
 
             {property.price_month != null ? (
-              <p className="mt-7 whitespace-nowrap font-display text-[32px] font-semibold tracking-tight">
+              <p className="mt-7 whitespace-nowrap font-body text-[32px] font-bold tracking-tight">
                 {formatMoney(property.price_month)}
                 <span className="ml-2 text-[17px] font-normal text-site-muted">/ мес</span>
               </p>
@@ -537,7 +537,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                 {shareButton}
               </div>
               {property.price_month != null ? (
-                <p className="whitespace-nowrap font-display text-[28px] font-semibold tracking-tight">
+                <p className="whitespace-nowrap font-body text-[28px] font-bold tracking-tight">
                   {formatMoney(property.price_month)}
                   <span className="ml-2 text-[17px] font-normal text-site-muted">/ мес</span>
                 </p>
