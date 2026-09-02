@@ -107,6 +107,17 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [rentTermsLines, setRentTermsLines] = useState<string[]>(() =>
     toRentTermsLines(initial?.rent_terms),
   );
+  const [cardHighlights, setCardHighlights] = useState<string[]>(
+    initial?.card_highlights ?? [],
+  );
+  const toggleHighlight = (value: string) =>
+    setCardHighlights((prev) =>
+      prev.includes(value)
+        ? prev.filter((v) => v !== value)
+        : prev.length >= 3
+          ? prev
+          : [...prev, value],
+    );
   const addCustomFeature = () => {
     const value = customFeature.trim();
     if (!value || extraFeatures.includes(value)) {
