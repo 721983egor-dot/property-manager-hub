@@ -381,9 +381,9 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             <div className="mt-8 grid gap-8 lg:grid-cols-2 lg:gap-12">
               {complexPhotos.length > 0 ? (
                 <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
-                  {photoUrls[complexPhotos[0].path] ? (
+                  {photoUrls[complexPhotos[0]!.path] ? (
                     <img
-                      src={photoUrls[complexPhotos[0].path]}
+                      src={photoUrls[complexPhotos[0]!.path]}
                       alt={`${complex.name} — главное фото`}
                       loading="lazy"
                       className="size-full object-cover"
