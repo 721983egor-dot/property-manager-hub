@@ -16,12 +16,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  APPLIANCE_OPTIONS,
+  BATHROOM_FEATURE_OPTIONS,
   BATHROOM_OPTIONS,
+  OUTDOOR_OPTIONS,
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
   SUMMER_SEASON_LABEL,
   roomsLabel,
+
 
   signedUrls,
   uploadPhoto,
@@ -65,6 +69,18 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [commission, setCommission] = useState(
     initial?.commission != null ? String(initial.commission) : "",
   );
+  const [area, setArea] = useState(initial?.area != null ? String(initial.area) : "");
+  const [utilities, setUtilities] = useState(
+    initial?.utilities_month != null ? String(initial.utilities_month) : "",
+  );
+  const [outdoor, setOutdoor] = useState<string[]>(initial?.outdoor_spaces ?? []);
+  const [appliances, setAppliances] = useState<string[]>(initial?.appliances ?? []);
+  const [bathFeatures, setBathFeatures] = useState<string[]>(initial?.bathroom_features ?? []);
+  const toggle = (
+    value: string,
+    list: string[],
+    setList: (v: string[]) => void,
+  ) => setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   const toNum = (v: string) => (v.trim() === "" ? null : Number(v));
 
 
@@ -137,6 +153,11 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       summer_price_month: seasonal ? toNum(summerPrice) : null,
       deposit: toNum(deposit),
       commission: toNum(commission),
+      area: toNum(area),
+      utilities_month: toNum(utilities),
+      outdoor_spaces: outdoor,
+      appliances,
+      bathroom_features: bathFeatures,
     });
 
   };
@@ -236,6 +257,17 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </Select>
           </Field>
 
+          <Field label="Площадь, м²">
+            <Input
+              type="number"
+              min={0}
+              step="0.1"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              placeholder="65"
+            />
+          </Field>
+
           <Field label="Статус">
             <Select value={status} onValueChange={(v) => setStatus(v as PropertyStatus)}>
               <SelectTrigger>
@@ -286,6 +318,16 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               placeholder="50000"
             />
           </Field>
+          <Field label="Коммунальные платежи в месяц (примерно)">
+            <Input
+              type="number"
+              min={0}
+              step={500}
+              value={utilities}
+              onChange={(e) => setUtilities(e.target.value)}
+              placeholder="7000"
+            />
+          </Field>
         </div>
 
         <div className="mt-6 rounded-lg border border-border p-4">
@@ -322,6 +364,32 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           ) : null}
         </div>
       </section>
+
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Характеристики</h2>
+        <div className="mt-5 grid gap-6 md:grid-cols-3">
+          <CheckGroup
+            title="Балкон / терраса / лоджия"
+            options={OUTDOOR_OPTIONS}
+            selected={outdoor}
+            onToggle={(v) => toggle(v, outdoor, setOutdoor)}
+          />
+          <CheckGroup
+            title="Техника"
+            options={APPLIANCE_OPTIONS}
+            selected={appliances}
+            onToggle={(v) => toggle(v, appliances, setAppliances)}
+          />
+          <CheckGroup
+            title="Ванна / душевая / джакузи"
+            options={BATHROOM_FEATURE_OPTIONS}
+            selected={bathFeatures}
+            onToggle={(v) => toggle(v, bathFeatures, setBathFeatures)}
+          />
+        </div>
+      </section>
+
+
 
 
 
@@ -437,6 +505,37 @@ function Field({
     <div className={className}>
       <Label className="mb-2 block text-sm font-medium">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function CheckGroup({
+  title,
+  options,
+  selected,
+  onToggle,
+}: {
+  title: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-sm font-medium">{title}</p>
+      <div className="mt-3 space-y-2.5">
+        {options.map((o) => (
+          <label key={o.value} className="flex items-center gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              checked={selected.includes(o.value)}
+              onChange={() => onToggle(o.value)}
+              className="size-4 accent-[hsl(var(--primary))]"
+            />
+            {o.label}
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

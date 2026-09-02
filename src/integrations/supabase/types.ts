@@ -17,6 +17,9 @@ export type Database = {
       properties: {
         Row: {
           address: string
+          appliances: string[]
+          area: number | null
+          bathroom_features: string[]
           bathrooms: number
           commission: number | null
           complex_id: string | null
@@ -26,6 +29,7 @@ export type Database = {
           description: string
           floor: number | null
           id: string
+          outdoor_spaces: string[]
           photos: Json
           price_month: number | null
           ref_id: number
@@ -37,9 +41,13 @@ export type Database = {
           total_floors: number | null
           type: Database["public"]["Enums"]["property_type"]
           updated_at: string
+          utilities_month: number | null
         }
         Insert: {
           address?: string
+          appliances?: string[]
+          area?: number | null
+          bathroom_features?: string[]
           bathrooms?: number
           commission?: number | null
           complex_id?: string | null
@@ -49,6 +57,7 @@ export type Database = {
           description?: string
           floor?: number | null
           id?: string
+          outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null
           ref_id?: number
@@ -60,9 +69,13 @@ export type Database = {
           total_floors?: number | null
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
+          utilities_month?: number | null
         }
         Update: {
           address?: string
+          appliances?: string[]
+          area?: number | null
+          bathroom_features?: string[]
           bathrooms?: number
           commission?: number | null
           complex_id?: string | null
@@ -72,6 +85,7 @@ export type Database = {
           description?: string
           floor?: number | null
           id?: string
+          outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null
           ref_id?: number
@@ -83,6 +97,7 @@ export type Database = {
           total_floors?: number | null
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
+          utilities_month?: number | null
         }
         Relationships: []
       }

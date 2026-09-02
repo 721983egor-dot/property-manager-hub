@@ -5,10 +5,15 @@ import { ChevronLeft, ImageIcon, MapPin, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
+  APPLIANCE_OPTIONS,
+  BATHROOM_FEATURE_OPTIONS,
+  OUTDOOR_OPTIONS,
   SUMMER_SEASON_LABEL,
   fetchProperty,
   floorLabel,
+  formatArea,
   formatMoney,
+  labelsFor,
   roomsLabel,
   signedUrls,
   typeLabel,
@@ -105,8 +110,27 @@ function ObjectViewPage() {
               <Item label="Этаж" value={floorLabel(data)} />
               <Item label="Планировка" value={roomsLabel(data.rooms)} />
               <Item label="Санузлы" value={String(data.bathrooms)} />
+              <Item label="Площадь" value={formatArea(data.area)} />
             </dl>
           </section>
+
+          {(() => {
+            const outdoor = labelsFor(OUTDOOR_OPTIONS, data.outdoor_spaces);
+            const appliances = labelsFor(APPLIANCE_OPTIONS, data.appliances);
+            const bath = labelsFor(BATHROOM_FEATURE_OPTIONS, data.bathroom_features);
+            if (outdoor.length + appliances.length + bath.length === 0) return null;
+            return (
+              <section className="mt-6 rounded-xl border border-border bg-card p-6">
+                <h2 className="text-base font-semibold">Характеристики</h2>
+                <div className="mt-4 grid gap-6 sm:grid-cols-3">
+                  <Chips title="Балкон / терраса / лоджия" items={outdoor} />
+                  <Chips title="Техника" items={appliances} />
+                  <Chips title="Ванна / душевая / джакузи" items={bath} />
+                </div>
+              </section>
+            );
+          })()}
+
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
             <h2 className="text-base font-semibold">Стоимость</h2>
@@ -123,6 +147,7 @@ function ObjectViewPage() {
               ) : null}
               <Item label="Страховой депозит" value={formatMoney(data.deposit)} />
               <Item label="Комиссия" value={formatMoney(data.commission)} />
+              <Item label="Коммунальные в месяц" value={formatMoney(data.utilities_month)} />
             </dl>
           </section>
 
@@ -162,6 +187,25 @@ function ObjectViewPage() {
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+function Chips({ title, items }: { title: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{title}</p>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {items.map((i) => (
+          <li
+            key={i}
+            className="rounded-md border border-border bg-muted px-2.5 py-1 text-sm text-foreground"
+          >
+            {i}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
