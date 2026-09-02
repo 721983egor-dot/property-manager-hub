@@ -144,11 +144,14 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
       : null,
   ].filter((r): r is { label: string; value: number } => r != null && r.value != null);
 
+  const rentTermsLines = (property.rent_terms || "").split(/\n+/).filter((l) => l.trim());
+
   const hasRentTerms =
     property.price_month != null ||
     property.deposit != null ||
     property.commission != null ||
-    property.utilities_month != null;
+    property.utilities_month != null ||
+    rentTermsLines.length > 0;
 
   function prev() {
     setActive((i) => (i - 1 + photos.length) % photos.length);
