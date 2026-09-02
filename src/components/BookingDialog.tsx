@@ -103,11 +103,17 @@ function fromBooking(b: Booking): FormState {
   };
 }
 
-export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }: Props) {
+export function BookingDialog({
+  open,
+  onOpenChange,
+  booking,
+  defaultPropertyId,
+  defaultClientId,
+}: Props) {
   const qc = useQueryClient();
   const [mode, setMode] = useState<"view" | "edit">(booking ? "view" : "edit");
   const [form, setForm] = useState<FormState>(() =>
-    booking ? fromBooking(booking) : emptyForm(defaultPropertyId),
+    booking ? fromBooking(booking) : emptyForm(defaultPropertyId, defaultClientId),
   );
   const [newClient, setNewClient] = useState(false);
   const [clientName, setClientName] = useState("");
@@ -117,12 +123,13 @@ export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }
   useEffect(() => {
     if (!open) return;
     setMode(booking ? "view" : "edit");
-    setForm(booking ? fromBooking(booking) : emptyForm(defaultPropertyId));
+    setForm(booking ? fromBooking(booking) : emptyForm(defaultPropertyId, defaultClientId));
     setNewClient(false);
     setClientName("");
     setClientPhone("");
     setClientSearch("");
-  }, [open, booking?.id, defaultPropertyId]);
+  }, [open, booking?.id, defaultPropertyId, defaultClientId]);
+
 
   const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
