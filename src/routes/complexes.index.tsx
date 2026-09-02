@@ -217,7 +217,7 @@ function Row({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
-                variant="destructive"
+                className="text-destructive focus:text-destructive"
                 onSelect={() => {
                   if (confirm(`Удалить комплекс «${complex.name}»?`)) onDelete();
                 }}
