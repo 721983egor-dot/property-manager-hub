@@ -121,6 +121,13 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     enabled: paths.length > 0,
   });
 
+  const queryClient = useQueryClient();
+  const { data: complexes = [] } = useQuery({
+    queryKey: ["complexes"],
+    queryFn: fetchComplexes,
+  });
+  const [creatingComplex, setCreatingComplex] = useState(false);
+
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -164,7 +171,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     await onSubmit({
       title: title.trim(),
       type,
-      complex_name: complexName.trim(),
+      complex_id: complexId,
+      complex_name: complexes.find((c) => c.id === complexId)?.name ?? "",
       address: address.trim(),
       floor: floor === "" ? null : Number(floor),
       total_floors: totalFloors === "" ? null : Number(totalFloors),
