@@ -31,6 +31,7 @@ import {
   fetchProperties,
   floorLabel,
   formatMoney,
+  internalTitle,
   roomsLabel,
   setPropertyStatus,
   signedUrls,
