@@ -86,69 +86,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Шапка сайта Residence More (статичная, для макета). */
-function SiteHeader() {
-  return (
-    <header>
-      {/* Верхняя тёмная полоса */}
-      <div className="bg-site-navy text-site-navy-foreground">
-        <div className="mx-auto flex w-full max-w-[1170px] items-center justify-between gap-6 px-5 py-2.5 text-[13px] lg:px-8">
-          <div className="flex items-center gap-6">
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin className="size-3.5 text-site-gold" />
-              г. Сочи ул. Московская, д. 22
-            </span>
-            <span className="hidden items-center gap-1.5 sm:inline-flex">
-              <Phone className="size-3.5 text-site-gold" />
-              +7 (938) 442-08-09
-            </span>
-          </div>
-          <div className="flex items-center gap-5">
-            <span className="hidden items-center gap-1.5 md:inline-flex">
-              <Clock className="size-3.5 text-site-gold" />
-              Пн-Пт 8:00 — 21:00
-            </span>
-            <span className="flex items-center gap-2">
-              <Send className="size-4" />
-              <Share2 className="size-4" />
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Основная шапка */}
-      <div className="border-b border-site-line bg-background">
-        <div className="mx-auto flex w-full max-w-[1170px] items-center justify-between gap-8 px-5 py-5 lg:px-8">
-          <div className="flex items-baseline gap-2">
-            <span className="font-body text-[26px] font-bold tracking-tight text-site-navy">
-              RM
-            </span>
-            <span className="text-[13px] font-medium leading-tight text-site-muted">
-              Резиденция
-              <br />& Море
-            </span>
-          </div>
-          <nav className="hidden items-center gap-10 text-[16px] font-medium text-site-navy lg:flex">
-            <span className="cursor-pointer transition-colors hover:text-site-gold">Объекты</span>
-            <span className="cursor-pointer transition-colors hover:text-site-gold">
-              Собственникам
-            </span>
-            <span className="cursor-pointer transition-colors hover:text-site-gold">О нас</span>
-          </nav>
-          <div className="flex items-center gap-5">
-            <button
-              type="button"
-              className="hidden h-12 items-center rounded-xl bg-site-navy px-7 text-[15px] font-semibold text-site-navy-foreground transition-colors hover:bg-site-navy/90 sm:inline-flex"
-            >
-              Связаться с нами
-            </button>
-            <Menu className="size-7 text-site-navy" />
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
   const [active, setActive] = useState(0);
