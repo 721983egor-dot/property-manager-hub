@@ -1,16 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowUpRight,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  MapPin,
-  Menu,
-  Phone,
-  Send,
-  Share2,
-} from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
 
 import {
   SUMMER_SEASON_LABEL,
@@ -53,6 +42,7 @@ export type PublicPropertyView = Pick<
   | "utilities_month"
   | "description"
   | "location_description"
+  | "rent_terms"
   | "extra_features"
   | "photos"
 >;
@@ -97,69 +87,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Шапка сайта Residence More (статичная, для макета). */
-function SiteHeader() {
-  return (
-    <header>
-      {/* Верхняя тёмная полоса */}
-      <div className="bg-site-navy text-site-navy-foreground">
-        <div className="mx-auto flex w-full max-w-[1170px] items-center justify-between gap-6 px-5 py-2.5 text-[13px] lg:px-8">
-          <div className="flex items-center gap-6">
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin className="size-3.5 text-site-gold" />
-              г. Сочи ул. Московская, д. 22
-            </span>
-            <span className="hidden items-center gap-1.5 sm:inline-flex">
-              <Phone className="size-3.5 text-site-gold" />
-              +7 (938) 442-08-09
-            </span>
-          </div>
-          <div className="flex items-center gap-5">
-            <span className="hidden items-center gap-1.5 md:inline-flex">
-              <Clock className="size-3.5 text-site-gold" />
-              Пн-Пт 8:00 — 21:00
-            </span>
-            <span className="flex items-center gap-2">
-              <Send className="size-4" />
-              <Share2 className="size-4" />
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Основная шапка */}
-      <div className="border-b border-site-line bg-background">
-        <div className="mx-auto flex w-full max-w-[1170px] items-center justify-between gap-8 px-5 py-5 lg:px-8">
-          <div className="flex items-baseline gap-2">
-            <span className="font-body text-[26px] font-bold tracking-tight text-site-navy">
-              RM
-            </span>
-            <span className="text-[13px] font-medium leading-tight text-site-muted">
-              Резиденция
-              <br />& Море
-            </span>
-          </div>
-          <nav className="hidden items-center gap-10 text-[16px] font-medium text-site-navy lg:flex">
-            <span className="cursor-pointer transition-colors hover:text-site-gold">Объекты</span>
-            <span className="cursor-pointer transition-colors hover:text-site-gold">
-              Собственникам
-            </span>
-            <span className="cursor-pointer transition-colors hover:text-site-gold">О нас</span>
-          </nav>
-          <div className="flex items-center gap-5">
-            <button
-              type="button"
-              className="hidden h-12 items-center rounded-xl bg-site-navy px-7 text-[15px] font-semibold text-site-navy-foreground transition-colors hover:bg-site-navy/90 sm:inline-flex"
-            >
-              Связаться с нами
-            </button>
-            <Menu className="size-7 text-site-navy" />
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
   const [active, setActive] = useState(0);
@@ -217,11 +144,14 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
       : null,
   ].filter((r): r is { label: string; value: number } => r != null && r.value != null);
 
+  const rentTermsLines = (property.rent_terms || "").split(/\n+/).filter((l) => l.trim());
+
   const hasRentTerms =
     property.price_month != null ||
     property.deposit != null ||
     property.commission != null ||
-    property.utilities_month != null;
+    property.utilities_month != null ||
+    rentTermsLines.length > 0;
 
   function prev() {
     setActive((i) => (i - 1 + photos.length) % photos.length);
@@ -240,7 +170,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
     <button
       type="button"
       className={
-        "h-14 min-w-[220px] flex-1 rounded-2xl bg-site-navy px-10 text-[16px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
+        "h-14 w-[240px] max-w-full shrink-0 rounded-2xl bg-site-navy px-10 text-[16px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
         className
       }
     >
@@ -280,8 +210,6 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
   return (
     <div className="bg-background font-body text-site-navy antialiased">
-      <SiteHeader />
-
       <div className="mx-auto w-full max-w-[1170px] px-5 pb-24 pt-8 lg:px-8">
         {/* ===== Хлебные крошки ===== */}
         <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-site-muted">
@@ -552,58 +480,60 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
               {/* Левая колонка: примечания */}
               <ul className="space-y-2.5">
+                {rentTermsLines.map((l, i) => (
+                  <Bullet key={i}>{l}</Bullet>
+                ))}
                 {property.utilities_month != null ? (
                   <Bullet>
-                    Коммунальные платежи оплачиваются отдельно, ориентировочно ≈{" "}
-                    {formatMoney(property.utilities_month)} в месяц
+                    Коммунальные платежи ориентировочно ≈ {formatMoney(property.utilities_month)} в
+                    месяц
                   </Bullet>
-                ) : null}
-                <Bullet>Проживание с домашними животными обсуждается индивидуально</Bullet>
-                {property.deposit != null ? (
-                  <Bullet>
-                    Страховой депозит вносится при заселении и возвращается при выезде, при
-                    условии сохранности имущества
-                  </Bullet>
-                ) : null}
-                {property.commission != null ? (
-                  <Bullet>Комиссия агентства — {formatMoney(property.commission)}</Bullet>
                 ) : null}
               </ul>
 
-              {/* Правая колонка: цены */}
-              <div>
-                {seasonRows.length > 0 ? (
-                  <>
-                    <p className="text-[15px] font-semibold text-site-navy">
-                      Стоимость при долгосрочной аренде:
-                    </p>
-                    <ul className="mt-3 space-y-2">
-                      {seasonRows.map((r) => (
-                        <li key={r.label} className="flex items-baseline gap-2 text-[15px]">
-                          <span className="mt-[8px] size-1.5 shrink-0 self-start bg-site-gold" />
-                          <span className="capitalize text-site-muted">{r.label}</span>
-                          <span className="whitespace-nowrap font-medium text-site-navy">
-                            {formatMoney(r.value)} в месяц
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-                {property.deposit != null ? (
-                  <p className="mt-4 text-right text-[15px] text-site-muted">
-                    Страховой депозит{" "}
-                    <span className="ml-2 whitespace-nowrap font-medium text-site-navy">
-                      {formatMoney(property.deposit)}
-                    </span>
-                  </p>
-                ) : null}
+              {/* Правая колонка: финансовые условия в один ряд */}
+              <div className="divide-y divide-site-line border-y border-site-line">
+                <div className="flex items-baseline justify-between gap-6 py-4">
+                  <span className="text-[15px] text-site-muted">Стоимость</span>
+                  <div className="text-right">
+                    {seasonRows.length > 0 ? (
+                      <ul className="space-y-1">
+                        {seasonRows.map((r) => (
+                          <li key={r.label} className="text-[15px] whitespace-nowrap">
+                            <span className="capitalize text-site-muted">{r.label}</span>
+                            <span className="ml-3 font-semibold text-site-navy">
+                              {formatMoney(r.value)} / мес
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="whitespace-nowrap text-[17px] font-semibold text-site-navy">
+                        {formatMoney(property.price_month)} / мес
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-baseline justify-between gap-6 py-4">
+                  <span className="text-[15px] text-site-muted">Страховой депозит</span>
+                  <span className="whitespace-nowrap text-[17px] font-semibold text-site-navy">
+                    {formatMoney(property.deposit)}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline justify-between gap-6 py-4">
+                  <span className="text-[15px] text-site-muted">Комиссия</span>
+                  <span className="whitespace-nowrap text-[17px] font-semibold text-site-navy">
+                    {formatMoney(property.commission)}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Итоговая строка: кнопки + цена */}
             <div className="mt-8 flex flex-wrap items-center justify-between gap-5">
-              <div className="flex flex-1 items-center gap-3">
+              <div className="flex items-center gap-3">
                 {contactButton()}
                 {shareButton}
               </div>

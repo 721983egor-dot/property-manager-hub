@@ -32,6 +32,7 @@ export type Property = {
   utilities_month: number | null;
   extra_features: string[];
   location_description: string;
+  rent_terms: string;
   created_at: string;
   updated_at: string;
 };
@@ -174,6 +175,7 @@ function normalize(row: Record<string, unknown>): Property {
     location_description: typeof row['location_description'] === "string"
       ? (row['location_description'] as string)
       : "",
+    rent_terms: typeof row['rent_terms'] === "string" ? (row['rent_terms'] as string) : "",
   };
 }
 
@@ -219,7 +221,16 @@ export type PropertyInput = {
   utilities_month: number | null;
   extra_features: string[];
   location_description: string;
+  rent_terms: string;
 };
+
+/** Базовый текст условий аренды — подставляется в форму и редактируется. */
+export const DEFAULT_RENT_TERMS = [
+  "Коммунальные платежи оплачиваются отдельно",
+  "Проживание с домашними животными обсуждается индивидуально",
+  "Страховой депозит вносится при заселении и возвращается при выезде, при условии сохранности имущества",
+  "Договор заключается на срок от 11 месяцев",
+].join("\n");
 
 
 export async function createProperty(input: PropertyInput) {

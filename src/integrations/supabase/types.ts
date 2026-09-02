@@ -68,6 +68,7 @@ export type Database = {
           photos: Json
           price_month: number | null
           ref_id: number
+          rent_terms: string
           rooms: number
           seasonal_pricing: boolean
           status: Database["public"]["Enums"]["property_status"]
@@ -98,6 +99,7 @@ export type Database = {
           photos?: Json
           price_month?: number | null
           ref_id?: number
+          rent_terms?: string
           rooms?: number
           seasonal_pricing?: boolean
           status?: Database["public"]["Enums"]["property_status"]
@@ -128,6 +130,7 @@ export type Database = {
           photos?: Json
           price_month?: number | null
           ref_id?: number
+          rent_terms?: string
           rooms?: number
           seasonal_pricing?: boolean
           status?: Database["public"]["Enums"]["property_status"]

@@ -27,6 +27,7 @@ import {
   APPLIANCE_OPTIONS,
   BATHROOM_FEATURE_OPTIONS,
   BATHROOM_OPTIONS,
+  DEFAULT_RENT_TERMS,
   EXTRA_FEATURE_OPTIONS,
   extraFeatureLabel,
   OUTDOOR_OPTIONS,
@@ -93,6 +94,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [customFeature, setCustomFeature] = useState("");
   const [locationDescription, setLocationDescription] = useState(
     initial?.location_description ?? "",
+  );
+  const [rentTerms, setRentTerms] = useState(
+    initial ? (initial.rent_terms || DEFAULT_RENT_TERMS) : DEFAULT_RENT_TERMS,
   );
   const addCustomFeature = () => {
     const value = customFeature.trim();
@@ -195,6 +199,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       bathroom_features: bathFeatures,
       extra_features: extraFeatures,
       location_description: locationDescription,
+      rent_terms: rentTerms,
     });
 
   };
@@ -518,6 +523,31 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           placeholder="Жилой комплекс находится в районе Светлана и граничит с парком Дендрарий..."
         />
       </section>
+
+      <section className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-base font-semibold">Условия аренды</h2>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setRentTerms(DEFAULT_RENT_TERMS)}
+          >
+            Базовый текст
+          </Button>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Каждая строка выводится отдельным пунктом на странице объекта.
+        </p>
+        <Textarea
+          value={rentTerms}
+          onChange={(e) => setRentTerms(e.target.value)}
+          rows={5}
+          className="mt-4 resize-y"
+        />
+      </section>
+
+
 
 
 
