@@ -49,7 +49,9 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   booking?: Booking | null;
   defaultPropertyId?: string;
+  defaultClientId?: string;
 };
+
 
 type FormState = {
   property_id: string;
