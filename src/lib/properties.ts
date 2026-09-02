@@ -221,6 +221,7 @@ export type PropertyInput = {
   status: PropertyStatus;
   description: string;
   photos: PropertyPhoto[];
+  published: boolean;
   price_month: number | null;
   seasonal_pricing: boolean;
   summer_price_month: number | null;
