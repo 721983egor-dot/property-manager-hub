@@ -5,10 +5,15 @@ import { ChevronLeft, ImageIcon, MapPin, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
+  APPLIANCE_OPTIONS,
+  BATHROOM_FEATURE_OPTIONS,
+  OUTDOOR_OPTIONS,
   SUMMER_SEASON_LABEL,
   fetchProperty,
   floorLabel,
+  formatArea,
   formatMoney,
+  labelsFor,
   roomsLabel,
   signedUrls,
   typeLabel,
