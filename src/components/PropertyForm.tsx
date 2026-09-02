@@ -46,6 +46,8 @@ import {
   type PropertyType,
 } from "@/lib/properties";
 
+const NO_COMPLEX = "__none__";
+
 type Props = {
   initial?: Property;
   onSubmit: (input: PropertyInput) => Promise<void>;
@@ -606,7 +608,32 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
         )}
       </section>
 
-      <datalist id="complex-options" />
+      <Dialog open={complexDialog} onOpenChange={setComplexDialog}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Новый комплекс</DialogTitle>
+          </DialogHeader>
+          <ComplexForm
+            compact
+            submitting={creatingComplex}
+            onCancel={() => setComplexDialog(false)}
+            onSubmit={async (input) => {
+              setCreatingComplex(true);
+              try {
+                const created = await createComplex(input);
+                await queryClient.invalidateQueries({ queryKey: ["complexes"] });
+                setComplexId(created.id);
+                setComplexDialog(false);
+                toast.success("Комплекс создан");
+              } catch {
+                toast.error("Не удалось создать комплекс");
+              } finally {
+                setCreatingComplex(false);
+              }
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center justify-end gap-3 pb-4">
         <Button type="button" variant="ghost" onClick={() => navigate({ to: "/" })}>
