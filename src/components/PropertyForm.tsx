@@ -49,6 +49,16 @@ import {
 
 const NO_COMPLEX = "__none__";
 
+const RENT_TERMS_ROWS = 5;
+
+/** Приводит сохранённый текст условий к 5 строкам формы (по умолчанию — базовый текст). */
+function toRentTermsLines(value?: string | null): string[] {
+  const saved = (value ?? "").split(/\n/).map((l) => l.trim()).filter(Boolean);
+  const base = saved.length > 0 ? saved : DEFAULT_RENT_TERMS.split("\n");
+  return Array.from({ length: Math.max(RENT_TERMS_ROWS, base.length) }, (_, i) => base[i] ?? "");
+}
+
+
 type Props = {
   initial?: Property;
   onSubmit: (input: PropertyInput) => Promise<void>;
@@ -95,8 +105,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [locationDescription, setLocationDescription] = useState(
     initial?.location_description ?? "",
   );
-  const [rentTerms, setRentTerms] = useState(
-    initial ? (initial.rent_terms || DEFAULT_RENT_TERMS) : DEFAULT_RENT_TERMS,
+  const [rentTermsLines, setRentTermsLines] = useState<string[]>(() =>
+    toRentTermsLines(initial?.rent_terms),
   );
   const addCustomFeature = () => {
     const value = customFeature.trim();
@@ -199,7 +209,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       bathroom_features: bathFeatures,
       extra_features: extraFeatures,
       location_description: locationDescription,
-      rent_terms: rentTerms,
+      rent_terms: rentTermsLines.map((l) => l.trim()).filter(Boolean).join("\n"),
     });
 
   };
@@ -514,14 +524,12 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       </section>
 
       <section className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-base font-semibold">Описание локации</h2>
-        <Textarea
-          value={locationDescription}
-          onChange={(e) => setLocationDescription(e.target.value)}
-          rows={4}
-          className="mt-4 resize-y"
-          placeholder="Жилой комплекс находится в районе Светлана и граничит с парком Дендрарий..."
-        />
+        <h2 className="text-base font-semibold">Локация</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {complexId
+            ? "Описание локации берётся из карточки выбранного комплекса — измените его в разделе «Комплексы»."
+            : "Комплекс не выбран: в блоке «Локация» на странице объекта будет использован адрес объекта."}
+        </p>
       </section>
 
       <section className="rounded-xl border border-border bg-card p-6">
@@ -531,20 +539,27 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setRentTerms(DEFAULT_RENT_TERMS)}
+            onClick={() => setRentTermsLines(toRentTermsLines(null))}
           >
             Базовый текст
           </Button>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Каждая строка выводится отдельным пунктом на странице объекта.
+          Каждая строка выводится отдельным пунктом на странице объекта. Пустые строки не
+          показываются.
         </p>
-        <Textarea
-          value={rentTerms}
-          onChange={(e) => setRentTerms(e.target.value)}
-          rows={5}
-          className="mt-4 resize-y"
-        />
+        <div className="mt-4 space-y-3">
+          {rentTermsLines.map((line, i) => (
+            <Input
+              key={i}
+              value={line}
+              onChange={(e) =>
+                setRentTermsLines((prev) => prev.map((l, idx) => (idx === i ? e.target.value : l)))
+              }
+              placeholder={`Условие ${i + 1}`}
+            />
+          ))}
+        </div>
       </section>
 
 
