@@ -2,9 +2,13 @@ import { useState } from "react";
 import { Check, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
 
 import {
+  APPLIANCE_OPTIONS,
+  BATHROOM_FEATURE_OPTIONS,
   DEFAULT_RENT_TERMS,
+  OUTDOOR_OPTIONS,
   SUMMER_SEASON_LABEL,
   extraFeatureLabel,
+  labelsFor,
   floorLabel,
   formatArea,
   formatMoney,
@@ -26,6 +30,9 @@ import { infrastructureLabel, type Complex } from "@/lib/complexes";
 export type PublicPropertyView = Pick<
   Property,
   | "title"
+  | "outdoor_spaces"
+  | "appliances"
+  | "bathroom_features"
   | "type"
   | "complex_name"
   | "address"
