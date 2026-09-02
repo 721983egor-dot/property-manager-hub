@@ -136,6 +136,13 @@ function normalize(row: Record<string, unknown>): Property {
     deposit: num(row['deposit']),
     commission: num(row['commission']),
     seasonal_pricing: Boolean(row['seasonal_pricing']),
+    area: num(row['area']),
+    utilities_month: num(row['utilities_month']),
+    outdoor_spaces: Array.isArray(row['outdoor_spaces']) ? (row['outdoor_spaces'] as string[]) : [],
+    appliances: Array.isArray(row['appliances']) ? (row['appliances'] as string[]) : [],
+    bathroom_features: Array.isArray(row['bathroom_features'])
+      ? (row['bathroom_features'] as string[])
+      : [],
   };
 }
 
