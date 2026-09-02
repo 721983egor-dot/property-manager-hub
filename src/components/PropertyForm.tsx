@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ComplexForm } from "@/components/ComplexForm";
-import { createComplex, fetchComplexes } from "@/lib/complexes";
+import { createComplex, fetchComplexes, infrastructureLabel } from "@/lib/complexes";
 import {
   Select,
   SelectContent,
