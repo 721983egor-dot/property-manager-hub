@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ComplexForm } from "@/components/ComplexForm";
-import { createComplex, fetchComplexes } from "@/lib/complexes";
+import { createComplex, fetchComplexes, infrastructureLabel } from "@/lib/complexes";
 import {
   Select,
   SelectContent,
@@ -107,6 +107,17 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [rentTermsLines, setRentTermsLines] = useState<string[]>(() =>
     toRentTermsLines(initial?.rent_terms),
   );
+  const [cardHighlights, setCardHighlights] = useState<string[]>(
+    initial?.card_highlights ?? [],
+  );
+  const toggleHighlight = (value: string) =>
+    setCardHighlights((prev) =>
+      prev.includes(value)
+        ? prev.filter((v) => v !== value)
+        : prev.length >= 3
+          ? prev
+          : [...prev, value],
+    );
   const addCustomFeature = () => {
     const value = customFeature.trim();
     if (!value || extraFeatures.includes(value)) {
@@ -142,6 +153,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     queryFn: fetchComplexes,
   });
   const [creatingComplex, setCreatingComplex] = useState(false);
+  const selectedComplex = complexes.find((c) => c.id === complexId) ?? null;
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -210,6 +222,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       extra_features: extraFeatures,
       location_description: locationDescription,
       rent_terms: rentTermsLines.map((l) => l.trim()).filter(Boolean).join("\n"),
+      card_highlights: cardHighlights,
     });
 
   };
@@ -537,6 +550,45 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             Добавить
           </Button>
         </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Характеристики для карточки на сайте</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Выберите до 3 характеристик комплекса — они показываются в карточке объекта в списке
+          на сайте.
+        </p>
+        {selectedComplex ? (
+          selectedComplex.infrastructure.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {selectedComplex.infrastructure.map((value) => {
+                const active = cardHighlights.includes(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => toggleHighlight(value)}
+                    className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {infrastructureLabel(value)}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">
+              У выбранного комплекса не указана инфраструктура.
+            </p>
+          )
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Выберите комплекс, чтобы отметить его характеристики.
+          </p>
+        )}
       </section>
 
       <section className="rounded-xl border border-border bg-card p-6">

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { formatArea, formatMoney, roomsLabel, type Property } from "@/lib/properties";
+import { infrastructureLabel } from "@/lib/complexes";
+import { formatArea, formatMoney, type Property } from "@/lib/properties";
 
 type Props = {
   property: Property;
@@ -7,16 +8,29 @@ type Props = {
   photoUrl?: string | undefined;
 };
 
+function bedroomsLabel(rooms: number) {
+  if (rooms === 1) return "1 спальня";
+  if (rooms >= 2 && rooms <= 4) return `${rooms} спальни`;
+  return `${rooms} спален`;
+}
+
 export function PropertyCard({ property, complexName, photoUrl }: Props) {
   const isFree = property.status === "free";
+  const highlights = (property.card_highlights ?? []).slice(0, 3).map(infrastructureLabel);
+
+  const specs = [
+    formatArea(property.area),
+    bedroomsLabel(property.rooms),
+    property.floor != null ? `${property.floor} этаж` : null,
+  ].filter((v): v is string => Boolean(v) && v !== "—");
 
   return (
     <Link
       to="/rent/$id"
       params={{ id: property.id }}
-      className="group flex flex-col overflow-hidden rounded-xl border border-site-line bg-white transition-all duration-300 hover:border-site-gold"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white transition-shadow duration-300 hover:shadow-[0_18px_50px_-30px_rgba(14,27,44,0.45)]"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-site-navy-soft">
+      <div className="aspect-[4/3] overflow-hidden bg-site-navy-soft">
         {photoUrl ? (
           <img
             src={photoUrl}
@@ -29,49 +43,34 @@ export function PropertyCard({ property, complexName, photoUrl }: Props) {
             Фото не загружено
           </div>
         )}
-        <span
-          className={`absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
-            isFree
-              ? "bg-site-green/10 text-site-green"
-              : "bg-site-navy-soft text-site-muted"
-          }`}
-        >
-          <span
-            className={`size-1.5 rounded-full ${
-              isFree ? "bg-site-green" : "bg-site-muted"
-            }`}
-          />
-          {isFree ? "Свободен сейчас" : "Занят"}
-        </span>
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-lg font-bold leading-snug text-site-navy transition-colors group-hover:text-site-gold">
-          {property.title}
-        </h3>
+      <div className="flex flex-1 flex-col px-6 py-7">
+        <h3 className="text-xl font-bold leading-snug text-site-navy">{property.title}</h3>
 
-        {complexName ? (
-          <p className="mt-1.5 text-sm font-medium text-site-navy/80">{complexName}</p>
-        ) : null}
+        <p
+          className={`mt-3 text-base font-bold ${isFree ? "text-site-green" : "text-site-muted"}`}
+        >
+          {isFree ? "Свободен сейчас" : "Занят"}
+        </p>
 
-        <p className="mt-1 truncate text-sm text-site-muted">{property.address || "Адрес не указан"}</p>
+        <div className="mt-5 h-px w-2/3 bg-site-gold/40" />
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-site-navy">
-          <span className="font-medium">{roomsLabel(property.rooms)}</span>
-          <span className="text-site-line">·</span>
-          <span className="font-medium">{formatArea(property.area)}</span>
+        <div className="mt-5 space-y-1.5 text-base text-site-muted">
+          {complexName ? <p>{complexName}</p> : null}
+          {highlights.length > 0 ? <p>{highlights.join(" · ")}</p> : null}
+          {specs.length > 0 ? <p>{specs.join(" · ")}</p> : null}
         </div>
 
-        <div className="mt-auto flex items-end justify-between gap-4 pt-5">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-site-muted">в месяц</p>
-            <p className="mt-0.5 text-xl font-bold text-site-navy">
-              {formatMoney(property.price_month)}
-            </p>
-          </div>
-          <span className="inline-flex shrink-0 items-center justify-center rounded-lg bg-site-navy px-5 py-2.5 text-sm font-semibold text-site-navy-foreground transition-colors group-hover:bg-site-navy/90">
+        <div className="mt-6 h-px w-2/3 bg-site-gold/40" />
+
+        <div className="mt-6 flex items-center justify-between gap-4">
+          <span className="inline-flex items-center justify-center rounded-lg bg-site-navy px-6 py-3 text-sm font-semibold text-site-navy-foreground transition-colors group-hover:bg-site-navy/90">
             Подробнее
           </span>
+          <p className="whitespace-nowrap text-xl font-bold text-site-navy">
+            {formatMoney(property.price_month)} / мес
+          </p>
         </div>
       </div>
     </Link>

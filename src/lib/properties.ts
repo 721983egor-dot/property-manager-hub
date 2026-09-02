@@ -34,6 +34,7 @@ export type Property = {
   extra_features: string[];
   location_description: string;
   rent_terms: string;
+  card_highlights: string[];
   created_at: string;
   updated_at: string;
 };
@@ -178,6 +179,9 @@ function normalize(row: Record<string, unknown>): Property {
       ? (row['location_description'] as string)
       : "",
     rent_terms: typeof row['rent_terms'] === "string" ? (row['rent_terms'] as string) : "",
+    card_highlights: Array.isArray(row['card_highlights'])
+      ? (row['card_highlights'] as string[])
+      : [],
   };
 }
 
@@ -235,6 +239,7 @@ export type PropertyInput = {
   extra_features: string[];
   location_description: string;
   rent_terms: string;
+  card_highlights: string[];
 };
 
 /** Базовый текст условий аренды — подставляется в форму и редактируется. */

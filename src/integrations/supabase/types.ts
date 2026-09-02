@@ -57,6 +57,7 @@ export type Database = {
           area: number | null
           bathroom_features: string[]
           bathrooms: number
+          card_highlights: string[]
           commission: number | null
           complex_id: string | null
           complex_name: string
@@ -89,6 +90,7 @@ export type Database = {
           area?: number | null
           bathroom_features?: string[]
           bathrooms?: number
+          card_highlights?: string[]
           commission?: number | null
           complex_id?: string | null
           complex_name?: string
@@ -121,6 +123,7 @@ export type Database = {
           area?: number | null
           bathroom_features?: string[]
           bathrooms?: number
+          card_highlights?: string[]
           commission?: number | null
           complex_id?: string | null
           complex_name?: string
