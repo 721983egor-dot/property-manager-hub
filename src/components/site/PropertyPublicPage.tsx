@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { ArrowUpRight, Check, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  MapPin,
+  Menu,
+  Phone,
+  Send,
+  Share2,
+} from "lucide-react";
 
 import {
   SUMMER_SEASON_LABEL,
@@ -15,7 +26,7 @@ import {
 import { infrastructureLabel, type Complex } from "@/lib/complexes";
 
 /**
- * Публичная страница объекта — макет сайта Residence More.
+ * Публичная страница объекта — точный макет сайта Residence More.
  * Палитра: глубокий синий + латунь + зелёный статус. Шрифт: DM Sans.
  *
  * Компонент не обращается к базе напрямую — он полностью управляется props,
@@ -75,11 +86,78 @@ function Bullet({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Заголовок секции с золотой линией на всю ширину — как на сайте. */
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="font-body text-[26px] font-bold tracking-tight text-site-navy">
-      {children}
-    </h2>
+    <div className="border-b-2 border-site-gold pb-3">
+      <h2 className="font-body text-[26px] font-bold tracking-tight text-site-navy">
+        {children}
+      </h2>
+    </div>
+  );
+}
+
+/** Шапка сайта Residence More (статичная, для макета). */
+function SiteHeader() {
+  return (
+    <header>
+      {/* Верхняя тёмная полоса */}
+      <div className="bg-site-navy text-site-navy-foreground">
+        <div className="mx-auto flex w-full max-w-[1170px] items-center justify-between gap-6 px-5 py-2.5 text-[13px] lg:px-8">
+          <div className="flex items-center gap-6">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin className="size-3.5 text-site-gold" />
+              г. Сочи ул. Московская, д. 22
+            </span>
+            <span className="hidden items-center gap-1.5 sm:inline-flex">
+              <Phone className="size-3.5 text-site-gold" />
+              +7 (938) 442-08-09
+            </span>
+          </div>
+          <div className="flex items-center gap-5">
+            <span className="hidden items-center gap-1.5 md:inline-flex">
+              <Clock className="size-3.5 text-site-gold" />
+              Пн-Пт 8:00 — 21:00
+            </span>
+            <span className="flex items-center gap-2">
+              <Send className="size-4" />
+              <Share2 className="size-4" />
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Основная шапка */}
+      <div className="border-b border-site-line bg-background">
+        <div className="mx-auto flex w-full max-w-[1170px] items-center justify-between gap-8 px-5 py-5 lg:px-8">
+          <div className="flex items-baseline gap-2">
+            <span className="font-body text-[26px] font-bold tracking-tight text-site-navy">
+              RM
+            </span>
+            <span className="text-[13px] font-medium leading-tight text-site-muted">
+              Резиденция
+              <br />& Море
+            </span>
+          </div>
+          <nav className="hidden items-center gap-10 text-[16px] font-medium text-site-navy lg:flex">
+            <span className="cursor-pointer transition-colors hover:text-site-gold">Объекты</span>
+            <span className="cursor-pointer transition-colors hover:text-site-gold">
+              Собственникам
+            </span>
+            <span className="cursor-pointer transition-colors hover:text-site-gold">О нас</span>
+          </nav>
+          <div className="flex items-center gap-5">
+            <button
+              type="button"
+              className="hidden h-12 items-center rounded-xl bg-site-navy px-7 text-[15px] font-semibold text-site-navy-foreground transition-colors hover:bg-site-navy/90 sm:inline-flex"
+            >
+              Связаться с нами
+            </button>
+            <Menu className="size-7 text-site-navy" />
+          </div>
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -162,7 +240,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
     <button
       type="button"
       className={
-        "h-12 min-w-[220px] flex-1 rounded-md bg-site-navy px-10 text-[15px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
+        "h-14 min-w-[220px] flex-1 rounded-2xl bg-site-navy px-10 text-[16px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
         className
       }
     >
@@ -176,29 +254,49 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
       onClick={copyLink}
       aria-label="Поделиться"
       title={copied ? "Ссылка скопирована" : "Поделиться"}
-      className="grid size-12 shrink-0 place-items-center rounded-md bg-site-navy text-site-navy-foreground transition-colors hover:bg-site-navy/90"
+      className="grid size-14 shrink-0 place-items-center rounded-2xl bg-site-navy text-site-navy-foreground transition-colors hover:bg-site-navy/90"
     >
       {copied ? <Check className="size-5 text-site-green" /> : <Share2 className="size-5" />}
     </button>
   );
 
+  const arrowButton = (
+    onClick: () => void,
+    side: "left" | "right",
+    label: string,
+  ) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={
+        "absolute top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-background/85 text-site-navy shadow-sm backdrop-blur-sm transition-colors hover:bg-background " +
+        (side === "left" ? "left-4" : "right-4")
+      }
+    >
+      {side === "left" ? <ChevronLeft className="size-5" /> : <ChevronRight className="size-5" />}
+    </button>
+  );
+
   return (
     <div className="bg-background font-body text-site-navy antialiased">
-      <div className="mx-auto w-full max-w-[1170px] px-5 pb-24 pt-6 lg:px-8">
+      <SiteHeader />
+
+      <div className="mx-auto w-full max-w-[1170px] px-5 pb-24 pt-8 lg:px-8">
         {/* ===== Хлебные крошки ===== */}
         <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-site-muted">
           <span className="transition-colors hover:text-site-navy">Главная</span>
           <span className="text-site-gold">→</span>
           <span className="transition-colors hover:text-site-navy">Долгосрочная аренда</span>
           <span className="text-site-gold">→</span>
-          <span className="text-site-navy">{property.title}</span>
+          <span className="font-semibold text-site-navy">{property.title}</span>
         </nav>
 
         {/* ===== Верхний блок: галерея + информация ===== */}
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
           {/* Галерея */}
           <div className="lg:col-span-7">
-            <div className="relative aspect-[4/3] overflow-hidden bg-site-navy-soft">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-site-navy-soft">
               {current && photoUrls[current.path] ? (
                 <img
                   src={photoUrls[current.path]}
@@ -212,28 +310,14 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
               )}
               {photos.length > 1 ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={prev}
-                    aria-label="Предыдущее фото"
-                    className="absolute left-0 top-1/2 grid h-14 w-10 -translate-y-1/2 place-items-center bg-background/80 text-site-navy backdrop-blur-sm transition-colors hover:bg-background"
-                  >
-                    <ChevronLeft className="size-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={next}
-                    aria-label="Следующее фото"
-                    className="absolute right-0 top-1/2 grid h-14 w-10 -translate-y-1/2 place-items-center bg-background/80 text-site-navy backdrop-blur-sm transition-colors hover:bg-background"
-                  >
-                    <ChevronRight className="size-5" />
-                  </button>
+                  {arrowButton(prev, "left", "Предыдущее фото")}
+                  {arrowButton(next, "right", "Следующее фото")}
                 </>
               ) : null}
             </div>
             {/* Точки */}
             {photos.length > 1 ? (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                 {photos.map((p, i) => (
                   <button
                     key={p.path}
@@ -254,34 +338,33 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
           <div className="flex min-w-0 flex-col lg:col-span-5">
             <p
               className={
-                "text-[14px] font-medium " +
+                "text-[15px] font-semibold " +
                 (property.status === "free" ? "text-site-green" : "text-site-muted")
               }
             >
               {STATUS_TEXT[property.status] ?? ""}
             </p>
 
-            <h1 className="mt-2 font-body text-[36px] font-bold leading-[1.1] tracking-tight lg:text-[42px]">
+            <h1 className="mt-2 font-body text-[32px] font-bold leading-[1.15] tracking-tight lg:text-[36px]">
               {property.title}
             </h1>
 
             {property.address ? (
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-site-muted">
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px] text-site-muted">
                 <span>{property.address}</span>
                 <a
                   href={yandexMapsUrl(property.address)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-medium text-site-gold transition-colors hover:text-site-navy"
+                  className="inline-flex items-center gap-1 font-medium text-site-gold underline decoration-site-gold/60 underline-offset-4 transition-colors hover:text-site-navy"
                 >
                   Карта
-                  <ArrowUpRight className="size-3.5" />
                 </a>
               </div>
             ) : null}
 
-            {/* Характеристики таблицей */}
-            <div className="mt-7">
+            {/* Характеристики */}
+            <div className="mt-6">
               {[specRow1, specRow2]
                 .filter((row) => row.length > 0)
                 .map((row, ri) => (
@@ -291,18 +374,20 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                   >
                     {row.map((s) => (
                       <div key={s.label} className="min-w-0">
-                        <dt className="text-[13px] font-semibold text-site-navy">{s.label}</dt>
+                        <dt className="text-[14px] font-semibold text-site-navy">{s.label}</dt>
                         <dd className="mt-1 truncate text-[15px] text-site-muted">{s.value}</dd>
                       </div>
                     ))}
                   </dl>
                 ))}
+              {/* Золотая линия под характеристиками */}
+              <div className="border-t-2 border-site-gold" />
             </div>
 
             {property.price_month != null ? (
-              <p className="mt-7 whitespace-nowrap font-body text-[32px] font-bold tracking-tight">
+              <p className="mt-6 whitespace-nowrap font-body text-[30px] font-bold tracking-tight">
                 {formatMoney(property.price_month)}
-                <span className="ml-2 text-[17px] font-normal text-site-muted">/ мес</span>
+                <span className="ml-2 text-[20px] font-semibold text-site-navy">/ мес</span>
               </p>
             ) : null}
 
@@ -315,7 +400,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* ===== Дополнительно ===== */}
         {features.length > 0 ? (
-          <section className="mt-14">
+          <section className="mt-16">
             <SectionTitle>Дополнительно</SectionTitle>
             <ul className="mt-5 grid gap-x-10 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((f) => (
@@ -327,7 +412,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* ===== Описание ===== */}
         {paragraphs.length > 0 ? (
-          <section className="mt-16">
+          <section className="mt-14">
             <SectionTitle>Описание</SectionTitle>
             <div className="mt-5 max-w-[90ch] space-y-4 text-[16px] leading-[1.8] text-site-muted">
               {paragraphs.map((p, i) => (
@@ -339,7 +424,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* ===== Локация ===== */}
         {locationLines.length > 0 || property.address ? (
-          <section className="mt-16">
+          <section className="mt-14">
             <SectionTitle>Локация</SectionTitle>
             {locationLines.length > 0 ? (
               <ul className="mt-5 max-w-[90ch] space-y-2.5">
@@ -350,7 +435,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             {/* Mock-карта */}
-            <div className="relative mt-7 grid aspect-[21/9] w-full place-items-center overflow-hidden border border-site-line bg-site-navy-soft">
+            <div className="relative mt-7 grid aspect-[21/9] w-full place-items-center overflow-hidden rounded-2xl border border-site-line bg-site-navy-soft">
               <div
                 className="absolute inset-0 opacity-[0.35]"
                 style={{
@@ -388,14 +473,14 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* ===== Жилой комплекс ===== */}
         {complex ? (
-          <section className="mt-16">
+          <section className="mt-14">
             <SectionTitle>ЖК «{complex.name}»</SectionTitle>
             <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
               {/* Галерея комплекса */}
               <div className="lg:col-span-7">
                 {complexPhotos.length > 0 && photoUrls[complexPhotos[safeComplexActive]!.path] ? (
                   <>
-                    <div className="relative aspect-[4/3] overflow-hidden bg-site-navy-soft">
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-site-navy-soft">
                       <img
                         src={photoUrls[complexPhotos[safeComplexActive]!.path]}
                         alt={`${complex.name} — фото ${safeComplexActive + 1}`}
@@ -404,27 +489,13 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                       />
                       {complexPhotos.length > 1 ? (
                         <>
-                          <button
-                            type="button"
-                            onClick={prevComplex}
-                            aria-label="Предыдущее фото комплекса"
-                            className="absolute left-0 top-1/2 grid h-14 w-10 -translate-y-1/2 place-items-center bg-background/80 text-site-navy backdrop-blur-sm transition-colors hover:bg-background"
-                          >
-                            <ChevronLeft className="size-5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={nextComplex}
-                            aria-label="Следующее фото комплекса"
-                            className="absolute right-0 top-1/2 grid h-14 w-10 -translate-y-1/2 place-items-center bg-background/80 text-site-navy backdrop-blur-sm transition-colors hover:bg-background"
-                          >
-                            <ChevronRight className="size-5" />
-                          </button>
+                          {arrowButton(prevComplex, "left", "Предыдущее фото комплекса")}
+                          {arrowButton(nextComplex, "right", "Следующее фото комплекса")}
                         </>
                       ) : null}
                     </div>
                     {complexPhotos.length > 1 ? (
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                         {complexPhotos.map((p, i) => (
                           <button
                             key={p.path}
@@ -443,7 +514,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                     ) : null}
                   </>
                 ) : (
-                  <div className="flex aspect-[4/3] items-center justify-center bg-site-navy-soft text-sm text-site-muted">
+                  <div className="flex aspect-[4/3] items-center justify-center rounded-3xl bg-site-navy-soft text-sm text-site-muted">
                     Фотографии комплекса не загружены
                   </div>
                 )}
@@ -451,7 +522,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
               {/* О комплексе */}
               <div className="flex min-w-0 flex-col lg:col-span-5">
-                <h3 className="text-[15px] font-semibold text-site-navy">О комплексе</h3>
+                <h3 className="text-[16px] font-semibold text-site-navy">О комплексе</h3>
                 {complex.description ? (
                   <p className="mt-3 whitespace-pre-line text-[16px] leading-[1.8] text-site-muted">
                     {complex.description}
@@ -463,7 +534,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             {/* Для вас доступно */}
             {complex.infrastructure.length > 0 ? (
               <div className="mt-10">
-                <h3 className="text-[15px] font-semibold text-site-navy">Для вас доступно</h3>
+                <h3 className="text-[16px] font-semibold text-site-navy">Для вас доступно</h3>
                 <ul className="mt-4 grid gap-x-10 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
                   {complex.infrastructure.map((i) => (
                     <Bullet key={i}>{infrastructureLabel(i)}</Bullet>
@@ -476,7 +547,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* ===== Условия аренды ===== */}
         {hasRentTerms ? (
-          <section className="mt-16 border-t border-site-line pt-10">
+          <section className="mt-14">
             <SectionTitle>Условия аренды</SectionTitle>
             <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
               {/* Левая колонка: примечания */}
@@ -490,8 +561,8 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                 <Bullet>Проживание с домашними животными обсуждается индивидуально</Bullet>
                 {property.deposit != null ? (
                   <Bullet>
-                    Страховой депозит вносится при заселении и возвращается при выезде, при условии
-                    сохранности имущества целое
+                    Страховой депозит вносится при заселении и возвращается при выезде, при
+                    условии сохранности имущества
                   </Bullet>
                 ) : null}
                 {property.commission != null ? (
