@@ -326,31 +326,47 @@ function CalendarPage() {
                     })}
                   </div>
 
-                  {list.map((rental) => {
+                  {list.map((booking) => {
                     const start = parseISODate(
-                      rental.start_date < from ? from : rental.start_date,
+                      booking.start_date < from ? from : booking.start_date,
                     );
-                    const end = parseISODate(rental.end_date > to ? to : rental.end_date);
+                    const end = parseISODate(booking.end_date > to ? to : booking.end_date);
                     const offset = Math.round(
                       (start.getTime() - fromDate.getTime()) / 86400000,
                     );
                     const length =
                       Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
                     if (length <= 0) return null;
+                    const past = booking.end_date < todayIso;
                     return (
-                      <div
-                        key={rental.id}
-                        title={`${formatDateRu(rental.start_date)} — ${formatDateRu(rental.end_date)}`}
+                      <button
+                        type="button"
+                        key={booking.id}
+                        onClick={() => {
+                          setActiveBooking(booking);
+                          setDialogOpen(true);
+                        }}
+                        title={`${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
                         style={{
                           left: offset * DAY_WIDTH + 2,
                           width: length * DAY_WIDTH - 4,
                         }}
-                        className="absolute top-1/2 flex h-8 -translate-y-1/2 items-center overflow-hidden rounded-md border border-status-free/30 bg-status-free-soft px-2.5"
+                        className={cn(
+                          "absolute top-1/2 flex h-8 -translate-y-1/2 items-center overflow-hidden rounded-md border px-2.5 text-left transition-opacity hover:opacity-90",
+                          past
+                            ? "border-border bg-muted"
+                            : "border-status-free/30 bg-status-free-soft",
+                        )}
                       >
-                        <span className="truncate text-xs font-medium text-status-free">
-                          {rental.tenant_name || "Занято"}
+                        <span
+                          className={cn(
+                            "truncate text-xs font-medium",
+                            past ? "text-muted-foreground" : "text-status-free",
+                          )}
+                        >
+                          {booking.client ? shortName(booking.client.full_name) : "Занято"}
                         </span>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
