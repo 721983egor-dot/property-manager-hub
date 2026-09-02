@@ -132,6 +132,13 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
   ].filter((s) => s.value);
 
   const features = (property.extra_features ?? []).map(extraFeatureLabel);
+
+  // Характеристики, выбранные галочками в карточке объекта.
+  const outdoor = labelsFor(OUTDOOR_OPTIONS, property.outdoor_spaces);
+  const appliances = labelsFor(APPLIANCE_OPTIONS, property.appliances);
+  const bathroomsFeats = labelsFor(BATHROOM_FEATURE_OPTIONS, property.bathroom_features);
+  const hasCharacteristics =
+    outdoor.length > 0 || appliances.length > 0 || bathroomsFeats.length > 0;
   const paragraphs = (property.description || "").split(/\n{1,}/).filter((p) => p.trim());
   const locationLines = (complex?.location_description || property.location_description || "")
     .split(/\n{1,}/)
