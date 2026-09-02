@@ -509,6 +509,37 @@ function Field({
   );
 }
 
+function CheckGroup({
+  title,
+  options,
+  selected,
+  onToggle,
+}: {
+  title: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-sm font-medium">{title}</p>
+      <div className="mt-3 space-y-2.5">
+        {options.map((o) => (
+          <label key={o.value} className="flex items-center gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              checked={selected.includes(o.value)}
+              onChange={() => onToggle(o.value)}
+              className="size-4 accent-[hsl(var(--primary))]"
+            />
+            {o.label}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function IconBtn({
   label,
   onClick,
