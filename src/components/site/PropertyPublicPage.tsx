@@ -2,9 +2,13 @@ import { useState } from "react";
 import { Check, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
 
 import {
+  APPLIANCE_OPTIONS,
+  BATHROOM_FEATURE_OPTIONS,
   DEFAULT_RENT_TERMS,
+  OUTDOOR_OPTIONS,
   SUMMER_SEASON_LABEL,
   extraFeatureLabel,
+  labelsFor,
   floorLabel,
   formatArea,
   formatMoney,
@@ -26,6 +30,9 @@ import { infrastructureLabel, type Complex } from "@/lib/complexes";
 export type PublicPropertyView = Pick<
   Property,
   | "title"
+  | "outdoor_spaces"
+  | "appliances"
+  | "bathroom_features"
   | "type"
   | "complex_name"
   | "address"
@@ -125,6 +132,13 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
   ].filter((s) => s.value);
 
   const features = (property.extra_features ?? []).map(extraFeatureLabel);
+
+  // Характеристики, выбранные галочками в карточке объекта.
+  const outdoor = labelsFor(OUTDOOR_OPTIONS, property.outdoor_spaces);
+  const appliances = labelsFor(APPLIANCE_OPTIONS, property.appliances);
+  const bathroomsFeats = labelsFor(BATHROOM_FEATURE_OPTIONS, property.bathroom_features);
+  const hasCharacteristics =
+    outdoor.length > 0 || appliances.length > 0 || bathroomsFeats.length > 0;
   const paragraphs = (property.description || "").split(/\n{1,}/).filter((p) => p.trim());
   const locationLines = (complex?.location_description || property.location_description || "")
     .split(/\n{1,}/)
@@ -328,6 +342,49 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             </div>
           </div>
         </div>
+
+        {/* ===== Характеристики ===== */}
+        {hasCharacteristics ? (
+          <section className="mt-16">
+            <SectionTitle>Характеристики</SectionTitle>
+            <div className="mt-6 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+              {outdoor.length > 0 ? (
+                <div>
+                  <h3 className="text-[16px] font-semibold text-site-navy">
+                    Балкон / терраса / лоджия
+                  </h3>
+                  <ul className="mt-3 space-y-2.5">
+                    {outdoor.map((f) => (
+                      <Bullet key={f}>{f}</Bullet>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {appliances.length > 0 ? (
+                <div>
+                  <h3 className="text-[16px] font-semibold text-site-navy">Техника</h3>
+                  <ul className="mt-3 space-y-2.5">
+                    {appliances.map((f) => (
+                      <Bullet key={f}>{f}</Bullet>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {bathroomsFeats.length > 0 ? (
+                <div>
+                  <h3 className="text-[16px] font-semibold text-site-navy">
+                    Ванна / душевая / джакузи
+                  </h3>
+                  <ul className="mt-3 space-y-2.5">
+                    {bathroomsFeats.map((f) => (
+                      <Bullet key={f}>{f}</Bullet>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         {/* ===== Дополнительно ===== */}
         {features.length > 0 ? (
