@@ -68,6 +68,7 @@ type Props = {
 export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(initial?.title ?? "");
+  const [internalName, setInternalName] = useState(initial?.internal_name ?? "");
   const [type, setType] = useState<PropertyType>(initial?.type ?? "apartment");
   const [complexId, setComplexId] = useState<string | null>(initial?.complex_id ?? null);
   const [complexDialog, setComplexDialog] = useState(false);
@@ -197,6 +198,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     }
     await onSubmit({
       title: title.trim(),
+      internal_name: internalName.trim(),
       type,
       complex_id: complexId,
       complex_name: complexes.find((c) => c.id === complexId)?.name ?? "",
@@ -237,6 +239,17 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Квартира в ЖК Кислород"
+            />
+          </Field>
+
+          <Field
+            label="Внутреннее название (только в RM OS)"
+            className="md:col-span-2"
+          >
+            <Input
+              value={internalName}
+              onChange={(e) => setInternalName(e.target.value)}
+              placeholder="Кислород 12-45, 2к"
             />
           </Field>
 
