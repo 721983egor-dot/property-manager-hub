@@ -30,6 +30,8 @@ export type Property = {
   appliances: string[];
   bathroom_features: string[];
   utilities_month: number | null;
+  extra_features: string[];
+  location_description: string;
   created_at: string;
   updated_at: string;
 };
@@ -38,6 +40,26 @@ export const OUTDOOR_OPTIONS = [
   { value: "balcony", label: "Балкон" },
   { value: "terrace", label: "Терраса" },
   { value: "loggia", label: "Лоджия" },
+];
+
+export const EXTRA_FEATURE_OPTIONS = [
+  { value: "sea_view", label: "Вид на море" },
+  { value: "mountain_view", label: "Вид на горы" },
+  { value: "balcony", label: "Балкон" },
+  { value: "terrace", label: "Терраса" },
+  { value: "heated_pool", label: "Бассейн с подогревом" },
+  { value: "pool", label: "Бассейн" },
+  { value: "parking", label: "Парковка" },
+  { value: "beach", label: "Пляж" },
+  { value: "restaurant", label: "Ресторан" },
+  { value: "gym", label: "Фитнес-зал" },
+  { value: "concierge", label: "Консьерж" },
+  { value: "air_conditioner", label: "Кондиционеры" },
+  { value: "dishwasher", label: "Посудомоечная машина" },
+  { value: "washer", label: "Стиральная машина" },
+  { value: "microwave", label: "Микроволновая печь" },
+  { value: "oven", label: "Духовой шкаф" },
+  { value: "tv", label: "TV" },
 ];
 
 export const APPLIANCE_OPTIONS = [
@@ -53,6 +75,11 @@ export const BATHROOM_FEATURE_OPTIONS = [
   { value: "shower", label: "Душевая кабина" },
   { value: "jacuzzi", label: "Джакузи" },
 ];
+
+/** Метка характеристики: из справочника либо произвольное значение как есть. */
+export function extraFeatureLabel(value: string) {
+  return EXTRA_FEATURE_OPTIONS.find((o) => o.value === value)?.label ?? value;
+}
 
 export function labelsFor(
   options: { value: string; label: string }[],
@@ -143,6 +170,10 @@ function normalize(row: Record<string, unknown>): Property {
     bathroom_features: Array.isArray(row['bathroom_features'])
       ? (row['bathroom_features'] as string[])
       : [],
+    extra_features: Array.isArray(row['extra_features']) ? (row['extra_features'] as string[]) : [],
+    location_description: typeof row['location_description'] === "string"
+      ? (row['location_description'] as string)
+      : "",
   };
 }
 
@@ -185,6 +216,8 @@ export type PropertyInput = {
   appliances: string[];
   bathroom_features: string[];
   utilities_month: number | null;
+  extra_features: string[];
+  location_description: string;
 };
 
 
