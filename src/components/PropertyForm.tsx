@@ -257,6 +257,17 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </Select>
           </Field>
 
+          <Field label="Площадь, м²">
+            <Input
+              type="number"
+              min={0}
+              step="0.1"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              placeholder="65"
+            />
+          </Field>
+
           <Field label="Статус">
             <Select value={status} onValueChange={(v) => setStatus(v as PropertyStatus)}>
               <SelectTrigger>
