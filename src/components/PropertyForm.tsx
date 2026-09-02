@@ -79,6 +79,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [rooms, setRooms] = useState(String(initial?.rooms ?? 1));
   const [bathrooms, setBathrooms] = useState(String(initial?.bathrooms ?? 1));
   const [status, setStatus] = useState<PropertyStatus>(initial?.status ?? "free");
+  const [published, setPublished] = useState(Boolean(initial?.published));
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [uploading, setUploading] = useState(false);
