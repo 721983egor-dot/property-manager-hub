@@ -18,6 +18,7 @@ import { Route as ObjectsNewRouteImport } from './routes/objects.new'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
 import { Route as ComplexesIdEditRouteImport } from './routes/complexes.$id.edit'
+import { Route as CrmClientsIndexRouteImport } from './routes/crm.clients.index'
 import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
@@ -67,6 +68,11 @@ const ComplexesIdEditRoute = ComplexesIdEditRouteImport.update({
   path: '/complexes/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CrmClientsIndexRoute = CrmClientsIndexRouteImport.update({
+  id: '/crm/clients/',
+  path: '/crm/clients/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ObjectsIdIndexRoute = ObjectsIdIndexRouteImport.update({
   id: '/objects/$id/',
   path: '/objects/$id/',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
+  '/crm/clients/': typeof CrmClientsIndexRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
+  '/crm/clients': typeof CrmClientsIndexRoute
   '/objects/$id': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesById {
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
+  '/crm/clients/': typeof CrmClientsIndexRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/complexes/$id/edit'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
+    | '/crm/clients/'
     | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/complexes/$id/edit'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
+    | '/crm/clients'
     | '/objects/$id'
   id:
     | '__root__'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/complexes/$id/edit'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
+    | '/crm/clients/'
     | '/objects/$id/'
   fileRoutesById: FileRoutesById
 }
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   ComplexesIdEditRoute: typeof ComplexesIdEditRoute
   ObjectsIdEditRoute: typeof ObjectsIdEditRoute
   ObjectsIdPreviewRoute: typeof ObjectsIdPreviewRoute
+  CrmClientsIndexRoute: typeof CrmClientsIndexRoute
   ObjectsIdIndexRoute: typeof ObjectsIdIndexRoute
 }
 
@@ -247,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComplexesIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/crm/clients/': {
+      id: '/crm/clients/'
+      path: '/crm/clients'
+      fullPath: '/crm/clients/'
+      preLoaderRoute: typeof CrmClientsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/objects/$id/': {
       id: '/objects/$id/'
       path: '/objects/$id'
@@ -293,6 +313,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComplexesIdEditRoute: ComplexesIdEditRoute,
   ObjectsIdEditRoute: ObjectsIdEditRoute,
   ObjectsIdPreviewRoute: ObjectsIdPreviewRoute,
+  CrmClientsIndexRoute: CrmClientsIndexRoute,
   ObjectsIdIndexRoute: ObjectsIdIndexRoute,
 }
 export const routeTree = rootRouteImport
