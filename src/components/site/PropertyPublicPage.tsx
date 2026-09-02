@@ -11,6 +11,7 @@ import {
   yandexMapsUrl,
   type Property,
 } from "@/lib/properties";
+import { infrastructureLabel, type Complex } from "@/lib/complexes";
 
 /**
  * Публичная страница объекта в стиле сайта Residence More.
