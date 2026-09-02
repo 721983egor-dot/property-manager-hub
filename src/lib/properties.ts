@@ -34,6 +34,7 @@ export type Property = {
   extra_features: string[];
   location_description: string;
   rent_terms: string;
+  card_highlights: string[];
   created_at: string;
   updated_at: string;
 };
