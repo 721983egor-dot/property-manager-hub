@@ -4,6 +4,7 @@ import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-rea
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { fetchComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
 import {
   APPLIANCE_OPTIONS,
   BATHROOM_FEATURE_OPTIONS,
@@ -45,7 +46,18 @@ function ObjectViewPage() {
     queryFn: () => fetchProperty(id),
   });
 
-  const paths = (data?.photos ?? []).map((p) => p.path);
+  const complexId = data?.complex_id ?? null;
+  const { data: complex } = useQuery({
+    queryKey: ["complexes", complexId],
+    queryFn: () => fetchComplex(complexId!),
+    enabled: Boolean(complexId),
+  });
+
+  const complexMain = complex ? mainPhotoPath(complex) : null;
+  const paths = [
+    ...(data?.photos ?? []).map((p) => p.path),
+    ...(complexMain ? [complexMain] : []),
+  ];
   const { data: urls = {} } = useQuery({
     queryKey: ["photo-urls", paths.slice().sort().join("|")],
     queryFn: () => signedUrls(paths),
