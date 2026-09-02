@@ -59,14 +59,21 @@ const STATUS_TEXT: Record<string, string> = {
   archived: "Не публикуется",
 };
 
-export function PropertyPublicPage({ property, photoUrls }: Props) {
+export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
   const [active, setActive] = useState(0);
   const photos = property.photos ?? [];
   const current = photos[Math.min(active, Math.max(photos.length - 1, 0))];
 
+  const complexPhotos = complex
+    ? [
+        ...(complex.main_photo ? [{ path: complex.main_photo }] : []),
+        ...(complex.photos ?? []).filter((p) => p.path !== complex.main_photo),
+      ]
+    : [];
+
   const specs = [
     { label: "Тип", value: typeLabel(property.type) },
-    { label: "Комплекс", value: property.complex_name || null },
+    { label: "Комплекс", value: complex?.name || property.complex_name || null },
     {
       label: "Этаж",
       value:
