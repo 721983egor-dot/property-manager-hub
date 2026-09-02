@@ -170,7 +170,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
     <button
       type="button"
       className={
-        "h-14 min-w-[220px] flex-1 rounded-2xl bg-site-navy px-10 text-[16px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
+        "h-14 w-[240px] max-w-full shrink-0 rounded-2xl bg-site-navy px-10 text-[16px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
         className
       }
     >
