@@ -199,6 +199,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       bathroom_features: bathFeatures,
       extra_features: extraFeatures,
       location_description: locationDescription,
+      rent_terms: rentTerms,
     });
 
   };
