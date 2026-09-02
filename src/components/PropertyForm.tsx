@@ -365,6 +365,32 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
         </div>
       </section>
 
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Характеристики</h2>
+        <div className="mt-5 grid gap-6 md:grid-cols-3">
+          <CheckGroup
+            title="Балкон / терраса / лоджия"
+            options={OUTDOOR_OPTIONS}
+            selected={outdoor}
+            onToggle={(v) => toggle(v, outdoor, setOutdoor)}
+          />
+          <CheckGroup
+            title="Техника"
+            options={APPLIANCE_OPTIONS}
+            selected={appliances}
+            onToggle={(v) => toggle(v, appliances, setAppliances)}
+          />
+          <CheckGroup
+            title="Ванна / душевая / джакузи"
+            options={BATHROOM_FEATURE_OPTIONS}
+            selected={bathFeatures}
+            onToggle={(v) => toggle(v, bathFeatures, setBathFeatures)}
+          />
+        </div>
+      </section>
+
+
+
 
 
       <section className="rounded-xl border border-border bg-card p-6">
