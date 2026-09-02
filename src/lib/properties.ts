@@ -7,6 +7,7 @@ export type PropertyPhoto = { path: string };
 
 export type Property = {
   id: string;
+  published: boolean;
   ref_id: number;
   title: string;
   type: PropertyType;
@@ -159,6 +160,7 @@ function normalize(row: Record<string, unknown>): Property {
   return {
     ...(row as unknown as Property),
     photos,
+    published: Boolean(row['published']),
     price_month: num(row['price_month']),
     summer_price_month: num(row['summer_price_month']),
     deposit: num(row['deposit']),
@@ -189,6 +191,16 @@ export async function fetchProperties(): Promise<Property[]> {
   return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
 }
 
+export async function fetchPublishedProperties(): Promise<Property[]> {
+  const { data, error } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
+}
+
 export async function fetchProperty(id: string): Promise<Property> {
   const { data, error } = await supabase.from("properties").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
@@ -209,6 +221,7 @@ export type PropertyInput = {
   status: PropertyStatus;
   description: string;
   photos: PropertyPhoto[];
+  published: boolean;
   price_month: number | null;
   seasonal_pricing: boolean;
   summer_price_month: number | null;

@@ -1,8 +1,19 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Building2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isPublic = pathname.startsWith("/rent");
+
+  if (isPublic) {
+    return (
+      <div className="min-h-screen w-full bg-background text-foreground">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">

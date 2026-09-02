@@ -79,6 +79,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [rooms, setRooms] = useState(String(initial?.rooms ?? 1));
   const [bathrooms, setBathrooms] = useState(String(initial?.bathrooms ?? 1));
   const [status, setStatus] = useState<PropertyStatus>(initial?.status ?? "free");
+  const [published, setPublished] = useState(Boolean(initial?.published));
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [uploading, setUploading] = useState(false);
@@ -195,6 +196,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       status,
       description,
       photos,
+      published,
       price_month: toNum(priceMonth),
       seasonal_pricing: seasonal,
       summer_price_month: seasonal ? toNum(summerPrice) : null,
@@ -353,6 +355,22 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               </SelectContent>
             </Select>
           </Field>
+        </div>
+
+        <div className="flex items-start gap-3 md:col-span-2">
+          <input
+            type="checkbox"
+            id="published"
+            checked={published}
+            onChange={(e) => setPublished(e.target.checked)}
+            className="mt-1 size-5 accent-[hsl(var(--primary))]"
+          />
+          <label htmlFor="published" className="cursor-pointer text-sm">
+            <span className="block font-medium">Опубликовать на сайте Residence More</span>
+            <span className="mt-0.5 block text-muted-foreground">
+              Объект появится на публичной странице со списком аренды.
+            </span>
+          </label>
         </div>
       </section>
 
