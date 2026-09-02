@@ -69,6 +69,18 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [commission, setCommission] = useState(
     initial?.commission != null ? String(initial.commission) : "",
   );
+  const [area, setArea] = useState(initial?.area != null ? String(initial.area) : "");
+  const [utilities, setUtilities] = useState(
+    initial?.utilities_month != null ? String(initial.utilities_month) : "",
+  );
+  const [outdoor, setOutdoor] = useState<string[]>(initial?.outdoor_spaces ?? []);
+  const [appliances, setAppliances] = useState<string[]>(initial?.appliances ?? []);
+  const [bathFeatures, setBathFeatures] = useState<string[]>(initial?.bathroom_features ?? []);
+  const toggle = (
+    value: string,
+    list: string[],
+    setList: (v: string[]) => void,
+  ) => setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   const toNum = (v: string) => (v.trim() === "" ? null : Number(v));
 
 
