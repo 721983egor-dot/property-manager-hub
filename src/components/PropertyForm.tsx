@@ -16,12 +16,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  APPLIANCE_OPTIONS,
+  BATHROOM_FEATURE_OPTIONS,
   BATHROOM_OPTIONS,
+  OUTDOOR_OPTIONS,
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
   SUMMER_SEASON_LABEL,
   roomsLabel,
+
 
   signedUrls,
   uploadPhoto,
