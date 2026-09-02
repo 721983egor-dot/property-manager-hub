@@ -25,9 +25,46 @@ export type Property = {
   summer_price_month: number | null;
   deposit: number | null;
   commission: number | null;
+  area: number | null;
+  outdoor_spaces: string[];
+  appliances: string[];
+  bathroom_features: string[];
+  utilities_month: number | null;
   created_at: string;
   updated_at: string;
 };
+
+export const OUTDOOR_OPTIONS = [
+  { value: "balcony", label: "Балкон" },
+  { value: "terrace", label: "Терраса" },
+  { value: "loggia", label: "Лоджия" },
+];
+
+export const APPLIANCE_OPTIONS = [
+  { value: "air_conditioner", label: "Кондиционер" },
+  { value: "dishwasher", label: "Посудомоечная машина" },
+  { value: "microwave", label: "Микроволновка" },
+  { value: "washer", label: "Стиральная машина" },
+  { value: "dryer", label: "Сушильная машина" },
+];
+
+export const BATHROOM_FEATURE_OPTIONS = [
+  { value: "bath", label: "Ванна" },
+  { value: "shower", label: "Душевая кабина" },
+  { value: "jacuzzi", label: "Джакузи" },
+];
+
+export function labelsFor(
+  options: { value: string; label: string }[],
+  values: string[] | null | undefined,
+) {
+  return (values ?? []).map((v) => options.find((o) => o.value === v)?.label ?? v);
+}
+
+export function formatArea(value: number | null | undefined) {
+  if (value == null) return "—";
+  return `${new Intl.NumberFormat("ru-RU").format(value)} м²`;
+}
 
 /** Летний (высокий) сезон: июнь — сентябрь. */
 export const SUMMER_MONTHS = [6, 7, 8, 9];
