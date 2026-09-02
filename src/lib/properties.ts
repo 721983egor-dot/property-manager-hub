@@ -180,6 +180,11 @@ export type PropertyInput = {
   summer_price_month: number | null;
   deposit: number | null;
   commission: number | null;
+  area: number | null;
+  outdoor_spaces: string[];
+  appliances: string[];
+  bathroom_features: string[];
+  utilities_month: number | null;
 };
 
 
