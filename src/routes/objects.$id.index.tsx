@@ -45,6 +45,12 @@ export const Route = createFileRoute("/objects/$id/")({
 
 function ObjectViewPage() {
   const { id } = Route.useParams();
+  const todayIso = toISODate(new Date());
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const { data: currentBooking = null } = useQuery({
+    queryKey: ["current-booking", id, todayIso],
+    queryFn: () => fetchCurrentBooking(id, todayIso),
+  });
   const { data, isLoading, error } = useQuery({
     queryKey: ["properties", id],
     queryFn: () => fetchProperty(id),
