@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
 
 import {
+  DEFAULT_RENT_TERMS,
   SUMMER_SEASON_LABEL,
   extraFeatureLabel,
   floorLabel,
@@ -144,7 +145,9 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
       : null,
   ].filter((r): r is { label: string; value: number } => r != null && r.value != null);
 
-  const rentTermsLines = (property.rent_terms || "").split(/\n+/).filter((l) => l.trim());
+  const rentTermsLines = (property.rent_terms?.trim() ? property.rent_terms : DEFAULT_RENT_TERMS)
+    .split(/\n+/)
+    .filter((l) => l.trim());
 
   const hasRentTerms =
     property.price_month != null ||
