@@ -1,0 +1,1 @@
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS card_highlights text[] NOT NULL DEFAULT '{}'::text[];
