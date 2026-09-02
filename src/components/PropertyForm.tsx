@@ -318,6 +318,16 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               placeholder="50000"
             />
           </Field>
+          <Field label="Коммунальные платежи в месяц (примерно)">
+            <Input
+              type="number"
+              min={0}
+              step={500}
+              value={utilities}
+              onChange={(e) => setUtilities(e.target.value)}
+              placeholder="7000"
+            />
+          </Field>
         </div>
 
         <div className="mt-6 rounded-lg border border-border p-4">
