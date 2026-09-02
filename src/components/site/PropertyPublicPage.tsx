@@ -210,8 +210,6 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
   return (
     <div className="bg-background font-body text-site-navy antialiased">
-      <SiteHeader />
-
       <div className="mx-auto w-full max-w-[1170px] px-5 pb-24 pt-8 lg:px-8">
         {/* ===== Хлебные крошки ===== */}
         <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-site-muted">
