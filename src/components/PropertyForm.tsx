@@ -553,6 +553,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
 
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Локация</h2>
+        {null}
         <p className="mt-2 text-sm text-muted-foreground">
           {complexId
             ? "Описание локации берётся из карточки выбранного комплекса — измените его в разделе «Комплексы»."
