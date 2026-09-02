@@ -110,8 +110,27 @@ function ObjectViewPage() {
               <Item label="Этаж" value={floorLabel(data)} />
               <Item label="Планировка" value={roomsLabel(data.rooms)} />
               <Item label="Санузлы" value={String(data.bathrooms)} />
+              <Item label="Площадь" value={formatArea(data.area)} />
             </dl>
           </section>
+
+          {(() => {
+            const outdoor = labelsFor(OUTDOOR_OPTIONS, data.outdoor_spaces);
+            const appliances = labelsFor(APPLIANCE_OPTIONS, data.appliances);
+            const bath = labelsFor(BATHROOM_FEATURE_OPTIONS, data.bathroom_features);
+            if (outdoor.length + appliances.length + bath.length === 0) return null;
+            return (
+              <section className="mt-6 rounded-xl border border-border bg-card p-6">
+                <h2 className="text-base font-semibold">Характеристики</h2>
+                <div className="mt-4 grid gap-6 sm:grid-cols-3">
+                  <Chips title="Балкон / терраса / лоджия" items={outdoor} />
+                  <Chips title="Техника" items={appliances} />
+                  <Chips title="Ванна / душевая / джакузи" items={bath} />
+                </div>
+              </section>
+            );
+          })()}
+
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
             <h2 className="text-base font-semibold">Стоимость</h2>
