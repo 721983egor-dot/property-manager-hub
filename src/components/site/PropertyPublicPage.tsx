@@ -162,7 +162,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
     <button
       type="button"
       className={
-        "h-12 min-w-[180px] rounded-md bg-site-navy px-10 text-[15px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
+        "h-12 min-w-[220px] flex-1 rounded-md bg-site-navy px-10 text-[15px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
         className
       }
     >
@@ -307,7 +307,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             <div className="mt-6 flex items-center gap-3">
-              {contactButton("flex-1")}
+              {contactButton()}
               {shareButton}
             </div>
           </div>
@@ -532,8 +532,8 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
             {/* Итоговая строка: кнопки + цена */}
             <div className="mt-8 flex flex-wrap items-center justify-between gap-5">
-              <div className="flex items-center gap-3">
-                {contactButton("min-w-[220px]")}
+              <div className="flex flex-1 items-center gap-3">
+                {contactButton()}
                 {shareButton}
               </div>
               {property.price_month != null ? (
