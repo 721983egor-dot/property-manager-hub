@@ -1,16 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowUpRight,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  MapPin,
-  Menu,
-  Phone,
-  Send,
-  Share2,
-} from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
 
 import {
   SUMMER_SEASON_LABEL,
