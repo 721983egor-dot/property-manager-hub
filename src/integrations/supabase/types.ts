@@ -27,8 +27,10 @@ export type Database = {
           created_at: string
           deposit: number | null
           description: string
+          extra_features: string[]
           floor: number | null
           id: string
+          location_description: string
           outdoor_spaces: string[]
           photos: Json
           price_month: number | null
@@ -55,8 +57,10 @@ export type Database = {
           created_at?: string
           deposit?: number | null
           description?: string
+          extra_features?: string[]
           floor?: number | null
           id?: string
+          location_description?: string
           outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null
@@ -83,8 +87,10 @@ export type Database = {
           created_at?: string
           deposit?: number | null
           description?: string
+          extra_features?: string[]
           floor?: number | null
           id?: string
+          location_description?: string
           outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null

@@ -19,6 +19,8 @@ import {
   APPLIANCE_OPTIONS,
   BATHROOM_FEATURE_OPTIONS,
   BATHROOM_OPTIONS,
+  EXTRA_FEATURE_OPTIONS,
+  extraFeatureLabel,
   OUTDOOR_OPTIONS,
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
@@ -76,6 +78,20 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [outdoor, setOutdoor] = useState<string[]>(initial?.outdoor_spaces ?? []);
   const [appliances, setAppliances] = useState<string[]>(initial?.appliances ?? []);
   const [bathFeatures, setBathFeatures] = useState<string[]>(initial?.bathroom_features ?? []);
+  const [extraFeatures, setExtraFeatures] = useState<string[]>(initial?.extra_features ?? []);
+  const [customFeature, setCustomFeature] = useState("");
+  const [locationDescription, setLocationDescription] = useState(
+    initial?.location_description ?? "",
+  );
+  const addCustomFeature = () => {
+    const value = customFeature.trim();
+    if (!value || extraFeatures.includes(value)) {
+      setCustomFeature("");
+      return;
+    }
+    setExtraFeatures([...extraFeatures, value]);
+    setCustomFeature("");
+  };
   const toggle = (
     value: string,
     list: string[],
@@ -158,6 +174,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       outdoor_spaces: outdoor,
       appliances,
       bathroom_features: bathFeatures,
+      extra_features: extraFeatures,
+      location_description: locationDescription,
     });
 
   };
@@ -387,6 +405,78 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             onToggle={(v) => toggle(v, bathFeatures, setBathFeatures)}
           />
         </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Дополнительные характеристики</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Отмеченные значения показываются в блоке «Дополнительно» на странице объекта.
+        </p>
+        <div className="mt-5 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+          {EXTRA_FEATURE_OPTIONS.map((o) => (
+            <label key={o.value} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={extraFeatures.includes(o.value)}
+                onChange={() => toggle(o.value, extraFeatures, setExtraFeatures)}
+                className="size-4 accent-[var(--primary)]"
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+
+        {extraFeatures.filter((v) => !EXTRA_FEATURE_OPTIONS.some((o) => o.value === v)).length >
+        0 ? (
+          <ul className="mt-5 flex flex-wrap gap-2">
+            {extraFeatures
+              .filter((v) => !EXTRA_FEATURE_OPTIONS.some((o) => o.value === v))
+              .map((v) => (
+                <li
+                  key={v}
+                  className="flex items-center gap-2 rounded-md border border-border bg-muted px-2.5 py-1 text-sm"
+                >
+                  {extraFeatureLabel(v)}
+                  <button
+                    type="button"
+                    aria-label={`Удалить ${v}`}
+                    onClick={() => toggle(v, extraFeatures, setExtraFeatures)}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </li>
+              ))}
+          </ul>
+        ) : null}
+
+        <div className="mt-5 flex max-w-md gap-2">
+          <Input
+            value={customFeature}
+            onChange={(e) => setCustomFeature(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCustomFeature();
+              }
+            }}
+            placeholder="Своя характеристика"
+          />
+          <Button type="button" variant="outline" onClick={addCustomFeature}>
+            Добавить
+          </Button>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Описание локации</h2>
+        <Textarea
+          value={locationDescription}
+          onChange={(e) => setLocationDescription(e.target.value)}
+          rows={4}
+          className="mt-4 resize-y"
+          placeholder="Жилой комплекс находится в районе Светлана и граничит с парком Дендрарий..."
+        />
       </section>
 
 

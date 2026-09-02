@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ImageIcon, MapPin, Pencil } from "lucide-react";
+import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -13,6 +13,7 @@ import {
   floorLabel,
   formatArea,
   formatMoney,
+  extraFeatureLabel,
   labelsFor,
   roomsLabel,
   signedUrls,
@@ -75,12 +76,20 @@ function ObjectViewPage() {
                 <StatusBadge status={data.status} />
               </div>
             </div>
-            <Button asChild size="lg">
-              <Link to="/objects/$id/edit" params={{ id: data.id }}>
-                <Pencil className="size-4" />
-                Редактировать
-              </Link>
-            </Button>
+            <div className="flex shrink-0 gap-2">
+              <Button asChild size="lg" variant="outline">
+                <Link to="/objects/$id/preview" params={{ id: data.id }}>
+                  <ExternalLink className="size-4" />
+                  Предпросмотр на сайте
+                </Link>
+              </Button>
+              <Button asChild size="lg">
+                <Link to="/objects/$id/edit" params={{ id: data.id }}>
+                  <Pencil className="size-4" />
+                  Редактировать
+                </Link>
+              </Button>
+            </div>
           </header>
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
@@ -151,6 +160,22 @@ function ObjectViewPage() {
             </dl>
           </section>
 
+          {data.extra_features.length > 0 ? (
+            <section className="mt-6 rounded-xl border border-border bg-card p-6">
+              <h2 className="text-base font-semibold">Дополнительные характеристики</h2>
+              <Chips title="" items={data.extra_features.map(extraFeatureLabel)} />
+            </section>
+          ) : null}
+
+          {data.location_description ? (
+            <section className="mt-6 rounded-xl border border-border bg-card p-6">
+              <h2 className="text-base font-semibold">Описание локации</h2>
+              <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
+                {data.location_description}
+              </p>
+            </section>
+          ) : null}
+
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
             <h2 className="text-base font-semibold">Описание</h2>
             <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
@@ -195,7 +220,9 @@ function Chips({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
     <div>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{title}</p>
+      {title ? (
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">{title}</p>
+      ) : null}
       <ul className="mt-2 flex flex-wrap gap-2">
         {items.map((i) => (
           <li

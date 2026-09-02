@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ObjectsNewRouteImport } from './routes/objects.new'
 import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
+import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,17 +35,24 @@ const ObjectsIdEditRoute = ObjectsIdEditRouteImport.update({
   path: '/objects/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ObjectsIdPreviewRoute = ObjectsIdPreviewRouteImport.update({
+  id: '/objects/$id/preview',
+  path: '/objects/$id/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/objects/new': typeof ObjectsNewRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
+  '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/objects/new': typeof ObjectsNewRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
+  '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/objects/$id': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,38 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/objects/new': typeof ObjectsNewRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
+  '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/objects/new' | '/objects/$id/edit' | '/objects/$id/'
+  fullPaths:
+    | '/'
+    | '/objects/new'
+    | '/objects/$id/edit'
+    | '/objects/$id/preview'
+    | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/objects/new' | '/objects/$id/edit' | '/objects/$id'
-  id: '__root__' | '/' | '/objects/new' | '/objects/$id/edit' | '/objects/$id/'
+  to:
+    | '/'
+    | '/objects/new'
+    | '/objects/$id/edit'
+    | '/objects/$id/preview'
+    | '/objects/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/objects/new'
+    | '/objects/$id/edit'
+    | '/objects/$id/preview'
+    | '/objects/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ObjectsNewRoute: typeof ObjectsNewRoute
   ObjectsIdEditRoute: typeof ObjectsIdEditRoute
+  ObjectsIdPreviewRoute: typeof ObjectsIdPreviewRoute
   ObjectsIdIndexRoute: typeof ObjectsIdIndexRoute
 }
 
@@ -99,6 +125,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObjectsIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/objects/$id/preview': {
+      id: '/objects/$id/preview'
+      path: '/objects/$id/preview'
+      fullPath: '/objects/$id/preview'
+      preLoaderRoute: typeof ObjectsIdPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -106,6 +139,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ObjectsNewRoute: ObjectsNewRoute,
   ObjectsIdEditRoute: ObjectsIdEditRoute,
+  ObjectsIdPreviewRoute: ObjectsIdPreviewRoute,
   ObjectsIdIndexRoute: ObjectsIdIndexRoute,
 }
 export const routeTree = rootRouteImport
