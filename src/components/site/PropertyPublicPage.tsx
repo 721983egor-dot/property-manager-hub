@@ -343,6 +343,49 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
           </div>
         </div>
 
+        {/* ===== Характеристики ===== */}
+        {hasCharacteristics ? (
+          <section className="mt-16">
+            <SectionTitle>Характеристики</SectionTitle>
+            <div className="mt-6 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+              {outdoor.length > 0 ? (
+                <div>
+                  <h3 className="text-[16px] font-semibold text-site-navy">
+                    Балкон / терраса / лоджия
+                  </h3>
+                  <ul className="mt-3 space-y-2.5">
+                    {outdoor.map((f) => (
+                      <Bullet key={f}>{f}</Bullet>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {appliances.length > 0 ? (
+                <div>
+                  <h3 className="text-[16px] font-semibold text-site-navy">Техника</h3>
+                  <ul className="mt-3 space-y-2.5">
+                    {appliances.map((f) => (
+                      <Bullet key={f}>{f}</Bullet>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {bathroomsFeats.length > 0 ? (
+                <div>
+                  <h3 className="text-[16px] font-semibold text-site-navy">
+                    Ванна / душевая / джакузи
+                  </h3>
+                  <ul className="mt-3 space-y-2.5">
+                    {bathroomsFeats.map((f) => (
+                      <Bullet key={f}>{f}</Bullet>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
         {/* ===== Дополнительно ===== */}
         {features.length > 0 ? (
           <section className="mt-16">
