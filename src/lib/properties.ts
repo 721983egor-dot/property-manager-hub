@@ -175,6 +175,7 @@ function normalize(row: Record<string, unknown>): Property {
     location_description: typeof row['location_description'] === "string"
       ? (row['location_description'] as string)
       : "",
+    rent_terms: typeof row['rent_terms'] === "string" ? (row['rent_terms'] as string) : "",
   };
 }
 
