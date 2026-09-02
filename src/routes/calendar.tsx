@@ -91,15 +91,16 @@ function CalendarPage() {
   const rows = properties;
 
   const todayIso = toISODate(today);
-  const rentalsByProperty = useMemo(() => {
-    const map = new Map<string, typeof rentals>();
-    for (const r of rentals) {
-      const list = map.get(r.property_id) ?? [];
-      list.push(r);
-      map.set(r.property_id, list);
+  const bookingsByProperty = useMemo(() => {
+    const map = new Map<string, Booking[]>();
+    for (const b of bookings) {
+      if (b.status === "cancelled") continue;
+      const list = map.get(b.property_id) ?? [];
+      list.push(b);
+      map.set(b.property_id, list);
     }
     return map;
-  }, [rentals]);
+  }, [bookings]);
 
   const shift = (dir: 1 | -1) => {
     const length = days.length || 30;
