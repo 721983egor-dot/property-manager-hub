@@ -160,6 +160,53 @@ export type Database = {
           },
         ]
       }
+      rentals: {
+        Row: {
+          comment: string
+          created_at: string
+          end_date: string
+          id: string
+          property_id: string
+          start_date: string
+          status: Database["public"]["Enums"]["rental_status"]
+          tenant_id: string | null
+          tenant_name: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string
+          created_at?: string
+          end_date: string
+          id?: string
+          property_id: string
+          start_date: string
+          status?: Database["public"]["Enums"]["rental_status"]
+          tenant_id?: string | null
+          tenant_name?: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          property_id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["rental_status"]
+          tenant_id?: string | null
+          tenant_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rentals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -170,6 +217,7 @@ export type Database = {
     Enums: {
       property_status: "free" | "rented" | "booked" | "archived"
       property_type: "apartment" | "aparts" | "house" | "villa" | "townhouse"
+      rental_status: "booked" | "rented" | "blocked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -299,6 +347,7 @@ export const Constants = {
     Enums: {
       property_status: ["free", "rented", "booked", "archived"],
       property_type: ["apartment", "aparts", "house", "villa", "townhouse"],
+      rental_status: ["booked", "rented", "blocked"],
     },
   },
 } as const
