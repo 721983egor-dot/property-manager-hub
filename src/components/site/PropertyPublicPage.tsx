@@ -68,8 +68,8 @@ const STATUS_TEXT: Record<string, string> = {
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2.5 text-[13px] leading-relaxed text-site-muted">
-      <span className="mt-[7px] size-1 shrink-0 bg-site-gold" />
+    <li className="flex items-start gap-2.5 text-[15px] leading-relaxed text-site-muted">
+      <span className="mt-[8px] size-1.5 shrink-0 bg-site-gold" />
       <span>{children}</span>
     </li>
   );
@@ -77,7 +77,7 @@ function Bullet({ children }: { children: React.ReactNode }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="font-display text-[22px] font-semibold tracking-tight text-site-navy">
+    <h2 className="font-display text-[26px] font-semibold tracking-tight text-site-navy">
       {children}
     </h2>
   );
@@ -162,7 +162,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
     <button
       type="button"
       className={
-        "h-11 rounded-md bg-site-navy px-8 text-[12px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
+        "h-12 min-w-[180px] rounded-md bg-site-navy px-10 text-[15px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
         className
       }
     >
@@ -176,9 +176,9 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
       onClick={copyLink}
       aria-label="Поделиться"
       title={copied ? "Ссылка скопирована" : "Поделиться"}
-      className="grid size-11 shrink-0 place-items-center rounded-md bg-site-navy text-site-navy-foreground transition-colors hover:bg-site-navy/90"
+      className="grid size-12 shrink-0 place-items-center rounded-md bg-site-navy text-site-navy-foreground transition-colors hover:bg-site-navy/90"
     >
-      {copied ? <Check className="size-4 text-site-green" /> : <Share2 className="size-4" />}
+      {copied ? <Check className="size-5 text-site-green" /> : <Share2 className="size-5" />}
     </button>
   );
 
@@ -186,7 +186,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
     <div className="bg-background font-body text-site-navy antialiased">
       <div className="mx-auto w-full max-w-[1170px] px-5 pb-24 pt-6 lg:px-8">
         {/* ===== Хлебные крошки ===== */}
-        <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-site-muted">
+        <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-site-muted">
           <span className="transition-colors hover:text-site-navy">Главная</span>
           <span className="text-site-gold">→</span>
           <span className="transition-colors hover:text-site-navy">Долгосрочная аренда</span>
@@ -195,7 +195,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
         </nav>
 
         {/* ===== Верхний блок: галерея + информация ===== */}
-        <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
+        <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
           {/* Галерея */}
           <div className="lg:col-span-7">
             <div className="relative aspect-[4/3] overflow-hidden bg-site-navy-soft">
@@ -206,7 +206,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                   className="size-full object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center text-sm text-site-muted">
+                <div className="flex size-full items-center justify-center text-base text-site-muted">
                   Фотографии не загружены
                 </div>
               )}
@@ -241,7 +241,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                     aria-label={`Фото ${i + 1}`}
                     onClick={() => setActive(i)}
                     className={
-                      "size-1.5 rounded-full transition-colors " +
+                      "size-2 rounded-full transition-colors " +
                       (i === safeActive ? "bg-site-gold" : "bg-site-navy/20 hover:bg-site-navy/40")
                     }
                   />
@@ -251,22 +251,22 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
           </div>
 
           {/* Информация */}
-          <div className="min-w-0 lg:col-span-5">
+          <div className="flex min-w-0 flex-col lg:col-span-5">
             <p
               className={
-                "text-[12px] font-medium " +
+                "text-[14px] font-medium " +
                 (property.status === "free" ? "text-site-green" : "text-site-muted")
               }
             >
               {STATUS_TEXT[property.status] ?? ""}
             </p>
 
-            <h1 className="mt-2 font-display text-[28px] font-semibold leading-[1.15] tracking-tight lg:text-[32px]">
+            <h1 className="mt-2 font-display text-[36px] font-semibold leading-[1.1] tracking-tight lg:text-[42px]">
               {property.title}
             </h1>
 
             {property.address ? (
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-site-muted">
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-site-muted">
                 <span>{property.address}</span>
                 <a
                   href={yandexMapsUrl(property.address)}
@@ -275,13 +275,13 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                   className="inline-flex items-center gap-1 font-medium text-site-gold transition-colors hover:text-site-navy"
                 >
                   Карта
-                  <ArrowUpRight className="size-3" />
+                  <ArrowUpRight className="size-3.5" />
                 </a>
               </div>
             ) : null}
 
             {/* Характеристики таблицей */}
-            <div className="mt-6">
+            <div className="mt-7">
               {[specRow1, specRow2]
                 .filter((row) => row.length > 0)
                 .map((row, ri) => (
@@ -291,8 +291,8 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                   >
                     {row.map((s) => (
                       <div key={s.label} className="min-w-0">
-                        <dt className="text-[11px] font-semibold text-site-navy">{s.label}</dt>
-                        <dd className="mt-1 truncate text-[13px] text-site-muted">{s.value}</dd>
+                        <dt className="text-[13px] font-semibold text-site-navy">{s.label}</dt>
+                        <dd className="mt-1 truncate text-[15px] text-site-muted">{s.value}</dd>
                       </div>
                     ))}
                   </dl>
@@ -300,14 +300,14 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             </div>
 
             {property.price_month != null ? (
-              <p className="mt-6 whitespace-nowrap font-display text-[26px] font-semibold tracking-tight">
+              <p className="mt-7 whitespace-nowrap font-display text-[32px] font-semibold tracking-tight">
                 {formatMoney(property.price_month)}
-                <span className="ml-2 text-[15px] font-normal text-site-muted">/ мес</span>
+                <span className="ml-2 text-[17px] font-normal text-site-muted">/ мес</span>
               </p>
             ) : null}
 
-            <div className="mt-5 flex items-center gap-3">
-              {contactButton()}
+            <div className="mt-6 flex items-center gap-3">
+              {contactButton("flex-1")}
               {shareButton}
             </div>
           </div>
