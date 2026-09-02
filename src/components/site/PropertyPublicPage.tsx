@@ -49,7 +49,7 @@ export type PublicPropertyView = Pick<
 
 export type PublicComplexView = Pick<
   Complex,
-  "name" | "description" | "infrastructure" | "photos" | "main_photo"
+  "name" | "description" | "location_description" | "infrastructure" | "photos" | "main_photo"
 >;
 
 type Props = {
@@ -125,7 +125,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
   const features = (property.extra_features ?? []).map(extraFeatureLabel);
   const paragraphs = (property.description || "").split(/\n{1,}/).filter((p) => p.trim());
-  const locationLines = (property.location_description || "")
+  const locationLines = (complex?.location_description || property.location_description || "")
     .split(/\n{1,}/)
     .filter((p) => p.trim());
 
