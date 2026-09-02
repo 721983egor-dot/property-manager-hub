@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Building2, CalendarDays } from "lucide-react";
+import { Building2, CalendarDays, Users } from "lucide-react";
+
 import type { ReactNode } from "react";
 
 export function AppShell({ children }: { children: ReactNode }) {
