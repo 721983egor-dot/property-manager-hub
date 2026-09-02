@@ -210,3 +210,24 @@ export async function deleteBooking(id: string) {
   const { error } = await supabase.from("bookings").delete().eq("id", id);
   if (error) throw error;
 }
+
+/** Все бронирования (для CRM). */
+export async function fetchAllBookings(): Promise<Booking[]> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(SELECT)
+    .order("start_date", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
+}
+
+/** Бронирования конкретного клиента, от новых к старым. */
+export async function fetchClientBookings(clientId: string): Promise<Booking[]> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(SELECT)
+    .eq("client_id", clientId)
+    .order("start_date", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
+}
