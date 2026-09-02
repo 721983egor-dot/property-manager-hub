@@ -190,3 +190,23 @@ export async function saveBooking(id: string | null, input: BookingInput) {
   }
   return bookingId!;
 }
+
+/** Отмечает объект как «Сдан», когда появляется активное бронирование. */
+export async function markPropertyRented(propertyId: string) {
+  const { error } = await supabase
+    .from("properties")
+    .update({ status: "rented" } as never)
+    .eq("id", propertyId);
+  if (error) throw error;
+}
+
+/** Удаляет бронирование и его периоды; запись клиента сохраняется. */
+export async function deleteBooking(id: string) {
+  const { error: periodsError } = await supabase
+    .from("booking_price_periods")
+    .delete()
+    .eq("booking_id", id);
+  if (periodsError) throw periodsError;
+  const { error } = await supabase.from("bookings").delete().eq("id", id);
+  if (error) throw error;
+}
