@@ -221,6 +221,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       extra_features: extraFeatures,
       location_description: locationDescription,
       rent_terms: rentTermsLines.map((l) => l.trim()).filter(Boolean).join("\n"),
+      card_highlights: cardHighlights,
     });
 
   };
