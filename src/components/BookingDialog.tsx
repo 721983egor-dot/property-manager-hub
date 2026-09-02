@@ -189,6 +189,23 @@ export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }
     },
   });
 
+  const remove = useMutation({
+    mutationFn: async () => {
+      if (!booking) return;
+      await deleteBooking(booking.id);
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["bookings"] });
+      await qc.invalidateQueries({ queryKey: ["current-booking"] });
+      toast.success("Бронирование удалено, данные клиента сохранены");
+      onOpenChange(false);
+    },
+    onError: (e: unknown) => {
+      const message = e instanceof Error ? e.message : String(e);
+      toast.error(message);
+    },
+  });
+
   const property = properties.find((p) => p.id === (booking?.property_id ?? form.property_id));
 
   return (
@@ -240,11 +257,24 @@ export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }
               </div>
             ) : null}
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Закрыть
+            <DialogFooter className="gap-2 sm:justify-between">
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (window.confirm("Удалить бронирование? Данные клиента сохранятся.")) {
+                    remove.mutate();
+                  }
+                }}
+                disabled={remove.isPending}
+              >
+                {remove.isPending ? "Удаление..." : "Удалить"}
               </Button>
-              <Button onClick={() => setMode("edit")}>Редактировать</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Закрыть
+                </Button>
+                <Button onClick={() => setMode("edit")}>Редактировать</Button>
+              </div>
             </DialogFooter>
           </div>
         ) : (
