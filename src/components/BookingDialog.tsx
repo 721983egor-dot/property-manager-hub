@@ -32,7 +32,9 @@ import {
   type BookingSource,
   type BookingStatus,
   createClient,
+  deleteBooking,
   fetchClients,
+  markPropertyRented,
   normalizePhone,
   priceOn,
   saveBooking,
@@ -154,7 +156,7 @@ export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }
       if (!clientId) throw new Error("Выберите клиента");
       if (form.end_date < form.start_date) throw new Error("Дата окончания раньше даты начала");
 
-      return saveBooking(booking?.id ?? null, {
+      const bookingId = await saveBooking(booking?.id ?? null, {
         property_id: form.property_id,
         client_id: clientId,
         start_date: form.start_date,
@@ -168,11 +170,16 @@ export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }
         comment: form.comment,
         periods: form.periods.filter((p) => p.start_date && p.end_date),
       });
+      if (form.status === "active") {
+        await markPropertyRented(form.property_id);
+      }
+      return bookingId;
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["bookings"] });
       await qc.invalidateQueries({ queryKey: ["clients"] });
       await qc.invalidateQueries({ queryKey: ["current-booking"] });
+      await qc.invalidateQueries({ queryKey: ["properties"] });
       toast.success(booking ? "Бронирование обновлено" : "Бронирование создано");
       onOpenChange(false);
     },
