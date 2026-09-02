@@ -179,6 +179,9 @@ function normalize(row: Record<string, unknown>): Property {
       ? (row['location_description'] as string)
       : "",
     rent_terms: typeof row['rent_terms'] === "string" ? (row['rent_terms'] as string) : "",
+    card_highlights: Array.isArray(row['card_highlights'])
+      ? (row['card_highlights'] as string[])
+      : [],
   };
 }
 
