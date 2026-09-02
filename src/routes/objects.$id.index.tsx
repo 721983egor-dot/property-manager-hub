@@ -147,6 +147,7 @@ function ObjectViewPage() {
               ) : null}
               <Item label="Страховой депозит" value={formatMoney(data.deposit)} />
               <Item label="Комиссия" value={formatMoney(data.commission)} />
+              <Item label="Коммунальные в месяц" value={formatMoney(data.utilities_month)} />
             </dl>
           </section>
 
