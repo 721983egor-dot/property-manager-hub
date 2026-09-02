@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { BookingDialog } from "@/components/BookingDialog";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { fetchComplexes } from "@/lib/complexes";
+import { type Booking, fetchBookings, shortName } from "@/lib/bookings";
 import {
   MONTHS,
   WEEKDAYS_SHORT,
   addDays,
   eachDay,
-  fetchRentals,
   formatDateRu,
   parseISODate,
   toISODate,
@@ -74,10 +75,13 @@ function CalendarPage() {
     queryKey: ["complexes"],
     queryFn: fetchComplexes,
   });
-  const { data: rentals = [] } = useQuery({
-    queryKey: ["rentals", from, to],
-    queryFn: () => fetchRentals(from, to),
+  const { data: bookings = [] } = useQuery({
+    queryKey: ["bookings", from, to],
+    queryFn: () => fetchBookings(from, to),
   });
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
 
   const complexMap = useMemo(
     () => new Map(complexes.map((c) => [c.id, c.name])),
@@ -87,15 +91,16 @@ function CalendarPage() {
   const rows = properties;
 
   const todayIso = toISODate(today);
-  const rentalsByProperty = useMemo(() => {
-    const map = new Map<string, typeof rentals>();
-    for (const r of rentals) {
-      const list = map.get(r.property_id) ?? [];
-      list.push(r);
-      map.set(r.property_id, list);
+  const bookingsByProperty = useMemo(() => {
+    const map = new Map<string, Booking[]>();
+    for (const b of bookings) {
+      if (b.status === "cancelled") continue;
+      const list = map.get(b.property_id) ?? [];
+      list.push(b);
+      map.set(b.property_id, list);
     }
     return map;
-  }, [rentals]);
+  }, [bookings]);
 
   const shift = (dir: 1 | -1) => {
     const length = days.length || 30;
@@ -136,10 +141,27 @@ function CalendarPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] px-8 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Календарь</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">
-        Шахматка занятости объектов по дням.
-      </p>
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Календарь</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Шахматка занятости объектов по дням.
+          </p>
+        </div>
+        <Button
+          size="lg"
+          onClick={() => {
+            setActiveBooking(null);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus className="size-4" />
+          Создать бронирование
+        </Button>
+      </div>
+
+      <BookingDialog open={dialogOpen} onOpenChange={setDialogOpen} booking={activeBooking} />
+
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" onClick={goToday}>
@@ -268,7 +290,7 @@ function CalendarPage() {
 
           {/* Строки объектов */}
           {rows.map((property) => {
-            const list = rentalsByProperty.get(property.id) ?? [];
+            const list = bookingsByProperty.get(property.id) ?? [];
             const complexName =
               (property.complex_id ? complexMap.get(property.complex_id) : null) ??
               property.complex_name;
@@ -304,31 +326,47 @@ function CalendarPage() {
                     })}
                   </div>
 
-                  {list.map((rental) => {
+                  {list.map((booking) => {
                     const start = parseISODate(
-                      rental.start_date < from ? from : rental.start_date,
+                      booking.start_date < from ? from : booking.start_date,
                     );
-                    const end = parseISODate(rental.end_date > to ? to : rental.end_date);
+                    const end = parseISODate(booking.end_date > to ? to : booking.end_date);
                     const offset = Math.round(
                       (start.getTime() - fromDate.getTime()) / 86400000,
                     );
                     const length =
                       Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
                     if (length <= 0) return null;
+                    const past = booking.end_date < todayIso;
                     return (
-                      <div
-                        key={rental.id}
-                        title={`${formatDateRu(rental.start_date)} — ${formatDateRu(rental.end_date)}`}
+                      <button
+                        type="button"
+                        key={booking.id}
+                        onClick={() => {
+                          setActiveBooking(booking);
+                          setDialogOpen(true);
+                        }}
+                        title={`${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
                         style={{
                           left: offset * DAY_WIDTH + 2,
                           width: length * DAY_WIDTH - 4,
                         }}
-                        className="absolute top-1/2 flex h-8 -translate-y-1/2 items-center overflow-hidden rounded-md border border-status-free/30 bg-status-free-soft px-2.5"
+                        className={cn(
+                          "absolute top-1/2 flex h-8 -translate-y-1/2 items-center overflow-hidden rounded-md border px-2.5 text-left transition-opacity hover:opacity-90",
+                          past
+                            ? "border-border bg-muted"
+                            : "border-status-free/30 bg-status-free-soft",
+                        )}
                       >
-                        <span className="truncate text-xs font-medium text-status-free">
-                          {rental.tenant_name || "Занято"}
+                        <span
+                          className={cn(
+                            "truncate text-xs font-medium",
+                            past ? "text-muted-foreground" : "text-status-free",
+                          )}
+                        >
+                          {booking.client ? shortName(booking.client.full_name) : "Занято"}
                         </span>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

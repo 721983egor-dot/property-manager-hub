@@ -14,6 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_price_periods: {
+        Row: {
+          booking_id: string
+          created_at: string
+          end_date: string
+          id: string
+          price_month: number
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          price_month: number
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          price_month?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_price_periods_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          client_id: string
+          comment: string
+          created_at: string
+          deposit: number | null
+          end_date: string
+          id: string
+          payment_day: number
+          price_month: number | null
+          price_type: Database["public"]["Enums"]["booking_price_type"]
+          property_id: string
+          source: Database["public"]["Enums"]["booking_source"] | null
+          start_date: string
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          comment?: string
+          created_at?: string
+          deposit?: number | null
+          end_date: string
+          id?: string
+          payment_day?: number
+          price_month?: number | null
+          price_type?: Database["public"]["Enums"]["booking_price_type"]
+          property_id: string
+          source?: Database["public"]["Enums"]["booking_source"] | null
+          start_date: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          comment?: string
+          created_at?: string
+          deposit?: number | null
+          end_date?: string
+          id?: string
+          payment_day?: number
+          price_month?: number | null
+          price_type?: Database["public"]["Enums"]["booking_price_type"]
+          property_id?: string
+          source?: Database["public"]["Enums"]["booking_source"] | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       complexes: {
         Row: {
           created_at: string
@@ -218,6 +346,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      booking_price_type: "fixed" | "periodic"
+      booking_source: "avito" | "cian" | "website" | "social" | "referral"
+      booking_status: "active" | "cancelled" | "completed"
       property_status: "free" | "rented" | "booked" | "archived"
       property_type: "apartment" | "aparts" | "house" | "villa" | "townhouse"
       rental_status: "booked" | "rented" | "blocked"
@@ -348,6 +479,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      booking_price_type: ["fixed", "periodic"],
+      booking_source: ["avito", "cian", "website", "social", "referral"],
+      booking_status: ["active", "cancelled", "completed"],
       property_status: ["free", "rented", "booked", "archived"],
       property_type: ["apartment", "aparts", "house", "villa", "townhouse"],
       rental_status: ["booked", "rented", "blocked"],
