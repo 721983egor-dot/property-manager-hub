@@ -49,7 +49,9 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   booking?: Booking | null;
   defaultPropertyId?: string;
+  defaultClientId?: string;
 };
+
 
 type FormState = {
   property_id: string;
@@ -66,10 +68,11 @@ type FormState = {
   periods: BookingPricePeriod[];
 };
 
-function emptyForm(propertyId = ""): FormState {
+function emptyForm(propertyId = "", clientId = ""): FormState {
   return {
     property_id: propertyId,
-    client_id: "",
+    client_id: clientId,
+
     start_date: toISODate(new Date()),
     end_date: toISODate(new Date()),
     price_type: "fixed",
@@ -100,11 +103,17 @@ function fromBooking(b: Booking): FormState {
   };
 }
 
-export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }: Props) {
+export function BookingDialog({
+  open,
+  onOpenChange,
+  booking,
+  defaultPropertyId,
+  defaultClientId,
+}: Props) {
   const qc = useQueryClient();
   const [mode, setMode] = useState<"view" | "edit">(booking ? "view" : "edit");
   const [form, setForm] = useState<FormState>(() =>
-    booking ? fromBooking(booking) : emptyForm(defaultPropertyId),
+    booking ? fromBooking(booking) : emptyForm(defaultPropertyId, defaultClientId),
   );
   const [newClient, setNewClient] = useState(false);
   const [clientName, setClientName] = useState("");
@@ -114,12 +123,13 @@ export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }
   useEffect(() => {
     if (!open) return;
     setMode(booking ? "view" : "edit");
-    setForm(booking ? fromBooking(booking) : emptyForm(defaultPropertyId));
+    setForm(booking ? fromBooking(booking) : emptyForm(defaultPropertyId, defaultClientId));
     setNewClient(false);
     setClientName("");
     setClientPhone("");
     setClientSearch("");
-  }, [open, booking?.id, defaultPropertyId]);
+  }, [open, booking?.id, defaultPropertyId, defaultClientId]);
+
 
   const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
@@ -180,6 +190,8 @@ export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }
       await qc.invalidateQueries({ queryKey: ["clients"] });
       await qc.invalidateQueries({ queryKey: ["current-booking"] });
       await qc.invalidateQueries({ queryKey: ["properties"] });
+      await qc.invalidateQueries({ queryKey: ["crm-bookings"] });
+      await qc.invalidateQueries({ queryKey: ["client-bookings"] });
       toast.success(booking ? "Бронирование обновлено" : "Бронирование создано");
       onOpenChange(false);
     },
@@ -197,6 +209,8 @@ export function BookingDialog({ open, onOpenChange, booking, defaultPropertyId }
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["bookings"] });
       await qc.invalidateQueries({ queryKey: ["current-booking"] });
+      await qc.invalidateQueries({ queryKey: ["crm-bookings"] });
+      await qc.invalidateQueries({ queryKey: ["client-bookings"] });
       toast.success("Бронирование удалено, данные клиента сохранены");
       onOpenChange(false);
     },
