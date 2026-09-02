@@ -191,6 +191,16 @@ export async function fetchProperties(): Promise<Property[]> {
   return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
 }
 
+export async function fetchPublishedProperties(): Promise<Property[]> {
+  const { data, error } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
+}
+
 export async function fetchProperty(id: string): Promise<Property> {
   const { data, error } = await supabase.from("properties").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
