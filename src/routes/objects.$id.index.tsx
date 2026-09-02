@@ -115,6 +115,44 @@ function ObjectViewPage() {
           </header>
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
+            <h2 className="text-base font-semibold">Текущая аренда</h2>
+            {currentBooking && currentBooking.status !== "cancelled" ? (
+              <button
+                type="button"
+                onClick={() => setBookingOpen(true)}
+                className="mt-4 w-full rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/50"
+              >
+                <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-3">
+                  <Item
+                    label="Арендатор"
+                    value={currentBooking.client ? shortName(currentBooking.client.full_name) : "—"}
+                  />
+                  <Item label="Телефон" value={currentBooking.client?.phone || "—"} />
+                  <Item
+                    label="Даты аренды"
+                    value={`${formatDateRu(currentBooking.start_date)} — ${formatDateRu(currentBooking.end_date)}`}
+                  />
+                  <Item
+                    label="Стоимость в месяц"
+                    value={formatMoney(priceOn(currentBooking, todayIso))}
+                  />
+                  <Item label="День оплаты" value={`${currentBooking.payment_day} число`} />
+                  <Item label="Страховой депозит" value={formatMoney(currentBooking.deposit)} />
+                  <Item label="Источник" value={sourceLabel(currentBooking.source)} />
+                </dl>
+              </button>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">Сейчас объект свободен</p>
+            )}
+          </section>
+
+          <BookingDialog
+            open={bookingOpen}
+            onOpenChange={setBookingOpen}
+            booking={currentBooking}
+          />
+
+          <section className="mt-6 rounded-xl border border-border bg-card p-6">
             <h2 className="text-base font-semibold">Адрес</h2>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
               <p className="text-sm">{data.address || "Адрес не указан"}</p>
