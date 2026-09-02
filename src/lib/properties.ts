@@ -32,6 +32,7 @@ export type Property = {
   utilities_month: number | null;
   extra_features: string[];
   location_description: string;
+  rent_terms: string;
   created_at: string;
   updated_at: string;
 };
