@@ -251,7 +251,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                 ) : null}
                 {isLast ? (
                   <span className="absolute inset-0 grid place-items-center bg-site-navy/60 text-[11px] font-semibold uppercase tracking-[0.25em] text-site-navy-foreground">
-                    Ещё {remaining + 1} фото
+                    Ещё {remaining} фото
                   </span>
                 ) : null}
               </button>
