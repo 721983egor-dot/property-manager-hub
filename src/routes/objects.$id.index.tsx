@@ -4,6 +4,7 @@ import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-rea
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { fetchComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
 import {
   APPLIANCE_OPTIONS,
   BATHROOM_FEATURE_OPTIONS,
@@ -45,7 +46,18 @@ function ObjectViewPage() {
     queryFn: () => fetchProperty(id),
   });
 
-  const paths = (data?.photos ?? []).map((p) => p.path);
+  const complexId = data?.complex_id ?? null;
+  const { data: complex } = useQuery({
+    queryKey: ["complexes", complexId],
+    queryFn: () => fetchComplex(complexId!),
+    enabled: Boolean(complexId),
+  });
+
+  const complexMain = complex ? mainPhotoPath(complex) : null;
+  const paths = [
+    ...(data?.photos ?? []).map((p) => p.path),
+    ...(complexMain ? [complexMain] : []),
+  ];
   const { data: urls = {} } = useQuery({
     queryKey: ["photo-urls", paths.slice().sort().join("|")],
     queryFn: () => signedUrls(paths),
@@ -115,13 +127,59 @@ function ObjectViewPage() {
             <h2 className="text-base font-semibold">Основная информация</h2>
             <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-3">
               <Item label="Тип" value={typeLabel(data.type)} />
-              <Item label="Комплекс" value={data.complex_name || "—"} />
+              <Item label="Комплекс" value={complex?.name || data.complex_name || "—"} />
               <Item label="Этаж" value={floorLabel(data)} />
               <Item label="Планировка" value={roomsLabel(data.rooms)} />
               <Item label="Санузлы" value={String(data.bathrooms)} />
               <Item label="Площадь" value={formatArea(data.area)} />
             </dl>
           </section>
+
+          {complex ? (
+            <section className="mt-6 rounded-xl border border-border bg-card p-6">
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-base font-semibold">О комплексе</h2>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/complexes/$id/edit" params={{ id: complex.id }}>
+                    Редактировать комплекс
+                  </Link>
+                </Button>
+              </div>
+              <p className="mt-3 text-lg font-medium">{complex.name}</p>
+              <div className="mt-4 grid gap-5 sm:grid-cols-[240px_minmax(0,1fr)]">
+                <div className="aspect-[4/3] overflow-hidden rounded-lg border border-border bg-muted">
+                  {complexMain && urls[complexMain] ? (
+                    <img
+                      src={urls[complexMain]}
+                      alt={complex.name}
+                      loading="lazy"
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <div className="grid size-full place-items-center text-xs text-muted-foreground">
+                      Нет фото
+                    </div>
+                  )}
+                </div>
+                <div>
+                  {complex.description ? (
+                    <p className="whitespace-pre-line text-sm text-muted-foreground">
+                      {complex.description}
+                    </p>
+                  ) : null}
+                  {complex.infrastructure.length > 0 ? (
+                    <div className="mt-4">
+                      <Chips
+                        title="Инфраструктура"
+                        items={complex.infrastructure.map(infrastructureLabel)}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
 
           {(() => {
             const outdoor = labelsFor(OUTDOOR_OPTIONS, data.outdoor_spaces);

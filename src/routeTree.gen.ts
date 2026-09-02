@@ -10,7 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ComplexesIndexRouteImport } from './routes/complexes.index'
+import { Route as ComplexesNewRouteImport } from './routes/complexes.new'
 import { Route as ObjectsNewRouteImport } from './routes/objects.new'
+import { Route as ComplexesIdEditRouteImport } from './routes/complexes.$id.edit'
 import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
@@ -20,9 +23,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComplexesIndexRoute = ComplexesIndexRouteImport.update({
+  id: '/complexes/',
+  path: '/complexes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplexesNewRoute = ComplexesNewRouteImport.update({
+  id: '/complexes/new',
+  path: '/complexes/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ObjectsNewRoute = ObjectsNewRouteImport.update({
   id: '/objects/new',
   path: '/objects/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplexesIdEditRoute = ComplexesIdEditRouteImport.update({
+  id: '/complexes/$id/edit',
+  path: '/complexes/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ObjectsIdIndexRoute = ObjectsIdIndexRouteImport.update({
@@ -43,14 +61,20 @@ const ObjectsIdPreviewRoute = ObjectsIdPreviewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
+  '/complexes/': typeof ComplexesIndexRoute
+  '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
+  '/complexes': typeof ComplexesIndexRoute
+  '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/objects/$id': typeof ObjectsIdIndexRoute
@@ -58,7 +82,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
+  '/complexes/': typeof ComplexesIndexRoute
+  '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
@@ -67,21 +94,30 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/complexes/new'
     | '/objects/new'
+    | '/complexes/'
+    | '/complexes/$id/edit'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
     | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/complexes/new'
     | '/objects/new'
+    | '/complexes'
+    | '/complexes/$id/edit'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
     | '/objects/$id'
   id:
     | '__root__'
     | '/'
+    | '/complexes/new'
     | '/objects/new'
+    | '/complexes/'
+    | '/complexes/$id/edit'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
     | '/objects/$id/'
@@ -89,7 +125,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ComplexesNewRoute: typeof ComplexesNewRoute
   ObjectsNewRoute: typeof ObjectsNewRoute
+  ComplexesIndexRoute: typeof ComplexesIndexRoute
+  ComplexesIdEditRoute: typeof ComplexesIdEditRoute
   ObjectsIdEditRoute: typeof ObjectsIdEditRoute
   ObjectsIdPreviewRoute: typeof ObjectsIdPreviewRoute
   ObjectsIdIndexRoute: typeof ObjectsIdIndexRoute
@@ -104,11 +143,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/complexes/': {
+      id: '/complexes/'
+      path: '/complexes'
+      fullPath: '/complexes/'
+      preLoaderRoute: typeof ComplexesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complexes/new': {
+      id: '/complexes/new'
+      path: '/complexes/new'
+      fullPath: '/complexes/new'
+      preLoaderRoute: typeof ComplexesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/objects/new': {
       id: '/objects/new'
       path: '/objects/new'
       fullPath: '/objects/new'
       preLoaderRoute: typeof ObjectsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complexes/$id/edit': {
+      id: '/complexes/$id/edit'
+      path: '/complexes/$id/edit'
+      fullPath: '/complexes/$id/edit'
+      preLoaderRoute: typeof ComplexesIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/objects/$id/': {
@@ -137,7 +197,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ComplexesNewRoute: ComplexesNewRoute,
   ObjectsNewRoute: ObjectsNewRoute,
+  ComplexesIndexRoute: ComplexesIndexRoute,
+  ComplexesIdEditRoute: ComplexesIdEditRoute,
   ObjectsIdEditRoute: ObjectsIdEditRoute,
   ObjectsIdPreviewRoute: ObjectsIdPreviewRoute,
   ObjectsIdIndexRoute: ObjectsIdIndexRoute,

@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      complexes: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          infrastructure: string[]
+          main_photo: string | null
+          name: string
+          photos: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          infrastructure?: string[]
+          main_photo?: string | null
+          name: string
+          photos?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          infrastructure?: string[]
+          main_photo?: string | null
+          name?: string
+          photos?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       properties: {
         Row: {
           address: string
@@ -105,7 +138,15 @@ export type Database = {
           updated_at?: string
           utilities_month?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "properties_complex_id_fkey"
+            columns: ["complex_id"]
+            isOneToOne: false
+            referencedRelation: "complexes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

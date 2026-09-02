@@ -11,6 +11,7 @@ import {
   yandexMapsUrl,
   type Property,
 } from "@/lib/properties";
+import { infrastructureLabel, type Complex } from "@/lib/complexes";
 
 /**
  * Публичная страница объекта в стиле сайта Residence More.
@@ -38,9 +39,16 @@ export type PublicPropertyView = Pick<
   | "photos"
 >;
 
+export type PublicComplexView = Pick<
+  Complex,
+  "name" | "description" | "infrastructure" | "photos" | "main_photo"
+>;
+
 type Props = {
   property: PublicPropertyView;
-  /** path фотографии → готовый URL картинки */
+  /** Данные связанного жилого комплекса (по complex_id). */
+  complex?: PublicComplexView | null;
+  /** path фотографии → готовый URL картинки (объект + комплекс) */
   photoUrls: Record<string, string>;
 };
 
@@ -51,14 +59,21 @@ const STATUS_TEXT: Record<string, string> = {
   archived: "Не публикуется",
 };
 
-export function PropertyPublicPage({ property, photoUrls }: Props) {
+export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
   const [active, setActive] = useState(0);
   const photos = property.photos ?? [];
   const current = photos[Math.min(active, Math.max(photos.length - 1, 0))];
 
+  const complexPhotos = complex
+    ? [
+        ...(complex.main_photo ? [{ path: complex.main_photo }] : []),
+        ...(complex.photos ?? []).filter((p) => p.path !== complex.main_photo),
+      ]
+    : [];
+
   const specs = [
     { label: "Тип", value: typeLabel(property.type) },
-    { label: "Комплекс", value: property.complex_name || null },
+    { label: "Комплекс", value: complex?.name || property.complex_name || null },
     {
       label: "Этаж",
       value:
@@ -197,6 +212,54 @@ export function PropertyPublicPage({ property, photoUrls }: Props) {
             </div>
           </div>
         </div>
+
+        {complex ? (
+          <section className="mt-14 border-t border-site-line pt-10">
+            <h2 className="text-2xl font-bold tracking-tight">О жилом комплексе</h2>
+            <p className="mt-4 text-lg font-semibold">{complex.name}</p>
+
+            {complexPhotos.length > 0 ? (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {complexPhotos.slice(0, 6).map((p, i) => (
+                  <div
+                    key={p.path}
+                    className="aspect-[4/3] overflow-hidden rounded-2xl bg-muted"
+                  >
+                    {photoUrls[p.path] ? (
+                      <img
+                        src={photoUrls[p.path]}
+                        alt={`${complex.name} — фото ${i + 1}`}
+                        loading="lazy"
+                        className="size-full object-cover"
+                      />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {complex.description ? (
+              <p className="mt-6 max-w-[70ch] whitespace-pre-line text-base leading-relaxed text-site-muted">
+                {complex.description}
+              </p>
+            ) : null}
+
+            {complex.infrastructure.length > 0 ? (
+              <>
+                <h3 className="mt-8 text-base font-semibold">Инфраструктура</h3>
+                <ul className="mt-4 grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {complex.infrastructure.map((i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm">
+                      <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
+                      {infrastructureLabel(i)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </section>
+        ) : null}
+
 
         {features.length > 0 ? (
           <section className="mt-14 border-t border-site-line pt-10">

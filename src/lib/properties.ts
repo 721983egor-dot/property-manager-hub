@@ -197,6 +197,7 @@ export async function fetchProperty(id: string): Promise<Property> {
 export type PropertyInput = {
   title: string;
   type: PropertyType;
+  complex_id: string | null;
   complex_name: string;
   address: string;
   floor: number | null;

@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ImagePlus, Star, Trash2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, ImagePlus, Plus, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ComplexForm } from "@/components/ComplexForm";
+import { createComplex, fetchComplexes } from "@/lib/complexes";
 import {
   Select,
   SelectContent,
@@ -38,6 +46,8 @@ import {
   type PropertyType,
 } from "@/lib/properties";
 
+const NO_COMPLEX = "__none__";
+
 type Props = {
   initial?: Property;
   onSubmit: (input: PropertyInput) => Promise<void>;
@@ -48,7 +58,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [type, setType] = useState<PropertyType>(initial?.type ?? "apartment");
-  const [complexName, setComplexName] = useState(initial?.complex_name ?? "");
+  const [complexId, setComplexId] = useState<string | null>(initial?.complex_id ?? null);
+  const [complexDialog, setComplexDialog] = useState(false);
   const [address, setAddress] = useState(initial?.address ?? "");
   const [floor, setFloor] = useState(initial?.floor != null ? String(initial.floor) : "");
   const [totalFloors, setTotalFloors] = useState(
@@ -112,6 +123,13 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     enabled: paths.length > 0,
   });
 
+  const queryClient = useQueryClient();
+  const { data: complexes = [] } = useQuery({
+    queryKey: ["complexes"],
+    queryFn: fetchComplexes,
+  });
+  const [creatingComplex, setCreatingComplex] = useState(false);
+
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -155,7 +173,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     await onSubmit({
       title: title.trim(),
       type,
-      complex_name: complexName.trim(),
+      complex_id: complexId,
+      complex_name: complexes.find((c) => c.id === complexId)?.name ?? "",
       address: address.trim(),
       floor: floor === "" ? null : Number(floor),
       total_floors: totalFloors === "" ? null : Number(totalFloors),
@@ -209,12 +228,33 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Field>
 
           <Field label="Комплекс">
-            <Input
-              value={complexName}
-              onChange={(e) => setComplexName(e.target.value)}
-              placeholder="ЖК Кислород"
-              list="complex-options"
-            />
+            <div className="flex gap-2">
+              <Select
+                value={complexId ?? NO_COMPLEX}
+                onValueChange={(v) => setComplexId(v === NO_COMPLEX ? null : v)}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Выберите комплекс" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_COMPLEX}>Без комплекса</SelectItem>
+                  {complexes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setComplexDialog(true)}
+                aria-label="Добавить комплекс"
+              >
+                <Plus className="size-4" />
+                Комплекс
+              </Button>
+            </div>
           </Field>
 
           <Field label="Адрес объекта" className="md:col-span-2">
@@ -568,7 +608,32 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
         )}
       </section>
 
-      <datalist id="complex-options" />
+      <Dialog open={complexDialog} onOpenChange={setComplexDialog}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Новый комплекс</DialogTitle>
+          </DialogHeader>
+          <ComplexForm
+            compact
+            submitting={creatingComplex}
+            onCancel={() => setComplexDialog(false)}
+            onSubmit={async (input) => {
+              setCreatingComplex(true);
+              try {
+                const created = await createComplex(input);
+                await queryClient.invalidateQueries({ queryKey: ["complexes"] });
+                setComplexId(created.id);
+                setComplexDialog(false);
+                toast.success("Комплекс создан");
+              } catch {
+                toast.error("Не удалось создать комплекс");
+              } finally {
+                setCreatingComplex(false);
+              }
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center justify-end gap-3 pb-4">
         <Button type="button" variant="ghost" onClick={() => navigate({ to: "/" })}>
