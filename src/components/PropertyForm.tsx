@@ -102,9 +102,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [bathFeatures, setBathFeatures] = useState<string[]>(initial?.bathroom_features ?? []);
   const [extraFeatures, setExtraFeatures] = useState<string[]>(initial?.extra_features ?? []);
   const [customFeature, setCustomFeature] = useState("");
-  const [locationDescription, setLocationDescription] = useState(
-    initial?.location_description ?? "",
-  );
+  const [locationDescription] = useState(initial?.location_description ?? "");
   const [rentTermsLines, setRentTermsLines] = useState<string[]>(() =>
     toRentTermsLines(initial?.rent_terms),
   );
