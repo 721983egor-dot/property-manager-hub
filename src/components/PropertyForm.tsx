@@ -153,6 +153,11 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       summer_price_month: seasonal ? toNum(summerPrice) : null,
       deposit: toNum(deposit),
       commission: toNum(commission),
+      area: toNum(area),
+      utilities_month: toNum(utilities),
+      outdoor_spaces: outdoor,
+      appliances,
+      bathroom_features: bathFeatures,
     });
 
   };
