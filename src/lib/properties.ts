@@ -239,6 +239,7 @@ export type PropertyInput = {
   extra_features: string[];
   location_description: string;
   rent_terms: string;
+  card_highlights: string[];
 };
 
 /** Базовый текст условий аренды — подставляется в форму и редактируется. */
