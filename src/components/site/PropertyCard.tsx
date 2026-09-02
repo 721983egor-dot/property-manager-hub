@@ -4,7 +4,7 @@ import { formatArea, formatMoney, roomsLabel, type Property } from "@/lib/proper
 type Props = {
   property: Property;
   complexName?: string | null | undefined;
-  photoUrl?: string;
+  photoUrl?: string | undefined;
 };
 
 export function PropertyCard({ property, complexName, photoUrl }: Props) {
