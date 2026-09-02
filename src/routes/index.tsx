@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
+import { SectionTabs } from "@/components/SectionTabs";
 import {
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
@@ -163,6 +164,8 @@ function ObjectsPage() {
           Добавить объект
         </Button>
       </header>
+
+      <SectionTabs active="objects" />
 
       <div className="mt-6 border-b border-border">
         <div className="flex gap-6">
