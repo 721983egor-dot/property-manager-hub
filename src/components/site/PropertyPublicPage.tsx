@@ -42,6 +42,7 @@ export type PublicPropertyView = Pick<
   | "utilities_month"
   | "description"
   | "location_description"
+  | "rent_terms"
   | "extra_features"
   | "photos"
 >;
