@@ -65,6 +65,10 @@ const STATUS_TEXT: Record<string, string> = {
   archived: "Не публикуется",
 };
 
+function GoldDot() {
+  return <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-site-gold" />;
+}
+
 export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
   const [active, setActive] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -112,7 +116,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
       onClick={copyLink}
       aria-label="Поделиться"
       title={copied ? "Ссылка скопирована" : "Поделиться"}
-      className="grid size-14 shrink-0 place-items-center rounded-xl border border-site-navy/15 bg-background text-site-navy transition-colors hover:border-site-gold hover:text-site-gold"
+      className="grid size-13 shrink-0 place-items-center rounded-xl border border-site-navy/15 bg-background text-site-navy transition-colors hover:border-site-gold hover:text-site-gold"
     >
       {copied ? <Check className="size-5 text-site-green" /> : <Share2 className="size-5" />}
     </button>
@@ -121,20 +125,31 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
   const contactButton = (
     <button
       type="button"
-      className="h-14 flex-1 rounded-xl bg-site-navy px-8 text-base font-medium text-site-navy-foreground transition-opacity hover:opacity-90"
+      className="h-13 flex-1 rounded-xl bg-site-navy px-6 text-[15px] font-medium whitespace-nowrap text-site-navy-foreground transition-opacity hover:opacity-90"
     >
       Связаться
     </button>
   );
 
+  const seasonRows = [
+    property.seasonal_pricing && property.summer_price_month != null
+      ? { label: SUMMER_SEASON_LABEL, value: property.summer_price_month }
+      : null,
+    property.seasonal_pricing && property.summer_price_month != null
+      ? { label: "Октябрь — май", value: property.price_month }
+      : property.price_month != null
+        ? { label: "Стоимость аренды", value: property.price_month }
+        : null,
+  ].filter((r): r is { label: string; value: number } => r != null && r.value != null);
+
   return (
     <div className="bg-background text-site-navy">
-      <div className="mx-auto w-full max-w-[1200px] px-5 py-10 lg:px-6 lg:py-14">
+      <div className="mx-auto w-full max-w-[1200px] px-5 py-8 lg:px-8 lg:py-12">
         {/* Верхний блок: галерея + информация */}
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-14">
-          {/* Галерея: большое фото + колонка миниатюр */}
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="aspect-[4/3] min-w-0 flex-1 overflow-hidden rounded-2xl bg-muted">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-12">
+          {/* Галерея: большое фото + ряд миниатюр снизу */}
+          <div className="min-w-0">
+            <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl bg-muted">
               {current && photoUrls[current.path] ? (
                 <img
                   src={photoUrls[current.path]}
@@ -149,18 +164,18 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             </div>
 
             {photos.length > 1 ? (
-              <div className="grid shrink-0 grid-cols-4 gap-3 sm:w-28 sm:grid-cols-1 sm:content-start lg:w-32">
-                {photos.slice(0, 8).map((p, i) => (
+              <div className="mt-3 grid grid-cols-5 gap-3">
+                {photos.slice(0, 5).map((p, i) => (
                   <button
                     key={p.path}
                     type="button"
                     aria-label={`Фото ${i + 1}`}
                     onClick={() => setActive(i)}
                     className={
-                      "aspect-[4/3] overflow-hidden rounded-xl border transition-colors " +
+                      "aspect-[4/3] overflow-hidden rounded-lg transition-all " +
                       (i === active
-                        ? "border-site-gold ring-1 ring-site-gold"
-                        : "border-transparent opacity-80 hover:opacity-100")
+                        ? "ring-2 ring-site-gold ring-offset-2 ring-offset-background"
+                        : "opacity-70 hover:opacity-100")
                     }
                   >
                     {photoUrls[p.path] ? (
@@ -178,28 +193,34 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
           </div>
 
           {/* Информация */}
-          <div>
+          <div className="min-w-0">
             <p
               className={
-                "text-sm font-semibold " +
+                "inline-flex items-center gap-2 text-sm font-semibold " +
                 (property.status === "free" ? "text-site-green" : "text-site-muted")
               }
             >
+              <span
+                className={
+                  "size-2 rounded-full " +
+                  (property.status === "free" ? "bg-site-green" : "bg-site-muted")
+                }
+              />
               {STATUS_TEXT[property.status] ?? ""}
             </p>
 
-            <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight lg:text-4xl">
+            <h1 className="mt-3 text-[32px] font-bold leading-[1.15] tracking-tight lg:text-4xl">
               {property.title}
             </h1>
 
             {property.address ? (
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-b border-site-line pb-5 text-site-muted">
-                <span className="text-sm">{property.address}</span>
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-site-line pb-5">
+                <span className="text-sm text-site-muted">{property.address}</span>
                 <a
                   href={yandexMapsUrl(property.address)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-site-gold underline underline-offset-4"
+                  className="text-sm font-medium text-site-gold underline decoration-site-gold/40 underline-offset-4 hover:decoration-site-gold"
                 >
                   Карта
                 </a>
@@ -207,23 +228,24 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             {specs.length > 0 ? (
-              <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-5 border-b border-site-line pb-6 sm:grid-cols-3">
+              <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 border-b border-site-line pb-6 sm:grid-cols-3">
                 {specs.map((s) => (
-                  <div key={s.label}>
-                    <dt className="text-sm font-semibold">{s.label}</dt>
-                    <dd className="mt-1 text-sm text-site-muted">{s.value}</dd>
+                  <div key={s.label} className="min-w-0">
+                    <dt className="text-[13px] font-semibold">{s.label}</dt>
+                    <dd className="mt-1 truncate text-[13px] text-site-muted">{s.value}</dd>
                   </div>
                 ))}
               </dl>
             ) : null}
 
             {property.price_month != null ? (
-              <p className="mt-7 text-3xl font-bold tracking-tight lg:text-4xl">
-                {formatMoney(property.price_month)} / мес
+              <p className="mt-6 whitespace-nowrap text-[32px] font-bold leading-none tracking-tight lg:text-[36px]">
+                {formatMoney(property.price_month)}{" "}
+                <span className="text-lg font-medium text-site-muted">/ мес</span>
               </p>
             ) : null}
 
-            <div className="mt-7 flex items-center gap-3">
+            <div className="mt-6 flex items-center gap-3">
               {contactButton}
               {shareButton}
             </div>
@@ -232,88 +254,75 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* Условия аренды */}
         {hasRentTerms ? (
-          <section className="mt-14 rounded-2xl border border-site-line">
-            <div className="grid gap-10 p-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] lg:p-10">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">Условия аренды</h2>
-                <ul className="mt-6 space-y-3 text-sm">
-                  {property.utilities_month != null ? (
-                    <li className="flex items-start gap-3">
-                      <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
-                      Коммунальные платежи оплачиваются отдельно — примерно{" "}
-                      {formatMoney(property.utilities_month)} в месяц
-                    </li>
-                  ) : (
-                    <li className="flex items-start gap-3">
-                      <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
-                      Коммунальные платежи оплачиваются отдельно
-                    </li>
-                  )}
+          <section className="mt-12 overflow-hidden rounded-2xl border border-site-line">
+            <div className="grid gap-8 p-7 md:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-0 lg:p-0">
+              <div className="min-w-0 lg:p-9">
+                <h2 className="text-xl font-bold tracking-tight">Условия аренды</h2>
+                <ul className="mt-5 space-y-3.5 text-sm leading-relaxed">
+                  <li className="flex items-start gap-3">
+                    <GoldDot />
+                    <span>
+                      {property.utilities_month != null
+                        ? `Коммунальные платежи оплачиваются отдельно — примерно ${formatMoney(property.utilities_month)} в месяц`
+                        : "Коммунальные платежи оплачиваются отдельно"}
+                    </span>
+                  </li>
                   {property.deposit != null ? (
                     <li className="flex items-start gap-3">
-                      <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
-                      Страховой депозит вносится при заселении и возвращается сразу при выезде,
-                      при условии что имущество целое
+                      <GoldDot />
+                      <span>
+                        Страховой депозит вносится при заселении и возвращается сразу при выезде,
+                        при условии что имущество целое
+                      </span>
                     </li>
                   ) : null}
                   <li className="flex items-start gap-3">
-                    <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
-                    Проживание с домашними животными обсуждается индивидуально
+                    <GoldDot />
+                    <span>Проживание с домашними животными обсуждается индивидуально</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="lg:border-l lg:border-site-line lg:pl-10">
+              <div className="min-w-0 lg:border-l lg:border-site-line lg:p-9">
                 <p className="text-sm text-site-muted">Стоимость при долгосрочной аренде:</p>
-                <ul className="mt-5 space-y-4 text-sm">
-                  {property.seasonal_pricing && property.summer_price_month != null ? (
-                    <>
-                      <li className="flex items-start gap-3">
-                        <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
-                        <span className="capitalize">{SUMMER_SEASON_LABEL}:</span>{" "}
-                        <strong className="font-semibold">
-                          {formatMoney(property.summer_price_month)} в месяц
-                        </strong>
-                      </li>
-                      {property.price_month != null ? (
-                        <li className="flex items-start gap-3">
-                          <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
-                          Октябрь — май:{" "}
-                          <strong className="font-semibold">
-                            {formatMoney(property.price_month)} в месяц
-                          </strong>
-                        </li>
-                      ) : null}
-                    </>
-                  ) : property.price_month != null ? (
-                    <li className="flex items-start gap-3">
-                      <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
-                      <strong className="font-semibold">
-                        {formatMoney(property.price_month)} в месяц
-                      </strong>
-                    </li>
-                  ) : null}
-                </ul>
-                <dl className="mt-6 space-y-2 text-sm">
+                <dl className="mt-4 space-y-3.5 text-sm">
+                  {seasonRows.map((r) => (
+                    <div key={r.label} className="flex items-baseline justify-between gap-4">
+                      <dt className="flex items-start gap-3 capitalize">
+                        <GoldDot />
+                        <span>{r.label}</span>
+                      </dt>
+                      <dd className="whitespace-nowrap font-semibold">
+                        {formatMoney(r.value)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <dl className="mt-5 space-y-2 border-t border-site-line pt-4 text-sm">
                   {property.deposit != null ? (
-                    <div className="flex flex-wrap items-baseline gap-x-2">
+                    <div className="flex items-baseline justify-between gap-4">
                       <dt className="text-site-muted">Страховой депозит</dt>
-                      <dd className="font-semibold">{formatMoney(property.deposit)}</dd>
+                      <dd className="whitespace-nowrap font-semibold">
+                        {formatMoney(property.deposit)}
+                      </dd>
                     </div>
                   ) : null}
                   {property.commission != null ? (
-                    <div className="flex flex-wrap items-baseline gap-x-2">
+                    <div className="flex items-baseline justify-between gap-4">
                       <dt className="text-site-muted">Комиссия</dt>
-                      <dd className="font-semibold">{formatMoney(property.commission)}</dd>
+                      <dd className="whitespace-nowrap font-semibold">
+                        {formatMoney(property.commission)}
+                      </dd>
                     </div>
                   ) : null}
                 </dl>
               </div>
 
-              <div className="flex flex-col justify-center lg:border-l lg:border-site-line lg:pl-10">
+              <div className="flex min-w-0 flex-col justify-center border-t border-site-line pt-7 md:col-span-2 lg:col-span-1 lg:border-l lg:border-t-0 lg:p-9 lg:pt-9">
                 {property.price_month != null ? (
-                  <p className="text-2xl font-bold tracking-tight lg:text-3xl">
-                    {formatMoney(property.price_month)} / мес
+                  <p className="whitespace-nowrap text-[26px] font-bold leading-none tracking-tight">
+                    {formatMoney(property.price_month)}{" "}
+                    <span className="text-base font-medium text-site-muted">/ мес</span>
                   </p>
                 ) : null}
                 <div className="mt-5 flex items-center gap-3">
@@ -327,12 +336,12 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* Дополнительно */}
         {features.length > 0 ? (
-          <section className="mt-14 border-t border-site-line pt-10">
-            <h2 className="text-2xl font-bold tracking-tight">Дополнительно</h2>
-            <ul className="mt-6 grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="mt-12 border-t border-site-line pt-10">
+            <h2 className="text-xl font-bold tracking-tight">Дополнительно</h2>
+            <ul className="mt-6 grid gap-x-10 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((f) => (
                 <li key={f} className="flex items-start gap-3 text-sm">
-                  <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
+                  <GoldDot />
                   {f}
                 </li>
               ))}
@@ -342,9 +351,9 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* Описание */}
         {paragraphs.length > 0 ? (
-          <section className="mt-14 border-t border-site-line pt-10">
-            <h2 className="text-2xl font-bold tracking-tight">Описание</h2>
-            <div className="mt-6 max-w-[70ch] space-y-4 text-base leading-relaxed text-site-muted">
+          <section className="mt-12 border-t border-site-line pt-10">
+            <h2 className="text-xl font-bold tracking-tight">Описание</h2>
+            <div className="mt-6 max-w-[70ch] space-y-4 text-[15px] leading-relaxed text-site-muted">
               {paragraphs.map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
@@ -354,10 +363,10 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* Локация */}
         {property.location_description || property.address ? (
-          <section className="mt-14 border-t border-site-line pt-10">
-            <h2 className="text-2xl font-bold tracking-tight">Локация</h2>
+          <section className="mt-12 border-t border-site-line pt-10">
+            <h2 className="text-xl font-bold tracking-tight">Локация</h2>
             {property.location_description ? (
-              <p className="mt-6 max-w-[70ch] text-base leading-relaxed text-site-muted">
+              <p className="mt-6 max-w-[70ch] text-[15px] leading-relaxed text-site-muted">
                 {property.location_description}
               </p>
             ) : null}
@@ -373,8 +382,8 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
         {/* Жилой комплекс */}
         {complex ? (
-          <section className="mt-14 border-t border-site-line pt-10">
-            <h2 className="text-2xl font-bold tracking-tight lg:text-3xl">
+          <section className="mt-12 border-t border-site-line pt-10">
+            <h2 className="text-xl font-bold tracking-tight lg:text-2xl">
               ЖК «{complex.name}»
             </h2>
 
@@ -395,7 +404,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
               <div>
                 <h3 className="text-base font-semibold">О комплексе</h3>
                 {complex.description ? (
-                  <p className="mt-4 max-w-[60ch] whitespace-pre-line text-base leading-relaxed text-site-muted">
+                  <p className="mt-4 max-w-[60ch] whitespace-pre-line text-[15px] leading-relaxed text-site-muted">
                     {complex.description}
                   </p>
                 ) : null}
@@ -422,10 +431,10 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             {complex.infrastructure.length > 0 ? (
               <>
                 <h3 className="mt-10 text-base font-semibold">Для вас доступно</h3>
-                <ul className="mt-5 grid gap-x-10 gap-y-3 sm:grid-cols-2">
+                <ul className="mt-5 grid gap-x-10 gap-y-3.5 sm:grid-cols-2">
                   {complex.infrastructure.map((i) => (
                     <li key={i} className="flex items-start gap-3 text-sm">
-                      <span className="mt-1.5 size-2 shrink-0 bg-site-gold" />
+                      <GoldDot />
                       {infrastructureLabel(i)}
                     </li>
                   ))}
