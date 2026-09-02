@@ -21,6 +21,9 @@ type Props = {
 export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [locationDescription, setLocationDescription] = useState(
+    initial?.location_description ?? "",
+  );
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [mainPhoto, setMainPhoto] = useState<string | null>(initial?.main_photo ?? null);
   const [infrastructure, setInfrastructure] = useState<string[]>(initial?.infrastructure ?? []);
@@ -78,6 +81,7 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
     await onSubmit({
       name: name.trim(),
       description,
+      location_description: locationDescription,
       photos,
       main_photo: mainPhoto ?? photos[0]?.path ?? null,
       infrastructure,
@@ -108,6 +112,19 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
               className="resize-y"
               placeholder="Современный жилой комплекс бизнес-класса рядом с парком Дендрарий..."
             />
+          </div>
+          <div>
+            <Label className="mb-2 block text-sm font-medium">Описание локации</Label>
+            <Textarea
+              value={locationDescription}
+              onChange={(e) => setLocationDescription(e.target.value)}
+              rows={compact ? 3 : 5}
+              className="resize-y"
+              placeholder="Комплекс находится в районе Светлана, рядом с парком Дендрарий..."
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Этот текст показывается в блоке «Локация» у всех объектов комплекса.
+            </p>
           </div>
         </div>
       </section>

@@ -1,0 +1,1 @@
+ALTER TABLE public.complexes ADD COLUMN IF NOT EXISTS location_description text NOT NULL DEFAULT '';

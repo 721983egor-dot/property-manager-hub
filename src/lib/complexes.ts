@@ -5,6 +5,7 @@ export type Complex = {
   id: string;
   name: string;
   description: string;
+  location_description: string;
   photos: PropertyPhoto[];
   main_photo: string | null;
   infrastructure: string[];
@@ -42,6 +43,8 @@ function normalize(row: Record<string, unknown>): Complex {
       : [],
     main_photo: typeof row['main_photo'] === "string" ? (row['main_photo'] as string) : null,
     description: typeof row['description'] === "string" ? (row['description'] as string) : "",
+    location_description:
+      typeof row['location_description'] === "string" ? (row['location_description'] as string) : "",
   };
 }
 
@@ -64,6 +67,7 @@ export async function fetchComplex(id: string): Promise<Complex> {
 export type ComplexInput = {
   name: string;
   description: string;
+  location_description: string;
   photos: PropertyPhoto[];
   main_photo: string | null;
   infrastructure: string[];
