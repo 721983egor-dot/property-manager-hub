@@ -439,7 +439,10 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             {property.address ? (
-              <div className="mt-7 overflow-hidden rounded-2xl border border-site-line">
+              <div
+                id="location-map"
+                className="mt-7 scroll-mt-24 overflow-hidden rounded-2xl border border-site-line"
+              >
                 <ClientOnly
                   fallback={<div className="aspect-[21/9] w-full bg-site-navy-soft" />}
                 >
@@ -455,18 +458,9 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             {property.address ? (
-              <div className="mt-5 flex flex-wrap items-center gap-4">
-                <span className="text-[14px] text-site-muted">{property.address}</span>
-                <a
-                  href={yandexMapsUrl(property.address)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-sm bg-site-green/10 px-3 py-1.5 text-[14px] font-medium text-site-green transition-colors hover:bg-site-green/15"
-                >
-                  <MapPin className="size-4" />
-                  Открыть в Яндекс Картах
-                </a>
-              </div>
+              <p className="mt-5 text-[14px] text-site-muted">
+                {shortAddress(property.address)}
+              </p>
             ) : null}
           </section>
         ) : null}
