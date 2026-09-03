@@ -81,27 +81,43 @@ const STATUS_TEXT: Record<string, string> = {
 
 /**
  * Вспомогательные функции форматирования адреса.
- * Адрес хранится строкой через запятую; страна и регион отбрасываются.
+ * Адрес хранится строкой через запятую; страна, регионы, округа и районы
+ * отбрасываются, затем из оставшихся частей выделяются город, улица и дом.
  */
+const STREET_RE =
+  /\b(улица|ул\.|проспект|пр-т|переулок|пер\.|набережная|наб\.|шоссе|бульвар|тупик|проезд|аллея|линия|спуск)\b/i;
+const HOUSE_RE = /^\d{1,4}[а-яА-Я]?([/\-]\d+)?$/;
+const NOISE_RE =
+  /^россия$|\b(край|область|обл\.|федеральный округ|городской округ|внутригородской район|район|микрорайон)\b|^\d{6}$/i;
+
 function addressParts(address: string): string[] {
   return address
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean)
-    .filter((p) => !/^россия/i.test(p) && !/\b(край|область|обл\.)\b/i.test(p));
+    .filter((p) => !NOISE_RE.test(p));
 }
 
 /**
- * Короткий адрес: город (первая часть) + улица и номер дома (последние две).
- * Районы отбрасываются, чтобы город не вытеснялся из вывода.
+ * Короткий адрес: город + улица + номер дома.
+ * Город — последняя оставшаяся «не улица/не дом» часть (в данных геокодеров
+ * город идёт после улицы и мелких кварталов).
  */
 function formatShortAddress(address: string): string {
-  const parts = addressParts(address).filter(
-    (p) => !/\b(район|микрорайон)\b/i.test(p),
-  );
+  const parts = addressParts(address);
   if (parts.length === 0) return address;
   if (parts.length <= 3) return parts.join(", ");
-  return [parts[0], ...parts.slice(-2)].join(", ");
+
+  const street = parts.find((p) => STREET_RE.test(p));
+  const house = parts.find((p) => HOUSE_RE.test(p));
+  const rest = parts.filter((p) => p !== street && p !== house);
+  const city = rest[rest.length - 1];
+
+  const out = [city, street, house].filter(
+    (p): p is string => Boolean(p),
+  );
+  const unique = out.filter((p, i) => out.indexOf(p) === i);
+  return unique.length > 0 ? unique.join(", ") : parts.join(", ");
 }
 
 /** Адрес для верхней части страницы: город, улица и номер дома. */
