@@ -1,61 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 
-import { getMapsApiKey } from "@/lib/geo.functions";
+import { geocodeInBrowser, loadYmaps, type YMaps } from "@/lib/ymaps";
 import { cn } from "@/lib/utils";
 
-type YMaps = {
-  ready: (cb: () => void) => void;
-  Map: new (el: HTMLElement, state: Record<string, unknown>, opts?: Record<string, unknown>) => {
-    geoObjects: { add: (o: unknown) => void; removeAll: () => void };
-    setCenter: (coords: number[], zoom?: number) => void;
-    destroy: () => void;
-  };
-  Placemark: new (
-    coords: number[],
-    props?: Record<string, unknown>,
-    opts?: Record<string, unknown>,
-  ) => {
-    geometry: { getCoordinates: () => number[] };
-    events: { add: (event: string, cb: (e: unknown) => void) => void };
-  };
-};
-
-declare global {
-  interface Window {
-    ymaps?: YMaps;
-  }
-}
-
-let loader: Promise<YMaps> | null = null;
-
-function loadYmaps(apiKey: string): Promise<YMaps> {
-  if (window.ymaps) return Promise.resolve(window.ymaps);
-  if (loader) return loader;
-  loader = new Promise<YMaps>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(apiKey)}&lang=ru_RU`;
-    script.async = true;
-    script.onload = () => {
-      const ymaps = window.ymaps;
-      if (!ymaps) {
-        reject(new Error("Яндекс.Карты не загрузились"));
-        return;
-      }
-      ymaps.ready(() => resolve(ymaps));
-    };
-    script.onerror = () => {
-      loader = null;
-      reject(new Error("Не удалось загрузить Яндекс.Карты"));
-    };
-    document.head.appendChild(script);
-  });
-  return loader;
-}
-
 type Props = {
-  lat: number;
-  lon: number;
+  lat?: number | null;
+  lon?: number | null;
+  /** Адрес: если координат нет, точка определяется по нему в браузере. */
+  address?: string;
   /** Подпись метки (обычно адрес объекта). */
   caption?: string;
   zoom?: number;
@@ -67,6 +19,7 @@ type Props = {
 export function YandexMap({
   lat,
   lon,
+  address,
   caption,
   zoom = 16,
   draggable = false,
@@ -79,54 +32,57 @@ export function YandexMap({
   const dragHandler = useRef(onDragEnd);
   dragHandler.current = onDragEnd;
 
-  const { data } = useQuery({
-    queryKey: ["yandex-maps-key"],
-    queryFn: () => getMapsApiKey(),
-    staleTime: Infinity,
-  });
-  const apiKey = data?.key ?? "";
+  const hasCoords = lat != null && lon != null;
 
   useEffect(() => {
-    if (!apiKey || !container.current) return;
+    if (!container.current) return;
+    if (!hasCoords && !address?.trim()) return;
     let cancelled = false;
+    setFailed(false);
 
-    loadYmaps(apiKey)
-      .then((ymaps) => {
-        if (cancelled || !container.current) return;
-        if (!mapRef.current) {
-          mapRef.current = new ymaps.Map(
-            container.current,
-            { center: [lat, lon], zoom, controls: ["zoomControl"] },
-            { suppressMapOpenBlock: true },
-          );
-        } else {
-          mapRef.current.setCenter([lat, lon], zoom);
-        }
-        const map = mapRef.current;
-        map.geoObjects.removeAll();
-        const placemark = new ymaps.Placemark(
-          [lat, lon],
-          { hintContent: caption ?? "", balloonContent: caption ?? "" },
-          { preset: "islands#redDotIcon", draggable },
-        );
-        if (draggable) {
-          placemark.events.add("dragend", () => {
-            const [nextLat, nextLon] = placemark.geometry.getCoordinates();
-            if (nextLat != null && nextLon != null) {
-              dragHandler.current?.({ lat: nextLat, lon: nextLon });
-            }
-          });
-        }
-        map.geoObjects.add(placemark);
-      })
-      .catch(() => {
+    (async () => {
+      const point = hasCoords
+        ? { lat: lat as number, lon: lon as number }
+        : await geocodeInBrowser(address ?? "");
+      if (cancelled || !point) {
         if (!cancelled) setFailed(true);
-      });
+        return;
+      }
+      const ymaps = await loadYmaps();
+      if (cancelled || !container.current) return;
+      if (!mapRef.current) {
+        mapRef.current = new ymaps.Map(
+          container.current,
+          { center: [point.lat, point.lon], zoom, controls: ["zoomControl"] },
+          { suppressMapOpenBlock: true },
+        );
+      } else {
+        mapRef.current.setCenter([point.lat, point.lon], zoom);
+      }
+      const map = mapRef.current;
+      map.geoObjects.removeAll();
+      const placemark = new ymaps.Placemark(
+        [point.lat, point.lon],
+        { hintContent: caption ?? "", balloonContent: caption ?? "" },
+        { preset: "islands#redDotIcon", draggable },
+      );
+      if (draggable) {
+        placemark.events.add("dragend", () => {
+          const [nextLat, nextLon] = placemark.geometry.getCoordinates();
+          if (nextLat != null && nextLon != null) {
+            dragHandler.current?.({ lat: nextLat, lon: nextLon });
+          }
+        });
+      }
+      map.geoObjects.add(placemark);
+    })().catch(() => {
+      if (!cancelled) setFailed(true);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [apiKey, lat, lon, zoom, caption, draggable]);
+  }, [hasCoords, lat, lon, address, zoom, caption, draggable]);
 
   useEffect(() => {
     return () => {
