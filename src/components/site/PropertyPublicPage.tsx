@@ -314,11 +314,9 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
             {property.address ? (
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px] text-site-muted">
-                <span>{property.address}</span>
+                <span>{shortAddress(property.address)}</span>
                 <a
-                  href={yandexMapsUrl(property.address)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#location-map"
                   className="inline-flex items-center gap-1 font-medium text-site-gold underline decoration-site-gold/60 underline-offset-4 transition-colors hover:text-site-navy"
                 >
                   Карта
