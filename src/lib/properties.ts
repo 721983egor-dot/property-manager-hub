@@ -170,6 +170,8 @@ function normalize(row: Record<string, unknown>): Property {
     ...(row as unknown as Property),
     photos,
     published: Boolean(row['published']),
+    latitude: num(row['latitude']),
+    longitude: num(row['longitude']),
     price_month: num(row['price_month']),
     summer_price_month: num(row['summer_price_month']),
     deposit: num(row['deposit']),
