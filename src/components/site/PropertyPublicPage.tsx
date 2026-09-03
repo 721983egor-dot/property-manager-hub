@@ -36,6 +36,8 @@ export type PublicPropertyView = Pick<
   | "type"
   | "complex_name"
   | "address"
+  | "latitude"
+  | "longitude"
   | "floor"
   | "total_floors"
   | "rooms"
