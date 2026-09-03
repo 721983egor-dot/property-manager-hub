@@ -8,6 +8,57 @@ export type AddressSuggestion = {
 
 export type GeoPoint = { lat: number; lon: number };
 
+
+const OSM_UA = "residence-more-rm-os/1.0";
+
+/** Запасной источник подсказок, пока ключи Яндекса не активны. */
+async function osmSuggest(text: string): Promise<AddressSuggestion[]> {
+  try {
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("q", text);
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("addressdetails", "1");
+    url.searchParams.set("accept-language", "ru");
+    url.searchParams.set("limit", "7");
+    const res = await fetch(url.toString(), { headers: { "User-Agent": OSM_UA } });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { display_name?: string }[];
+    return json
+      .filter((r) => r.display_name)
+      .map((r) => {
+        const parts = (r.display_name as string).split(", ");
+        return {
+          title: parts.slice(0, 2).join(", "),
+          subtitle: parts.slice(2).join(", "),
+          value: r.display_name as string,
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
+/** Запасное геокодирование через OpenStreetMap. */
+async function osmGeocode(address: string): Promise<GeoPoint | null> {
+  try {
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("q", address);
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("limit", "1");
+    const res = await fetch(url.toString(), { headers: { "User-Agent": OSM_UA } });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { lat?: string; lon?: string }[];
+    const first = json[0];
+    if (!first) return null;
+    const lat = Number(first.lat);
+    const lon = Number(first.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    return { lat, lon };
+  } catch {
+    return null;
+  }
+}
+
 /** Ключ JavaScript API Яндекс.Карт для загрузки скрипта в браузере. */
 export const getMapsApiKey = createServerFn({ method: "GET" }).handler(async () => {
   return { key: process.env["YANDEX_MAPS_JS_API_KEY"] ?? "" };
@@ -20,7 +71,7 @@ export const suggestAddress = createServerFn({ method: "POST" })
     const text = data.text.trim();
     if (text.length < 3) return [];
     const apikey = process.env["YANDEX_SUGGEST_API_KEY"];
-    if (!apikey) return [];
+    if (!apikey) return osmSuggest(text);
 
     const url = new URL("https://suggest-maps.yandex.ru/v1/suggest");
     url.searchParams.set("apikey", apikey);
@@ -32,7 +83,7 @@ export const suggestAddress = createServerFn({ method: "POST" })
 
     try {
       const res = await fetch(url.toString());
-      if (!res.ok) return [];
+      if (!res.ok) return osmSuggest(text);
       const json = (await res.json()) as {
         results?: {
           title?: { text?: string };
@@ -40,7 +91,9 @@ export const suggestAddress = createServerFn({ method: "POST" })
           address?: { formatted_address?: string };
         }[];
       };
-      return (json.results ?? []).map((r) => {
+      const results = json.results ?? [];
+      if (results.length === 0) return osmSuggest(text);
+      return results.map((r) => {
         const title = r.title?.text ?? "";
         const subtitle = r.subtitle?.text ?? "";
         return {
@@ -50,7 +103,7 @@ export const suggestAddress = createServerFn({ method: "POST" })
         };
       });
     } catch {
-      return [];
+      return osmSuggest(text);
     }
   });
 
@@ -63,7 +116,7 @@ export const geocodeAddress = createServerFn({ method: "POST" })
     // Ключ HTTP-геокодера отдельный; если его нет — пробуем ключ JS API.
     const apikey =
       process.env["YANDEX_GEOCODER_API_KEY"] || process.env["YANDEX_MAPS_JS_API_KEY"];
-    if (!apikey) return null;
+    if (!apikey) return osmGeocode(address);
 
     const url = new URL("https://geocode-maps.yandex.ru/1.x/");
     url.searchParams.set("apikey", apikey);
@@ -74,7 +127,7 @@ export const geocodeAddress = createServerFn({ method: "POST" })
 
     try {
       const res = await fetch(url.toString());
-      if (!res.ok) return null;
+      if (!res.ok) return osmGeocode(address);
       const json = (await res.json()) as {
         response?: {
           GeoObjectCollection?: {
@@ -87,9 +140,9 @@ export const geocodeAddress = createServerFn({ method: "POST" })
       const [lonStr, latStr] = pos.split(" ");
       const lat = Number(latStr);
       const lon = Number(lonStr);
-      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return osmGeocode(address);
       return { lat, lon };
     } catch {
-      return null;
+      return osmGeocode(address);
     }
   });
