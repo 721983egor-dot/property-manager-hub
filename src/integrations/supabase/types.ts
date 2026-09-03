@@ -216,6 +216,7 @@ export type Database = {
           rent_terms: string
           rooms: number
           seasonal_pricing: boolean
+          source_url: string | null
           status: Database["public"]["Enums"]["property_status"]
           summer_price_month: number | null
           title: string
@@ -252,6 +253,7 @@ export type Database = {
           rent_terms?: string
           rooms?: number
           seasonal_pricing?: boolean
+          source_url?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           summer_price_month?: number | null
           title: string
@@ -288,6 +290,7 @@ export type Database = {
           rent_terms?: string
           rooms?: number
           seasonal_pricing?: boolean
+          source_url?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           summer_price_month?: number | null
           title?: string
