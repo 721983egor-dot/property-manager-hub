@@ -453,28 +453,27 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             {property.address ? (
-              <div
-                id="location-map"
-                className="mt-7 scroll-mt-24 overflow-hidden rounded-2xl border border-site-line"
-              >
-                <ClientOnly
-                  fallback={<div className="aspect-[21/9] w-full bg-site-navy-soft" />}
+              <>
+                <p className="mt-7 text-[16px] font-medium text-site-navy">
+                  {mapAddress(property.address)}
+                </p>
+                <div
+                  id="location-map"
+                  className="mt-3 scroll-mt-24 overflow-hidden rounded-2xl border border-site-line"
                 >
-                  <YandexMap
-                    lat={property.latitude}
-                    lon={property.longitude}
-                    address={property.address}
-                    caption={property.address}
-                    className="aspect-[21/9] w-full"
-                  />
-                </ClientOnly>
-              </div>
-            ) : null}
-
-            {property.address ? (
-              <p className="mt-5 text-[14px] text-site-muted">
-                {shortAddress(property.address)}
-              </p>
+                  <ClientOnly
+                    fallback={<div className="aspect-[21/9] w-full bg-site-navy-soft" />}
+                  >
+                    <YandexMap
+                      lat={property.latitude}
+                      lon={property.longitude}
+                      address={property.address}
+                      caption={mapAddress(property.address)}
+                      className="aspect-[21/9] w-full"
+                    />
+                  </ClientOnly>
+                </div>
+              </>
             ) : null}
           </section>
         ) : null}
