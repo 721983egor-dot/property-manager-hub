@@ -17,7 +17,6 @@ import {
   formatMoney,
   roomsLabel,
   typeLabel,
-  yandexMapsUrl,
   type Property,
 } from "@/lib/properties";
 import { infrastructureLabel, type Complex } from "@/lib/complexes";
