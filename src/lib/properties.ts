@@ -187,7 +187,13 @@ export function internalTitle(p: { internal_name?: string | null; title: string 
 }
 
 export function typeLabel(value: PropertyType) {
-  return PROPERTY_TYPES.find((t) => t.value === value)?.label ?? value;
+  const normalized: PropertyType = value === "villa" ? "house" : value;
+  return PROPERTY_TYPES.find((t) => t.value === normalized)?.label ?? value;
+}
+
+/** Метка характеристики карточки: для домов — свой справочник. */
+export function houseHighlightLabel(value: string) {
+  return HOUSE_HIGHLIGHT_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
 export function statusLabel(value: PropertyStatus) {
