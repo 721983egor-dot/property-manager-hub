@@ -80,17 +80,31 @@ const STATUS_TEXT: Record<string, string> = {
 };
 
 /**
- * Короткий адрес для публичной страницы: «Сочи, Курортный проспект 105».
- * Отбрасываем страну/регион и берём город + улицу с домом.
+ * Вспомогательные функции форматирования адреса.
+ * Адрес хранится строкой через запятую; страна и регион отбрасываются.
  */
-function shortAddress(address: string): string {
-  const parts = address
+function addressParts(address: string): string[] {
+  return address
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean)
     .filter((p) => !/^россия/i.test(p) && !/\b(край|область|обл\.)\b/i.test(p));
-  if (parts.length <= 2) return parts.join(", ") || address;
-  return parts.slice(0, 2).join(", ");
+}
+
+/** Короткий адрес для верхней части страницы: улица и номер дома. */
+function shortAddress(address: string): string {
+  const parts = addressParts(address);
+  if (parts.length === 0) return address;
+  if (parts.length <= 2) return parts.join(", ");
+  return parts.slice(-2).join(", ");
+}
+
+/** Полный адрес для блока с картой: город, улица и номер дома. */
+function mapAddress(address: string): string {
+  const parts = addressParts(address);
+  if (parts.length === 0) return address;
+  if (parts.length <= 3) return parts.join(", ");
+  return parts.slice(-3).join(", ");
 }
 
 function Bullet({ children }: { children: React.ReactNode }) {
