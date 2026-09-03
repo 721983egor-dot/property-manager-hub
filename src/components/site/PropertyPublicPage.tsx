@@ -171,15 +171,33 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
     ? Math.min(complexActive, complexPhotos.length - 1)
     : 0;
 
-  const specRow1 = [
-    { label: "Тип", value: typeLabel(property.type) },
-    { label: "Комплекс", value: complex?.name || property.complex_name || null },
-    {
-      label: "Этаж",
-      value:
-        property.floor == null && property.total_floors == null ? null : floorLabel(property),
-    },
-  ].filter((s) => s.value);
+  const isHouse = isHouseType(property.type);
+
+  const specRow1 = (
+    isHouse
+      ? [
+          { label: "Тип", value: typeLabel(property.type) },
+          {
+            label: "Этажность",
+            value: property.total_floors == null ? null : String(property.total_floors),
+          },
+          {
+            label: "Участок",
+            value: property.land_area == null ? null : formatLandArea(property.land_area),
+          },
+        ]
+      : [
+          { label: "Тип", value: typeLabel(property.type) },
+          { label: "Комплекс", value: complex?.name || property.complex_name || null },
+          {
+            label: "Этаж",
+            value:
+              property.floor == null && property.total_floors == null
+                ? null
+                : floorLabel(property),
+          },
+        ]
+  ).filter((s) => s.value);
 
   const specRow2 = [
     { label: "Планировка", value: roomsLabel(property.rooms) },
@@ -503,7 +521,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
         ) : null}
 
         {/* ===== Жилой комплекс ===== */}
-        {complex ? (
+        {complex && !isHouse ? (
           <section className="mt-14">
             <SectionTitle>ЖК «{complex.name}»</SectionTitle>
             <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
