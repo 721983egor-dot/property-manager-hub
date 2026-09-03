@@ -208,7 +208,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     // Адрес мог быть введён вручную — определяем координаты перед сохранением.
     let point = coords;
     if (!point && address.trim()) {
-      point = await geocodeAddress({ data: { address: address.trim() } }).catch(() => null);
+      point =
+        (await geocodeAddress({ data: { address: address.trim() } }).catch(() => null)) ??
+        (await geocodeInBrowser(address.trim()));
       if (point) setCoords(point);
     }
     await onSubmit({
