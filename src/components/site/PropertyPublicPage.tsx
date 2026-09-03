@@ -91,15 +91,15 @@ function addressParts(address: string): string[] {
     .filter((p) => !/^россия/i.test(p) && !/\b(край|область|обл\.)\b/i.test(p));
 }
 
-/** Короткий адрес для верхней части страницы: улица и номер дома. */
+/** Адрес для верхней части страницы: город, улица и номер дома. */
 function shortAddress(address: string): string {
   const parts = addressParts(address);
   if (parts.length === 0) return address;
-  if (parts.length <= 2) return parts.join(", ");
-  return parts.slice(-2).join(", ");
+  if (parts.length <= 3) return parts.join(", ");
+  return parts.slice(-3).join(", ");
 }
 
-/** Полный адрес для блока с картой: город, улица и номер дома. */
+/** Адрес для блока с картой: город, улица и номер дома. */
 function mapAddress(address: string): string {
   const parts = addressParts(address);
   if (parts.length === 0) return address;
