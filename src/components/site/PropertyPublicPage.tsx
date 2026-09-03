@@ -422,40 +422,35 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
               </ul>
             ) : null}
 
-            {/* Mock-карта */}
-            <div className="relative mt-7 grid aspect-[21/9] w-full place-items-center overflow-hidden rounded-2xl border border-site-line bg-site-navy-soft">
-              <div
-                className="absolute inset-0 opacity-[0.35]"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to right, var(--site-line) 1px, transparent 1px), linear-gradient(to bottom, var(--site-line) 1px, transparent 1px)",
-                  backgroundSize: "56px 56px",
-                }}
-              />
-              <div className="relative flex flex-col items-center gap-3 text-center">
-                <span className="relative grid size-12 place-items-center rounded-full bg-background shadow-sm">
-                  <MapPin className="size-5 text-site-gold" />
-                  <span className="absolute inset-0 animate-ping rounded-full bg-site-gold/20" />
-                </span>
-                <span className="text-[12px] font-semibold uppercase tracking-[0.3em] text-site-muted">
-                  Карта появится после подключения Яндекс.Карт
-                </span>
-                {property.address ? (
-                  <span className="text-[14px] text-site-muted">{property.address}</span>
-                ) : null}
-                {property.address ? (
-                  <a
-                    href={yandexMapsUrl(property.address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-sm bg-site-green/10 px-3 py-1.5 text-[14px] font-medium text-site-green transition-colors hover:bg-site-green/15"
-                  >
-                    <MapPin className="size-4" />
-                    Открыть в Яндекс Картах
-                  </a>
-                ) : null}
+            {property.latitude != null && property.longitude != null ? (
+              <div className="mt-7 overflow-hidden rounded-2xl border border-site-line">
+                <ClientOnly
+                  fallback={<div className="aspect-[21/9] w-full bg-site-navy-soft" />}
+                >
+                  <YandexMap
+                    lat={property.latitude}
+                    lon={property.longitude}
+                    caption={property.address}
+                    className="aspect-[21/9] w-full"
+                  />
+                </ClientOnly>
               </div>
-            </div>
+            ) : null}
+
+            {property.address ? (
+              <div className="mt-5 flex flex-wrap items-center gap-4">
+                <span className="text-[14px] text-site-muted">{property.address}</span>
+                <a
+                  href={yandexMapsUrl(property.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-sm bg-site-green/10 px-3 py-1.5 text-[14px] font-medium text-site-green transition-colors hover:bg-site-green/15"
+                >
+                  <MapPin className="size-4" />
+                  Открыть в Яндекс Картах
+                </a>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
