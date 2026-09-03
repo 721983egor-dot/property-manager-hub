@@ -30,6 +30,7 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder }: 
     let cancelled = false;
     const timer = setTimeout(() => {
       suggestAddress({ data: { text } })
+        .catch(() => [] as AddressSuggestion[])
         .then((res) => {
           if (cancelled) return;
           setItems(res);

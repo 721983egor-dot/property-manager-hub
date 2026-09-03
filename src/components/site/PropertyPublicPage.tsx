@@ -427,7 +427,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
               </ul>
             ) : null}
 
-            {property.latitude != null && property.longitude != null ? (
+            {property.address ? (
               <div className="mt-7 overflow-hidden rounded-2xl border border-site-line">
                 <ClientOnly
                   fallback={<div className="aspect-[21/9] w-full bg-site-navy-soft" />}
@@ -435,6 +435,7 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                   <YandexMap
                     lat={property.latitude}
                     lon={property.longitude}
+                    address={property.address}
                     caption={property.address}
                     className="aspect-[21/9] w-full"
                   />

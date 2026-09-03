@@ -322,25 +322,23 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
                 setCoords(null);
               }}
               onSelect={(v) => {
-                void geocodeAddress({ data: { address: v } }).then((point) => {
-                  if (point) setCoords(point);
-                });
+                void geocodeAddress({ data: { address: v } })
+                  .catch(() => null)
+                  .then((point) => {
+                    if (point) setCoords(point);
+                  });
               }}
               placeholder="Сочи, ул. Северная, 12"
             />
-            {coords ? (
+            {address.trim() ? (
               <div className="mt-3 space-y-1">
                 <YandexMap
-                  lat={coords.lat}
-                  lon={coords.lon}
+                  lat={coords?.lat ?? null}
+                  lon={coords?.lon ?? null}
+                  address={address}
                   caption={address}
-                  draggable
-                  onDragEnd={setCoords}
-                  className="h-56 w-full border border-border"
+                  className="h-56 w-full rounded-xl border border-border"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Метку можно перетащить, если точка встала неточно
-                </p>
               </div>
             ) : null}
           </Field>
