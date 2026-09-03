@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { ClientOnly } from "@tanstack/react-router";
 import { Check, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
+
+import { YandexMap } from "@/components/YandexMap";
 
 import {
   APPLIANCE_OPTIONS,
