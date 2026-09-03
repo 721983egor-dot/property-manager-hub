@@ -18,7 +18,6 @@ import { ComplexForm } from "@/components/ComplexForm";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { YandexMap } from "@/components/YandexMap";
 import { geocodeAddress } from "@/lib/geo.functions";
-import { geocodeInBrowser } from "@/lib/ymaps";
 import { createComplex, fetchComplexes, infrastructureLabel } from "@/lib/complexes";
 import {
   Select,
@@ -208,9 +207,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     // Адрес мог быть введён вручную — определяем координаты перед сохранением.
     let point = coords;
     if (!point && address.trim()) {
-      point =
-        (await geocodeAddress({ data: { address: address.trim() } }).catch(() => null)) ??
-        (await geocodeInBrowser(address.trim()));
+      point = await geocodeAddress({ data: { address: address.trim() } }).catch(() => null);
       if (point) setCoords(point);
     }
     await onSubmit({
@@ -327,26 +324,21 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               onSelect={(v) => {
                 void geocodeAddress({ data: { address: v } })
                   .catch(() => null)
-                  .then(async (point) => point ?? (await geocodeInBrowser(v)))
                   .then((point) => {
                     if (point) setCoords(point);
                   });
               }}
               placeholder="Сочи, ул. Северная, 12"
             />
-            {coords ? (
+            {address.trim() ? (
               <div className="mt-3 space-y-1">
                 <YandexMap
-                  lat={coords.lat}
-                  lon={coords.lon}
+                  lat={coords?.lat}
+                  lon={coords?.lon}
+                  address={address}
                   caption={address}
-                  draggable
-                  onDragEnd={setCoords}
-                  className="h-56 w-full border border-border"
+                  className="h-56 w-full rounded-xl border border-border"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Метку можно перетащить, если точка встала неточно
-                </p>
               </div>
             ) : null}
           </Field>

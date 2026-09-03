@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { suggestAddress, type AddressSuggestion } from "@/lib/geo.functions";
-import { suggestInBrowser } from "@/lib/ymaps";
 
 type Props = {
   value: string;
@@ -32,7 +31,6 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder }: 
     const timer = setTimeout(() => {
       suggestAddress({ data: { text } })
         .catch(() => [] as AddressSuggestion[])
-        .then(async (res) => (res.length > 0 ? res : await suggestInBrowser(text)))
         .then((res) => {
           if (cancelled) return;
           setItems(res);
