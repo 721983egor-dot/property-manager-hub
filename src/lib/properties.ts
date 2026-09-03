@@ -231,6 +231,8 @@ export type PropertyInput = {
   complex_id: string | null;
   complex_name: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   floor: number | null;
   total_floors: number | null;
   rooms: number;
