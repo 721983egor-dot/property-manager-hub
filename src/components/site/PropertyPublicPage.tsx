@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ClientOnly } from "@tanstack/react-router";
-import { Check, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 
 import { YandexMap } from "@/components/YandexMap";
 
@@ -17,7 +17,6 @@ import {
   formatMoney,
   roomsLabel,
   typeLabel,
-  yandexMapsUrl,
   type Property,
 } from "@/lib/properties";
 import { infrastructureLabel, type Complex } from "@/lib/complexes";
@@ -79,6 +78,20 @@ const STATUS_TEXT: Record<string, string> = {
   booked: "Забронирован",
   archived: "Не публикуется",
 };
+
+/**
+ * Короткий адрес для публичной страницы: «Сочи, Курортный проспект 105».
+ * Отбрасываем страну/регион и берём город + улицу с домом.
+ */
+function shortAddress(address: string): string {
+  const parts = address
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => !/^россия/i.test(p) && !/\b(край|область|обл\.)\b/i.test(p));
+  if (parts.length <= 2) return parts.join(", ") || address;
+  return parts.slice(0, 2).join(", ");
+}
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
@@ -301,11 +314,9 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
             {property.address ? (
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px] text-site-muted">
-                <span>{property.address}</span>
+                <span>{shortAddress(property.address)}</span>
                 <a
-                  href={yandexMapsUrl(property.address)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#location-map"
                   className="inline-flex items-center gap-1 font-medium text-site-gold underline decoration-site-gold/60 underline-offset-4 transition-colors hover:text-site-navy"
                 >
                   Карта
@@ -428,7 +439,10 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             {property.address ? (
-              <div className="mt-7 overflow-hidden rounded-2xl border border-site-line">
+              <div
+                id="location-map"
+                className="mt-7 scroll-mt-24 overflow-hidden rounded-2xl border border-site-line"
+              >
                 <ClientOnly
                   fallback={<div className="aspect-[21/9] w-full bg-site-navy-soft" />}
                 >
@@ -444,18 +458,9 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             {property.address ? (
-              <div className="mt-5 flex flex-wrap items-center gap-4">
-                <span className="text-[14px] text-site-muted">{property.address}</span>
-                <a
-                  href={yandexMapsUrl(property.address)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-sm bg-site-green/10 px-3 py-1.5 text-[14px] font-medium text-site-green transition-colors hover:bg-site-green/15"
-                >
-                  <MapPin className="size-4" />
-                  Открыть в Яндекс Картах
-                </a>
-              </div>
+              <p className="mt-5 text-[14px] text-site-muted">
+                {shortAddress(property.address)}
+              </p>
             ) : null}
           </section>
         ) : null}
