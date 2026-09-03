@@ -201,6 +201,12 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       toast.error("Укажите название объекта");
       return;
     }
+    // Адрес мог быть введён вручную — определяем координаты перед сохранением.
+    let point = coords;
+    if (!point && address.trim()) {
+      point = await geocodeAddress({ data: { address: address.trim() } }).catch(() => null);
+      if (point) setCoords(point);
+    }
     await onSubmit({
       title: title.trim(),
       internal_name: internalName.trim(),
@@ -208,6 +214,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       complex_id: complexId,
       complex_name: complexes.find((c) => c.id === complexId)?.name ?? "",
       address: address.trim(),
+      latitude: point?.lat ?? null,
+      longitude: point?.lon ?? null,
       floor: floor === "" ? null : Number(floor),
       total_floors: totalFloors === "" ? null : Number(totalFloors),
       rooms: Number(rooms),
