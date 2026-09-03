@@ -79,6 +79,20 @@ const STATUS_TEXT: Record<string, string> = {
   archived: "Не публикуется",
 };
 
+/**
+ * Короткий адрес для публичной страницы: «Сочи, Курортный проспект 105».
+ * Отбрасываем страну/регион и берём город + улицу с домом.
+ */
+function shortAddress(address: string): string {
+  const parts = address
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => !/^россия/i.test(p) && !/\b(край|область|обл\.)\b/i.test(p));
+  if (parts.length <= 2) return parts.join(", ") || address;
+  return parts.slice(0, 2).join(", ");
+}
+
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2.5 text-[15px] leading-relaxed text-site-muted">
