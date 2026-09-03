@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-react";
@@ -6,6 +6,7 @@ import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BookingDialog } from "@/components/BookingDialog";
+import { YandexMap } from "@/components/YandexMap";
 import { fetchCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
@@ -169,6 +170,16 @@ function ObjectViewPage() {
                 </Button>
               ) : null}
             </div>
+            {data.latitude != null && data.longitude != null ? (
+              <ClientOnly fallback={<div className="mt-4 h-64 rounded-xl bg-muted" />}>
+                <YandexMap
+                  lat={data.latitude}
+                  lon={data.longitude}
+                  caption={data.address}
+                  className="mt-4 h-64 w-full border border-border"
+                />
+              </ClientOnly>
+            ) : null}
           </section>
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">

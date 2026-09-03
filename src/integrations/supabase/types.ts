@@ -205,7 +205,9 @@ export type Database = {
           floor: number | null
           id: string
           internal_name: string
+          latitude: number | null
           location_description: string
+          longitude: number | null
           outdoor_spaces: string[]
           photos: Json
           price_month: number | null
@@ -239,7 +241,9 @@ export type Database = {
           floor?: number | null
           id?: string
           internal_name?: string
+          latitude?: number | null
           location_description?: string
+          longitude?: number | null
           outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null
@@ -273,7 +277,9 @@ export type Database = {
           floor?: number | null
           id?: string
           internal_name?: string
+          latitude?: number | null
           location_description?: string
+          longitude?: number | null
           outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null

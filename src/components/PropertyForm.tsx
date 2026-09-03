@@ -15,6 +15,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ComplexForm } from "@/components/ComplexForm";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { YandexMap } from "@/components/YandexMap";
+import { geocodeAddress } from "@/lib/geo.functions";
 import { createComplex, fetchComplexes, infrastructureLabel } from "@/lib/complexes";
 import {
   Select,
@@ -73,6 +76,11 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [complexId, setComplexId] = useState<string | null>(initial?.complex_id ?? null);
   const [complexDialog, setComplexDialog] = useState(false);
   const [address, setAddress] = useState(initial?.address ?? "");
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(
+    initial?.latitude != null && initial?.longitude != null
+      ? { lat: initial.latitude, lon: initial.longitude }
+      : null,
+  );
   const [floor, setFloor] = useState(initial?.floor != null ? String(initial.floor) : "");
   const [totalFloors, setTotalFloors] = useState(
     initial?.total_floors != null ? String(initial.total_floors) : "",
@@ -196,6 +204,12 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       toast.error("Укажите название объекта");
       return;
     }
+    // Адрес мог быть введён вручную — определяем координаты перед сохранением.
+    let point = coords;
+    if (!point && address.trim()) {
+      point = await geocodeAddress({ data: { address: address.trim() } }).catch(() => null);
+      if (point) setCoords(point);
+    }
     await onSubmit({
       title: title.trim(),
       internal_name: internalName.trim(),
@@ -203,6 +217,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       complex_id: complexId,
       complex_name: complexes.find((c) => c.id === complexId)?.name ?? "",
       address: address.trim(),
+      latitude: point?.lat ?? null,
+      longitude: point?.lon ?? null,
       floor: floor === "" ? null : Number(floor),
       total_floors: totalFloors === "" ? null : Number(totalFloors),
       rooms: Number(rooms),
@@ -299,11 +315,34 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Field>
 
           <Field label="Адрес объекта" className="md:col-span-2">
-            <Input
+            <AddressAutocomplete
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(v) => {
+                setAddress(v);
+                setCoords(null);
+              }}
+              onSelect={(v) => {
+                void geocodeAddress({ data: { address: v } }).then((point) => {
+                  if (point) setCoords(point);
+                });
+              }}
               placeholder="Сочи, ул. Северная, 12"
             />
+            {coords ? (
+              <div className="mt-3 space-y-1">
+                <YandexMap
+                  lat={coords.lat}
+                  lon={coords.lon}
+                  caption={address}
+                  draggable
+                  onDragEnd={setCoords}
+                  className="h-56 w-full border border-border"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Метку можно перетащить, если точка встала неточно
+                </p>
+              </div>
+            ) : null}
           </Field>
 
           <Field label="Этаж объекта">

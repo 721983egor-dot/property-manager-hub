@@ -15,6 +15,8 @@ export type Property = {
   complex_name: string;
   complex_id: string | null;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   floor: number | null;
   total_floors: number | null;
   rooms: number;
@@ -168,6 +170,8 @@ function normalize(row: Record<string, unknown>): Property {
     ...(row as unknown as Property),
     photos,
     published: Boolean(row['published']),
+    latitude: num(row['latitude']),
+    longitude: num(row['longitude']),
     price_month: num(row['price_month']),
     summer_price_month: num(row['summer_price_month']),
     deposit: num(row['deposit']),
@@ -227,6 +231,8 @@ export type PropertyInput = {
   complex_id: string | null;
   complex_name: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   floor: number | null;
   total_floors: number | null;
   rooms: number;
