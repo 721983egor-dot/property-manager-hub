@@ -32,6 +32,10 @@ import {
   BATHROOM_OPTIONS,
   DEFAULT_RENT_TERMS,
   EXTRA_FEATURE_OPTIONS,
+  HOUSE_EXTRA_FEATURE_OPTIONS,
+  HOUSE_HIGHLIGHT_OPTIONS,
+  houseHighlightLabel,
+  isHouseType,
   extraFeatureLabel,
   OUTDOOR_OPTIONS,
   PROPERTY_STATUSES,
@@ -104,6 +108,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     initial?.commission != null ? String(initial.commission) : "",
   );
   const [area, setArea] = useState(initial?.area != null ? String(initial.area) : "");
+  const [landArea, setLandArea] = useState(
+    initial?.land_area != null ? String(initial.land_area) : "",
+  );
   const [utilities, setUtilities] = useState(
     initial?.utilities_month != null ? String(initial.utilities_month) : "",
   );
@@ -142,6 +149,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     setList: (v: string[]) => void,
   ) => setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   const toNum = (v: string) => (v.trim() === "" ? null : Number(v));
+  const isHouse = isHouseType(type);
+  const featureOptions = isHouse ? HOUSE_EXTRA_FEATURE_OPTIONS : EXTRA_FEATURE_OPTIONS;
 
 
   useEffect(() => {
@@ -214,12 +223,12 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       title: title.trim(),
       internal_name: internalName.trim(),
       type,
-      complex_id: complexId,
-      complex_name: complexes.find((c) => c.id === complexId)?.name ?? "",
+      complex_id: isHouse ? null : complexId,
+      complex_name: isHouse ? "" : (complexes.find((c) => c.id === complexId)?.name ?? ""),
       address: address.trim(),
       latitude: point?.lat ?? null,
       longitude: point?.lon ?? null,
-      floor: floor === "" ? null : Number(floor),
+      floor: isHouse || floor === "" ? null : Number(floor),
       total_floors: totalFloors === "" ? null : Number(totalFloors),
       rooms: Number(rooms),
       bathrooms: Number(bathrooms),
@@ -233,6 +242,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       deposit: toNum(deposit),
       commission: toNum(commission),
       area: toNum(area),
+      land_area: isHouse ? toNum(landArea) : null,
       utilities_month: toNum(utilities),
       outdoor_spaces: outdoor,
       appliances,
@@ -250,6 +260,21 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Основная информация</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <Field label="Тип объекта" className="md:col-span-2">
+            <Select value={type} onValueChange={(v) => setType(v as PropertyType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROPERTY_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
           <Field label="Название объекта" className="md:col-span-2">
             <Input
               value={title}
@@ -269,21 +294,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             />
           </Field>
 
-          <Field label="Тип объекта">
-            <Select value={type} onValueChange={(v) => setType(v as PropertyType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PROPERTY_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
+          {isHouse ? null : (
           <Field label="Комплекс">
             <div className="flex gap-2">
               <Select
@@ -313,6 +324,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               </Button>
             </div>
           </Field>
+          )}
 
           <Field label="Адрес объекта" className="md:col-span-2">
             <AddressAutocomplete
@@ -343,23 +355,25 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             ) : null}
           </Field>
 
-          <Field label="Этаж объекта">
-            <Input
-              type="number"
-              min={-5}
-              value={floor}
-              onChange={(e) => setFloor(e.target.value)}
-              placeholder="7"
-            />
-          </Field>
+          {isHouse ? null : (
+            <Field label="Этаж объекта">
+              <Input
+                type="number"
+                min={-5}
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+                placeholder="7"
+              />
+            </Field>
+          )}
 
-          <Field label="Количество этажей">
+          <Field label={isHouse ? "Этажность" : "Количество этажей"}>
             <Input
               type="number"
               min={1}
               value={totalFloors}
               onChange={(e) => setTotalFloors(e.target.value)}
-              placeholder="18"
+              placeholder={isHouse ? "2" : "18"}
             />
           </Field>
 
@@ -403,6 +417,19 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               placeholder="65"
             />
           </Field>
+
+          {isHouse ? (
+            <Field label="Площадь участка, сот.">
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={landArea}
+                onChange={(e) => setLandArea(e.target.value)}
+                placeholder="6"
+              />
+            </Field>
+          ) : null}
 
           <Field label="Статус">
             <Select value={status} onValueChange={(v) => setStatus(v as PropertyStatus)}>
@@ -547,7 +574,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           Отмеченные значения показываются в блоке «Дополнительно» на странице объекта.
         </p>
         <div className="mt-5 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-          {EXTRA_FEATURE_OPTIONS.map((o) => (
+          {featureOptions.map((o) => (
             <label key={o.value} className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -560,11 +587,11 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           ))}
         </div>
 
-        {extraFeatures.filter((v) => !EXTRA_FEATURE_OPTIONS.some((o) => o.value === v)).length >
+        {extraFeatures.filter((v) => !featureOptions.some((o) => o.value === v)).length >
         0 ? (
           <ul className="mt-5 flex flex-wrap gap-2">
             {extraFeatures
-              .filter((v) => !EXTRA_FEATURE_OPTIONS.some((o) => o.value === v))
+              .filter((v) => !featureOptions.some((o) => o.value === v))
               .map((v) => (
                 <li
                   key={v}
@@ -605,10 +632,29 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Характеристики для карточки на сайте</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Выберите до 3 характеристик комплекса — они показываются в карточке объекта в списке
-          на сайте.
+          Выберите до 3 характеристик — они показываются в карточке объекта в списке на сайте.
         </p>
-        {selectedComplex ? (
+        {isHouse ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {HOUSE_HIGHLIGHT_OPTIONS.map((o) => {
+              const active = cardHighlights.includes(o.value);
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => toggleHighlight(o.value)}
+                  className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background hover:bg-muted"
+                  }`}
+                >
+                  {houseHighlightLabel(o.value)}
+                </button>
+              );
+            })}
+          </div>
+        ) : selectedComplex ? (
           selectedComplex.infrastructure.length > 0 ? (
             <div className="mt-4 flex flex-wrap gap-2">
               {selectedComplex.infrastructure.map((value) => {
@@ -644,9 +690,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Локация</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          {complexId
+          {!isHouse && complexId
             ? "Описание локации берётся из карточки выбранного комплекса — измените его в разделе «Комплексы»."
-            : "Комплекс не выбран: в блоке «Локация» на странице объекта будет использован адрес объекта."}
+            : "В блоке «Локация» на странице объекта будет использован адрес объекта."}
         </p>
       </section>
 

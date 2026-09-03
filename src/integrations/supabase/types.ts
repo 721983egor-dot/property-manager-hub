@@ -205,6 +205,7 @@ export type Database = {
           floor: number | null
           id: string
           internal_name: string
+          land_area: number | null
           latitude: number | null
           location_description: string
           longitude: number | null
@@ -242,6 +243,7 @@ export type Database = {
           floor?: number | null
           id?: string
           internal_name?: string
+          land_area?: number | null
           latitude?: number | null
           location_description?: string
           longitude?: number | null
@@ -279,6 +281,7 @@ export type Database = {
           floor?: number | null
           id?: string
           internal_name?: string
+          land_area?: number | null
           latitude?: number | null
           location_description?: string
           longitude?: number | null

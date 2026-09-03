@@ -1,6 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { infrastructureLabel } from "@/lib/complexes";
-import { formatArea, formatMoney, type Property } from "@/lib/properties";
+import {
+  formatArea,
+  formatLandArea,
+  formatMoney,
+  houseHighlightLabel,
+  isHouseType,
+  type Property,
+} from "@/lib/properties";
 
 type Props = {
   property: Property;
@@ -16,13 +23,24 @@ function bedroomsLabel(rooms: number) {
 
 export function PropertyCard({ property, complexName, photoUrl }: Props) {
   const isFree = property.status === "free";
-  const highlights = (property.card_highlights ?? []).slice(0, 3).map(infrastructureLabel);
+  const isHouse = isHouseType(property.type);
+  const highlights = (property.card_highlights ?? [])
+    .slice(0, 3)
+    .map(isHouse ? houseHighlightLabel : infrastructureLabel);
 
-  const specs = [
-    formatArea(property.area),
-    bedroomsLabel(property.rooms),
-    property.floor != null ? `${property.floor} этаж` : null,
-  ].filter((v): v is string => Boolean(v) && v !== "—");
+  const specs = (
+    isHouse
+      ? [
+          formatArea(property.area),
+          property.land_area != null ? `участок ${formatLandArea(property.land_area)}` : null,
+          bedroomsLabel(property.rooms),
+        ]
+      : [
+          formatArea(property.area),
+          bedroomsLabel(property.rooms),
+          property.floor != null ? `${property.floor} этаж` : null,
+        ]
+  ).filter((v): v is string => Boolean(v) && v !== "—");
 
   return (
     <Link
@@ -57,7 +75,7 @@ export function PropertyCard({ property, complexName, photoUrl }: Props) {
         <div className="mt-5 h-px w-2/3 bg-site-gold/40" />
 
         <div className="mt-5 space-y-1.5 text-base text-site-muted">
-          {complexName ? <p>{complexName}</p> : null}
+          {!isHouse && complexName ? <p>{complexName}</p> : null}
           {highlights.length > 0 ? <p>{highlights.join(" · ")}</p> : null}
           {specs.length > 0 ? <p>{specs.join(" · ")}</p> : null}
         </div>
