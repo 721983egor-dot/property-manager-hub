@@ -333,8 +333,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             {address.trim() ? (
               <div className="mt-3 space-y-1">
                 <YandexMap
-                  lat={coords?.lat}
-                  lon={coords?.lon}
+                  lat={coords?.lat ?? null}
+                  lon={coords?.lon ?? null}
                   address={address}
                   caption={address}
                   className="h-56 w-full rounded-xl border border-border"
