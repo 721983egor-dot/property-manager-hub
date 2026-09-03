@@ -73,6 +73,11 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [complexId, setComplexId] = useState<string | null>(initial?.complex_id ?? null);
   const [complexDialog, setComplexDialog] = useState(false);
   const [address, setAddress] = useState(initial?.address ?? "");
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(
+    initial?.latitude != null && initial?.longitude != null
+      ? { lat: initial.latitude, lon: initial.longitude }
+      : null,
+  );
   const [floor, setFloor] = useState(initial?.floor != null ? String(initial.floor) : "");
   const [totalFloors, setTotalFloors] = useState(
     initial?.total_floors != null ? String(initial.total_floors) : "",
