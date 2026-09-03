@@ -80,17 +80,31 @@ const STATUS_TEXT: Record<string, string> = {
 };
 
 /**
- * Короткий адрес для публичной страницы: «Сочи, Курортный проспект 105».
- * Отбрасываем страну/регион и берём город + улицу с домом.
+ * Вспомогательные функции форматирования адреса.
+ * Адрес хранится строкой через запятую; страна и регион отбрасываются.
  */
-function shortAddress(address: string): string {
-  const parts = address
+function addressParts(address: string): string[] {
+  return address
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean)
     .filter((p) => !/^россия/i.test(p) && !/\b(край|область|обл\.)\b/i.test(p));
-  if (parts.length <= 2) return parts.join(", ") || address;
-  return parts.slice(0, 2).join(", ");
+}
+
+/** Короткий адрес для верхней части страницы: улица и номер дома. */
+function shortAddress(address: string): string {
+  const parts = addressParts(address);
+  if (parts.length === 0) return address;
+  if (parts.length <= 2) return parts.join(", ");
+  return parts.slice(-2).join(", ");
+}
+
+/** Полный адрес для блока с картой: город, улица и номер дома. */
+function mapAddress(address: string): string {
+  const parts = addressParts(address);
+  if (parts.length === 0) return address;
+  if (parts.length <= 3) return parts.join(", ");
+  return parts.slice(-3).join(", ");
 }
 
 function Bullet({ children }: { children: React.ReactNode }) {
@@ -439,28 +453,27 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
             ) : null}
 
             {property.address ? (
-              <div
-                id="location-map"
-                className="mt-7 scroll-mt-24 overflow-hidden rounded-2xl border border-site-line"
-              >
-                <ClientOnly
-                  fallback={<div className="aspect-[21/9] w-full bg-site-navy-soft" />}
+              <>
+                <p className="mt-7 text-[16px] font-medium text-site-navy">
+                  {mapAddress(property.address)}
+                </p>
+                <div
+                  id="location-map"
+                  className="mt-3 scroll-mt-24 overflow-hidden rounded-2xl border border-site-line"
                 >
-                  <YandexMap
-                    lat={property.latitude}
-                    lon={property.longitude}
-                    address={property.address}
-                    caption={property.address}
-                    className="aspect-[21/9] w-full"
-                  />
-                </ClientOnly>
-              </div>
-            ) : null}
-
-            {property.address ? (
-              <p className="mt-5 text-[14px] text-site-muted">
-                {shortAddress(property.address)}
-              </p>
+                  <ClientOnly
+                    fallback={<div className="aspect-[21/9] w-full bg-site-navy-soft" />}
+                  >
+                    <YandexMap
+                      lat={property.latitude}
+                      lon={property.longitude}
+                      address={property.address}
+                      caption={mapAddress(property.address)}
+                      className="aspect-[21/9] w-full"
+                    />
+                  </ClientOnly>
+                </div>
+              </>
             ) : null}
           </section>
         ) : null}
