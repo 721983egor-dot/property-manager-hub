@@ -81,30 +81,54 @@ const STATUS_TEXT: Record<string, string> = {
 
 /**
  * Вспомогательные функции форматирования адреса.
- * Адрес хранится строкой через запятую; страна и регион отбрасываются.
+ * Адрес хранится строкой через запятую; страна, регионы, округа и районы
+ * отбрасываются, затем из оставшихся частей выделяются город, улица и дом.
  */
+// NB: \b не работает с кириллицей, поэтому границы слов задаются явно.
+const STREET_RE =
+  /(^|[^а-яё])(улица|ул\.|проспект|пр-т|переулок|пер\.|набережная|наб\.|шоссе|бульвар|тупик|проезд|аллея|линия|спуск)(?![а-яё])/i;
+const HOUSE_RE = /^\d{1,4}[а-яА-Я]?([/\-]\d+)?$/;
+const NOISE_RE =
+  /^россия$|(^|[^а-яё])(край|область|обл\.|федеральный округ|городской округ|внутригородской район|район|микрорайон)(?![а-яё])|^\d{6}$/i;
+
 function addressParts(address: string): string[] {
   return address
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean)
-    .filter((p) => !/^россия/i.test(p) && !/\b(край|область|обл\.)\b/i.test(p));
+    .filter((p) => !NOISE_RE.test(p));
+}
+
+/**
+ * Короткий адрес: город + улица + номер дома.
+ * Город — последняя оставшаяся «не улица/не дом» часть (в данных геокодеров
+ * город идёт после улицы и мелких кварталов).
+ */
+function formatShortAddress(address: string): string {
+  const parts = addressParts(address);
+  if (parts.length === 0) return address;
+  if (parts.length <= 3) return parts.join(", ");
+
+  const street = parts.find((p) => STREET_RE.test(p));
+  const house = parts.find((p) => HOUSE_RE.test(p));
+  const rest = parts.filter((p) => p !== street && p !== house);
+  const city = rest[rest.length - 1];
+
+  const out = [city, street, house].filter(
+    (p): p is string => Boolean(p),
+  );
+  const unique = out.filter((p, i) => out.indexOf(p) === i);
+  return unique.length > 0 ? unique.join(", ") : parts.join(", ");
 }
 
 /** Адрес для верхней части страницы: город, улица и номер дома. */
 function shortAddress(address: string): string {
-  const parts = addressParts(address);
-  if (parts.length === 0) return address;
-  if (parts.length <= 3) return parts.join(", ");
-  return parts.slice(-3).join(", ");
+  return formatShortAddress(address);
 }
 
 /** Адрес для блока с картой: город, улица и номер дома. */
 function mapAddress(address: string): string {
-  const parts = addressParts(address);
-  if (parts.length === 0) return address;
-  if (parts.length <= 3) return parts.join(", ");
-  return parts.slice(-3).join(", ");
+  return formatShortAddress(address);
 }
 
 function Bullet({ children }: { children: React.ReactNode }) {
