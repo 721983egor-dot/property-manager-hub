@@ -169,6 +169,16 @@ function ObjectViewPage() {
                 </Button>
               ) : null}
             </div>
+            {data.latitude != null && data.longitude != null ? (
+              <ClientOnly fallback={<div className="mt-4 h-64 rounded-xl bg-muted" />}>
+                <YandexMap
+                  lat={data.latitude}
+                  lon={data.longitude}
+                  caption={data.address}
+                  className="mt-4 h-64 w-full border border-border"
+                />
+              </ClientOnly>
+            ) : null}
           </section>
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
