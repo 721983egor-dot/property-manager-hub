@@ -6,6 +6,7 @@ import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BookingDialog } from "@/components/BookingDialog";
+import { YandexMap } from "@/components/YandexMap";
 import { fetchCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
