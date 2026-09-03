@@ -14,7 +14,9 @@ import {
   labelsFor,
   floorLabel,
   formatArea,
+  formatLandArea,
   formatMoney,
+  isHouseType,
   roomsLabel,
   typeLabel,
   type Property,
@@ -44,6 +46,7 @@ export type PublicPropertyView = Pick<
   | "total_floors"
   | "rooms"
   | "area"
+  | "land_area"
   | "bathrooms"
   | "status"
   | "price_month"
