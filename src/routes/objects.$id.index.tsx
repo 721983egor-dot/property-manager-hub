@@ -18,6 +18,8 @@ import {
   fetchProperty,
   floorLabel,
   formatArea,
+  formatLandArea,
+  isHouseType,
   formatMoney,
   extraFeatureLabel,
   labelsFor,
@@ -187,8 +189,20 @@ function ObjectViewPage() {
             <h2 className="text-base font-semibold">Основная информация</h2>
             <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-3">
               <Item label="Тип" value={typeLabel(data.type)} />
-              <Item label="Комплекс" value={complex?.name || data.complex_name || "—"} />
-              <Item label="Этаж" value={floorLabel(data)} />
+              {isHouseType(data.type) ? (
+                <>
+                  <Item
+                    label="Этажность"
+                    value={data.total_floors != null ? String(data.total_floors) : "—"}
+                  />
+                  <Item label="Участок" value={formatLandArea(data.land_area)} />
+                </>
+              ) : (
+                <>
+                  <Item label="Комплекс" value={complex?.name || data.complex_name || "—"} />
+                  <Item label="Этаж" value={floorLabel(data)} />
+                </>
+              )}
               <Item label="Планировка" value={roomsLabel(data.rooms)} />
               <Item label="Санузлы" value={String(data.bathrooms)} />
               <Item label="Площадь" value={formatArea(data.area)} />
