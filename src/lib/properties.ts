@@ -15,6 +15,8 @@ export type Property = {
   complex_name: string;
   complex_id: string | null;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   floor: number | null;
   total_floors: number | null;
   rooms: number;
