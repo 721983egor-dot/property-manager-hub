@@ -60,7 +60,9 @@ export const geocodeAddress = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<GeoPoint | null> => {
     const address = data.address.trim();
     if (!address) return null;
-    const apikey = process.env["YANDEX_MAPS_JS_API_KEY"];
+    // Ключ HTTP-геокодера отдельный; если его нет — пробуем ключ JS API.
+    const apikey =
+      process.env["YANDEX_GEOCODER_API_KEY"] || process.env["YANDEX_MAPS_JS_API_KEY"];
     if (!apikey) return null;
 
     const url = new URL("https://geocode-maps.yandex.ru/1.x/");
