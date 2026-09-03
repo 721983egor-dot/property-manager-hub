@@ -18,6 +18,7 @@ import { ComplexForm } from "@/components/ComplexForm";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { YandexMap } from "@/components/YandexMap";
 import { geocodeAddress } from "@/lib/geo.functions";
+import { geocodeInBrowser } from "@/lib/ymaps";
 import { createComplex, fetchComplexes, infrastructureLabel } from "@/lib/complexes";
 import {
   Select,
@@ -322,9 +323,12 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
                 setCoords(null);
               }}
               onSelect={(v) => {
-                void geocodeAddress({ data: { address: v } }).then((point) => {
-                  if (point) setCoords(point);
-                });
+                void geocodeAddress({ data: { address: v } })
+                  .catch(() => null)
+                  .then(async (point) => point ?? (await geocodeInBrowser(v)))
+                  .then((point) => {
+                    if (point) setCoords(point);
+                  });
               }}
               placeholder="Сочи, ул. Северная, 12"
             />

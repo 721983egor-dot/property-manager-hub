@@ -170,11 +170,12 @@ function ObjectViewPage() {
                 </Button>
               ) : null}
             </div>
-            {data.latitude != null && data.longitude != null ? (
+            {data.address ? (
               <ClientOnly fallback={<div className="mt-4 h-64 rounded-xl bg-muted" />}>
                 <YandexMap
                   lat={data.latitude}
                   lon={data.longitude}
+                  address={data.address}
                   caption={data.address}
                   className="mt-4 h-64 w-full border border-border"
                 />
