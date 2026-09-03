@@ -91,20 +91,27 @@ function addressParts(address: string): string[] {
     .filter((p) => !/^россия/i.test(p) && !/\b(край|область|обл\.)\b/i.test(p));
 }
 
-/** Адрес для верхней части страницы: город, улица и номер дома. */
-function shortAddress(address: string): string {
-  const parts = addressParts(address);
+/**
+ * Короткий адрес: город (первая часть) + улица и номер дома (последние две).
+ * Районы отбрасываются, чтобы город не вытеснялся из вывода.
+ */
+function formatShortAddress(address: string): string {
+  const parts = addressParts(address).filter(
+    (p) => !/\b(район|микрорайон)\b/i.test(p),
+  );
   if (parts.length === 0) return address;
   if (parts.length <= 3) return parts.join(", ");
-  return parts.slice(-3).join(", ");
+  return [parts[0], ...parts.slice(-2)].join(", ");
+}
+
+/** Адрес для верхней части страницы: город, улица и номер дома. */
+function shortAddress(address: string): string {
+  return formatShortAddress(address);
 }
 
 /** Адрес для блока с картой: город, улица и номер дома. */
 function mapAddress(address: string): string {
-  const parts = addressParts(address);
-  if (parts.length === 0) return address;
-  if (parts.length <= 3) return parts.join(", ");
-  return parts.slice(-3).join(", ");
+  return formatShortAddress(address);
 }
 
 function Bullet({ children }: { children: React.ReactNode }) {
