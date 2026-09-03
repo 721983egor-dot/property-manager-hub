@@ -1,6 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type PropertyType = "apartment" | "aparts" | "house" | "villa" | "townhouse";
+
+/** Дома и виллы: у них нет комплекса и этажа, зато есть участок. */
+export function isHouseType(type: PropertyType) {
+  return type === "house" || type === "villa";
+}
 export type PropertyStatus = "free" | "rented" | "booked" | "archived";
 
 export type PropertyPhoto = { path: string };
@@ -30,6 +35,7 @@ export type Property = {
   deposit: number | null;
   commission: number | null;
   area: number | null;
+  land_area: number | null;
   outdoor_spaces: string[];
   appliances: string[];
   bathroom_features: string[];
@@ -68,6 +74,38 @@ export const EXTRA_FEATURE_OPTIONS = [
   { value: "tv", label: "TV" },
 ];
 
+/** Дополнительные характеристики для домов и вилл. */
+export const HOUSE_EXTRA_FEATURE_OPTIONS = [
+  { value: "sea_view", label: "Вид на море" },
+  { value: "mountain_view", label: "Вид на горы" },
+  { value: "city_view", label: "Вид на город" },
+  { value: "pool", label: "Бассейн" },
+  { value: "heated_pool", label: "Бассейн с подогревом" },
+  { value: "banya", label: "Баня" },
+  { value: "sauna", label: "Сауна" },
+  { value: "grill_zone", label: "Гриль-зона" },
+  { value: "garden", label: "Сад" },
+  { value: "gazebo", label: "Беседка" },
+  { value: "guest_house", label: "Гостевой дом" },
+  { value: "garage", label: "Гараж" },
+  { value: "parking", label: "Парковка" },
+];
+
+/** Характеристики для карточки на сайте — дома и виллы (без комплекса). */
+export const HOUSE_HIGHLIGHT_OPTIONS = [
+  { value: "sea_view", label: "Вид на море" },
+  { value: "mountain_view", label: "Вид на горы" },
+  { value: "city_view", label: "Вид на город" },
+  { value: "pool", label: "Бассейн" },
+  { value: "banya", label: "Баня" },
+  { value: "sauna", label: "Сауна" },
+  { value: "grill_zone", label: "Гриль-зона" },
+  { value: "garden", label: "Сад" },
+  { value: "gazebo", label: "Беседка" },
+  { value: "garage", label: "Гараж" },
+  { value: "parking", label: "Парковка" },
+];
+
 export const APPLIANCE_OPTIONS = [
   { value: "air_conditioner", label: "Кондиционер" },
   { value: "dishwasher", label: "Посудомоечная машина" },
@@ -84,7 +122,11 @@ export const BATHROOM_FEATURE_OPTIONS = [
 
 /** Метка характеристики: из справочника либо произвольное значение как есть. */
 export function extraFeatureLabel(value: string) {
-  return EXTRA_FEATURE_OPTIONS.find((o) => o.value === value)?.label ?? value;
+  return (
+    EXTRA_FEATURE_OPTIONS.find((o) => o.value === value)?.label ??
+    HOUSE_EXTRA_FEATURE_OPTIONS.find((o) => o.value === value)?.label ??
+    value
+  );
 }
 
 export function labelsFor(
@@ -92,6 +134,12 @@ export function labelsFor(
   values: string[] | null | undefined,
 ) {
   return (values ?? []).map((v) => options.find((o) => o.value === v)?.label ?? v);
+}
+
+/** Площадь участка в сотках. */
+export function formatLandArea(value: number | null | undefined) {
+  if (value == null) return "—";
+  return `${new Intl.NumberFormat("ru-RU").format(value)} сот.`;
 }
 
 export function formatArea(value: number | null | undefined) {
@@ -117,8 +165,7 @@ export function yandexMapsUrl(address: string) {
 export const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: "apartment", label: "Квартира" },
   { value: "aparts", label: "Апартаменты" },
-  { value: "house", label: "Дом" },
-  { value: "villa", label: "Вилла" },
+  { value: "house", label: "Дома и Виллы" },
   { value: "townhouse", label: "Таунхаус" },
 ];
 
@@ -178,6 +225,7 @@ function normalize(row: Record<string, unknown>): Property {
     commission: num(row['commission']),
     seasonal_pricing: Boolean(row['seasonal_pricing']),
     area: num(row['area']),
+    land_area: num(row['land_area']),
     utilities_month: num(row['utilities_month']),
     outdoor_spaces: Array.isArray(row['outdoor_spaces']) ? (row['outdoor_spaces'] as string[]) : [],
     appliances: Array.isArray(row['appliances']) ? (row['appliances'] as string[]) : [],
@@ -247,6 +295,7 @@ export type PropertyInput = {
   deposit: number | null;
   commission: number | null;
   area: number | null;
+  land_area: number | null;
   outdoor_spaces: string[];
   appliances: string[];
   bathroom_features: string[];
