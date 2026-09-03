@@ -304,11 +304,34 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Field>
 
           <Field label="Адрес объекта" className="md:col-span-2">
-            <Input
+            <AddressAutocomplete
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(v) => {
+                setAddress(v);
+                setCoords(null);
+              }}
+              onSelect={(v) => {
+                void geocodeAddress({ data: { address: v } }).then((point) => {
+                  if (point) setCoords(point);
+                });
+              }}
               placeholder="Сочи, ул. Северная, 12"
             />
+            {coords ? (
+              <div className="mt-3 space-y-1">
+                <YandexMap
+                  lat={coords.lat}
+                  lon={coords.lon}
+                  caption={address}
+                  draggable
+                  onDragEnd={setCoords}
+                  className="h-56 w-full border border-border"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Метку можно перетащить, если точка встала неточно
+                </p>
+              </div>
+            ) : null}
           </Field>
 
           <Field label="Этаж объекта">
