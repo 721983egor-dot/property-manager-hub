@@ -1,0 +1,1 @@
+UPDATE public.properties SET type = 'apartment' WHERE type = 'aparts';
