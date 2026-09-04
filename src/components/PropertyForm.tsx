@@ -76,7 +76,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [internalName, setInternalName] = useState(initial?.internal_name ?? "");
-  const [type, setType] = useState<PropertyType>(initial?.type ?? "apartment");
+  const [type, setType] = useState<PropertyType>(
+    initial?.type === "aparts" ? "apartment" : initial?.type === "villa" ? "house" : (initial?.type ?? "apartment"),
+  );
   const [complexId, setComplexId] = useState<string | null>(initial?.complex_id ?? null);
   const [complexDialog, setComplexDialog] = useState(false);
   const [address, setAddress] = useState(initial?.address ?? "");
@@ -206,6 +208,36 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   };
 
   const remove = (index: number) => setPhotos((prev) => prev.filter((_, i) => i !== index));
+
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [fileOver, setFileOver] = useState(false);
+
+  const reorder = (from: number, to: number) => {
+    setPhotos((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      if (item) next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
+
+  const onZoneDragOver = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setFileOver(true);
+  };
+
+  const onZoneDrop = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    setFileOver(false);
+    void handleFiles(e.dataTransfer.files);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -748,7 +780,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           <div>
             <h2 className="text-base font-semibold">Фотографии</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Первая фотография используется как главная в списке объектов.
+              Первая фотография — главная. Перетаскивайте фото мышкой, чтобы менять порядок.
             </p>
           </div>
           <Button type="button" variant="outline" asChild disabled={uploading}>
@@ -769,16 +801,58 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Button>
         </div>
 
-        {photos.length === 0 ? (
-          <div className="mt-5 rounded-lg border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-            Фотографии ещё не загружены
+        <div
+          onDragOver={onZoneDragOver}
+          onDragEnter={onZoneDragOver}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+            setFileOver(false);
+          }}
+          onDrop={onZoneDrop}
+          className={`relative mt-5 rounded-lg transition ${fileOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+        >
+          {fileOver ? (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 text-sm font-medium text-primary">
+              Просто перетащи фото
+            </div>
+          ) : null}
+          {photos.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+            Просто перетащи фото сюда или загрузи с компьютера
           </div>
         ) : (
-          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {photos.map((photo, index) => (
               <div
                 key={photo.path}
-                className="group overflow-hidden rounded-lg border border-border"
+                draggable
+                onDragStart={(e) => {
+                  setDragIndex(index);
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", String(index));
+                }}
+                onDragEnd={() => {
+                  setDragIndex(null);
+                  setOverIndex(null);
+                }}
+                onDragOver={(e) => {
+                  if (dragIndex === null) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "move";
+                  setOverIndex(index);
+                }}
+                onDrop={(e) => {
+                  if (dragIndex === null) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  reorder(dragIndex, index);
+                  setDragIndex(null);
+                  setOverIndex(null);
+                }}
+                className={`group cursor-grab overflow-hidden rounded-lg border border-border active:cursor-grabbing ${
+                  dragIndex === index ? "opacity-50" : ""
+                } ${overIndex === index && dragIndex !== null && dragIndex !== index ? "ring-2 ring-primary" : ""}`}
               >
                 <div className="relative aspect-[4/3] bg-muted">
                   {urls[photo.path] ? (
@@ -815,6 +889,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             ))}
           </div>
         )}
+        </div>
       </section>
 
       <Dialog open={complexDialog} onOpenChange={setComplexDialog}>
