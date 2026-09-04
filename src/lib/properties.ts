@@ -163,8 +163,7 @@ export function yandexMapsUrl(address: string) {
 
 
 export const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
-  { value: "apartment", label: "Квартира" },
-  { value: "aparts", label: "Апартаменты" },
+  { value: "apartment", label: "Квартиры и Апартаменты" },
   { value: "house", label: "Дома и Виллы" },
   { value: "townhouse", label: "Таунхаус" },
 ];
@@ -187,7 +186,8 @@ export function internalTitle(p: { internal_name?: string | null; title: string 
 }
 
 export function typeLabel(value: PropertyType) {
-  const normalized: PropertyType = value === "villa" ? "house" : value;
+  const normalized: PropertyType =
+    value === "villa" ? "house" : value === "aparts" ? "apartment" : value;
   return PROPERTY_TYPES.find((t) => t.value === normalized)?.label ?? value;
 }
 
