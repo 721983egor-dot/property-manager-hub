@@ -16,6 +16,7 @@ type Props = {
 };
 
 function bedroomsLabel(rooms: number) {
+  if (rooms === 0) return "Студия";
   if (rooms === 1) return "1 спальня";
   if (rooms >= 2 && rooms <= 4) return `${rooms} спальни`;
   return `${rooms} спален`;
