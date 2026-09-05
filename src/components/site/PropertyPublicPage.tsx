@@ -607,12 +607,6 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
                 {rentTermsLines.map((l, i) => (
                   <Bullet key={i}>{l}</Bullet>
                 ))}
-                {property.utilities_month != null ? (
-                  <Bullet>
-                    Коммунальные платежи ориентировочно ≈ {formatMoney(property.utilities_month)} в
-                    месяц
-                  </Bullet>
-                ) : null}
               </ul>
 
               {/* Правая колонка: финансовые условия в один ряд */}
