@@ -19,6 +19,7 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { YandexMap } from "@/components/YandexMap";
 import { geocodeAddress } from "@/lib/geo.functions";
 import { createComplex, fetchComplexes, infrastructureLabel } from "@/lib/complexes";
+import { uploadPhotos } from "@/lib/photo-upload";
 import {
   Select,
   SelectContent,
