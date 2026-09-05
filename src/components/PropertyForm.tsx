@@ -46,7 +46,6 @@ import {
 
 
   signedUrls,
-  uploadPhoto,
   type Property,
   type PropertyInput,
   type PropertyPhoto,

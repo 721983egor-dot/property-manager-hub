@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { INFRASTRUCTURE_OPTIONS, type Complex, type ComplexInput } from "@/lib/complexes";
-import { signedUrls, uploadPhoto, type PropertyPhoto } from "@/lib/properties";
+import { signedUrls, type PropertyPhoto } from "@/lib/properties";
+import { uploadPhotos } from "@/lib/photo-upload";
 
 type Props = {
   initial?: Complex;
