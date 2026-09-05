@@ -68,6 +68,36 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
     });
   };
 
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [fileOver, setFileOver] = useState(false);
+
+  const reorder = (from: number, to: number) => {
+    setPhotos((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      if (item) next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
+
+  const onZoneDragOver = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setFileOver(true);
+  };
+
+  const onZoneDrop = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    setFileOver(false);
+    void handleFiles(e.dataTransfer.files);
+  };
+
   const toggle = (value: string) =>
     setInfrastructure((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
@@ -152,7 +182,7 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
           <div>
             <h2 className="text-base font-semibold">Фотографии</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Отметьте главное фото — оно показывается в списке и на странице объекта.
+              Отметьте главное фото. Перетаскивайте фото мышкой, чтобы менять порядок.
             </p>
           </div>
           <Button type="button" variant="outline" asChild disabled={uploading}>
@@ -173,16 +203,61 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
           </Button>
         </div>
 
+        <div
+          onDragOver={onZoneDragOver}
+          onDragEnter={onZoneDragOver}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+            setFileOver(false);
+          }}
+          onDrop={onZoneDrop}
+          className={`relative mt-5 rounded-lg transition ${fileOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+        >
+          {fileOver ? (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 text-sm font-medium text-primary">
+              Просто перетащи фото
+            </div>
+          ) : null}
         {photos.length === 0 ? (
-          <div className="mt-5 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-            Фотографии ещё не загружены
+          <div className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+            Просто перетащи фото сюда или загрузи с компьютера
           </div>
         ) : (
-          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {photos.map((photo, index) => {
               const isMain = (mainPhoto ?? photos[0]?.path) === photo.path;
               return (
-                <div key={photo.path} className="overflow-hidden rounded-lg border border-border">
+                <div
+                  key={photo.path}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragIndex(index);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", String(index));
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null);
+                    setOverIndex(null);
+                  }}
+                  onDragOver={(e) => {
+                    if (dragIndex === null) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = "move";
+                    setOverIndex(index);
+                  }}
+                  onDrop={(e) => {
+                    if (dragIndex === null) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    reorder(dragIndex, index);
+                    setDragIndex(null);
+                    setOverIndex(null);
+                  }}
+                  className={`cursor-grab overflow-hidden rounded-lg border border-border active:cursor-grabbing ${
+                    dragIndex === index ? "opacity-50" : ""
+                  } ${overIndex === index && dragIndex !== null && dragIndex !== index ? "ring-2 ring-primary" : ""}`}
+                >
                   <div className="relative aspect-[4/3] bg-muted">
                     {urls[photo.path] ? (
                       <img
@@ -243,6 +318,7 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
             })}
           </div>
         )}
+        </div>
       </section>
 
       <div className="flex items-center justify-end gap-3 pb-4">

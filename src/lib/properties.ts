@@ -345,6 +345,21 @@ export async function setPropertyStatus(id: string, status: PropertyStatus) {
   return updateProperty(id, { status });
 }
 
+/** Удаляет объект. Бронирования на объект блокируют удаление. */
+export async function deleteProperty(id: string) {
+  const { count, error: countError } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("property_id", id);
+  if (countError) throw countError;
+  if ((count ?? 0) > 0) {
+    throw new Error("У объекта есть бронирования — сначала удалите их в календаре");
+  }
+  const { error } = await supabase.from("properties").delete().eq("id", id);
+  if (error) throw error;
+}
+
+
 export async function uploadPhoto(file: File): Promise<PropertyPhoto> {
   const ext = file.name.split(".").pop() ?? "jpg";
   const path = `uploads/${crypto.randomUUID()}.${ext}`;
