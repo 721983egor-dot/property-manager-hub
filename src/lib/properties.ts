@@ -175,7 +175,8 @@ export const PROPERTY_STATUSES: { value: PropertyStatus; label: string }[] = [
   { value: "archived", label: "Архив" },
 ];
 
-export const ROOM_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+/** 0 — студия. */
+export const ROOM_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 export const BATHROOM_OPTIONS = [1, 2, 3, 4, 5];
 
 export const PHOTO_BUCKET = "property-photos";
@@ -201,6 +202,7 @@ export function statusLabel(value: PropertyStatus) {
 }
 
 export function roomsLabel(rooms: number) {
+  if (rooms === 0) return "Студия";
   if (rooms === 1) return "1 комната";
   if (rooms >= 2 && rooms <= 4) return `${rooms} комнаты`;
   return `${rooms} комнат`;

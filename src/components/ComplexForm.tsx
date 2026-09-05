@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { INFRASTRUCTURE_OPTIONS, type Complex, type ComplexInput } from "@/lib/complexes";
-import { signedUrls, uploadPhoto, type PropertyPhoto } from "@/lib/properties";
+import { signedUrls, type PropertyPhoto } from "@/lib/properties";
+import { uploadPhotos } from "@/lib/photo-upload";
 
 type Props = {
   initial?: Complex;
@@ -40,10 +41,10 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const uploaded = await Promise.all(Array.from(files).map(uploadPhoto));
-      setPhotos((prev) => [...prev, ...uploaded]);
-    } catch {
-      toast.error("Не удалось загрузить фотографии");
+      const { uploaded, failures } = await uploadPhotos(files);
+      if (uploaded.length > 0) setPhotos((prev) => [...prev, ...uploaded]);
+      for (const f of failures.slice(0, 3)) toast.error(`${f.name}: ${f.reason}`);
+      if (failures.length > 3) toast.error(`Ещё не загружено файлов: ${failures.length - 3}`);
     } finally {
       setUploading(false);
     }

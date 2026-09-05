@@ -19,6 +19,7 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { YandexMap } from "@/components/YandexMap";
 import { geocodeAddress } from "@/lib/geo.functions";
 import { createComplex, fetchComplexes, infrastructureLabel } from "@/lib/complexes";
+import { uploadPhotos } from "@/lib/photo-upload";
 import {
   Select,
   SelectContent,
@@ -46,7 +47,6 @@ import {
 
 
   signedUrls,
-  uploadPhoto,
   type Property,
   type PropertyInput,
   type PropertyPhoto,
@@ -179,10 +179,10 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const uploaded = await Promise.all(Array.from(files).map(uploadPhoto));
-      setPhotos((prev) => [...prev, ...uploaded]);
-    } catch {
-      toast.error("Не удалось загрузить фотографии");
+      const { uploaded, failures } = await uploadPhotos(files);
+      if (uploaded.length > 0) setPhotos((prev) => [...prev, ...uploaded]);
+      for (const f of failures.slice(0, 3)) toast.error(`${f.name}: ${f.reason}`);
+      if (failures.length > 3) toast.error(`Ещё не загружено файлов: ${failures.length - 3}`);
     } finally {
       setUploading(false);
     }
@@ -415,7 +415,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ROOM_OPTIONS.map((r) => (
+                {(isHouse ? ROOM_OPTIONS.filter((r) => r !== 0) : ROOM_OPTIONS).map((r) => (
                   <SelectItem key={r} value={String(r)}>
                     {roomsLabel(r)}
                   </SelectItem>
