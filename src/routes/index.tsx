@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronDown, ImageIcon, Pencil, Plus, Search } from "lucide-react";
+import { ChevronDown, ImageIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
   PROPERTY_TYPES,
   ROOM_OPTIONS,
   SUMMER_SEASON_LABEL,
+  deleteProperty,
   fetchProperties,
   floorLabel,
   formatMoney,
@@ -97,7 +98,8 @@ function ObjectsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const rows = properties.filter((p) => {
-      if (tab === "active" && p.status === "archived") return false;
+      // Архивные объекты скрыты, пока их не выбрали в фильтре статуса или во вкладке «Архив».
+      if (p.status === "archived" && tab !== "archive" && status !== "archived") return false;
       if (tab === "archive" && p.status !== "archived") return false;
       if (q && !`${p.title} ${p.internal_name} ${p.complex_name}`.toLowerCase().includes(q))
         return false;
@@ -138,6 +140,16 @@ function ObjectsPage() {
       toast.success("Статус объекта обновлён");
     },
     onError: () => toast.error("Не удалось изменить статус объекта"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteProperty(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      toast.success("Объект удалён");
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Не удалось удалить объект"),
   });
 
   const hasFilters =
@@ -242,8 +254,8 @@ function ObjectsPage() {
         ) : null}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card">
-        <table className="w-full text-sm">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card">
+        <table className="w-full min-w-[1200px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
               <th className="px-5 py-3 font-medium">Объект</th>
@@ -280,6 +292,15 @@ function ObjectsPage() {
                   property={p}
                   photoUrl={p.photos[0]?.path ? urls[p.photos[0].path] : undefined}
                   onStatus={(next) => statusMutation.mutate({ id: p.id, next })}
+                  onDelete={() => {
+                    if (
+                      window.confirm(
+                        `Удалить объект «${internalTitle(p)}»? Это действие нельзя отменить.`,
+                      )
+                    ) {
+                      deleteMutation.mutate(p.id);
+                    }
+                  }}
                 />
               ))
             )}
@@ -327,10 +348,12 @@ function Row({
   property,
   photoUrl,
   onStatus,
+  onDelete,
 }: {
   property: Property;
   photoUrl?: string | undefined;
   onStatus: (next: PropertyStatus) => void;
+  onDelete: () => void;
 }) {
   return (
     <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
@@ -408,6 +431,14 @@ function Row({
                   {s.label}
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={onDelete}
+              >
+                <Trash2 className="size-4" />
+                Удалить объект
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
