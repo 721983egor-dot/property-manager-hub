@@ -726,8 +726,16 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
         <p className="mt-2 text-sm text-muted-foreground">
           {!isHouse && complexId
             ? "Описание локации берётся из карточки выбранного комплекса — измените его в разделе «Комплексы»."
-            : "В блоке «Локация» на странице объекта будет использован адрес объекта."}
+            : "Опишите локацию вручную: каждая строка станет отдельным пунктом в блоке «Локация» на странице объекта."}
         </p>
+        {!isHouse && complexId ? null : (
+          <Textarea
+            className="mt-4 min-h-32"
+            value={locationDescription}
+            onChange={(e) => setLocationDescription(e.target.value)}
+            placeholder={"5 минут пешком до моря\nРядом школа, детский сад и магазины\n15 минут на машине до центра"}
+          />
+        )}
       </section>
 
       <section className="rounded-xl border border-border bg-card p-6">
