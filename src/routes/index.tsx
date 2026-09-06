@@ -23,7 +23,7 @@ import {
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import heroAsset from "@/assets/site/hero_villa_sunset.jpg.asset.json";
-import aboutImg from "@/assets/site/mgmt_p2.jpg";
+import aboutImg from "@/assets/site/home_about.jpg";
 import selectionImg from "@/assets/site/home_p5.jpg";
 
 export const Route = createFileRoute("/")({
