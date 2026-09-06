@@ -20,7 +20,8 @@ export function SectionTabs({
           const isActive =
             (item.to === "/objects" && active === "objects") ||
             (item.to === "/complexes" && active === "complexes") ||
-            (item.to === "/calendar" && active === "calendar");
+            (item.to === "/calendar" && active === "calendar") ||
+            (item.to === "/selections" && active === "selections");
           return (
             <Link
               key={item.to}
