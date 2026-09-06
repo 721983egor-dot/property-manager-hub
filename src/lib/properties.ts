@@ -451,3 +451,49 @@ export async function signedUrls(paths: string[]): Promise<Record<string, string
   }
   return map;
 }
+
+const MONTHS_GEN = [
+  "января","февраля","марта","апреля","мая","июня",
+  "июля","августа","сентября","октября","ноября","декабря",
+];
+
+/** «01 ноября 2026» */
+export function formatDateLongRu(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${String(d ?? 1).padStart(2, "0")} ${MONTHS_GEN[(m ?? 1) - 1]} ${y}`;
+}
+
+export type PublicStatusView = { text: string; tone: "green" | "red" | "yellow" | "gold" } | null;
+
+/**
+ * Статус объекта для публичных страниц.
+ * freeFromIso — первый свободный день (конец текущей аренды + 1),
+ * используется только для объектов на управлении.
+ */
+export function publicStatusView(
+  p: { status: PropertyStatus; service_type?: ServiceType },
+  freeFromIso?: string | null,
+): PublicStatusView {
+  if (p.status === "free") return { text: "Сейчас свободно", tone: "green" };
+  if (p.status === "booked") return { text: "Объект забронирован", tone: "yellow" };
+  if (p.status === "rented") {
+    if ((p.service_type ?? "management") === "management" && freeFromIso) {
+      const days = Math.ceil(
+        (new Date(`${freeFromIso}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) /
+          86400000,
+      );
+      if (days >= 0 && days < 30) {
+        return { text: `Освободится с ${formatDateLongRu(freeFromIso)}`, tone: "gold" };
+      }
+    }
+    return { text: "Объект сдан", tone: "red" };
+  }
+  return null;
+}
+
+export const STATUS_TONE_CLASS: Record<"green" | "red" | "yellow" | "gold", string> = {
+  green: "text-site-green",
+  red: "text-site-red",
+  yellow: "text-site-yellow",
+  gold: "text-site-gold",
+};
