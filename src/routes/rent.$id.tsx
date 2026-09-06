@@ -1,6 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
+
+import { trackEvent } from "@/lib/analytics";
 
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { fetchComplex } from "@/lib/complexes";
@@ -98,12 +101,17 @@ function RentDetailPage() {
     enabled: paths.length > 0,
   });
 
+  useEffect(() => {
+    trackEvent(id, "page_view");
+  }, [id]);
+
   return (
     <PropertyPublicPage
       property={data}
       complex={complex ?? null}
       photoUrls={urls}
       freeFromIso={freeFromIso}
+      onContact={() => trackEvent(id, "contact_click")}
     />
   );
 }

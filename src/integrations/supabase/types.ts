@@ -360,6 +360,94 @@ export type Database = {
           },
         ]
       }
+      property_events: {
+        Row: {
+          event_type: Database["public"]["Enums"]["property_event_type"]
+          id: string
+          occurred_at: string
+          property_id: string
+          referrer: string
+          source: string
+          visitor_hash: string
+        }
+        Insert: {
+          event_type: Database["public"]["Enums"]["property_event_type"]
+          id?: string
+          occurred_at?: string
+          property_id: string
+          referrer?: string
+          source?: string
+          visitor_hash?: string
+        }
+        Update: {
+          event_type?: Database["public"]["Enums"]["property_event_type"]
+          id?: string
+          occurred_at?: string
+          property_id?: string
+          referrer?: string
+          source?: string
+          visitor_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_listings: {
+        Row: {
+          created_at: string
+          external_id: string
+          external_url: string
+          id: string
+          last_synced_at: string | null
+          platform: Database["public"]["Enums"]["listing_platform"]
+          property_id: string
+          published: boolean
+          published_at: string | null
+          unpublished_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_id?: string
+          external_url?: string
+          id?: string
+          last_synced_at?: string | null
+          platform: Database["public"]["Enums"]["listing_platform"]
+          property_id: string
+          published?: boolean
+          published_at?: string | null
+          unpublished_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_id?: string
+          external_url?: string
+          id?: string
+          last_synced_at?: string | null
+          platform?: Database["public"]["Enums"]["listing_platform"]
+          property_id?: string
+          published?: boolean
+          published_at?: string | null
+          unpublished_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_listings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rentals: {
         Row: {
           comment: string
@@ -488,7 +576,13 @@ export type Database = {
       booking_source: "avito" | "cian" | "website" | "social" | "referral"
       booking_status: "active" | "cancelled" | "completed"
       lead_status: "new" | "in_work" | "done" | "rejected"
+      listing_platform: "site" | "avito" | "cian"
       management_fee_type: "percent" | "amount"
+      property_event_type:
+        | "page_view"
+        | "contact_click"
+        | "lead_submit"
+        | "selection_add"
       property_service_type: "management" | "commission_only"
       property_status: "free" | "rented" | "booked" | "archived"
       property_type: "apartment" | "aparts" | "house" | "villa" | "townhouse"
@@ -624,7 +718,14 @@ export const Constants = {
       booking_source: ["avito", "cian", "website", "social", "referral"],
       booking_status: ["active", "cancelled", "completed"],
       lead_status: ["new", "in_work", "done", "rejected"],
+      listing_platform: ["site", "avito", "cian"],
       management_fee_type: ["percent", "amount"],
+      property_event_type: [
+        "page_view",
+        "contact_click",
+        "lead_submit",
+        "selection_add",
+      ],
       property_service_type: ["management", "commission_only"],
       property_status: ["free", "rented", "booked", "archived"],
       property_type: ["apartment", "aparts", "house", "villa", "townhouse"],

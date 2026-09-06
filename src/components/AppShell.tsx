@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bookmark, Building2, CalendarDays, Inbox, Users } from "lucide-react";
+import { Bookmark, Building2, CalendarDays, Inbox, Megaphone, Users } from "lucide-react";
 
 import type { ReactNode } from "react";
 
@@ -7,7 +7,14 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 
 /** Префиксы внутренних разделов RM OS — всё остальное рендерится как публичный сайт. */
-const CRM_PREFIXES = ["/objects", "/calendar", "/crm", "/complexes", "/selections"];
+const CRM_PREFIXES = [
+  "/objects",
+  "/calendar",
+  "/crm",
+  "/complexes",
+  "/selections",
+  "/promo",
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -53,6 +60,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <CalendarDays className="size-4" />
             Календарь
+          </Link>
+          <Link
+            to="/promo"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
+          >
+            <Megaphone className="size-4" />
+            Публикация
           </Link>
 
           <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">

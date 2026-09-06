@@ -22,6 +22,8 @@ import { Route as ComplexesNewRouteImport } from './routes/complexes.new'
 import { Route as ObjectsIndexRouteImport } from './routes/objects.index'
 import { Route as ObjectsNewRouteImport } from './routes/objects.new'
 import { Route as PCodeRouteImport } from './routes/p.$code'
+import { Route as PromoIndexRouteImport } from './routes/promo.index'
+import { Route as PromoIdRouteImport } from './routes/promo.$id'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
 import { Route as SelectionsIndexRouteImport } from './routes/selections.index'
@@ -98,6 +100,16 @@ const PCodeRoute = PCodeRouteImport.update({
   path: '/p/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PromoIndexRoute = PromoIndexRouteImport.update({
+  id: '/promo/',
+  path: '/promo/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PromoIdRoute = PromoIdRouteImport.update({
+  id: '/promo/$id',
+  path: '/promo/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentIndexRoute = RentIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -161,9 +173,11 @@ export interface FileRoutesByFullPath {
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/p/$code': typeof PCodeRoute
+  '/promo/$id': typeof PromoIdRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes/': typeof ComplexesIndexRoute
   '/objects/': typeof ObjectsIndexRoute
+  '/promo/': typeof PromoIndexRoute
   '/rent/': typeof RentIndexRoute
   '/selections/': typeof SelectionsIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
@@ -185,9 +199,11 @@ export interface FileRoutesByTo {
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/p/$code': typeof PCodeRoute
+  '/promo/$id': typeof PromoIdRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes': typeof ComplexesIndexRoute
   '/objects': typeof ObjectsIndexRoute
+  '/promo': typeof PromoIndexRoute
   '/rent': typeof RentIndexRoute
   '/selections': typeof SelectionsIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
@@ -211,9 +227,11 @@ export interface FileRoutesById {
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/p/$code': typeof PCodeRoute
+  '/promo/$id': typeof PromoIdRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes/': typeof ComplexesIndexRoute
   '/objects/': typeof ObjectsIndexRoute
+  '/promo/': typeof PromoIndexRoute
   '/rent/': typeof RentIndexRoute
   '/selections/': typeof SelectionsIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
@@ -238,9 +256,11 @@ export interface FileRouteTypes {
     | '/complexes/new'
     | '/objects/new'
     | '/p/$code'
+    | '/promo/$id'
     | '/rent/$id'
     | '/complexes/'
     | '/objects/'
+    | '/promo/'
     | '/rent/'
     | '/selections/'
     | '/complexes/$id/edit'
@@ -262,9 +282,11 @@ export interface FileRouteTypes {
     | '/complexes/new'
     | '/objects/new'
     | '/p/$code'
+    | '/promo/$id'
     | '/rent/$id'
     | '/complexes'
     | '/objects'
+    | '/promo'
     | '/rent'
     | '/selections'
     | '/complexes/$id/edit'
@@ -287,9 +309,11 @@ export interface FileRouteTypes {
     | '/complexes/new'
     | '/objects/new'
     | '/p/$code'
+    | '/promo/$id'
     | '/rent/$id'
     | '/complexes/'
     | '/objects/'
+    | '/promo/'
     | '/rent/'
     | '/selections/'
     | '/complexes/$id/edit'
@@ -313,8 +337,10 @@ export interface RootRouteChildren {
   ComplexesNewRoute: typeof ComplexesNewRoute
   ObjectsNewRoute: typeof ObjectsNewRoute
   PCodeRoute: typeof PCodeRoute
+  PromoIdRoute: typeof PromoIdRoute
   ComplexesIndexRoute: typeof ComplexesIndexRoute
   ObjectsIndexRoute: typeof ObjectsIndexRoute
+  PromoIndexRoute: typeof PromoIndexRoute
   SelectionsIndexRoute: typeof SelectionsIndexRoute
   ComplexesIdEditRoute: typeof ComplexesIdEditRoute
   CrmClientsIdRoute: typeof CrmClientsIdRoute
@@ -418,6 +444,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/promo/': {
+      id: '/promo/'
+      path: '/promo'
+      fullPath: '/promo/'
+      preLoaderRoute: typeof PromoIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/promo/$id': {
+      id: '/promo/$id'
+      path: '/promo/$id'
+      fullPath: '/promo/$id'
+      preLoaderRoute: typeof PromoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/': {
       id: '/rent/'
       path: '/'
@@ -515,8 +555,10 @@ const rootRouteChildren: RootRouteChildren = {
   ComplexesNewRoute: ComplexesNewRoute,
   ObjectsNewRoute: ObjectsNewRoute,
   PCodeRoute: PCodeRoute,
+  PromoIdRoute: PromoIdRoute,
   ComplexesIndexRoute: ComplexesIndexRoute,
   ObjectsIndexRoute: ObjectsIndexRoute,
+  PromoIndexRoute: PromoIndexRoute,
   SelectionsIndexRoute: SelectionsIndexRoute,
   ComplexesIdEditRoute: ComplexesIdEditRoute,
   CrmClientsIdRoute: CrmClientsIdRoute,
