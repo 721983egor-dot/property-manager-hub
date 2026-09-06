@@ -10,7 +10,7 @@ import {
   signedUrls,
 } from "@/lib/properties";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
-import { parseISODate, toISODate } from "@/lib/dates";
+import { parseISODate, toISODate } from "@/lib/rentals";
 import { SITE_EMAIL, SITE_PHONE_DISPLAY, SITE_PHONE_TEL, SITE_TELEGRAM, SITE_WHATSAPP } from "@/lib/site";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
