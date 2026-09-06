@@ -32,10 +32,16 @@ export const Route = createFileRoute("/rent/")({
 });
 
 function RentPage() {
-  const { data: properties = [], isLoading } = useQuery({
+  const { data: allProperties = [], isLoading } = useQuery({
     queryKey: ["published-properties"],
     queryFn: fetchPublishedProperties,
   });
+
+  // На сайте показываем только свободные объекты.
+  const properties = useMemo(
+    () => allProperties.filter((p) => p.status === "free"),
+    [allProperties],
+  );
 
   const { data: complexes = [] } = useQuery({
     queryKey: ["complexes"],
