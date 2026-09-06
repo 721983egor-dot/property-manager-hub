@@ -17,7 +17,9 @@ import {
   formatLandArea,
   formatMoney,
   isHouseType,
+  publicStatusView,
   roomsLabel,
+  STATUS_TONE_CLASS,
   typeLabel,
   type Property,
 } from "@/lib/properties";
@@ -153,7 +155,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 
-export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
+export function PropertyPublicPage({ property, complex, photoUrls, freeFromIso }: Props) {
+  const statusView = publicStatusView(property, freeFromIso);
   const [active, setActive] = useState(0);
   const [complexActive, setComplexActive] = useState(0);
   const [copied, setCopied] = useState(false);
