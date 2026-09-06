@@ -47,6 +47,9 @@ function PromoListPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState<string | null>(null);
+  const sendToCian = useServerFn(publishToCian);
+  const removeFromCian = useServerFn(unpublishFromCian);
+
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
