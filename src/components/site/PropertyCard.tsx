@@ -26,7 +26,7 @@ function bedroomsLabel(rooms: number) {
 }
 
 export function PropertyCard(props: Props) {
-  const { property, complexName, photoUrl } = props;
+  const { property, photoUrl } = props;
   const statusView = publicStatusView(property, props.freeFromIso);
   const isHouse = isHouseType(property.type);
   const highlights = (property.card_highlights ?? []).slice(0, 3).map(highlightLabel);
