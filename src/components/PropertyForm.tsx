@@ -667,59 +667,33 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
         <h2 className="text-base font-semibold">Характеристики для карточки на сайте</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Выберите до 3 характеристик — они показываются в карточке объекта в списке на сайте.
+          Выбрано: {cardHighlights.length} из 3.
         </p>
-        {isHouse ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {HOUSE_HIGHLIGHT_OPTIONS.map((o) => {
-              const active = cardHighlights.includes(o.value);
-              return (
-                <button
-                  key={o.value}
-                  type="button"
-                  onClick={() => toggleHighlight(o.value)}
-                  className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                    active
-                      ? "border-primary bg-primary text-primary-foreground"
+        <div className="mt-4 flex flex-wrap gap-2">
+          {highlightChoices.map((value) => {
+            const active = cardHighlights.includes(value);
+            const disabled = !active && cardHighlights.length >= 3;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => toggleHighlight(value)}
+                disabled={disabled}
+                className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : disabled
+                      ? "border-border bg-background text-muted-foreground opacity-50"
                       : "border-border bg-background hover:bg-muted"
-                  }`}
-                >
-                  {houseHighlightLabel(o.value)}
-                </button>
-              );
-            })}
-          </div>
-        ) : selectedComplex ? (
-          selectedComplex.infrastructure.length > 0 ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {selectedComplex.infrastructure.map((value) => {
-                const active = cardHighlights.includes(value);
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => toggleHighlight(value)}
-                    className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                      active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-background hover:bg-muted"
-                    }`}
-                  >
-                    {infrastructureLabel(value)}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-muted-foreground">
-              У выбранного комплекса не указана инфраструктура.
-            </p>
-          )
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Выберите комплекс, чтобы отметить его характеристики.
-          </p>
-        )}
+                }`}
+              >
+                {highlightLabel(value)}
+              </button>
+            );
+          })}
+        </div>
       </section>
+
 
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Локация</h2>
