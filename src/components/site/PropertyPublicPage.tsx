@@ -17,7 +17,9 @@ import {
   formatLandArea,
   formatMoney,
   isHouseType,
+  publicStatusView,
   roomsLabel,
+  STATUS_TONE_CLASS,
   typeLabel,
   type Property,
 } from "@/lib/properties";
@@ -49,6 +51,7 @@ export type PublicPropertyView = Pick<
   | "land_area"
   | "bathrooms"
   | "status"
+  | "service_type"
   | "price_month"
   | "seasonal_pricing"
   | "summer_price_month"
@@ -73,14 +76,11 @@ type Props = {
   complex?: PublicComplexView | null;
   /** path фотографии → готовый URL картинки (объект + комплекс) */
   photoUrls: Record<string, string>;
+  /** Первый свободный день (ISO) — из календаря аренды. */
+  freeFromIso?: string | null;
 };
 
-const STATUS_TEXT: Record<string, string> = {
-  free: "Свободен сейчас",
-  rented: "Сдан",
-  booked: "Забронирован",
-  archived: "Не публикуется",
-};
+
 
 /**
  * Вспомогательные функции форматирования адреса.
@@ -155,7 +155,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 
-export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
+export function PropertyPublicPage({ property, complex, photoUrls, freeFromIso }: Props) {
+  const statusView = publicStatusView(property, freeFromIso);
   const [active, setActive] = useState(0);
   const [complexActive, setComplexActive] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -358,14 +359,11 @@ export function PropertyPublicPage({ property, complex, photoUrls }: Props) {
 
           {/* Информация */}
           <div className="flex min-w-0 flex-col lg:col-span-5">
-            <p
-              className={
-                "text-[15px] font-semibold " +
-                (property.status === "free" ? "text-site-green" : "text-site-muted")
-              }
-            >
-              {STATUS_TEXT[property.status] ?? ""}
-            </p>
+            {statusView ? (
+              <p className={"text-[15px] font-semibold " + STATUS_TONE_CLASS[statusView.tone]}>
+                {statusView.text}
+              </p>
+            ) : null}
 
             <h1 className="mt-2 font-body text-[32px] font-bold leading-[1.15] tracking-tight lg:text-[36px]">
               {property.title}

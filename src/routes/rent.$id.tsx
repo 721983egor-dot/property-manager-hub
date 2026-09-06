@@ -5,6 +5,8 @@ import { ChevronLeft } from "lucide-react";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { fetchComplex } from "@/lib/complexes";
 import { fetchProperty, signedUrls } from "@/lib/properties";
+import { fetchCurrentBooking } from "@/lib/bookings";
+import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 
 export const Route = createFileRoute("/rent/$id")({
   head: () => ({
@@ -53,6 +55,18 @@ function RentDetailPage() {
     queryFn: () => fetchProperty(id),
   });
 
+  const todayIso = toISODate(new Date());
+  const needsBooking =
+    data?.status === "rented" && (data?.service_type ?? "management") === "management";
+  const { data: currentBooking } = useQuery({
+    queryKey: ["current-booking", id, todayIso],
+    queryFn: () => fetchCurrentBooking(id, todayIso),
+    enabled: Boolean(needsBooking),
+  });
+  const freeFromIso = currentBooking
+    ? toISODate(addDays(parseISODate(currentBooking.end_date), 1))
+    : null;
+
   const complexId = data?.complex_id ?? null;
   const { data: complex } = useQuery({
     queryKey: ["complexes", complexId],
@@ -80,7 +94,7 @@ function RentDetailPage() {
     );
   }
 
-  if (error || !data) {
+  if (error || !data || data.status === "archived" || !data.published) {
     return (
       <div className="flex min-h-screen items-center justify-center px-5 text-center">
         <div>
@@ -97,5 +111,10 @@ function RentDetailPage() {
     );
   }
 
-  return <PropertyPublicPage property={data} complex={complex ?? null} photoUrls={urls} />;
+  return <PropertyPublicPage
+      property={data}
+      complex={complex ?? null}
+      photoUrls={urls}
+      freeFromIso={freeFromIso}
+    />;
 }

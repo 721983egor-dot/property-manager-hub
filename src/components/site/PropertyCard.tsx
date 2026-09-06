@@ -5,6 +5,8 @@ import {
   formatMoney,
   highlightLabel,
   isHouseType,
+  publicStatusView,
+  STATUS_TONE_CLASS,
   type Property,
 } from "@/lib/properties";
 
@@ -12,6 +14,8 @@ type Props = {
   property: Property;
   complexName?: string | null | undefined;
   photoUrl?: string | undefined;
+  /** Первый свободный день (ISO) — для объектов на управлении. */
+  freeFromIso?: string | null;
 };
 
 function bedroomsLabel(rooms: number) {
@@ -21,8 +25,9 @@ function bedroomsLabel(rooms: number) {
   return `${rooms} спален`;
 }
 
-export function PropertyCard({ property, complexName, photoUrl }: Props) {
-  const isFree = property.status === "free";
+export function PropertyCard(props: Props) {
+  const { property, complexName, photoUrl } = props;
+  const statusView = publicStatusView(property, props.freeFromIso);
   const isHouse = isHouseType(property.type);
   const highlights = (property.card_highlights ?? []).slice(0, 3).map(highlightLabel);
 
@@ -65,11 +70,11 @@ export function PropertyCard({ property, complexName, photoUrl }: Props) {
       <div className="flex flex-1 flex-col px-6 py-7">
         <h3 className="text-xl font-bold leading-snug text-site-navy">{property.title}</h3>
 
-        <p
-          className={`mt-3 text-base font-bold ${isFree ? "text-site-green" : "text-site-muted"}`}
-        >
-          {isFree ? "Свободен сейчас" : "Занят"}
-        </p>
+        {statusView ? (
+          <p className={`mt-3 text-base font-bold ${STATUS_TONE_CLASS[statusView.tone]}`}>
+            {statusView.text}
+          </p>
+        ) : null}
 
         <div className="mt-5 h-px w-2/3 bg-site-gold/40" />
 
