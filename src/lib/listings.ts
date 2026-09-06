@@ -36,11 +36,7 @@ export function platformLabel(value: ListingPlatform) {
 
 /** Все записи о публикациях (по всем объектам). */
 export async function fetchListings(): Promise<PropertyListing[]> {
-  const { data, error } = await supabase
-    .from("property_listings")
-    .select(
-      "id, property_id, platform, published, published_at, unpublished_at, external_id, external_url, last_synced_at",
-    );
+  const { data, error } = await supabase.from("property_listings").select(LISTING_COLUMNS);
   if (error) throw new Error(error.message);
   return (data ?? []) as PropertyListing[];
 }
@@ -49,13 +45,12 @@ export async function fetchListings(): Promise<PropertyListing[]> {
 export async function fetchPropertyListings(propertyId: string): Promise<PropertyListing[]> {
   const { data, error } = await supabase
     .from("property_listings")
-    .select(
-      "id, property_id, platform, published, published_at, unpublished_at, external_id, external_url, last_synced_at",
-    )
+    .select(LISTING_COLUMNS)
     .eq("property_id", propertyId);
   if (error) throw new Error(error.message);
   return (data ?? []) as PropertyListing[];
 }
+
 
 /**
  * Публикация или снятие с публикации на сайте РМ:
