@@ -126,6 +126,28 @@ export async function fetchCurrentBooking(
   return row ? normalize(row as Record<string, unknown>) : null;
 }
 
+/** Текущие активные бронирования для нескольких объектов (property_id → бронь). */
+export async function fetchCurrentBookingsForProperties(
+  propertyIds: string[],
+  todayIso: string,
+): Promise<Record<string, Booking>> {
+  if (propertyIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(SELECT)
+    .in("property_id", propertyIds)
+    .neq("status", "cancelled")
+    .lte("start_date", todayIso)
+    .gte("end_date", todayIso);
+  if (error) throw error;
+  const map: Record<string, Booking> = {};
+  for (const row of data ?? []) {
+    const booking = normalize(row as Record<string, unknown>);
+    map[booking.property_id] = booking;
+  }
+  return map;
+}
+
 export async function fetchClients(): Promise<Client[]> {
   const { data, error } = await supabase
     .from("clients")
