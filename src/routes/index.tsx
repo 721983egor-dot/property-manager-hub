@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { addDays } from "date-fns";
-import { ArrowRight, Building2, Check, Handshake, KeyRound, Wallet } from "lucide-react";
+import { ArrowRight, MessageCircle, Phone, Send } from "lucide-react";
 
 import {
   fetchPublishedProperties,
@@ -11,28 +11,45 @@ import {
 } from "@/lib/properties";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import { parseISODate, toISODate } from "@/lib/rentals";
-import { SITE_EMAIL, SITE_PHONE_DISPLAY, SITE_PHONE_TEL, SITE_TELEGRAM, SITE_WHATSAPP } from "@/lib/site";
+import {
+  SITE_ADDRESS,
+  SITE_EMAIL,
+  SITE_HOURS,
+  SITE_PHONE_DISPLAY,
+  SITE_PHONE_TEL,
+  SITE_TELEGRAM,
+  SITE_WHATSAPP,
+} from "@/lib/site";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import heroImg from "@/assets/site/home_alt.jpg";
-import mgmtImg from "@/assets/site/mgmt_p2.jpg";
+import aboutImg from "@/assets/site/mgmt_p2.jpg";
 import selectionImg from "@/assets/site/home_hero.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Резиденция & Море — аренда недвижимости в Сочи" },
+      {
+        title:
+          "Резиденция&Море - Аренда премиум апартаментов и домов в г. Сочи",
+      },
       {
         name: "description",
         content:
-          "Агентство недвижимости в Сочи: долгосрочная аренда квартир, домов и вилл, управление объектами и персональный подбор жилья. Работаем без агентов-посредников.",
+          "Резиденция&Море — сервис управления жилой недвижимостью. Сдаём в аренду апартаменты, дома и виллы бизнес и премиум-класса для жизни, отдыха и длительного проживания в Сочи.",
       },
-      { property: "og:title", content: "Резиденция & Море — аренда недвижимости в Сочи" },
+      {
+        property: "og:title",
+        content:
+          "Резиденция&Море - Аренда премиум апартаментов и домов в г. Сочи",
+      },
       {
         property: "og:description",
         content:
-          "Долгосрочная аренда и управление недвижимостью в Сочи. Проверенные квартиры, дома и виллы.",
+          "Апартаменты, дома премиум и бизнес класса в Сочи. Только реальные объекты, прозрачные условия, сервис и обслуживание.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "/" },
     ],
     links: [{ rel: "canonical", href: "/" }],
@@ -42,13 +59,13 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "RealEstateAgent",
-          name: "Резиденция & Море",
-          telephone: "+7 938 500-00-24",
-          email: "info@residence-more.ru",
+          name: "Резиденция&Море",
+          telephone: "+7 938 442-08-09",
+          email: "residence.more@yandex.ru",
           address: {
             "@type": "PostalAddress",
             addressLocality: "Сочи",
-            streetAddress: "ул. Войкова 1/1, офис 110",
+            streetAddress: "ул. Московская, д. 22, офис 72",
             addressCountry: "RU",
           },
         }),
@@ -58,33 +75,55 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-const STEPS = [
+const ADVANTAGES = [
+  "Только реальные объекты",
+  "Прозрачные условия",
+  "Сервис и обслуживание",
+];
+
+const SERVICE = [
   {
-    icon: Building2,
-    title: "Выбираете объект",
-    text: "Смотрите актуальные варианты в каталоге и оставляете заявку на просмотр.",
+    title: "Надежная аренда",
+    text: "Только актуальные предложения на сайте и комфортная аренда на понятных условиях",
   },
   {
-    icon: Handshake,
-    title: "Персональный менеджер",
-    text: "Менеджер связывается с вами, уточняет пожелания и организует показ.",
+    title: "Сервис на весь срок",
+    text: "Если что-то сломалось, нужен клининг, химчистка или бытовая помощь — по всем вопросам к нам",
   },
   {
-    icon: KeyRound,
-    title: "Оформляете аренду",
-    text: "Договор, депозит, акт приёма-передачи — берём все вопросы на себя.",
-  },
-  {
-    icon: Wallet,
-    title: "Комфортное проживание",
-    text: "Остаёмся на связи весь срок аренды: оплата, бытовые вопросы, поддержка.",
+    title: "Поддержка",
+    text: "Подскажем по объекту, правилам проживания, коммуникации с собственником и другим вопросам",
   },
 ];
 
-const MGMT_POINTS = [
-  "Поиск и проверка арендаторов",
-  "Профессиональная фотосессия и размещение",
-  "Полное сопровождение сделки и проживания",
+const STEPS = [
+  {
+    title: "Выберите объект или напишите нам",
+    text: "Посмотрите подходящие варианты на сайте или напишите нам — мы поможем с подбором под ваш запрос.",
+  },
+  {
+    title: "Согласуем просмотр",
+    text: "Подберём удобное время для просмотра и заранее ответим на вопросы по объекту.",
+  },
+  {
+    title: "Покажем объект",
+    text: "Организуем просмотр. Если вы без автомобиля — поможем с трансфером до объекта.",
+  },
+  {
+    title: "Подготовим договор",
+    text: "Согласуем условия аренды, платежи и сроки, подготовим договор и документы для подписания.",
+  },
+  {
+    title: "Передадим ключи",
+    text: "Поможем с заселением и останемся на связи на весь срок аренды.",
+  },
+];
+
+const ABOUT_TEXT = [
+  "Резиденция&Море - сервис управления жилой недвижимостью.",
+  "Мы сдаем в аренду апартаменты, дома и виллы бизнес и премиум-класса для жизни, отдыха и длительного проживания в Сочи.",
+  "Наша задача — не просто показать объект, а провести клиента через весь процесс аренды: от подбора и просмотра до договора, заселения и сопровождения на протяжении всего срока проживания.",
+  "Мы работаем с актуальными объектами, проверенными собственниками и понятными условиями аренды.",
 ];
 
 function HomePage() {
@@ -132,65 +171,35 @@ function HomePage() {
       <section className="relative flex min-h-[88vh] items-center overflow-hidden bg-site-navy">
         <img
           src={heroImg}
-          alt="Вилла с видом на море в Сочи"
+          alt="Апартаменты и дома премиум класса в Сочи"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-site-navy/90 via-site-navy/55 to-site-navy/20" />
         <div className="relative mx-auto w-full max-w-[1280px] px-5 py-24 md:px-6">
-          <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
-            <span className="h-px w-10 bg-site-gold" />
-            Агентство недвижимости · Сочи
-          </p>
-          <h1 className="mt-5 max-w-2xl text-4xl font-bold leading-[1.1] text-white md:text-6xl">
-            Аренда доходной недвижимости в Сочи
+          <h1 className="max-w-2xl text-5xl font-bold leading-[1.05] text-white md:text-7xl">
+            Аренда в <span className="text-site-gold">Сочи</span>
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
-            Квартиры, дома и виллы для долгосрочной аренды и отдыха у моря.
-            Быстро, безопасно и без лишних посредников.
+            Апартаменты, дома премиум и бизнес класса
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Link
               to="/rent"
               className="inline-flex items-center gap-2 rounded-md bg-site-gold px-7 py-3.5 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
             >
-              Смотреть объекты
+              Выбрать объекты
               <ArrowRight className="size-4" />
             </Link>
-            <a
-              href="#lead"
-              className="inline-flex items-center rounded-md border border-white/40 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:border-site-gold hover:text-site-gold"
-            >
-              Обсудить объект
-            </a>
           </div>
-        </div>
-      </section>
-
-      {/* Как это работает */}
-      <section className="bg-white py-20">
-        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
-            <span className="h-px w-10 bg-site-gold" />
-            Как это работает
-          </p>
-          <h2 className="mt-4 max-w-xl text-3xl font-bold text-site-navy md:text-4xl">
-            4 шага до ключей
-          </h2>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step, i) => (
-              <div
-                key={step.title}
-                className="rounded-xl border border-site-line bg-white p-6 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.25)]"
+          <div className="mt-12 flex flex-wrap gap-x-10 gap-y-3">
+            {ADVANTAGES.map((item) => (
+              <p
+                key={item}
+                className="flex items-center gap-3 text-sm font-medium text-white/85"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-3xl font-bold text-site-gold">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <step.icon className="size-6 text-site-gold" />
-                </div>
-                <p className="mt-4 text-base font-semibold text-site-navy">{step.title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-site-muted">{step.text}</p>
-              </div>
+                <span className="h-px w-8 bg-site-gold" />
+                {item}
+              </p>
             ))}
           </div>
         </div>
@@ -200,28 +209,17 @@ function HomePage() {
       <section className="bg-site-navy-soft py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
-                <span className="h-px w-10 bg-site-gold" />
-                Каталог
-              </p>
-              <h2 className="mt-4 text-3xl font-bold text-site-navy md:text-4xl">
-                Свободные объекты
-              </h2>
-            </div>
+            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+              Популярные объекты
+            </h2>
             <Link
               to="/rent"
               className="inline-flex items-center gap-2 text-sm font-semibold text-site-navy hover:text-site-gold"
             >
-              Смотреть все объекты
-              <ArrowRight className="size-4" />
+              Смотреть все →
             </Link>
           </div>
-          {popular.length === 0 ? (
-            <p className="mt-10 text-sm text-site-muted">
-              Сейчас все объекты заняты — оставьте заявку, и мы подберём вариант под вас.
-            </p>
-          ) : (
+          {popular.length > 0 && (
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {popular.map(({ property, freeFromIso }) => (
                 <PropertyCard
@@ -240,51 +238,7 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Управление недвижимостью */}
-      <section className="bg-white py-20">
-        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl">
-            <img
-              src={mgmtImg}
-              alt="Терраса объекта под управлением"
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          </div>
-          <div>
-            <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
-              <span className="h-px w-10 bg-site-gold" />
-              Собственникам
-            </p>
-            <h2 className="mt-4 text-3xl font-bold text-site-navy md:text-4xl">
-              Управление вашей недвижимостью
-            </h2>
-            <p className="mt-5 leading-relaxed text-site-muted">
-              Вы владеете — мы управляем. Доверьте нам свою недвижимость и
-              получайте доход от аренды без забот. Всё остальное — наша работа.
-            </p>
-            <ul className="mt-6 flex flex-col gap-3">
-              {MGMT_POINTS.map((point) => (
-                <li key={point} className="flex items-start gap-3 text-sm text-site-navy">
-                  <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-site-gold-soft">
-                    <Check className="size-3.5 text-site-gold" />
-                  </span>
-                  {point}
-                </li>
-              ))}
-            </ul>
-            <Link
-              to="/management"
-              className="mt-8 inline-flex items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
-            >
-              Подробнее об управлении
-              <ArrowRight className="size-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Персональный подбор + заявка */}
+      {/* Персональный подбор */}
       <section id="lead" className="relative overflow-hidden py-20">
         <img
           src={selectionImg}
@@ -296,38 +250,179 @@ function HomePage() {
         <div className="absolute inset-0 bg-site-navy/85" />
         <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
           <div>
-            <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
-              <span className="h-px w-10 bg-site-gold" />
-              Персональный подбор
-            </p>
-            <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-              Не нашли подходящий вариант?
+            <h2 className="text-3xl font-bold text-white md:text-4xl">
+              Персональный подбор недвижимости
             </h2>
             <p className="mt-5 max-w-md leading-relaxed text-white/75">
-              Оставьте заявку — мы перезвоним и подберём варианты специально под
-              вас. В базе всегда есть объекты, которые ещё не опубликованы.
+              Подберём апартаменты, дом или виллу с учётом района, бюджета и
+              ваших пожеланий.
+            </p>
+            <p className="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-site-gold">
+              LET'S GO!
             </p>
             <div className="mt-8 flex flex-col gap-3 text-sm text-white/85">
-              <a href={SITE_PHONE_TEL} className="text-lg font-bold text-white hover:text-site-gold">
-                {SITE_PHONE_DISPLAY}
-              </a>
-              <div className="flex gap-4">
-                <a href={SITE_TELEGRAM} target="_blank" rel="noreferrer" className="font-medium hover:text-site-gold">
-                  Telegram
+              <p className="font-semibold text-white">
+                Напишите в удобный мессенджер
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href={SITE_TELEGRAM}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md border border-white/30 px-4 py-2 font-medium transition-colors hover:border-site-gold hover:text-site-gold"
+                >
+                  <Send className="size-4" /> Telegram
                 </a>
-                <a href={SITE_WHATSAPP} target="_blank" rel="noreferrer" className="font-medium hover:text-site-gold">
-                  WhatsApp
+                <a
+                  href={SITE_WHATSAPP}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md border border-white/30 px-4 py-2 font-medium transition-colors hover:border-site-gold hover:text-site-gold"
+                >
+                  <MessageCircle className="size-4" /> WhatsApp
                 </a>
-                <a href={`mailto:${SITE_EMAIL}`} className="font-medium hover:text-site-gold">
-                  {SITE_EMAIL}
+                <a
+                  href={SITE_PHONE_TEL}
+                  className="inline-flex items-center gap-2 rounded-md border border-white/30 px-4 py-2 font-medium transition-colors hover:border-site-gold hover:text-site-gold"
+                >
+                  <Phone className="size-4" /> Позвонить
                 </a>
               </div>
             </div>
           </div>
           <div className="rounded-2xl bg-white p-6 shadow-2xl md:p-8">
-            <p className="text-lg font-semibold text-site-navy">Оставить заявку</p>
+            <p className="text-lg font-semibold text-site-navy">Остались вопросы?</p>
+            <p className="mt-1 text-sm text-site-muted">
+              Заполните форму и мы свяжемся с вами в ближайшее время
+            </p>
             <div className="mt-4">
-              <SiteLeadForm source="home-selection" defaultTopic="selection" />
+              <SiteLeadForm source="home-selection" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Сервис и сопровождение */}
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <h2 className="max-w-2xl text-3xl font-bold text-site-navy md:text-4xl">
+            Сервис и сопровождение на весь срок аренды
+          </h2>
+          <p className="mt-5 max-w-2xl leading-relaxed text-site-muted">
+            Мы не просто подбираем объект — остаёмся на связи после заселения и
+            помогаем решать бытовые и организационные вопросы.
+          </p>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {SERVICE.map((item) => (
+              <div
+                key={item.title}
+                className="rounded-xl border border-site-line bg-white p-6 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.25)]"
+              >
+                <p className="text-lg font-semibold text-site-navy">{item.title}</p>
+                <p className="mt-3 text-sm leading-relaxed text-site-muted">
+                  {item.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Как у нас арендовать */}
+      <section className="bg-site-navy-soft py-20">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+            Как у нас арендовать?
+          </h2>
+          <p className="mt-5 max-w-2xl leading-relaxed text-site-muted">
+            Простой процесс от выбора объекта до заселения и сопровождения на
+            весь срок аренды.
+          </p>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+            {STEPS.map((step, i) => (
+              <div
+                key={step.title}
+                className="rounded-xl border border-site-line bg-white p-6"
+              >
+                <span className="text-3xl font-bold text-site-gold">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <p className="mt-4 text-base font-semibold text-site-navy">
+                  {step.title}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                  {step.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* О компании */}
+      <section className="bg-white py-20">
+        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
+          <div className="overflow-hidden rounded-2xl">
+            <img
+              src={aboutImg}
+              alt="Апартаменты Резиденция&Море в Сочи"
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+              О компании
+            </h2>
+            <div className="mt-5 flex flex-col gap-4 leading-relaxed text-site-muted">
+              {ABOUT_TEXT.map((p) => (
+                <p key={p}>{p}</p>
+              ))}
+            </div>
+            <Link
+              to="/about"
+              className="mt-8 inline-flex items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+            >
+              О нас
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Контакты */}
+      <section className="bg-site-navy py-16">
+        <div className="mx-auto grid max-w-[1280px] gap-8 px-5 md:px-6 lg:grid-cols-2">
+          <div>
+            <h2 className="text-3xl font-bold text-white md:text-4xl">Контакты</h2>
+            <p className="mt-5 max-w-md leading-relaxed text-white/75">
+              Остались вопросы? Вы можете связаться с нами напрямую по номеру
+              телефона / почте, либо оставить заявку на звонок.
+            </p>
+          </div>
+          <div className="grid gap-6 text-sm text-white/80 sm:grid-cols-2">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-site-gold">Телефон</p>
+              <a
+                href={SITE_PHONE_TEL}
+                className="mt-2 block text-lg font-bold text-white hover:text-site-gold"
+              >
+                {SITE_PHONE_DISPLAY}
+              </a>
+              <p className="mt-4 text-xs uppercase tracking-wider text-site-gold">
+                E-mail
+              </p>
+              <a
+                href={`mailto:${SITE_EMAIL}`}
+                className="mt-2 block hover:text-site-gold"
+              >
+                {SITE_EMAIL}
+              </a>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-site-gold">Адрес</p>
+              <p className="mt-2">{SITE_ADDRESS}</p>
+              <p className="mt-2">{SITE_HOURS}</p>
             </div>
           </div>
         </div>

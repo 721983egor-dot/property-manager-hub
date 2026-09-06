@@ -1,23 +1,23 @@
-export const SITE_NAME = "Резиденция & Море";
-export const SITE_TAGLINE = "Аренда недвижимости в Сочи";
+export const SITE_NAME = "Резиденция&Море";
+export const SITE_TAGLINE = "Аренда премиум апартаментов и домов в г. Сочи";
 
-export const SITE_PHONE_DISPLAY = "+7 938 500-00-24";
-export const SITE_PHONE_TEL = "tel:+79385000024";
-export const SITE_WHATSAPP = "https://wa.me/79385000024";
-export const SITE_TELEGRAM = "https://t.me/ResidenceMore";
-export const SITE_EMAIL = "info@residence-more.ru";
-export const SITE_ADDRESS =
-  "г. Сочи, ул. Войкова 1/1, офис 110, БЦ «Войковый»";
+export const SITE_PHONE_DISPLAY = "+7 (938)-442-08-09";
+export const SITE_PHONE_TEL = "tel:+79384420809";
+export const SITE_WHATSAPP = "https://wa.me/79384420809";
+export const SITE_TELEGRAM = "https://t.me/residencemore";
+export const SITE_VK = "https://vk.com/residencemore";
+export const SITE_EMAIL = "residence.more@yandex.ru";
+export const SITE_ADDRESS = "г. Сочи ул. Московская, д. 22, офис 72";
+export const SITE_ADDRESS_SHORT = "г. Сочи ул. Московская, д. 22";
+export const SITE_HOURS = "Пн-Пт 9:00 — 18:00";
+export const SITE_HOURS_HEADER = "Пн-Пт 8:00 — 21:00";
 export const SITE_REQUISITES =
-  "ИП Шапиев Эльнур Исламович, ИНН 231031523810, ОГРНИП 32523000004373";
+  "ИП Мошков Егор Олегович ИНН 112105421351 ОГРНИП 322237500096645";
 
 export const LEAD_TOPICS = [
-  { value: "rent", label: "Хочу снять" },
-  { value: "management", label: "Управление недвижимостью" },
-  { value: "selection", label: "Персональный подбор" },
-  { value: "sale", label: "Хочу продать" },
-  { value: "cooperation", label: "Сотрудничество" },
-  { value: "other", label: "Другой вопрос" },
+  { value: "rent", label: "Долгосрочная аренда" },
+  { value: "management", label: "Собственникам" },
+  { value: "other", label: "Другое" },
 ] as const;
 
 export function leadTopicLabel(value: string) {

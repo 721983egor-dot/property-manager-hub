@@ -3,17 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2 } from "lucide-react";
 
 import { submitLead } from "@/lib/leads.functions";
-import { LEAD_TOPICS } from "@/lib/site";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type Props = {
   defaultTopic?: string;
@@ -22,11 +14,11 @@ type Props = {
   withMessage?: boolean;
 };
 
-/** Форма заявки на сайте: имя, телефон, тема, комментарий. */
+/** Форма заявки на сайте: имя, телефон, тема обращения, описание. */
 export function SiteLeadForm({
   defaultTopic = "",
   source = "site",
-  buttonLabel = "Отправить заявку",
+  buttonLabel = "Заказать звонок",
   withMessage = true,
 }: Props) {
   const send = useServerFn(submitLead);
@@ -44,7 +36,7 @@ export function SiteLeadForm({
         <CheckCircle2 className="size-10 text-site-green" />
         <p className="text-lg font-semibold text-site-navy">Заявка отправлена</p>
         <p className="text-sm text-site-muted">
-          Мы свяжемся с вами в ближайшее рабочее время.
+          Мы свяжемся с вами в ближайшее время.
         </p>
       </div>
     );
@@ -74,7 +66,7 @@ export function SiteLeadForm({
       <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Ваше имя"
+        placeholder="Имя"
         required
         className="h-11"
       />
@@ -86,24 +78,19 @@ export function SiteLeadForm({
         required
         className="h-11"
       />
-      <Select value={topic} onValueChange={setTopic}>
-        <SelectTrigger className="h-11 w-full">
-          <SelectValue placeholder="Тема обращения" />
-        </SelectTrigger>
-        <SelectContent>
-          {LEAD_TOPICS.map((t) => (
-            <SelectItem key={t.value} value={t.value}>
-              {t.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Input
+        value={topic}
+        onChange={(e) => setTopic(e.target.value)}
+        placeholder="Тема обращения"
+        required
+        className="h-11"
+      />
       {withMessage && (
         <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Комментарий (необязательно)"
-          rows={3}
+          placeholder="Опишите вопрос"
+          rows={4}
         />
       )}
       {error && <p className="text-sm text-site-red">{error}</p>}
@@ -119,7 +106,6 @@ export function SiteLeadForm({
         <a href="/privacy" className="underline hover:text-site-navy">
           политикой конфиденциальности
         </a>
-        .
       </p>
     </form>
   );

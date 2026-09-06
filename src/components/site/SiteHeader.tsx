@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Mail, Menu, Phone, X } from "lucide-react";
+import { Menu, Phone, X } from "lucide-react";
 
 import {
-  SITE_EMAIL,
+  SITE_ADDRESS_SHORT,
+  SITE_HOURS_HEADER,
   SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
-  SITE_TELEGRAM,
-  SITE_WHATSAPP,
 } from "@/lib/site";
 import {
   Dialog,
@@ -19,11 +18,9 @@ import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import logo from "@/assets/site/logo.png";
 
 const NAV = [
-  { to: "/", label: "Главная" },
+  { to: "/about", label: "О нас" },
+  { to: "/management", label: "Собственникам" },
   { to: "/rent", label: "Объекты" },
-  { to: "/about", label: "О компании" },
-  { to: "/management", label: "Управление недвижимостью" },
-  { to: "/contacts", label: "Контакты" },
 ] as const;
 
 /** Шапка публичного сайта. */
@@ -40,8 +37,9 @@ export function SiteHeader() {
       {/* Верхняя контактная строка */}
       <div className="hidden border-b border-site-line lg:block">
         <div className="mx-auto flex h-9 max-w-[1280px] items-center justify-between px-6 text-xs text-site-muted">
-          <p>Сочи · Адлер · Дагомыс · Мацеста · Хоста</p>
+          <p>{SITE_ADDRESS_SHORT}</p>
           <div className="flex items-center gap-4">
+            <p>{SITE_HOURS_HEADER}</p>
             <a
               href={SITE_PHONE_TEL}
               className="flex items-center gap-1.5 font-medium text-site-navy hover:text-site-gold"
@@ -49,37 +47,14 @@ export function SiteHeader() {
               <Phone className="size-3.5" />
               {SITE_PHONE_DISPLAY}
             </a>
-            <a
-              href={`mailto:${SITE_EMAIL}`}
-              className="flex items-center gap-1.5 hover:text-site-navy"
-            >
-              <Mail className="size-3.5" />
-              {SITE_EMAIL}
-            </a>
-            <a
-              href={SITE_TELEGRAM}
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium hover:text-site-navy"
-            >
-              Telegram
-            </a>
-            <a
-              href={SITE_WHATSAPP}
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium hover:text-site-navy"
-            >
-              WhatsApp
-            </a>
           </div>
         </div>
       </div>
 
       {/* Основная строка */}
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-4 px-5 md:px-6">
-        <Link to="/" className="flex shrink-0 items-center" aria-label="На главную">
-          <img src={logo} alt="Резиденция & Море" className="h-9 w-auto" />
+        <Link to="/" className="flex shrink-0 items-center" aria-label="Резиденция&Море">
+          <img src={logo} alt="Резиденция&Море" className="h-9 w-auto" />
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex">
@@ -158,10 +133,13 @@ export function SiteHeader() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-site text-site-navy">
-              Связаться с нами
+              Связаться c нами
             </DialogTitle>
           </DialogHeader>
-          <SiteLeadForm source="site-header" />
+          <p className="text-sm text-site-muted">
+            Заполните форму и мы свяжемся с вами в ближайшее время
+          </p>
+          <SiteLeadForm source="site-header" buttonLabel="Заказать звонок" />
         </DialogContent>
       </Dialog>
     </header>
