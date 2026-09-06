@@ -41,6 +41,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             Объекты
           </Link>
           <Link
+            to="/selections"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
+          >
+            <Bookmark className="size-4" />
+            Подборки
+          </Link>
+          <Link
             to="/calendar"
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
           >
