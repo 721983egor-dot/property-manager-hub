@@ -246,7 +246,7 @@ function HomePage() {
           className="absolute inset-0 h-full w-full object-cover"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-site-navy/85" />
+        <div className="absolute inset-0 bg-gradient-to-r from-site-navy/85 via-site-navy/55 to-site-navy/30" />
         <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
           <div>
             <h2 className="text-3xl font-bold text-white md:text-4xl">
