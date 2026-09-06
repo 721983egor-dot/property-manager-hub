@@ -1,11 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronDown, ImageIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Bookmark, ChevronDown, Copy, ImageIcon, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -13,6 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,8 +51,8 @@ import {
   type Property,
   type PropertyStatus,
 } from "@/lib/properties";
+import { createSelection } from "@/lib/selections";
 import { cn } from "@/lib/utils";
-
 
 export const Route = createFileRoute("/objects/")({
   head: () => ({
@@ -82,6 +93,12 @@ function ObjectsPage() {
   const [status, setStatus] = useState<string>(ALL);
   const [sort, setSort] = useState<string>(ALL);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [comment, setComment] = useState("");
+  const [saveList, setSaveList] = useState(false);
+
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
     queryFn: fetchProperties,
@@ -98,7 +115,6 @@ function ObjectsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const rows = properties.filter((p) => {
-      // Архивные объекты скрыты, пока их не выбрали в фильтре статуса или во вкладке «Архив».
       if (p.status === "archived" && tab !== "archive" && status !== "archived") return false;
       if (tab === "archive" && p.status !== "archived") return false;
       if (q && !`${p.title} ${p.internal_name} ${p.complex_name}`.toLowerCase().includes(q))
@@ -152,6 +168,24 @@ function ObjectsPage() {
       toast.error(e instanceof Error ? e.message : "Не удалось удалить объект"),
   });
 
+  const createSelectionMutation = useMutation({
+    mutationFn: createSelection,
+    onSuccess: (selection) => {
+      const link = `${window.location.origin}/p/${selection.code}`;
+      navigator.clipboard.writeText(link).then(() => {
+        toast.success("Ссылка на подборку скопирована");
+      });
+      setSelectedIds(new Set());
+      setClientName("");
+      setComment("");
+      setSaveList(false);
+      setDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["selections"] });
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Не удалось создать подборку"),
+  });
+
   const hasFilters =
     search !== "" ||
     type !== ALL ||
@@ -168,6 +202,46 @@ function ObjectsPage() {
     setStatus(ALL);
     setSort(ALL);
   };
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
+  const someFilteredSelected = filtered.some((p) => selectedIds.has(p.id));
+
+  const toggleId = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const p of filtered) next.delete(p.id);
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const p of filtered) next.add(p.id);
+        return next;
+      });
+    }
+  };
+
+  const selectedList = useMemo(
+    () => properties.filter((p) => selectedIds.has(p.id)),
+    [properties, selectedIds],
+  );
+
+  const selectionLinkPreview = useMemo(() => {
+    if (selectedList.length === 0) return "";
+    // Код ещё не создан, показываем только домен и путь.
+    return `${typeof window !== "undefined" ? window.location.origin : ""}/p/…`;
+  }, [selectedList.length]);
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-8 lg:px-10 lg:py-10">
@@ -246,7 +320,6 @@ function ObjectsPage() {
           ]}
         />
 
-
         {hasFilters ? (
           <Button variant="ghost" onClick={resetFilters} className="h-10 text-muted-foreground">
             Сбросить
@@ -255,9 +328,16 @@ function ObjectsPage() {
       </div>
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card">
-        <table className="w-full min-w-[1200px] text-sm">
+        <table className="w-full min-w-[1250px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <th className="w-10 px-3 py-3 text-center">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  onCheckedChange={toggleAll}
+                  aria-label="Выбрать все"
+                />
+              </th>
               <th className="px-5 py-3 font-medium">Объект</th>
               <th className="px-4 py-3 font-medium">Тип</th>
               <th className="px-4 py-3 font-medium">Комплекс</th>
@@ -269,19 +349,18 @@ function ObjectsPage() {
               <th className="px-4 py-3 font-medium">Комиссия</th>
               <th className="px-4 py-3 font-medium">Статус</th>
               <th className="px-4 py-3 text-right font-medium">Действия</th>
-
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={11} className="px-5 py-12 text-center text-muted-foreground">
+                <td colSpan={12} className="px-5 py-12 text-center text-muted-foreground">
                   Загрузка...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-5 py-12 text-center text-muted-foreground">
+                <td colSpan={12} className="px-5 py-12 text-center text-muted-foreground">
                   Объекты не найдены
                 </td>
               </tr>
@@ -291,6 +370,8 @@ function ObjectsPage() {
                   key={p.id}
                   property={p}
                   photoUrl={p.photos[0]?.path ? urls[p.photos[0].path] : undefined}
+                  selected={selectedIds.has(p.id)}
+                  onToggle={() => toggleId(p.id)}
                   onStatus={(next) => statusMutation.mutate({ id: p.id, next })}
                   onDelete={() => {
                     if (
@@ -309,6 +390,106 @@ function ObjectsPage() {
       </div>
 
       <p className="mt-4 text-sm text-muted-foreground">Всего объектов: {filtered.length}</p>
+
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 z-30 w-[calc(100%-3rem)] max-w-xl -translate-x-1/2 rounded-2xl border border-border bg-card p-4 shadow-xl">
+          <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+            <div className="text-sm">
+              <span className="font-semibold">Выбрано объектов: {selectedIds.size}</span>
+              {selectedList.length > 0 && (
+                <span className="ml-2 text-muted-foreground">
+                  {selectedList.map((p) => internalTitle(p)).join(", ")}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                <X className="size-4" />
+                Снять выбор
+              </Button>
+              <Button size="sm" onClick={() => setDialogOpen(true)}>
+                <Bookmark className="size-4" />
+                Создать подборку
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Подборка для клиента</DialogTitle>
+            <DialogDescription>
+              Ссылка на выбранные объекты ({selectedIds.size}) будет скопирована в буфер обмена.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="client-name">Имя клиента</Label>
+              <Input
+                id="client-name"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Например, Анна"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="selection-comment">Комментарий</Label>
+              <Textarea
+                id="selection-comment"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Краткий комментарий для клиента"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="save-list"
+                checked={saveList}
+                onCheckedChange={(v) => setSaveList(Boolean(v))}
+              />
+              <Label htmlFor="save-list" className="text-sm font-normal leading-tight">
+                Сохранить в списке подборок
+              </Label>
+            </div>
+
+            {selectionLinkPreview && (
+              <div className="flex items-center gap-2 rounded-md border border-dashed border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                <Copy className="size-4 shrink-0" />
+                <span className="truncate">{selectionLinkPreview}</span>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={createSelectionMutation.isPending}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() =>
+                createSelectionMutation.mutate({
+                  propertyIds: Array.from(selectedIds),
+                  clientName,
+                  comment,
+                  saved: saveList,
+                })
+              }
+              disabled={createSelectionMutation.isPending || selectedIds.size === 0}
+            >
+              {createSelectionMutation.isPending ? "Создание…" : "Скопировать ссылку"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -347,16 +528,23 @@ function FilterSelect({
 function Row({
   property,
   photoUrl,
+  selected,
+  onToggle,
   onStatus,
   onDelete,
 }: {
   property: Property;
   photoUrl?: string | undefined;
+  selected: boolean;
+  onToggle: () => void;
   onStatus: (next: PropertyStatus) => void;
   onDelete: () => void;
 }) {
   return (
     <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
+      <td className="px-3 py-4 text-center">
+        <Checkbox checked={selected} onCheckedChange={onToggle} aria-label="Выбрать объект" />
+      </td>
       <td className="px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
@@ -446,5 +634,3 @@ function Row({
     </tr>
   );
 }
-
-

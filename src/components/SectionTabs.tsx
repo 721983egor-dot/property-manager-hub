@@ -4,13 +4,14 @@ const ITEMS = [
   { to: "/objects", label: "Объекты" },
   { to: "/complexes", label: "Комплексы" },
   { to: "/calendar", label: "Календарь" },
+  { to: "/selections", label: "Подборки" },
 ] as const;
 
 /** Вкладки верхнего уровня внутри раздела «Объекты». */
 export function SectionTabs({
   active,
 }: {
-  active: "objects" | "complexes" | "calendar";
+  active: "objects" | "complexes" | "calendar" | "selections";
 }) {
   return (
     <div className="mt-6 border-b border-border">
@@ -19,7 +20,8 @@ export function SectionTabs({
           const isActive =
             (item.to === "/objects" && active === "objects") ||
             (item.to === "/complexes" && active === "complexes") ||
-            (item.to === "/calendar" && active === "calendar");
+            (item.to === "/calendar" && active === "calendar") ||
+            (item.to === "/selections" && active === "selections");
           return (
             <Link
               key={item.to}

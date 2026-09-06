@@ -407,6 +407,75 @@ export type Database = {
           },
         ]
       }
+      selection_items: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          property_id: string
+          selection_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position?: number
+          property_id: string
+          selection_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          property_id?: string
+          selection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "selection_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "selection_items_selection_id_fkey"
+            columns: ["selection_id"]
+            isOneToOne: false
+            referencedRelation: "selections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      selections: {
+        Row: {
+          client_name: string
+          code: string
+          comment: string
+          created_at: string
+          id: string
+          saved: boolean
+          updated_at: string
+        }
+        Insert: {
+          client_name?: string
+          code: string
+          comment?: string
+          created_at?: string
+          id?: string
+          saved?: boolean
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          code?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          saved?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
