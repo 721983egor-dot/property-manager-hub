@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Building2,
+  Check,
   FileCheck2,
+  HeartHandshake,
+  MapPin,
   MessageCircle,
+  Minus,
   Phone,
   Send,
   ShieldCheck,
@@ -12,7 +16,6 @@ import {
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import { SITE_PHONE_TEL, SITE_TELEGRAM, SITE_WHATSAPP } from "@/lib/site";
 import heroImg from "@/assets/site/about_hero.jpg";
-import img3 from "@/assets/site/about_p3.jpg";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
