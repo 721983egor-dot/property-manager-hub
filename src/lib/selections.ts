@@ -80,6 +80,7 @@ export async function fetchSelections(): Promise<SelectionWithItems[]> {
   const { data, error } = await supabase
     .from("selections")
     .select("*, selection_items(property_id, position)")
+    .eq("saved", true)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => ({
