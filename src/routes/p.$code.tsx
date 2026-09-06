@@ -10,6 +10,7 @@ import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import {
   fetchPublishedProperties,
   signedUrls,
+  type Property,
 } from "@/lib/properties";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 import { fetchSelectionByCode } from "@/lib/selections";
@@ -19,7 +20,7 @@ type LoaderData = {
   clientName: string;
   comment: string;
   count: number;
-  properties: { id: string; title: string; photos: { path?: string }[] }[];
+  properties: Property[];
   freeFromIso: Record<string, string>;
   photoUrls: Record<string, string>;
 };
