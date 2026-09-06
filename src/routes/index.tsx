@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
     meta: [
       {
         title:
-          "Резиденция&Море - Аренда премиум апартаментов и домов в г. Сочи",
+          "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
       },
       {
         name: "description",
@@ -41,14 +41,13 @@ export const Route = createFileRoute("/")({
       {
         property: "og:title",
         content:
-          "Резиденция&Море - Аренда премиум апартаментов и домов в г. Сочи",
+          "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
       },
       {
         property: "og:description",
         content:
           "Апартаменты, дома премиум и бизнес класса в Сочи. Только реальные объекты, прозрачные условия, сервис и обслуживание.",
       },
-      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "/" },
     ],

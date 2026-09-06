@@ -1,3 +1,4 @@
+import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type PropertyType = "apartment" | "aparts" | "house" | "villa" | "townhouse";
@@ -533,3 +534,59 @@ export const STATUS_TONE_CLASS: Record<"green" | "red" | "yellow" | "gold", stri
   yellow: "text-site-yellow",
   gold: "text-site-gold",
 };
+
+/** React Query-опции для публичной страницы объекта. */
+export function propertyQueryOptions(id: string) {
+  return queryOptions({
+    queryKey: ["properties", id],
+    queryFn: () => fetchProperty(id),
+  });
+}
+
+/** Короткое существительное типа объекта (им.п., мн.ч. для апартаментов). */
+export function propertyTypeNoun(value: PropertyType) {
+  switch (value) {
+    case "apartment":
+    case "aparts":
+      return "апартаменты";
+    case "house":
+    case "villa":
+      return "дом";
+    case "townhouse":
+      return "таунхаус";
+  }
+}
+
+function ucFirst(s: string) {
+  return s ? s[0]!.toUpperCase() + s.slice(1) : s;
+}
+
+function fitMetaTitle(core: string): string {
+  const suffix = " — Резиденция&Море";
+  const maxCore = 60 - suffix.length - 1; // оставляем место для многоточия
+  if ((core + suffix).length <= 60) return core + suffix;
+  const trimmed = core.slice(0, Math.max(1, maxCore)).replace(/\s+$/, "");
+  return `${trimmed}…${suffix}`;
+}
+
+/** Title страницы объекта (стараемся уложиться в 60 символов). */
+export function propertyMetaTitle(p: Property) {
+  const type = propertyTypeNoun(p.type);
+  const area = p.area ? formatArea(p.area) : "";
+  const price = p.price_month ? formatMoney(p.price_month) : "";
+  const core = `${p.title}, ${ucFirst(type)}${area ? `, ${area}` : ""}${price ? `, ${price}/мес` : ""}`;
+  return fitMetaTitle(core);
+}
+
+/** Description страницы объекта (стараемся уложиться в 160 символов). */
+export function propertyMetaDescription(p: Property) {
+  const parts: string[] = [`Сдаётся ${propertyTypeNoun(p.type)} в Сочи`];
+  if (p.area) parts.push(formatArea(p.area));
+  if (p.rooms != null) parts.push(roomsLabel(p.rooms));
+  if (p.price_month) parts.push(`${formatMoney(p.price_month)}/мес`);
+  const location = p.complex_id ? p.complex_name : shortAddress(p.address);
+  if (location) parts.push(location);
+  const sentence = parts.join(" — ") + ". Аренда премиум-недвижимости в Сочи от Резиденция&Море.";
+  if (sentence.length <= 160) return sentence;
+  return sentence.slice(0, 159).replace(/\s+$/, "") + "…";
+}

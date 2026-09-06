@@ -21,7 +21,7 @@ import heroImg from "@/assets/site/about_hero.jpg";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "О компании «Резиденция & Море» — аренда недвижимости в Сочи" },
+      { title: "О компании — Резиденция&Море" },
       {
         name: "description",
         content:
@@ -29,14 +29,13 @@ export const Route = createFileRoute("/about")({
       },
       {
         property: "og:title",
-        content: "О компании «Резиденция & Море» — аренда недвижимости в Сочи",
+        content: "О компании — Резиденция&Море",
       },
       {
         property: "og:description",
         content:
           "Управляем недвижимостью в Сочи системно и прозрачно: поиск арендатора, показы, договор, контроль оплат и сопровождение.",
       },
-      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "/about" },
     ],

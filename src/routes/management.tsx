@@ -10,7 +10,7 @@ import img4 from "@/assets/site/mgmt_p4.jpg";
 export const Route = createFileRoute("/management")({
   head: () => ({
     meta: [
-      { title: "Доходное управление апартаментами и домами в г. Сочи" },
+      { title: "Доходное управление апартаментами и домами в Сочи — Резиденция&Море" },
       {
         name: "description",
         content:
@@ -18,14 +18,13 @@ export const Route = createFileRoute("/management")({
       },
       {
         property: "og:title",
-        content: "Доходное управление апартаментами и домами в г. Сочи",
+        content: "Доходное управление апартаментами и домами в Сочи — Резиденция&Море",
       },
       {
         property: "og:description",
         content:
           "Сервис управления жилой недвижимостью: поиск арендаторов, контроль оплат, обслуживание, страхование.",
       },
-      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "/management" },
     ],

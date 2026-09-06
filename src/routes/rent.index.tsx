@@ -40,24 +40,25 @@ export const Route = createFileRoute("/rent/")({
   },
   head: () => ({
     meta: [
-      { title: "Долгосрочная аренда недвижимости в Сочи — Residence More" },
+      { title: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море" },
       {
         name: "description",
         content:
-          "Актуальные объекты долгосрочной аренды в Сочи от Residence More: квартиры, апартаменты, дома и виллы.",
+          "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
       },
       {
         property: "og:title",
-        content: "Долгосрочная аренда недвижимости в Сочи — Residence More",
+        content: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море",
       },
       {
         property: "og:description",
         content:
-          "Актуальные объекты долгосрочной аренды в Сочи от Residence More: квартиры, апартаменты, дома и виллы.",
+          "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
       },
-      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:url", content: "/rent" },
     ],
+    links: [{ rel: "canonical", href: "/rent" }],
   }),
   component: RentPage,
 });

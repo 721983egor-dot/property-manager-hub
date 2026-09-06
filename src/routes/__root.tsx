@@ -79,24 +79,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Резиденция&Море - Аренда премиум апартаментов и домов в г. Сочи" },
-      {
-        name: "description",
-        content:
-          "Резиденция&Море — сервис управления жилой недвижимостью. Апартаменты, дома и виллы бизнес и премиум-класса в Сочи.",
-      },
-      {
-        property: "og:title",
-        content: "Резиденция&Море - Аренда премиум апартаментов и домов в г. Сочи",
-      },
-      {
-        property: "og:description",
-        content:
-          "Резиденция&Море — сервис управления жилой недвижимостью. Апартаменты, дома и виллы бизнес и премиум-класса в Сочи.",
-      },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Резиденция&Море" },
-
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
