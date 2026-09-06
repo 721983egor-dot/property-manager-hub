@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { trackEvent } from "@/lib/analytics";
 
 export type Selection = {
   id: string;
@@ -69,6 +70,8 @@ export async function createSelection(input: {
 
   const { error: itemsError } = await supabase.from("selection_items").insert(items);
   if (itemsError) throw itemsError;
+
+  for (const propertyId of propertyIds) trackEvent(propertyId, "selection_add");
 
   return {
     ...selection,

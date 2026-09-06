@@ -78,6 +78,8 @@ type Props = {
   photoUrls: Record<string, string>;
   /** Первый свободный день (ISO) — из календаря аренды. */
   freeFromIso?: string | null;
+  /** Клик по кнопке «Связаться» — используется для статистики. */
+  onContact?: () => void;
 };
 
 
@@ -155,7 +157,13 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 
-export function PropertyPublicPage({ property, complex, photoUrls, freeFromIso }: Props) {
+export function PropertyPublicPage({
+  property,
+  complex,
+  photoUrls,
+  freeFromIso,
+  onContact,
+}: Props) {
   const statusView = publicStatusView(property, freeFromIso);
   const [active, setActive] = useState(0);
   const [complexActive, setComplexActive] = useState(0);
@@ -264,6 +272,7 @@ export function PropertyPublicPage({ property, complex, photoUrls, freeFromIso }
   const contactButton = (className = "") => (
     <button
       type="button"
+      onClick={onContact}
       className={
         "h-14 w-[240px] max-w-full shrink-0 rounded-2xl bg-site-navy px-10 text-[16px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
         className
