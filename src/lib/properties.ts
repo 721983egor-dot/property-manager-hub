@@ -10,6 +10,19 @@ export type PropertyStatus = "free" | "rented" | "booked" | "archived";
 
 export type PropertyPhoto = { path: string };
 
+/** Тип услуги — только для внутренних экранов RM OS. */
+export type ServiceType = "management" | "commission_only";
+export type ManagementFeeType = "percent" | "amount";
+
+export const SERVICE_TYPES: { value: ServiceType; label: string }[] = [
+  { value: "management", label: "Управление объектом" },
+  { value: "commission_only", label: "Только комиссия" },
+];
+
+export function serviceTypeLabel(value: ServiceType) {
+  return SERVICE_TYPES.find((s) => s.value === value)?.label ?? value;
+}
+
 export type Property = {
   id: string;
   published: boolean;
@@ -44,6 +57,10 @@ export type Property = {
   location_description: string;
   rent_terms: string;
   card_highlights: string[];
+  service_type: ServiceType;
+  management_fee_type: ManagementFeeType;
+  management_fee_value: number | null;
+  availability_note: string;
   created_at: string;
   updated_at: string;
 };
@@ -287,6 +304,15 @@ function normalize(row: Record<string, unknown>): Property {
     card_highlights: Array.isArray(row['card_highlights'])
       ? (row['card_highlights'] as string[])
       : [],
+    service_type: (row['service_type'] === "commission_only"
+      ? "commission_only"
+      : "management") as ServiceType,
+    management_fee_type: (row['management_fee_type'] === "amount"
+      ? "amount"
+      : "percent") as ManagementFeeType,
+    management_fee_value: num(row['management_fee_value']),
+    availability_note:
+      typeof row['availability_note'] === "string" ? (row['availability_note'] as string) : "",
   };
 }
 
@@ -349,6 +375,10 @@ export type PropertyInput = {
   location_description: string;
   rent_terms: string;
   card_highlights: string[];
+  service_type: ServiceType;
+  management_fee_type: ManagementFeeType;
+  management_fee_value: number | null;
+  availability_note: string;
 };
 
 /** Базовый текст условий аренды — подставляется в форму и редактируется. */
