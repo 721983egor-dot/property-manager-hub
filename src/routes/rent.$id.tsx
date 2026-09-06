@@ -17,10 +17,10 @@ import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 
 export const Route = createFileRoute("/rent/$id")({
   loader: async ({ params, context }) => {
-    const property = await context.queryClient.ensureQueryData(
-      propertyQueryOptions(params.id),
-    );
-    if (!property.published || property.status === "archived") {
+    const property = await context.queryClient
+      .ensureQueryData(propertyQueryOptions(params.id))
+      .catch(() => null);
+    if (!property || !property.published || property.status === "archived") {
       throw notFound();
     }
     return property;
