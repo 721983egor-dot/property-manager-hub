@@ -95,11 +95,8 @@ function SelectionsPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="truncate text-lg font-semibold">
-                        {s.client_name || "Подборка без имени"}
+                        Подборка от {formatDate(s.created_at)}
                       </h3>
-                      <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        {formatDate(s.created_at)}
-                      </span>
                     </div>
                     {s.comment ? (
                       <p className="mt-1 truncate text-sm text-muted-foreground">{s.comment}</p>
