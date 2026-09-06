@@ -87,11 +87,6 @@ function RentPage() {
     queryFn: fetchComplexes,
   });
 
-  const complexMap = useMemo(
-    () => new Map(complexes.map((c) => [c.id, c.name])),
-    [complexes],
-  );
-
   const todayIso = useMemo(() => toISODate(new Date()), []);
   const propertyIds = useMemo(
     () => allProperties.map((p) => p.id),
