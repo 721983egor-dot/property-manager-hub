@@ -35,6 +35,7 @@ import { Route as CrmLeadsIndexRouteImport } from './routes/crm.leads.index'
 import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
+import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -166,6 +167,11 @@ const ObjectsIdPreviewRoute = ObjectsIdPreviewRouteImport.update({
   path: '/objects/$id/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronCianSyncRoute = ApiPublicCronCianSyncRouteImport.update({
+  id: '/api/public/cron/cian-sync',
+  path: '/api/public/cron/cian-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/crm/clients/': typeof CrmClientsIndexRoute
   '/crm/leads/': typeof CrmLeadsIndexRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
+  '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/crm/clients': typeof CrmClientsIndexRoute
   '/crm/leads': typeof CrmLeadsIndexRoute
   '/objects/$id': typeof ObjectsIdIndexRoute
+  '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/crm/clients/': typeof CrmClientsIndexRoute
   '/crm/leads/': typeof CrmLeadsIndexRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
+  '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -280,6 +289,7 @@ export interface FileRouteTypes {
     | '/crm/clients/'
     | '/crm/leads/'
     | '/objects/$id/'
+    | '/api/public/cron/cian-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/crm/clients'
     | '/crm/leads'
     | '/objects/$id'
+    | '/api/public/cron/cian-sync'
   id:
     | '__root__'
     | '/'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/crm/clients/'
     | '/crm/leads/'
     | '/objects/$id/'
+    | '/api/public/cron/cian-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -362,6 +374,7 @@ export interface RootRouteChildren {
   CrmClientsIndexRoute: typeof CrmClientsIndexRoute
   CrmLeadsIndexRoute: typeof CrmLeadsIndexRoute
   ObjectsIdIndexRoute: typeof ObjectsIdIndexRoute
+  ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -548,6 +561,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObjectsIdPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/cian-sync': {
+      id: '/api/public/cron/cian-sync'
+      path: '/api/public/cron/cian-sync'
+      fullPath: '/api/public/cron/cian-sync'
+      preLoaderRoute: typeof ApiPublicCronCianSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -588,6 +608,7 @@ const rootRouteChildren: RootRouteChildren = {
   CrmClientsIndexRoute: CrmClientsIndexRoute,
   CrmLeadsIndexRoute: CrmLeadsIndexRoute,
   ObjectsIdIndexRoute: ObjectsIdIndexRoute,
+  ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
