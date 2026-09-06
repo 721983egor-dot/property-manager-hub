@@ -18,9 +18,9 @@ import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import logo from "@/assets/site/logo.png";
 
 const NAV = [
+  { to: "/rent", label: "Объекты" },
   { to: "/about", label: "О нас" },
   { to: "/management", label: "Собственникам" },
-  { to: "/rent", label: "Объекты" },
 ] as const;
 
 /** Шапка публичного сайта. */
@@ -63,7 +63,7 @@ export function SiteHeader() {
               key={item.to}
               to={item.to}
               className={
-                "text-[13px] font-medium tracking-wide transition-colors " +
+                "text-[15px] font-medium tracking-wide transition-colors " +
                 (isActive(item.to)
                   ? "text-site-gold"
                   : "text-site-navy hover:text-site-gold")
