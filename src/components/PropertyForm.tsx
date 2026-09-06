@@ -35,7 +35,8 @@ import {
   EXTRA_FEATURE_OPTIONS,
   HOUSE_EXTRA_FEATURE_OPTIONS,
   HOUSE_HIGHLIGHT_OPTIONS,
-  houseHighlightLabel,
+  APARTMENT_HIGHLIGHT_OPTIONS,
+  highlightLabel,
   isHouseType,
   extraFeatureLabel,
   OUTDOOR_OPTIONS,
@@ -176,6 +177,17 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   });
   const [creatingComplex, setCreatingComplex] = useState(false);
   const selectedComplex = complexes.find((c) => c.id === complexId) ?? null;
+  const highlightChoices = Array.from(
+    new Set([
+      ...cardHighlights,
+      ...(isHouseType(type)
+        ? HOUSE_HIGHLIGHT_OPTIONS.map((o) => o.value)
+        : [
+            ...(selectedComplex?.infrastructure ?? []),
+            ...APARTMENT_HIGHLIGHT_OPTIONS.map((o) => o.value),
+          ]),
+    ]),
+  );
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
