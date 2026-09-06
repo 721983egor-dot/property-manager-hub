@@ -25,7 +25,6 @@ export const Route = createFileRoute("/management")({
         content:
           "Сервис управления жилой недвижимостью: поиск арендаторов, контроль оплат, обслуживание, страхование.",
       },
-      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "/management" },
     ],
