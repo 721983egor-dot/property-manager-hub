@@ -22,9 +22,9 @@ import {
 } from "@/lib/site";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
-import heroImg from "@/assets/site/home_alt.jpg";
+import heroImg from "@/assets/site/home_hero.jpg";
 import aboutImg from "@/assets/site/mgmt_p2.jpg";
-import selectionImg from "@/assets/site/home_hero.jpg";
+import selectionImg from "@/assets/site/home_selection.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -192,14 +192,11 @@ function HomePage() {
             </Link>
           </div>
           <div className="mt-12 flex flex-col gap-4 border-l-2 border-site-gold/60 pl-5">
-            {ADVANTAGES.map((item, i) => (
+            {ADVANTAGES.map((item) => (
               <p
                 key={item}
-                className="flex items-baseline gap-4 text-base font-medium text-white/85 md:text-lg"
+                className="text-base font-medium text-white/85 md:text-lg"
               >
-                <span className="text-sm font-bold tracking-wider text-site-gold">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
                 {item}
               </p>
             ))}
@@ -258,9 +255,6 @@ function HomePage() {
             <p className="mt-5 max-w-md leading-relaxed text-white/75">
               Подберём апартаменты, дом или виллу с учётом района, бюджета и
               ваших пожеланий.
-            </p>
-            <p className="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-site-gold">
-              LET'S GO!
             </p>
             <div className="mt-8 flex flex-col gap-3 text-sm text-white/85">
               <p className="font-semibold text-white">
