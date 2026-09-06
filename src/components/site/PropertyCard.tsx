@@ -80,14 +80,32 @@ export function PropertyCard(props: Props) {
 
         <div className="mt-5 h-px w-2/3 bg-site-gold/40" />
 
-        <div className="mt-5 space-y-1.5 text-base text-site-muted">
-          <p className="truncate">
-            {property.complex_id
-              ? property.complex_name
-              : shortAddress(property.address) || "\u00A0"}
-          </p>
-          <p className="truncate">{highlights.length > 0 ? highlights.join(" · ") : "\u00A0"}</p>
-          <p className="truncate">{specs.length > 0 ? specs.join(" · ") : "\u00A0"}</p>
+        <p className="mt-5 truncate text-base text-site-muted">
+          {property.complex_id
+            ? property.complex_name
+            : shortAddress(property.address) || "\u00A0"}
+        </p>
+
+        <div className="mt-3 flex h-[30px] flex-wrap content-start gap-1.5 overflow-hidden">
+          {highlights.map((h) => (
+            <span
+              key={h}
+              className="whitespace-nowrap rounded-md border border-site-gold/50 bg-site-gold/10 px-2.5 py-1 text-xs font-medium text-site-navy"
+            >
+              {h}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-2 flex h-[30px] flex-wrap content-start gap-1.5 overflow-hidden">
+          {specs.map((s) => (
+            <span
+              key={s}
+              className="whitespace-nowrap rounded-md border border-site-line bg-site-navy-soft px-2.5 py-1 text-xs font-medium text-site-muted"
+            >
+              {s}
+            </span>
+          ))}
         </div>
 
         <div className="mt-6 h-px w-2/3 bg-site-gold/40" />
