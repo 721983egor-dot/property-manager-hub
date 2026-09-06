@@ -28,7 +28,6 @@ export const Route = createFileRoute("/contacts")({
         content:
           "Телефон +7 (938)-442-08-09, residence.more@yandex.ru, г. Сочи ул. Московская, д. 22, офис 72.",
       },
-      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "/contacts" },
     ],
