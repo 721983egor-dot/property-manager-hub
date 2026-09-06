@@ -19,6 +19,9 @@ type LoaderData = {
   clientName: string;
   comment: string;
   count: number;
+  properties: { id: string; title: string; photos: { path?: string }[] }[];
+  freeFromIso: Record<string, string>;
+  photoUrls: Record<string, string>;
 };
 
 const selectionQueryOptions = (code: string) =>
