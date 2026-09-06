@@ -21,6 +21,7 @@ import { Route as ComplexesIndexRouteImport } from './routes/complexes.index'
 import { Route as ComplexesNewRouteImport } from './routes/complexes.new'
 import { Route as ObjectsIndexRouteImport } from './routes/objects.index'
 import { Route as ObjectsNewRouteImport } from './routes/objects.new'
+import { Route as PCodeRouteImport } from './routes/p.$code'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
 import { Route as SelectionsIndexRouteImport } from './routes/selections.index'
@@ -92,6 +93,11 @@ const ObjectsNewRoute = ObjectsNewRouteImport.update({
   path: '/objects/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PCodeRoute = PCodeRouteImport.update({
+  id: '/p/$code',
+  path: '/p/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentIndexRoute = RentIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/rent': typeof RentRouteWithChildren
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
+  '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes/': typeof ComplexesIndexRoute
   '/objects/': typeof ObjectsIndexRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
+  '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes': typeof ComplexesIndexRoute
   '/objects': typeof ObjectsIndexRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/rent': typeof RentRouteWithChildren
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
+  '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes/': typeof ComplexesIndexRoute
   '/objects/': typeof ObjectsIndexRoute
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/rent'
     | '/complexes/new'
     | '/objects/new'
+    | '/p/$code'
     | '/rent/$id'
     | '/complexes/'
     | '/objects/'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/complexes/new'
     | '/objects/new'
+    | '/p/$code'
     | '/rent/$id'
     | '/complexes'
     | '/objects'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/rent'
     | '/complexes/new'
     | '/objects/new'
+    | '/p/$code'
     | '/rent/$id'
     | '/complexes/'
     | '/objects/'
@@ -300,6 +312,7 @@ export interface RootRouteChildren {
   RentRoute: typeof RentRouteWithChildren
   ComplexesNewRoute: typeof ComplexesNewRoute
   ObjectsNewRoute: typeof ObjectsNewRoute
+  PCodeRoute: typeof PCodeRoute
   ComplexesIndexRoute: typeof ComplexesIndexRoute
   ObjectsIndexRoute: typeof ObjectsIndexRoute
   SelectionsIndexRoute: typeof SelectionsIndexRoute
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObjectsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$code': {
+      id: '/p/$code'
+      path: '/p/$code'
+      fullPath: '/p/$code'
+      preLoaderRoute: typeof PCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/': {
       id: '/rent/'
       path: '/'
@@ -494,6 +514,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentRoute: RentRouteWithChildren,
   ComplexesNewRoute: ComplexesNewRoute,
   ObjectsNewRoute: ObjectsNewRoute,
+  PCodeRoute: PCodeRoute,
   ComplexesIndexRoute: ComplexesIndexRoute,
   ObjectsIndexRoute: ObjectsIndexRoute,
   SelectionsIndexRoute: SelectionsIndexRoute,
