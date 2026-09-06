@@ -191,13 +191,15 @@ function HomePage() {
               <ArrowRight className="size-4" />
             </Link>
           </div>
-          <div className="mt-12 flex flex-wrap gap-x-10 gap-y-3">
-            {ADVANTAGES.map((item) => (
+          <div className="mt-12 flex flex-col gap-4 border-l-2 border-site-gold/60 pl-5">
+            {ADVANTAGES.map((item, i) => (
               <p
                 key={item}
-                className="flex items-center gap-3 text-sm font-medium text-white/85"
+                className="flex items-baseline gap-4 text-base font-medium text-white/85 md:text-lg"
               >
-                <span className="h-px w-8 bg-site-gold" />
+                <span className="text-sm font-bold tracking-wider text-site-gold">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
                 {item}
               </p>
             ))}
