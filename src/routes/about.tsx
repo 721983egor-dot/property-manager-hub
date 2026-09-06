@@ -194,7 +194,7 @@ function AboutPage() {
               </ul>
             </div>
 
-            <div className="rounded-2xl border-2 border-site-gold bg-white p-6 md:p-8 shadow-[0_12px_40px_-24px_rgba(199,158,80,0.35)]">
+            <div className="flex flex-col rounded-2xl border-2 border-site-gold bg-white p-6 md:p-8 shadow-[0_12px_40px_-24px_rgba(199,158,80,0.35)]">
               <p className="text-lg font-semibold text-site-navy">
                 Резиденция & Море
               </p>
