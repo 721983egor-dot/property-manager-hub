@@ -192,10 +192,47 @@ export function typeLabel(value: PropertyType) {
   return PROPERTY_TYPES.find((t) => t.value === normalized)?.label ?? value;
 }
 
+/** Характеристики карточки для квартир и апартаментов. */
+export const APARTMENT_HIGHLIGHT_OPTIONS = [
+  { value: "sea_view", label: "Вид на море" },
+  { value: "mountain_view", label: "Вид на горы" },
+  { value: "city_view", label: "Вид на город" },
+  { value: "pool", label: "Бассейн" },
+  { value: "heated_pool", label: "Бассейн с подогревом" },
+  { value: "gym", label: "Фитнес-зал" },
+  { value: "spa", label: "СПА" },
+  { value: "terrace", label: "Терраса" },
+  { value: "balcony", label: "Балкон" },
+  { value: "jacuzzi", label: "Джакузи" },
+  { value: "parking", label: "Парковка" },
+  { value: "security", label: "Охрана" },
+  { value: "gated", label: "Закрытая территория" },
+  { value: "near_sea", label: "Рядом с морем" },
+  { value: "beach", label: "Пляж" },
+  { value: "playground", label: "Детская площадка" },
+  { value: "concierge", label: "Консьерж" },
+  { value: "restaurant", label: "Ресторан" },
+];
+
 /** Метка характеристики карточки: для домов — свой справочник. */
 export function houseHighlightLabel(value: string) {
   return HOUSE_HIGHLIGHT_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
+
+/** Универсальная подпись характеристики карточки — по всем справочникам. */
+export function highlightLabel(value: string) {
+  const all = [
+    ...HOUSE_HIGHLIGHT_OPTIONS,
+    ...APARTMENT_HIGHLIGHT_OPTIONS,
+    ...HOUSE_EXTRA_FEATURE_OPTIONS,
+    ...EXTRA_FEATURE_OPTIONS,
+    ...APPLIANCE_OPTIONS,
+    ...BATHROOM_FEATURE_OPTIONS,
+    ...OUTDOOR_OPTIONS,
+  ];
+  return all.find((o) => o.value === value)?.label ?? value;
+}
+
 
 export function statusLabel(value: PropertyStatus) {
   return PROPERTY_STATUSES.find((s) => s.value === value)?.label ?? value;

@@ -1,10 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { infrastructureLabel } from "@/lib/complexes";
 import {
   formatArea,
   formatLandArea,
   formatMoney,
-  houseHighlightLabel,
+  highlightLabel,
   isHouseType,
   type Property,
 } from "@/lib/properties";
@@ -25,9 +24,8 @@ function bedroomsLabel(rooms: number) {
 export function PropertyCard({ property, complexName, photoUrl }: Props) {
   const isFree = property.status === "free";
   const isHouse = isHouseType(property.type);
-  const highlights = (property.card_highlights ?? [])
-    .slice(0, 3)
-    .map(isHouse ? houseHighlightLabel : infrastructureLabel);
+  const highlights = (property.card_highlights ?? []).slice(0, 3).map(highlightLabel);
+
 
   const specs = (
     isHouse
