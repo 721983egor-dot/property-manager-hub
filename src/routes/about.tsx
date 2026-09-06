@@ -175,8 +175,8 @@ function AboutPage() {
             </p>
           </div>
 
-          <div className="mt-12 grid gap-5 lg:grid-cols-2">
-            <div className="rounded-2xl border border-site-line bg-white p-6 md:p-8">
+          <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-2">
+            <div className="flex flex-col rounded-2xl border border-site-line bg-white p-6 md:p-8">
               <p className="text-lg font-semibold text-site-navy">Риэлтор</p>
               <p className="mt-2 text-sm leading-relaxed text-site-muted">
                 Помогает найти арендатора и согласовать сделку. Дальнейшие
