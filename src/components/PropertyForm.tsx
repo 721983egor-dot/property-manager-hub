@@ -43,6 +43,7 @@ import {
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
+  SERVICE_TYPES,
   SUMMER_SEASON_LABEL,
   roomsLabel,
 
@@ -53,6 +54,8 @@ import {
   type PropertyPhoto,
   type PropertyStatus,
   type PropertyType,
+  type ServiceType,
+  type ManagementFeeType,
 } from "@/lib/properties";
 
 const NO_COMPLEX = "__none__";
