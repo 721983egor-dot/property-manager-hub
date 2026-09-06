@@ -987,7 +987,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       </Dialog>
 
       <div className="flex items-center justify-end gap-3 pb-4">
-        <Button type="button" variant="ghost" onClick={() => navigate({ to: "/" })}>
+        <Button type="button" variant="ghost" onClick={() => navigate({ to: "/objects" })}>
           Отмена
         </Button>
         <Button type="submit" size="lg" disabled={submitting || uploading}>

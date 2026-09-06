@@ -10,16 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as BookingRouteImport } from './routes/booking'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as ContactsRouteImport } from './routes/contacts'
+import { Route as ManagementRouteImport } from './routes/management'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RentRouteImport } from './routes/rent'
 import { Route as ComplexesIndexRouteImport } from './routes/complexes.index'
 import { Route as ComplexesNewRouteImport } from './routes/complexes.new'
+import { Route as ObjectsIndexRouteImport } from './routes/objects.index'
 import { Route as ObjectsNewRouteImport } from './routes/objects.new'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
 import { Route as ComplexesIdEditRouteImport } from './routes/complexes.$id.edit'
 import { Route as CrmClientsIndexRouteImport } from './routes/crm.clients.index'
 import { Route as CrmClientsIdRouteImport } from './routes/crm.clients.$id'
+import { Route as CrmLeadsIndexRouteImport } from './routes/crm.leads.index'
 import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
@@ -29,9 +36,34 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingRoute = BookingRouteImport.update({
+  id: '/booking',
+  path: '/booking',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactsRoute = ContactsRouteImport.update({
+  id: '/contacts',
+  path: '/contacts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManagementRoute = ManagementRouteImport.update({
+  id: '/management',
+  path: '/management',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentRoute = RentRouteImport.update({
@@ -47,6 +79,11 @@ const ComplexesIndexRoute = ComplexesIndexRouteImport.update({
 const ComplexesNewRoute = ComplexesNewRouteImport.update({
   id: '/complexes/new',
   path: '/complexes/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObjectsIndexRoute = ObjectsIndexRouteImport.update({
+  id: '/objects/',
+  path: '/objects/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ObjectsNewRoute = ObjectsNewRouteImport.update({
@@ -79,6 +116,11 @@ const CrmClientsIdRoute = CrmClientsIdRouteImport.update({
   path: '/crm/clients/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CrmLeadsIndexRoute = CrmLeadsIndexRouteImport.update({
+  id: '/crm/leads/',
+  path: '/crm/leads/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ObjectsIdIndexRoute = ObjectsIdIndexRouteImport.update({
   id: '/objects/$id/',
   path: '/objects/$id/',
@@ -97,114 +139,163 @@ const ObjectsIdPreviewRoute = ObjectsIdPreviewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/booking': typeof BookingRoute
   '/calendar': typeof CalendarRoute
+  '/contacts': typeof ContactsRoute
+  '/management': typeof ManagementRoute
+  '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes/': typeof ComplexesIndexRoute
+  '/objects/': typeof ObjectsIndexRoute
   '/rent/': typeof RentIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/crm/clients/$id': typeof CrmClientsIdRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/crm/clients/': typeof CrmClientsIndexRoute
+  '/crm/leads/': typeof CrmLeadsIndexRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/booking': typeof BookingRoute
   '/calendar': typeof CalendarRoute
+  '/contacts': typeof ContactsRoute
+  '/management': typeof ManagementRoute
+  '/privacy': typeof PrivacyRoute
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes': typeof ComplexesIndexRoute
+  '/objects': typeof ObjectsIndexRoute
   '/rent': typeof RentIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/crm/clients/$id': typeof CrmClientsIdRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/crm/clients': typeof CrmClientsIndexRoute
+  '/crm/leads': typeof CrmLeadsIndexRoute
   '/objects/$id': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/booking': typeof BookingRoute
   '/calendar': typeof CalendarRoute
+  '/contacts': typeof ContactsRoute
+  '/management': typeof ManagementRoute
+  '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes/': typeof ComplexesIndexRoute
+  '/objects/': typeof ObjectsIndexRoute
   '/rent/': typeof RentIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/crm/clients/$id': typeof CrmClientsIdRoute
   '/objects/$id/edit': typeof ObjectsIdEditRoute
   '/objects/$id/preview': typeof ObjectsIdPreviewRoute
   '/crm/clients/': typeof CrmClientsIndexRoute
+  '/crm/leads/': typeof CrmLeadsIndexRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
+    | '/booking'
     | '/calendar'
+    | '/contacts'
+    | '/management'
+    | '/privacy'
     | '/rent'
     | '/complexes/new'
     | '/objects/new'
     | '/rent/$id'
     | '/complexes/'
+    | '/objects/'
     | '/rent/'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
     | '/crm/clients/'
+    | '/crm/leads/'
     | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
+    | '/booking'
     | '/calendar'
+    | '/contacts'
+    | '/management'
+    | '/privacy'
     | '/complexes/new'
     | '/objects/new'
     | '/rent/$id'
     | '/complexes'
+    | '/objects'
     | '/rent'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
     | '/crm/clients'
+    | '/crm/leads'
     | '/objects/$id'
   id:
     | '__root__'
     | '/'
+    | '/about'
+    | '/booking'
     | '/calendar'
+    | '/contacts'
+    | '/management'
+    | '/privacy'
     | '/rent'
     | '/complexes/new'
     | '/objects/new'
     | '/rent/$id'
     | '/complexes/'
+    | '/objects/'
     | '/rent/'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
     | '/crm/clients/'
+    | '/crm/leads/'
     | '/objects/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  BookingRoute: typeof BookingRoute
   CalendarRoute: typeof CalendarRoute
+  ContactsRoute: typeof ContactsRoute
+  ManagementRoute: typeof ManagementRoute
+  PrivacyRoute: typeof PrivacyRoute
   RentRoute: typeof RentRouteWithChildren
   ComplexesNewRoute: typeof ComplexesNewRoute
   ObjectsNewRoute: typeof ObjectsNewRoute
   ComplexesIndexRoute: typeof ComplexesIndexRoute
+  ObjectsIndexRoute: typeof ObjectsIndexRoute
   ComplexesIdEditRoute: typeof ComplexesIdEditRoute
   CrmClientsIdRoute: typeof CrmClientsIdRoute
   ObjectsIdEditRoute: typeof ObjectsIdEditRoute
   ObjectsIdPreviewRoute: typeof ObjectsIdPreviewRoute
   CrmClientsIndexRoute: typeof CrmClientsIndexRoute
+  CrmLeadsIndexRoute: typeof CrmLeadsIndexRoute
   ObjectsIdIndexRoute: typeof ObjectsIdIndexRoute
 }
 
@@ -217,11 +308,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking': {
+      id: '/booking'
+      path: '/booking'
+      fullPath: '/booking'
+      preLoaderRoute: typeof BookingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contacts': {
+      id: '/contacts'
+      path: '/contacts'
+      fullPath: '/contacts'
+      preLoaderRoute: typeof ContactsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/management': {
+      id: '/management'
+      path: '/management'
+      fullPath: '/management'
+      preLoaderRoute: typeof ManagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rent': {
@@ -243,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/complexes/new'
       fullPath: '/complexes/new'
       preLoaderRoute: typeof ComplexesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/objects/': {
+      id: '/objects/'
+      path: '/objects'
+      fullPath: '/objects/'
+      preLoaderRoute: typeof ObjectsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/objects/new': {
@@ -287,6 +420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CrmClientsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/crm/leads/': {
+      id: '/crm/leads/'
+      path: '/crm/leads'
+      fullPath: '/crm/leads/'
+      preLoaderRoute: typeof CrmLeadsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/objects/$id/': {
       id: '/objects/$id/'
       path: '/objects/$id'
@@ -325,16 +465,23 @@ const RentRouteWithChildren = RentRoute._addFileChildren(RentRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  BookingRoute: BookingRoute,
   CalendarRoute: CalendarRoute,
+  ContactsRoute: ContactsRoute,
+  ManagementRoute: ManagementRoute,
+  PrivacyRoute: PrivacyRoute,
   RentRoute: RentRouteWithChildren,
   ComplexesNewRoute: ComplexesNewRoute,
   ObjectsNewRoute: ObjectsNewRoute,
   ComplexesIndexRoute: ComplexesIndexRoute,
+  ObjectsIndexRoute: ObjectsIndexRoute,
   ComplexesIdEditRoute: ComplexesIdEditRoute,
   CrmClientsIdRoute: CrmClientsIdRoute,
   ObjectsIdEditRoute: ObjectsIdEditRoute,
   ObjectsIdPreviewRoute: ObjectsIdPreviewRoute,
   CrmClientsIndexRoute: CrmClientsIndexRoute,
+  CrmLeadsIndexRoute: CrmLeadsIndexRoute,
   ObjectsIdIndexRoute: ObjectsIdIndexRoute,
 }
 export const routeTree = rootRouteImport

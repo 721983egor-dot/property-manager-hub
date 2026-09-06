@@ -80,7 +80,7 @@ function ObjectViewPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-8 lg:px-10 lg:py-10">
       <Link
-        to="/"
+        to="/objects"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="size-4" />

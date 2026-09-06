@@ -187,6 +187,42 @@ export type Database = {
         }
         Relationships: []
       }
+      leads: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          name: string
+          phone: string
+          source: string
+          status: Database["public"]["Enums"]["lead_status"]
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string
+          name: string
+          phone?: string
+          source?: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          topic?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          name?: string
+          phone?: string
+          source?: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       properties: {
         Row: {
           address: string
@@ -382,6 +418,7 @@ export type Database = {
       booking_price_type: "fixed" | "periodic"
       booking_source: "avito" | "cian" | "website" | "social" | "referral"
       booking_status: "active" | "cancelled" | "completed"
+      lead_status: "new" | "in_work" | "done" | "rejected"
       management_fee_type: "percent" | "amount"
       property_service_type: "management" | "commission_only"
       property_status: "free" | "rented" | "booked" | "archived"
@@ -517,6 +554,7 @@ export const Constants = {
       booking_price_type: ["fixed", "periodic"],
       booking_source: ["avito", "cian", "website", "social", "referral"],
       booking_status: ["active", "cancelled", "completed"],
+      lead_status: ["new", "in_work", "done", "rejected"],
       management_fee_type: ["percent", "amount"],
       property_service_type: ["management", "commission_only"],
       property_status: ["free", "rented", "booked", "archived"],

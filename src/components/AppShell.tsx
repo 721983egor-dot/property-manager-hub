@@ -1,16 +1,24 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Building2, CalendarDays, Users } from "lucide-react";
+import { Building2, CalendarDays, Inbox, Users } from "lucide-react";
 
 import type { ReactNode } from "react";
 
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { SiteFooter } from "@/components/site/SiteFooter";
+
+/** Префиксы внутренних разделов RM OS — всё остальное рендерится как публичный сайт. */
+const CRM_PREFIXES = ["/objects", "/calendar", "/crm", "/complexes"];
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isPublic = pathname.startsWith("/rent");
+  const isCrm = CRM_PREFIXES.some((p) => pathname.startsWith(p));
 
-  if (isPublic) {
+  if (!isCrm) {
     return (
-      <div className="min-h-screen w-full bg-background text-foreground">
-        {children}
+      <div className="flex min-h-screen w-full flex-col bg-white text-site-navy">
+        <SiteHeader />
+        <div className="flex-1">{children}</div>
+        <SiteFooter />
       </div>
     );
   }
@@ -26,9 +34,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="px-3 py-2">
           <Link
-            to="/"
+            to="/objects"
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-            activeOptions={{ exact: true }}
           >
             <Building2 className="size-4" />
             Объекты
@@ -50,6 +57,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Users className="size-4" />
             Клиенты
+          </Link>
+          <Link
+            to="/crm/leads"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
+          >
+            <Inbox className="size-4" />
+            Заявки
           </Link>
         </nav>
 

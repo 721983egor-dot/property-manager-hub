@@ -1,450 +1,337 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { ChevronDown, ImageIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { addDays } from "date-fns";
+import { ArrowRight, Building2, Check, Handshake, KeyRound, Wallet } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { StatusBadge } from "@/components/StatusBadge";
-import { SectionTabs } from "@/components/SectionTabs";
-import {
-  PROPERTY_STATUSES,
-  PROPERTY_TYPES,
-  ROOM_OPTIONS,
-  SUMMER_SEASON_LABEL,
-  deleteProperty,
-  fetchProperties,
-  floorLabel,
-  formatMoney,
-  internalTitle,
-  roomsLabel,
-  setPropertyStatus,
+  fetchPublishedProperties,
+  publicStatusView,
   signedUrls,
-  typeLabel,
-  type Property,
-  type PropertyStatus,
 } from "@/lib/properties";
-import { cn } from "@/lib/utils";
-
+import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
+import { parseISODate, toISODate } from "@/lib/rentals";
+import { SITE_EMAIL, SITE_PHONE_DISPLAY, SITE_PHONE_TEL, SITE_TELEGRAM, SITE_WHATSAPP } from "@/lib/site";
+import { PropertyCard } from "@/components/site/PropertyCard";
+import { SiteLeadForm } from "@/components/site/SiteLeadForm";
+import heroImg from "@/assets/site/home_alt.jpg";
+import mgmtImg from "@/assets/site/mgmt_p2.jpg";
+import selectionImg from "@/assets/site/home_hero.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Объекты — RM OS" },
+      { title: "Резиденция & Море — аренда недвижимости в Сочи" },
       {
         name: "description",
         content:
-          "Реестр объектов долгосрочной аренды: поиск, фильтры по типу, комплексу и статусу, архив и редактирование.",
+          "Агентство недвижимости в Сочи: долгосрочная аренда квартир, домов и вилл, управление объектами и персональный подбор жилья. Работаем без агентов-посредников.",
       },
-      { property: "og:title", content: "Объекты — RM OS" },
+      { property: "og:title", content: "Резиденция & Море — аренда недвижимости в Сочи" },
       {
         property: "og:description",
-        content: "Внутренняя система управления объектами долгосрочной аренды.",
+        content:
+          "Долгосрочная аренда и управление недвижимостью в Сочи. Проверенные квартиры, дома и виллы.",
+      },
+      { property: "og:url", content: "/" },
+    ],
+    links: [{ rel: "canonical", href: "/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "RealEstateAgent",
+          name: "Резиденция & Море",
+          telephone: "+7 938 500-00-24",
+          email: "info@residence-more.ru",
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: "Сочи",
+            streetAddress: "ул. Войкова 1/1, офис 110",
+            addressCountry: "RU",
+          },
+        }),
       },
     ],
   }),
-  component: ObjectsPage,
+  component: HomePage,
 });
 
-const ALL = "__all__";
-const TABS = [
-  { key: "all", label: "Все объекты" },
-  { key: "active", label: "Активные" },
-  { key: "archive", label: "Архив" },
-] as const;
+const STEPS = [
+  {
+    icon: Building2,
+    title: "Выбираете объект",
+    text: "Смотрите актуальные варианты в каталоге и оставляете заявку на просмотр.",
+  },
+  {
+    icon: Handshake,
+    title: "Персональный менеджер",
+    text: "Менеджер связывается с вами, уточняет пожелания и организует показ.",
+  },
+  {
+    icon: KeyRound,
+    title: "Оформляете аренду",
+    text: "Договор, депозит, акт приёма-передачи — берём все вопросы на себя.",
+  },
+  {
+    icon: Wallet,
+    title: "Комфортное проживание",
+    text: "Остаёмся на связи весь срок аренды: оплата, бытовые вопросы, поддержка.",
+  },
+];
 
-type TabKey = (typeof TABS)[number]["key"];
+const MGMT_POINTS = [
+  "Поиск и проверка арендаторов",
+  "Профессиональная фотосессия и размещение",
+  "Полное сопровождение сделки и проживания",
+];
 
-function ObjectsPage() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [tab, setTab] = useState<TabKey>("all");
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState<string>(ALL);
-  const [complex, setComplex] = useState<string>(ALL);
-  const [rooms, setRooms] = useState<string>(ALL);
-  const [status, setStatus] = useState<string>(ALL);
-  const [sort, setSort] = useState<string>(ALL);
-
-  const { data: properties = [], isLoading } = useQuery({
-    queryKey: ["properties"],
-    queryFn: fetchProperties,
+function HomePage() {
+  const { data: allProperties = [] } = useQuery({
+    queryKey: ["published-properties"],
+    queryFn: fetchPublishedProperties,
   });
 
-  const complexes = useMemo(
-    () =>
-      Array.from(new Set(properties.map((p) => p.complex_name).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b, "ru"),
-      ),
-    [properties],
-  );
+  const todayIso = useMemo(() => toISODate(new Date()), []);
+  const propertyIds = useMemo(() => allProperties.map((p) => p.id), [allProperties]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const rows = properties.filter((p) => {
-      // Архивные объекты скрыты, пока их не выбрали в фильтре статуса или во вкладке «Архив».
-      if (p.status === "archived" && tab !== "archive" && status !== "archived") return false;
-      if (tab === "archive" && p.status !== "archived") return false;
-      if (q && !`${p.title} ${p.internal_name} ${p.complex_name}`.toLowerCase().includes(q))
-        return false;
-      if (type !== ALL && p.type !== type) return false;
-      if (complex !== ALL && p.complex_name !== complex) return false;
-      if (rooms !== ALL && p.rooms !== Number(rooms)) return false;
-      if (status !== ALL && p.status !== status) return false;
-      return true;
-    });
+  const { data: bookingsMap = {} } = useQuery({
+    queryKey: ["current-bookings", propertyIds.join("|"), todayIso],
+    queryFn: () => fetchCurrentBookingsForProperties(propertyIds, todayIso),
+    enabled: propertyIds.length > 0,
+  });
 
-    if (sort === "price_asc" || sort === "price_desc") {
-      const dir = sort === "price_asc" ? 1 : -1;
-      rows.sort((a, b) => {
-        const av = a.price_month;
-        const bv = b.price_month;
-        if (av == null && bv == null) return 0;
-        if (av == null) return 1;
-        if (bv == null) return -1;
-        return (av - bv) * dir;
-      });
+  const popular = useMemo(() => {
+    const freeFrom: Record<string, string> = {};
+    for (const [pid, b] of Object.entries(bookingsMap)) {
+      freeFrom[pid] = toISODate(addDays(parseISODate(b.end_date), 1));
     }
+    return allProperties
+      .filter((p) => {
+        const view = publicStatusView(p, freeFrom[p.id] ?? null);
+        return view && (view.tone === "green" || view.tone === "gold");
+      })
+      .slice(0, 6)
+      .map((p) => ({ property: p, freeFromIso: freeFrom[p.id] ?? null }));
+  }, [allProperties, bookingsMap]);
 
-    return rows;
-  }, [properties, tab, search, type, complex, rooms, status, sort]);
+  const photoPaths = popular
+    .map((p) => p.property.photos[0]?.path)
+    .filter((path): path is string => Boolean(path));
 
-  const photoPaths = filtered.map((p) => p.photos[0]?.path).filter(Boolean) as string[];
   const { data: urls = {} } = useQuery({
     queryKey: ["photo-urls", photoPaths.slice().sort().join("|")],
     queryFn: () => signedUrls(photoPaths),
     enabled: photoPaths.length > 0,
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, next }: { id: string; next: PropertyStatus }) =>
-      setPropertyStatus(id, next),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Статус объекта обновлён");
-    },
-    onError: () => toast.error("Не удалось изменить статус объекта"),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteProperty(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Объект удалён");
-    },
-    onError: (e) =>
-      toast.error(e instanceof Error ? e.message : "Не удалось удалить объект"),
-  });
-
-  const hasFilters =
-    search !== "" ||
-    type !== ALL ||
-    complex !== ALL ||
-    rooms !== ALL ||
-    status !== ALL ||
-    sort !== ALL;
-
-  const resetFilters = () => {
-    setSearch("");
-    setType(ALL);
-    setComplex(ALL);
-    setRooms(ALL);
-    setStatus(ALL);
-    setSort(ALL);
-  };
-
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 lg:px-10 lg:py-10">
-      <header className="flex items-start justify-between gap-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Объекты</h1>
-        <Button size="lg" onClick={() => navigate({ to: "/objects/new" })}>
-          <Plus className="size-4" />
-          Добавить объект
-        </Button>
-      </header>
-
-      <SectionTabs active="objects" />
-
-      <div className="mt-6 border-b border-border">
-        <div className="flex gap-6">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "-mb-px border-b-2 pb-3 text-sm font-medium transition-colors",
-                tab === t.key
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
+    <div className="font-site">
+      {/* Первый экран */}
+      <section className="relative flex min-h-[88vh] items-center overflow-hidden bg-site-navy">
+        <img
+          src={heroImg}
+          alt="Вилла с видом на море в Сочи"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-site-navy/90 via-site-navy/55 to-site-navy/20" />
+        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-24 md:px-6">
+          <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
+            <span className="h-px w-10 bg-site-gold" />
+            Агентство недвижимости · Сочи
+          </p>
+          <h1 className="mt-5 max-w-2xl text-4xl font-bold leading-[1.1] text-white md:text-6xl">
+            Аренда доходной недвижимости в Сочи
+          </h1>
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
+            Квартиры, дома и виллы для долгосрочной аренды и отдыха у моря.
+            Быстро, безопасно и без лишних посредников.
+          </p>
+          <div className="mt-9 flex flex-wrap gap-3">
+            <Link
+              to="/rent"
+              className="inline-flex items-center gap-2 rounded-md bg-site-gold px-7 py-3.5 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
             >
-              {t.label}
-            </button>
-          ))}
+              Смотреть объекты
+              <ArrowRight className="size-4" />
+            </Link>
+            <a
+              href="#lead"
+              className="inline-flex items-center rounded-md border border-white/40 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:border-site-gold hover:text-site-gold"
+            >
+              Обсудить объект
+            </a>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[260px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по объектам и комплексам..."
-            className="h-10 pl-9"
-          />
+      {/* Как это работает */}
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
+            <span className="h-px w-10 bg-site-gold" />
+            Как это работает
+          </p>
+          <h2 className="mt-4 max-w-xl text-3xl font-bold text-site-navy md:text-4xl">
+            4 шага до ключей
+          </h2>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((step, i) => (
+              <div
+                key={step.title}
+                className="rounded-xl border border-site-line bg-white p-6 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.25)]"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-3xl font-bold text-site-gold">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <step.icon className="size-6 text-site-gold" />
+                </div>
+                <p className="mt-4 text-base font-semibold text-site-navy">{step.title}</p>
+                <p className="mt-2 text-sm leading-relaxed text-site-muted">{step.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
+      </section>
 
-        <FilterSelect
-          value={type}
-          onChange={setType}
-          placeholder="Тип объекта"
-          options={PROPERTY_TYPES.map((t) => ({ value: t.value, label: t.label }))}
-        />
-        <FilterSelect
-          value={complex}
-          onChange={setComplex}
-          placeholder="Комплекс"
-          options={complexes.map((c) => ({ value: c, label: c }))}
-        />
-        <FilterSelect
-          value={rooms}
-          onChange={setRooms}
-          placeholder="Планировка"
-          options={ROOM_OPTIONS.map((r) => ({ value: String(r), label: roomsLabel(r) }))}
-        />
-        <FilterSelect
-          value={status}
-          onChange={setStatus}
-          placeholder="Статус"
-          options={PROPERTY_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
-        />
-        <FilterSelect
-          value={sort}
-          onChange={setSort}
-          placeholder="Сортировка"
-          options={[
-            { value: "price_asc", label: "Сначала дешевле" },
-            { value: "price_desc", label: "Сначала дороже" },
-          ]}
-        />
-
-
-        {hasFilters ? (
-          <Button variant="ghost" onClick={resetFilters} className="h-10 text-muted-foreground">
-            Сбросить
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card">
-        <table className="w-full min-w-[1200px] text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <th className="px-5 py-3 font-medium">Объект</th>
-              <th className="px-4 py-3 font-medium">Тип</th>
-              <th className="px-4 py-3 font-medium">Комплекс</th>
-              <th className="px-4 py-3 font-medium">Этаж</th>
-              <th className="px-4 py-3 font-medium">Планировка</th>
-              <th className="px-4 py-3 font-medium">Санузлы</th>
-              <th className="px-4 py-3 font-medium">Цена в месяц</th>
-              <th className="px-4 py-3 font-medium">Депозит</th>
-              <th className="px-4 py-3 font-medium">Комиссия</th>
-              <th className="px-4 py-3 font-medium">Статус</th>
-              <th className="px-4 py-3 text-right font-medium">Действия</th>
-
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={11} className="px-5 py-12 text-center text-muted-foreground">
-                  Загрузка...
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="px-5 py-12 text-center text-muted-foreground">
-                  Объекты не найдены
-                </td>
-              </tr>
-            ) : (
-              filtered.map((p) => (
-                <Row
-                  key={p.id}
-                  property={p}
-                  photoUrl={p.photos[0]?.path ? urls[p.photos[0].path] : undefined}
-                  onStatus={(next) => statusMutation.mutate({ id: p.id, next })}
-                  onDelete={() => {
-                    if (
-                      window.confirm(
-                        `Удалить объект «${internalTitle(p)}»? Это действие нельзя отменить.`,
-                      )
-                    ) {
-                      deleteMutation.mutate(p.id);
-                    }
-                  }}
+      {/* Популярные объекты */}
+      <section className="bg-site-navy-soft py-20">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
+                <span className="h-px w-10 bg-site-gold" />
+                Каталог
+              </p>
+              <h2 className="mt-4 text-3xl font-bold text-site-navy md:text-4xl">
+                Свободные объекты
+              </h2>
+            </div>
+            <Link
+              to="/rent"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-site-navy hover:text-site-gold"
+            >
+              Смотреть все объекты
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+          {popular.length === 0 ? (
+            <p className="mt-10 text-sm text-site-muted">
+              Сейчас все объекты заняты — оставьте заявку, и мы подберём вариант под вас.
+            </p>
+          ) : (
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {popular.map(({ property, freeFromIso }) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  freeFromIso={freeFromIso}
+                  photoUrl={
+                    property.photos[0]?.path
+                      ? urls[property.photos[0].path]
+                      : undefined
+                  }
                 />
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
-      <p className="mt-4 text-sm text-muted-foreground">Всего объектов: {filtered.length}</p>
+      {/* Управление недвижимостью */}
+      <section className="bg-white py-20">
+        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
+          <div className="overflow-hidden rounded-2xl">
+            <img
+              src={mgmtImg}
+              alt="Терраса объекта под управлением"
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+          <div>
+            <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
+              <span className="h-px w-10 bg-site-gold" />
+              Собственникам
+            </p>
+            <h2 className="mt-4 text-3xl font-bold text-site-navy md:text-4xl">
+              Управление вашей недвижимостью
+            </h2>
+            <p className="mt-5 leading-relaxed text-site-muted">
+              Вы владеете — мы управляем. Доверьте нам свою недвижимость и
+              получайте доход от аренды без забот. Всё остальное — наша работа.
+            </p>
+            <ul className="mt-6 flex flex-col gap-3">
+              {MGMT_POINTS.map((point) => (
+                <li key={point} className="flex items-start gap-3 text-sm text-site-navy">
+                  <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-site-gold-soft">
+                    <Check className="size-3.5 text-site-gold" />
+                  </span>
+                  {point}
+                </li>
+              ))}
+            </ul>
+            <Link
+              to="/management"
+              className="mt-8 inline-flex items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+            >
+              Подробнее об управлении
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Персональный подбор + заявка */}
+      <section id="lead" className="relative overflow-hidden py-20">
+        <img
+          src={selectionImg}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-site-navy/85" />
+        <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
+          <div>
+            <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
+              <span className="h-px w-10 bg-site-gold" />
+              Персональный подбор
+            </p>
+            <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
+              Не нашли подходящий вариант?
+            </h2>
+            <p className="mt-5 max-w-md leading-relaxed text-white/75">
+              Оставьте заявку — мы перезвоним и подберём варианты специально под
+              вас. В базе всегда есть объекты, которые ещё не опубликованы.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 text-sm text-white/85">
+              <a href={SITE_PHONE_TEL} className="text-lg font-bold text-white hover:text-site-gold">
+                {SITE_PHONE_DISPLAY}
+              </a>
+              <div className="flex gap-4">
+                <a href={SITE_TELEGRAM} target="_blank" rel="noreferrer" className="font-medium hover:text-site-gold">
+                  Telegram
+                </a>
+                <a href={SITE_WHATSAPP} target="_blank" rel="noreferrer" className="font-medium hover:text-site-gold">
+                  WhatsApp
+                </a>
+                <a href={`mailto:${SITE_EMAIL}`} className="font-medium hover:text-site-gold">
+                  {SITE_EMAIL}
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-white p-6 shadow-2xl md:p-8">
+            <p className="text-lg font-semibold text-site-navy">Оставить заявку</p>
+            <div className="mt-4">
+              <SiteLeadForm source="home-selection" defaultTopic="selection" />
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
-
-function FilterSelect({
-  value,
-  onChange,
-  placeholder,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-10 w-[180px] shrink-0">
-        <SelectValue placeholder={placeholder}>
-          {value === ALL ? placeholder : (options.find((o) => o.value === value)?.label ?? value)}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={ALL}>{placeholder}: все</SelectItem>
-
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function Row({
-  property,
-  photoUrl,
-  onStatus,
-  onDelete,
-}: {
-  property: Property;
-  photoUrl?: string | undefined;
-  onStatus: (next: PropertyStatus) => void;
-  onDelete: () => void;
-}) {
-  return (
-    <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
-      <td className="px-5 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-            {photoUrl ? (
-              <img
-                src={photoUrl}
-                alt={property.title}
-                loading="lazy"
-                className="size-full object-cover"
-              />
-            ) : (
-              <ImageIcon className="size-5 text-muted-foreground" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <Link
-              to="/objects/$id"
-              params={{ id: property.id }}
-              className="block truncate font-medium hover:text-primary"
-            >
-              {internalTitle(property)}
-            </Link>
-            <div className="mt-0.5 text-xs text-muted-foreground">ID: {property.ref_id}</div>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-4 text-muted-foreground">{typeLabel(property.type)}</td>
-      <td className="px-4 py-4 text-muted-foreground">{property.complex_name || "—"}</td>
-      <td className="px-4 py-4 text-muted-foreground">{floorLabel(property)}</td>
-      <td className="px-4 py-4 text-muted-foreground">{roomsLabel(property.rooms)}</td>
-      <td className="px-4 py-4 text-muted-foreground">{property.bathrooms}</td>
-      <td className="px-4 py-4">
-        <div className="font-medium text-foreground">{formatMoney(property.price_month)}</div>
-        {property.seasonal_pricing && property.summer_price_month != null ? (
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            Лето ({SUMMER_SEASON_LABEL}): {formatMoney(property.summer_price_month)}
-          </div>
-        ) : null}
-      </td>
-      <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.deposit)}</td>
-      <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.commission)}</td>
-      <td className="px-4 py-4">
-        <StatusBadge status={property.status} />
-      </td>
-
-      <td className="px-4 py-4">
-        <div className="flex items-center justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Действия
-                <ChevronDown className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem asChild>
-                <Link to="/objects/$id/edit" params={{ id: property.id }}>
-                  <Pencil className="size-4" />
-                  Редактировать
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                Статус
-              </DropdownMenuLabel>
-              {PROPERTY_STATUSES.map((s) => (
-                <DropdownMenuItem
-                  key={s.value}
-                  disabled={s.value === property.status}
-                  onSelect={() => onStatus(s.value)}
-                >
-                  {s.label}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onSelect={onDelete}
-              >
-                <Trash2 className="size-4" />
-                Удалить объект
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-
