@@ -85,7 +85,7 @@ function PromoListPage() {
   });
 
   async function togglePublish(p: Property) {
-    setBusy(p.id);
+    setBusy(p.id + "site");
     try {
       await setSitePublished(p.id, !p.published);
       await qc.invalidateQueries({ queryKey: ["properties"] });
@@ -98,14 +98,48 @@ function PromoListPage() {
     }
   }
 
+  async function toggleCian(p: Property, published: boolean) {
+    if (!published) {
+      const missing = missingCianFields(p);
+      if (missing.length > 0) {
+        toast.error(`Заполните для ЦИАН: ${missing.join(", ")}`);
+        return;
+      }
+    }
+    setBusy(p.id + "cian");
+    try {
+      if (published) {
+        await removeFromCian({ data: { propertyId: p.id } });
+        toast.success("Объявление снято с ЦИАН");
+      } else {
+        await sendToCian({ data: { propertyId: p.id } });
+        toast.success("Объект отправлен на ЦИАН");
+      }
+      await qc.invalidateQueries({ queryKey: ["property-listings"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ЦИАН не принял объявление");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 lg:px-10 lg:py-10">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Публикация и реклама</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Где опубликован каждый объект и сколько его смотрят.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Публикация и реклама</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Где опубликован каждый объект и сколько его смотрят.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link to="/promo/import">
+            <Download className="size-4" />
+            Загрузить объявления с ЦИАН
+          </Link>
+        </Button>
       </header>
+
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="relative min-w-[240px] flex-1">
