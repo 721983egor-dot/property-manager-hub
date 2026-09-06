@@ -33,7 +33,7 @@ export const Route = createFileRoute("/p/$code")({
   head: ({ loaderData }) => {
     const data = loaderData as LoaderData | undefined;
     const title = data
-      ? `${data.clientName || "Подборка"} — ${data.count} объектов — Резиденция&Море`
+      ? `Подборка — ${data.count} объектов — Резиденция&Море`
       : "Подборка объектов — Резиденция&Море";
     const description = data
       ? `Персональная подборка объектов долгосрочной аренды в Сочи от Резиденция&Море. ${data.count} объектов.`
@@ -91,7 +91,6 @@ export const Route = createFileRoute("/p/$code")({
 
     return {
       code: selection.code,
-      clientName: selection.client_name,
       comment: selection.comment,
       count: selectedProperties.length,
       properties: selectedProperties,
