@@ -26,7 +26,7 @@ export const Route = createFileRoute("/rent/$id")({
     return property;
   },
   head: ({ loaderData }) => {
-    const p = loaderData;
+    const p = loaderData as Property;
     const title = propertyMetaTitle(p);
     const description = propertyMetaDescription(p);
     return {
