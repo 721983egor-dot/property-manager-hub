@@ -55,7 +55,6 @@ export const Route = createFileRoute("/rent/")({
         content:
           "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
       },
-      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "/rent" },
     ],
