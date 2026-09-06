@@ -85,7 +85,10 @@ function CianImportPage() {
   );
 
   const matches = useMemo(
-    () => matchOffers(offersResult?.offers ?? [], activeProperties, linkedByExternalId),
+    () =>
+      matchOffers(offersResult?.offers ?? [], activeProperties, linkedByExternalId).sort(
+        (a, b) => Number(a.alreadyLinked) - Number(b.alreadyLinked),
+      ),
     [offersResult, activeProperties, linkedByExternalId],
   );
 
@@ -215,15 +218,24 @@ function CianImportPage() {
                   className="rounded-xl border border-border bg-card p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-[240px] flex-1">
-                      <p className="flex items-center gap-2 text-sm font-medium">
-                        <Icon className={"size-4 " + tone} />
-                        {m.alreadyLinked ? "Уже связано" : CONFIDENCE_LABEL[m.confidence]}
-                      </p>
-                      <p className="mt-2 text-[15px] font-semibold leading-snug">
-                        {m.offer.title || m.offer.address || `Объявление ${m.offer.externalId}`}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">{m.offer.address}</p>
+                    <div className="flex min-w-[240px] flex-1 items-start gap-3">
+                      {m.offer.photo ? (
+                        <img
+                          src={m.offer.photo}
+                          alt=""
+                          className="size-16 shrink-0 rounded-lg object-cover"
+                          loading="lazy"
+                        />
+                      ) : null}
+                      <div>
+                        <p className="flex items-center gap-2 text-sm font-medium">
+                          <Icon className={"size-4 " + tone} />
+                          {m.alreadyLinked ? "Уже связано" : CONFIDENCE_LABEL[m.confidence]}
+                        </p>
+                        <p className="mt-2 text-[15px] font-semibold leading-snug">
+                          {m.offer.title || m.offer.address || `Объявление ${m.offer.externalId}`}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">{m.offer.address}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {[
                           m.offer.complexName,
@@ -234,14 +246,15 @@ function CianImportPage() {
                           .filter(Boolean)
                           .join(" · ")}
                       </p>
-                      <a
-                        href={m.offer.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-1 inline-block text-xs text-primary hover:underline"
-                      >
-                        Открыть на ЦИАН
-                      </a>
+                        <a
+                          href={m.offer.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block text-xs text-primary hover:underline"
+                        >
+                          Открыть на ЦИАН
+                        </a>
+                      </div>
                     </div>
 
                     <div className="min-w-[260px]">
@@ -288,7 +301,8 @@ function CianImportPage() {
             <section className="mt-8 rounded-xl border border-dashed border-border p-5">
               <h2 className="text-sm font-semibold">Есть в RM OS, но не найдено на ЦИАН</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Эти объекты можно опубликовать на ЦИАН из раздела «Публикация и реклама».
+                Этих объектов пока нет на ЦИАН. Разместите их в кабинете ЦИАН, затем вернитесь
+                сюда, обновите список и свяжите.
               </p>
               <ul className="mt-3 grid gap-1 text-sm sm:grid-cols-2">
                 {unmatchedProperties.slice(0, 30).map((p) => (

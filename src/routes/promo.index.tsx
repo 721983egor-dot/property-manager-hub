@@ -1,14 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { BarChart3, Download, Globe, Search } from "lucide-react";
+import { BarChart3, Download, ExternalLink, Globe, Link2, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { missingCianFields } from "@/lib/cian";
-import { publishToCian, unpublishFromCian } from "@/lib/cian.functions";
 import { PLATFORMS, fetchListings, setSitePublished } from "@/lib/listings";
 import {
   fetchProperties,
@@ -47,8 +44,7 @@ function PromoListPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState<string | null>(null);
-  const sendToCian = useServerFn(publishToCian);
-  const removeFromCian = useServerFn(unpublishFromCian);
+
 
 
   const { data: properties = [], isLoading } = useQuery({
@@ -70,10 +66,17 @@ function PromoListPage() {
   });
 
   const listingMap = useMemo(() => {
-    const map = new Map<string, Record<string, { published: boolean; at: string | null }>>();
+    const map = new Map<
+      string,
+      Record<string, { published: boolean; at: string | null; externalUrl: string }>
+    >();
     for (const l of listings) {
       const entry = map.get(l.property_id) ?? {};
-      entry[l.platform] = { published: l.published, at: l.published_at };
+      entry[l.platform] = {
+        published: l.published,
+        at: l.published_at,
+        externalUrl: l.external_url,
+      };
       map.set(l.property_id, entry);
     }
     return map;
@@ -100,31 +103,6 @@ function PromoListPage() {
       toast.success(p.published ? "Снято с публикации" : "Опубликовано на сайте");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function toggleCian(p: Property, published: boolean) {
-    if (!published) {
-      const missing = missingCianFields(p);
-      if (missing.length > 0) {
-        toast.error(`Заполните для ЦИАН: ${missing.join(", ")}`);
-        return;
-      }
-    }
-    setBusy(p.id + "cian");
-    try {
-      if (published) {
-        await removeFromCian({ data: { propertyId: p.id } });
-        toast.success("Объявление снято с ЦИАН");
-      } else {
-        await sendToCian({ data: { propertyId: p.id } });
-        toast.success("Объект отправлен на ЦИАН");
-      }
-      await qc.invalidateQueries({ queryKey: ["property-listings"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "ЦИАН не принял объявление");
     } finally {
       setBusy(null);
     }
@@ -222,8 +200,16 @@ function PromoListPage() {
                     {PLATFORMS.map((platform) => {
                       const state =
                         platform.value === "site"
-                          ? { published: p.published, at: entry["site"]?.at ?? null }
-                          : entry[platform.value] ?? { published: false, at: null };
+                          ? {
+                              published: p.published,
+                              at: entry["site"]?.at ?? null,
+                              externalUrl: entry["site"]?.externalUrl ?? "",
+                            }
+                          : (entry[platform.value] ?? {
+                              published: false,
+                              at: null,
+                              externalUrl: "",
+                            });
                       const isCian = platform.value === "cian";
                       return (
                         <li
@@ -244,14 +230,32 @@ function PromoListPage() {
                               </span>
                             ) : null}
                           </span>
-                          {platform.available ? (
+                          {isCian ? (
+                            state.published ? (
+                              <Button asChild size="sm" variant="outline">
+                                <a
+                                  href={state.externalUrl || "https://www.cian.ru"}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  <ExternalLink className="size-3.5" />
+                                  Открыть
+                                </a>
+                              </Button>
+                            ) : (
+                              <Button asChild size="sm" variant="default">
+                                <Link to="/promo/import">
+                                  <Link2 className="size-3.5" />
+                                  Связать
+                                </Link>
+                              </Button>
+                            )
+                          ) : platform.available ? (
                             <Button
                               size="sm"
                               variant={state.published ? "outline" : "default"}
                               disabled={busy === p.id + platform.value}
-                              onClick={() =>
-                                isCian ? toggleCian(p, state.published) : togglePublish(p)
-                              }
+                              onClick={() => togglePublish(p)}
                             >
                               <Globe className="size-3.5" />
                               {state.published ? "Снять" : "Опубликовать"}
