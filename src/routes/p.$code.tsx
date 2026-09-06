@@ -102,7 +102,7 @@ export const Route = createFileRoute("/p/$code")({
 });
 
 function SelectionPublicPage() {
-  const data = Route.useLoaderData();
+  const data = Route.useLoaderData()!;
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-site-navy">
