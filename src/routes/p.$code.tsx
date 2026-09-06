@@ -14,6 +14,13 @@ import {
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 import { fetchSelectionByCode } from "@/lib/selections";
 
+type LoaderData = {
+  code: string;
+  clientName: string;
+  comment: string;
+  count: number;
+};
+
 const selectionQueryOptions = (code: string) =>
   queryOptions({
     queryKey: ["selection", code],
@@ -22,11 +29,12 @@ const selectionQueryOptions = (code: string) =>
 
 export const Route = createFileRoute("/p/$code")({
   head: ({ loaderData }) => {
-    const title = loaderData
-      ? `${loaderData.clientName || "Подборка"} — ${loaderData.count} объектов — Резиденция&Море`
+    const data = loaderData as LoaderData | undefined;
+    const title = data
+      ? `${data.clientName || "Подборка"} — ${data.count} объектов — Резиденция&Море`
       : "Подборка объектов — Резиденция&Море";
-    const description = loaderData
-      ? `Персональная подборка объектов долгосрочной аренды в Сочи от Резиденция&Море. ${loaderData.count} объектов.`
+    const description = data
+      ? `Персональная подборка объектов долгосрочной аренды в Сочи от Резиденция&Море. ${data.count} объектов.`
       : "Персональная подборка объектов долгосрочной аренды в Сочи.";
     return {
       meta: [
