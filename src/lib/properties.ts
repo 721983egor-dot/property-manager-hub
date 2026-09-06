@@ -561,15 +561,24 @@ function ucFirst(s: string) {
   return s ? s[0]!.toUpperCase() + s.slice(1) : s;
 }
 
-/** Title страницы объекта (<60 символов, если данные короткие). */
+function fitMetaTitle(core: string): string {
+  const suffix = " — Резиденция&Море";
+  const maxCore = 60 - suffix.length - 1; // оставляем место для многоточия
+  if ((core + suffix).length <= 60) return core + suffix;
+  const trimmed = core.slice(0, Math.max(1, maxCore)).replace(/\s+$/, "");
+  return `${trimmed}…${suffix}`;
+}
+
+/** Title страницы объекта (стараемся уложиться в 60 символов). */
 export function propertyMetaTitle(p: Property) {
   const type = propertyTypeNoun(p.type);
   const area = p.area ? formatArea(p.area) : "";
   const price = p.price_month ? formatMoney(p.price_month) : "";
-  return `${p.title}, ${ucFirst(type)}${area ? `, ${area}` : ""}${price ? `, ${price}/мес` : ""} — Резиденция&Море`;
+  const core = `${p.title}, ${ucFirst(type)}${area ? `, ${area}` : ""}${price ? `, ${price}/мес` : ""}`;
+  return fitMetaTitle(core);
 }
 
-/** Description страницы объекта (<160 символов при коротких данных). */
+/** Description страницы объекта (стараемся уложиться в 160 символов). */
 export function propertyMetaDescription(p: Property) {
   const parts: string[] = [`Сдаётся ${propertyTypeNoun(p.type)} в Сочи`];
   if (p.area) parts.push(formatArea(p.area));
@@ -577,5 +586,7 @@ export function propertyMetaDescription(p: Property) {
   if (p.price_month) parts.push(`${formatMoney(p.price_month)}/мес`);
   const location = p.complex_id ? p.complex_name : shortAddress(p.address);
   if (location) parts.push(location);
-  return parts.join(" — ") + ". Аренда премиум-недвижимости в Сочи от Резиденция&Море.";
+  const sentence = parts.join(" — ") + ". Аренда премиум-недвижимости в Сочи от Резиденция&Море.";
+  if (sentence.length <= 160) return sentence;
+  return sentence.slice(0, 159).replace(/\s+$/, "") + "…";
 }
