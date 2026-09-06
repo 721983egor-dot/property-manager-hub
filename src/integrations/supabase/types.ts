@@ -453,6 +453,7 @@ export type Database = {
           comment: string
           created_at: string
           id: string
+          saved: boolean
           updated_at: string
         }
         Insert: {
@@ -461,6 +462,7 @@ export type Database = {
           comment?: string
           created_at?: string
           id?: string
+          saved?: boolean
           updated_at?: string
         }
         Update: {
@@ -469,6 +471,7 @@ export type Database = {
           comment?: string
           created_at?: string
           id?: string
+          saved?: boolean
           updated_at?: string
         }
         Relationships: []
