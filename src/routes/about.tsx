@@ -126,13 +126,35 @@ function AboutPage() {
               </p>
             </div>
           </div>
-          <div className="overflow-hidden rounded-2xl">
-            <img
-              src={img2}
-              alt="Объект под управлением «Резиденция & Море»"
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
+          <div className="flex flex-col gap-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-site-gold">
+              Наши принципы работы
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {PRINCIPLES.map((item, i) => (
+                <div
+                  key={item.title}
+                  className="rounded-2xl border border-site-line bg-white p-5 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl font-bold text-site-gold">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <item.icon className="size-5 text-site-gold" />
+                  </div>
+                  <p className="mt-3 font-semibold text-site-navy">
+                    {item.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="text-sm leading-relaxed text-site-muted">
+              Мы берём в работу не просто объект, а ответственность за его
+              аренду, состояние и коммуникацию между сторонами.
+            </p>
           </div>
         </div>
       </section>
