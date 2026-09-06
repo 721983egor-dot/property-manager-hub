@@ -95,7 +95,6 @@ function ObjectsPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [clientName, setClientName] = useState("");
   const [comment, setComment] = useState("");
   const [saveList, setSaveList] = useState(false);
 
@@ -427,33 +426,23 @@ function ObjectsPage() {
 
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="client-name">Имя клиента</Label>
-              <Input
-                id="client-name"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                placeholder="Например, Анна"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="selection-comment">Комментарий</Label>
+              <Label htmlFor="selection-comment">Комментарий для клиента</Label>
               <Textarea
                 id="selection-comment"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Краткий комментарий для клиента"
+                placeholder="Например: варианты под ваши даты и бюджет"
                 rows={3}
               />
             </div>
 
-            <div className="flex items-start gap-2">
+            <div className="flex items-center gap-2">
               <Checkbox
                 id="save-list"
                 checked={saveList}
                 onCheckedChange={(v) => setSaveList(Boolean(v))}
               />
-              <Label htmlFor="save-list" className="text-sm font-normal leading-tight">
+              <Label htmlFor="save-list" className="text-sm font-normal">
                 Сохранить в списке подборок
               </Label>
             </div>
@@ -478,7 +467,6 @@ function ObjectsPage() {
               onClick={() =>
                 createSelectionMutation.mutate({
                   propertyIds: Array.from(selectedIds),
-                  clientName,
                   comment,
                   saved: saveList,
                 })
