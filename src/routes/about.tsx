@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Building2,
+  Check,
+  ClipboardList,
   FileCheck2,
+  HeartHandshake,
+  MapPin,
   MessageCircle,
+  Minus,
   Phone,
   Send,
   ShieldCheck,
@@ -12,7 +17,6 @@ import {
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import { SITE_PHONE_TEL, SITE_TELEGRAM, SITE_WHATSAPP } from "@/lib/site";
 import heroImg from "@/assets/site/about_hero.jpg";
-import img3 from "@/assets/site/about_p3.jpg";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -161,83 +165,134 @@ function AboutPage() {
 
       <section className="bg-site-navy-soft py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-            Чем отличаемся от риэлтора
-          </h2>
-          <p className="mt-4 max-w-2xl leading-relaxed text-site-muted">
-            Не просто находим арендатора — управляем объектом после заселения
-          </p>
-          <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-site-line bg-white p-7">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+              Чем отличаемся от риэлтора
+            </h2>
+            <p className="mt-4 leading-relaxed text-site-muted">
+              Не просто находим арендатора — управляем объектом после
+              заселения
+            </p>
+          </div>
+
+          <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-2">
+            <div className="flex flex-col rounded-2xl border border-site-line bg-white p-6 md:p-8">
               <p className="text-lg font-semibold text-site-navy">Риэлтор</p>
-              <p className="mt-3 text-sm leading-relaxed text-site-muted">
-                Помогает найти арендатора, провести показ и согласовать сделку.
-                Дальнейшие вопросы по объекту, оплатам и коммуникации обычно
-                остаются на собственнике
+              <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                Помогает найти арендатора и согласовать сделку. Дальнейшие
+                вопросы по объекту обычно остаются на собственнике.
               </p>
-              <ul className="mt-5 flex flex-col gap-2 text-sm text-site-muted">
+              <ul className="mt-6 flex flex-col gap-3 text-sm text-site-muted">
                 {REALTOR.map((item) => (
-                  <li key={item}>{item}</li>
+                  <li key={item} className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-site-navy-soft text-site-muted">
+                      <Minus className="size-3" />
+                    </span>
+                    <span className="leading-snug">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
-            <div className="rounded-2xl border border-site-gold bg-white p-7">
+
+            <div className="flex flex-col rounded-2xl border-2 border-site-gold bg-white p-6 md:p-8 shadow-[0_12px_40px_-24px_rgba(199,158,80,0.35)]">
               <p className="text-lg font-semibold text-site-navy">
                 Резиденция & Море
               </p>
-              <p className="mt-3 text-sm leading-relaxed text-site-muted">
+              <p className="mt-2 text-sm leading-relaxed text-site-muted">
                 Берём на себя полный цикл: готовим объект, ищем арендатора,
-                проводим показы, оформляем договор, контролируем оплаты и
-                сопровождаем на протяжении срока аренды
+                оформляем договор, контролируем оплаты и сопровождаем аренду.
               </p>
-              <ul className="mt-5 flex flex-col gap-2 text-sm text-site-navy">
+              <ul className="mt-6 flex flex-col gap-3 text-sm text-site-navy">
                 {US.map((item) => (
-                  <li key={item}>{item}</li>
+                  <li key={item} className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-site-gold/15 text-site-gold">
+                      <Check className="size-3.5" />
+                    </span>
+                    <span className="leading-snug">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
           </div>
-          <p className="mt-8 max-w-3xl leading-relaxed text-site-navy">
-            Мы не просто приводим арендатора — мы берём на себя управление
-            объектом на протяжении срока аренды.
+
+          <p className="mt-10 text-center leading-relaxed text-site-navy">
+            Мы не просто приводим арендатора — берём на себя управление объектом
+            на весь срок аренды.
           </p>
         </div>
       </section>
 
       <section className="bg-white py-20">
-        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl">
-            <img
-              src={img3}
-              alt="Сочи"
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          </div>
-          <div>
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
               Почему мы так работаем
             </h2>
-            <div className="mt-6 flex flex-col gap-4 leading-relaxed text-site-muted">
-              <p>
-                В Сочи много собственников, которые живут в других городах и не
-                могут ежедневно заниматься своей недвижимостью. Объект требует
-                внимания: арендаторы, показы, договоры, оплаты, бытовые вопросы,
-                обслуживание и контроль состояния.
-              </p>
-              <p>
-                Мы строим работу так, чтобы собственнику не приходилось
-                заниматься этим ежедневно. Берём на себя запуск аренды,
-                коммуникацию, контроль оплат и текущие вопросы по объекту, а
-                арендатор получает понятные условия и нормальную связь на
-                протяжении срока проживания.
-              </p>
-            </div>
-            <p className="mt-6 text-sm font-semibold text-site-navy">
-              Егор Мошков
-              <span className="block text-site-muted">Резиденция & Море</span>
+            <p className="mt-4 leading-relaxed text-site-muted">
+              В Сочи много собственников, которые не могут ежедневно заниматься
+              своей недвижимостью. Мы строим работу так, чтобы это не требовало
+              их постоянного участия.
             </p>
           </div>
+
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-site-line bg-site-navy-soft p-6">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-site-gold shadow-sm">
+                <MapPin className="size-5" />
+              </span>
+              <p className="mt-4 font-semibold text-site-navy">
+                Собственники не всегда в Сочи
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                Многие живут в других городах и не могут лично контролировать
+                объект, проводить показы и решать текущие вопросы.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-site-line bg-site-navy-soft p-6">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-site-gold shadow-sm">
+                <ClipboardList className="size-5" />
+              </span>
+              <p className="mt-4 font-semibold text-site-navy">
+                Объект требует внимания
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                Арендаторы, показы, договоры, оплаты, бытовые заявки,
+                обслуживание и контроль состояния — всё это нужно вести.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-site-line bg-site-navy-soft p-6">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-site-gold shadow-sm">
+                <HeartHandshake className="size-5" />
+              </span>
+              <p className="mt-4 font-semibold text-site-navy">
+                Берём операционку на себя
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                Запускаем аренду, ведём коммуникацию, контролируем платежи и
+                текущие вопросы по объекту.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-site-line bg-site-navy-soft p-6">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-site-gold shadow-sm">
+                <Sofa className="size-5" />
+              </span>
+              <p className="mt-4 font-semibold text-site-navy">
+                Сервис для арендатора
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                Арендатор получает понятные условия, быструю связь и помощь на
+                протяжении всего срока проживания.
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-10 text-sm font-semibold text-site-navy">
+            Егор Мошков
+            <span className="block text-site-muted">Резиденция & Море</span>
+          </p>
         </div>
       </section>
 
