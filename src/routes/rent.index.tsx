@@ -35,6 +35,9 @@ const rentSearchSchema = z.object({
 
 export const Route = createFileRoute("/rent/")({
   validateSearch: zodValidator(rentSearchSchema),
+  search: {
+    middlewares: [stripSearchParams({ type: "", complex: "", rooms: "", sort: "price_asc" })],
+  },
   head: () => ({
     meta: [
       { title: "Долгосрочная аренда недвижимости в Сочи — Residence More" },
