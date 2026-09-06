@@ -1,10 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { queryOptions } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Share2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { SiteHeader } from "@/components/site/SiteHeader";
-import { SiteFooter } from "@/components/site/SiteFooter";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import {
@@ -17,7 +16,6 @@ import { fetchSelectionByCode } from "@/lib/selections";
 
 type LoaderData = {
   code: string;
-  clientName: string;
   comment: string;
   count: number;
   properties: Property[];
