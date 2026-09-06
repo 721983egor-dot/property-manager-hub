@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 const ITEMS = [
-  { to: "/", label: "Объекты" },
+  { to: "/objects", label: "Объекты" },
   { to: "/complexes", label: "Комплексы" },
   { to: "/calendar", label: "Календарь" },
 ] as const;
@@ -17,7 +17,7 @@ export function SectionTabs({
       <div className="flex gap-6">
         {ITEMS.map((item) => {
           const isActive =
-            (item.to === "/" && active === "objects") ||
+            (item.to === "/objects" && active === "objects") ||
             (item.to === "/complexes" && active === "complexes") ||
             (item.to === "/calendar" && active === "calendar");
           return (

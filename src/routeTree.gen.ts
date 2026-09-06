@@ -9,11 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as RentRouteImport } from './routes/rent'
 import { Route as ComplexesIndexRouteImport } from './routes/complexes.index'
 import { Route as ComplexesNewRouteImport } from './routes/complexes.new'
+import { Route as ObjectsIndexRouteImport } from './routes/objects.index'
 import { Route as ObjectsNewRouteImport } from './routes/objects.new'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
@@ -24,11 +24,6 @@ import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -47,6 +42,11 @@ const ComplexesIndexRoute = ComplexesIndexRouteImport.update({
 const ComplexesNewRoute = ComplexesNewRouteImport.update({
   id: '/complexes/new',
   path: '/complexes/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObjectsIndexRoute = ObjectsIndexRouteImport.update({
+  id: '/objects/',
+  path: '/objects/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ObjectsNewRoute = ObjectsNewRouteImport.update({
@@ -96,13 +96,13 @@ const ObjectsIdPreviewRoute = ObjectsIdPreviewRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/rent': typeof RentRouteWithChildren
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes/': typeof ComplexesIndexRoute
+  '/objects/': typeof ObjectsIndexRoute
   '/rent/': typeof RentIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/crm/clients/$id': typeof CrmClientsIdRoute
@@ -112,12 +112,12 @@ export interface FileRoutesByFullPath {
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes': typeof ComplexesIndexRoute
+  '/objects': typeof ObjectsIndexRoute
   '/rent': typeof RentIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/crm/clients/$id': typeof CrmClientsIdRoute
@@ -128,13 +128,13 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/rent': typeof RentRouteWithChildren
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/rent/$id': typeof RentIdRoute
   '/complexes/': typeof ComplexesIndexRoute
+  '/objects/': typeof ObjectsIndexRoute
   '/rent/': typeof RentIndexRoute
   '/complexes/$id/edit': typeof ComplexesIdEditRoute
   '/crm/clients/$id': typeof CrmClientsIdRoute
@@ -146,13 +146,13 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/calendar'
     | '/rent'
     | '/complexes/new'
     | '/objects/new'
     | '/rent/$id'
     | '/complexes/'
+    | '/objects/'
     | '/rent/'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
@@ -162,12 +162,12 @@ export interface FileRouteTypes {
     | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/calendar'
     | '/complexes/new'
     | '/objects/new'
     | '/rent/$id'
     | '/complexes'
+    | '/objects'
     | '/rent'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
@@ -177,13 +177,13 @@ export interface FileRouteTypes {
     | '/objects/$id'
   id:
     | '__root__'
-    | '/'
     | '/calendar'
     | '/rent'
     | '/complexes/new'
     | '/objects/new'
     | '/rent/$id'
     | '/complexes/'
+    | '/objects/'
     | '/rent/'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
@@ -194,12 +194,12 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   RentRoute: typeof RentRouteWithChildren
   ComplexesNewRoute: typeof ComplexesNewRoute
   ObjectsNewRoute: typeof ObjectsNewRoute
   ComplexesIndexRoute: typeof ComplexesIndexRoute
+  ObjectsIndexRoute: typeof ObjectsIndexRoute
   ComplexesIdEditRoute: typeof ComplexesIdEditRoute
   CrmClientsIdRoute: typeof CrmClientsIdRoute
   ObjectsIdEditRoute: typeof ObjectsIdEditRoute
@@ -210,13 +210,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -243,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/complexes/new'
       fullPath: '/complexes/new'
       preLoaderRoute: typeof ComplexesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/objects/': {
+      id: '/objects/'
+      path: '/objects'
+      fullPath: '/objects/'
+      preLoaderRoute: typeof ObjectsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/objects/new': {
@@ -324,12 +324,12 @@ const RentRouteChildren: RentRouteChildren = {
 const RentRouteWithChildren = RentRoute._addFileChildren(RentRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   RentRoute: RentRouteWithChildren,
   ComplexesNewRoute: ComplexesNewRoute,
   ObjectsNewRoute: ObjectsNewRoute,
   ComplexesIndexRoute: ComplexesIndexRoute,
+  ObjectsIndexRoute: ObjectsIndexRoute,
   ComplexesIdEditRoute: ComplexesIdEditRoute,
   CrmClientsIdRoute: CrmClientsIdRoute,
   ObjectsIdEditRoute: ObjectsIdEditRoute,
