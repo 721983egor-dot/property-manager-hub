@@ -39,6 +39,7 @@ export async function createSelection(input: {
   propertyIds: string[];
   clientName?: string;
   comment?: string;
+  saved?: boolean;
 }): Promise<SelectionWithItems> {
   const propertyIds = input.propertyIds.filter(Boolean);
   if (propertyIds.length === 0) {
@@ -52,6 +53,7 @@ export async function createSelection(input: {
       code,
       client_name: input.clientName?.trim() ?? "",
       comment: input.comment?.trim() ?? "",
+      saved: input.saved ?? false,
     })
     .select("*")
     .single();
