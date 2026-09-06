@@ -9,7 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as ManagementRouteImport } from './routes/management'
 import { Route as RentRouteImport } from './routes/rent'
 import { Route as ComplexesIndexRouteImport } from './routes/complexes.index'
 import { Route as ComplexesNewRouteImport } from './routes/complexes.new'
@@ -24,9 +27,24 @@ import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManagementRoute = ManagementRouteImport.update({
+  id: '/management',
+  path: '/management',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentRoute = RentRouteImport.update({
@@ -96,7 +114,10 @@ const ObjectsIdPreviewRoute = ObjectsIdPreviewRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/calendar': typeof CalendarRoute
+  '/management': typeof ManagementRoute
   '/rent': typeof RentRouteWithChildren
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
@@ -112,7 +133,10 @@ export interface FileRoutesByFullPath {
   '/objects/$id/': typeof ObjectsIdIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/calendar': typeof CalendarRoute
+  '/management': typeof ManagementRoute
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
   '/rent/$id': typeof RentIdRoute
@@ -128,7 +152,10 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/calendar': typeof CalendarRoute
+  '/management': typeof ManagementRoute
   '/rent': typeof RentRouteWithChildren
   '/complexes/new': typeof ComplexesNewRoute
   '/objects/new': typeof ObjectsNewRoute
@@ -146,7 +173,10 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
+    | '/about'
     | '/calendar'
+    | '/management'
     | '/rent'
     | '/complexes/new'
     | '/objects/new'
@@ -162,7 +192,10 @@ export interface FileRouteTypes {
     | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
+    | '/about'
     | '/calendar'
+    | '/management'
     | '/complexes/new'
     | '/objects/new'
     | '/rent/$id'
@@ -177,7 +210,10 @@ export interface FileRouteTypes {
     | '/objects/$id'
   id:
     | '__root__'
+    | '/'
+    | '/about'
     | '/calendar'
+    | '/management'
     | '/rent'
     | '/complexes/new'
     | '/objects/new'
@@ -194,7 +230,10 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   CalendarRoute: typeof CalendarRoute
+  ManagementRoute: typeof ManagementRoute
   RentRoute: typeof RentRouteWithChildren
   ComplexesNewRoute: typeof ComplexesNewRoute
   ObjectsNewRoute: typeof ObjectsNewRoute
@@ -210,11 +249,32 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/management': {
+      id: '/management'
+      path: '/management'
+      fullPath: '/management'
+      preLoaderRoute: typeof ManagementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rent': {
@@ -324,7 +384,10 @@ const RentRouteChildren: RentRouteChildren = {
 const RentRouteWithChildren = RentRoute._addFileChildren(RentRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   CalendarRoute: CalendarRoute,
+  ManagementRoute: ManagementRoute,
   RentRoute: RentRouteWithChildren,
   ComplexesNewRoute: ComplexesNewRoute,
   ObjectsNewRoute: ObjectsNewRoute,
