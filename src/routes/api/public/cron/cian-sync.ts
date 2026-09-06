@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * Ежедневная синхронизация статистики и сообщений ЦИАН.
+ * Ежедневная синхронизация статистики ЦИАН по связанным объектам.
  * Вызывается планировщиком с заголовком x-cron-secret.
  */
 export const Route = createFileRoute("/api/public/cron/cian-sync")({
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { cianRequest } = await import("@/lib/cian.server");
+        const { fetchOfferStatsByDays } = await import("@/lib/cian.server");
 
         const { data: listings, error } = await supabaseAdmin
           .from("property_listings")
@@ -31,45 +31,19 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
         const errors: string[] = [];
 
         for (const row of (listings ?? []) as { property_id: string; external_id: string }[]) {
-          if (!row.external_id) continue;
+          const offerId = Number(row.external_id);
+          if (!row.external_id || !Number.isFinite(offerId)) continue;
           try {
-            const payload = await cianRequest<Record<string, unknown>>(
-              "/get-offers-statistics/",
-              {
-                body: {
-                  offerIds: [Number(row.external_id) || row.external_id],
-                  dateFrom: from,
-                  dateTo: to,
-                },
-              },
-            );
-            const rows = Array.isArray(payload["items"])
-              ? (payload["items"] as Record<string, unknown>[])
-              : Array.isArray(payload["statistics"])
-                ? (payload["statistics"] as Record<string, unknown>[])
-                : [];
-            const toInt = (v: unknown) => {
-              const n = Number(v);
-              return Number.isFinite(n) ? Math.round(n) : 0;
-            };
-            const upserts = rows
-              .map((r) => ({
-                property_id: row.property_id,
-                platform: "cian" as const,
-                date: String(r["date"] ?? "").slice(0, 10),
-                impressions: toInt(r["showsCount"] ?? r["impressions"]),
-                views: toInt(r["viewsCount"] ?? r["views"]),
-                contact_views: toInt(r["phoneShowsCount"] ?? r["contactViews"]),
-                calls: toInt(r["callsCount"] ?? r["calls"]),
-                messages: toInt(r["messagesCount"] ?? r["messages"]),
-                favorites: toInt(r["favoritesCount"] ?? r["favorites"]),
-              }))
-              .filter((r) => r.date.length === 10);
-
-            if (upserts.length > 0) {
-              await supabaseAdmin
-                .from("listing_stats")
-                .upsert(upserts, { onConflict: "property_id,platform,date" });
+            const days = await fetchOfferStatsByDays(offerId, from, to);
+            if (days.length > 0) {
+              await supabaseAdmin.from("listing_stats").upsert(
+                days.map((d) => ({
+                  property_id: row.property_id,
+                  platform: "cian" as const,
+                  ...d,
+                })),
+                { onConflict: "property_id,platform,date" },
+              );
             }
             await supabaseAdmin
               .from("property_listings")
