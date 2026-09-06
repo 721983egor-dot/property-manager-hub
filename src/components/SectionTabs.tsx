@@ -4,13 +4,14 @@ const ITEMS = [
   { to: "/objects", label: "Объекты" },
   { to: "/complexes", label: "Комплексы" },
   { to: "/calendar", label: "Календарь" },
+  { to: "/selections", label: "Подборки" },
 ] as const;
 
 /** Вкладки верхнего уровня внутри раздела «Объекты». */
 export function SectionTabs({
   active,
 }: {
-  active: "objects" | "complexes" | "calendar";
+  active: "objects" | "complexes" | "calendar" | "selections";
 }) {
   return (
     <div className="mt-6 border-b border-border">
