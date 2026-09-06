@@ -10,6 +10,7 @@ import {
   propertyQueryOptions,
   propertyMetaTitle,
   propertyMetaDescription,
+  type Property,
 } from "@/lib/properties";
 import { fetchCurrentBooking } from "@/lib/bookings";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
