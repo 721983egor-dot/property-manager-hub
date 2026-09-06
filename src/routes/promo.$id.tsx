@@ -71,6 +71,35 @@ function PromoDetailPage() {
     queryFn: () => loadStats({ data: { propertyId: id, from, to } }),
   });
 
+  const loadCianStats = useServerFn(syncCianStats);
+  const {
+    data: cianStats,
+    refetch: refetchCian,
+    isFetching: cianFetching,
+  } = useQuery({
+    queryKey: ["cian-stats", id, from, to],
+    queryFn: () => loadCianStats({ data: { propertyId: id, from, to } }),
+  });
+
+  const loadCianMessages = useServerFn(syncCianMessages);
+  const { data: cianMessages, refetch: refetchMessages } = useQuery({
+    queryKey: ["cian-messages", id],
+    queryFn: () => loadCianMessages({ data: { propertyId: id } }),
+  });
+
+  const cianTotals = (cianStats?.days ?? []).reduce(
+    (acc, d) => ({
+      impressions: acc.impressions + d.impressions,
+      views: acc.views + d.views,
+      contact_views: acc.contact_views + d.contact_views,
+      calls: acc.calls + d.calls,
+      messages: acc.messages + d.messages,
+      favorites: acc.favorites + d.favorites,
+    }),
+    { impressions: 0, views: 0, contact_views: 0, calls: 0, messages: 0, favorites: 0 },
+  );
+
+
   async function togglePublish() {
     if (!property) return;
     setBusy(true);
