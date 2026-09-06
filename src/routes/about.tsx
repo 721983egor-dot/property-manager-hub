@@ -164,45 +164,59 @@ function AboutPage() {
 
       <section className="bg-site-navy-soft py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-            Чем отличаемся от риэлтора
-          </h2>
-          <p className="mt-4 max-w-2xl leading-relaxed text-site-muted">
-            Не просто находим арендатора — управляем объектом после заселения
-          </p>
-          <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-site-line bg-white p-7">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+              Чем отличаемся от риэлтора
+            </h2>
+            <p className="mt-4 leading-relaxed text-site-muted">
+              Не просто находим арендатора — управляем объектом после
+              заселения
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-5 lg:grid-cols-2">
+            <div className="rounded-2xl border border-site-line bg-white p-6 md:p-8">
               <p className="text-lg font-semibold text-site-navy">Риэлтор</p>
-              <p className="mt-3 text-sm leading-relaxed text-site-muted">
-                Помогает найти арендатора, провести показ и согласовать сделку.
-                Дальнейшие вопросы по объекту, оплатам и коммуникации обычно
-                остаются на собственнике
+              <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                Помогает найти арендатора и согласовать сделку. Дальнейшие
+                вопросы по объекту обычно остаются на собственнике.
               </p>
-              <ul className="mt-5 flex flex-col gap-2 text-sm text-site-muted">
+              <ul className="mt-6 flex flex-col gap-3 text-sm text-site-muted">
                 {REALTOR.map((item) => (
-                  <li key={item}>{item}</li>
+                  <li key={item} className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-site-navy-soft text-site-muted">
+                      <Minus className="size-3" />
+                    </span>
+                    <span className="leading-snug">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
-            <div className="rounded-2xl border border-site-gold bg-white p-7">
+
+            <div className="rounded-2xl border-2 border-site-gold bg-white p-6 md:p-8 shadow-[0_12px_40px_-24px_rgba(199,158,80,0.35)]">
               <p className="text-lg font-semibold text-site-navy">
                 Резиденция & Море
               </p>
-              <p className="mt-3 text-sm leading-relaxed text-site-muted">
+              <p className="mt-2 text-sm leading-relaxed text-site-muted">
                 Берём на себя полный цикл: готовим объект, ищем арендатора,
-                проводим показы, оформляем договор, контролируем оплаты и
-                сопровождаем на протяжении срока аренды
+                оформляем договор, контролируем оплаты и сопровождаем аренду.
               </p>
-              <ul className="mt-5 flex flex-col gap-2 text-sm text-site-navy">
+              <ul className="mt-6 flex flex-col gap-3 text-sm text-site-navy">
                 {US.map((item) => (
-                  <li key={item}>{item}</li>
+                  <li key={item} className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-site-gold/15 text-site-gold">
+                      <Check className="size-3.5" />
+                    </span>
+                    <span className="leading-snug">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
           </div>
-          <p className="mt-8 max-w-3xl leading-relaxed text-site-navy">
-            Мы не просто приводим арендатора — мы берём на себя управление
-            объектом на протяжении срока аренды.
+
+          <p className="mt-10 text-center leading-relaxed text-site-navy">
+            Мы не просто приводим арендатора — берём на себя управление объектом
+            на весь срок аренды.
           </p>
         </div>
       </section>
