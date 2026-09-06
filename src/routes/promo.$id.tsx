@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, Globe } from "lucide-react";
+import { ChevronLeft, Globe, RefreshCw } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -16,6 +16,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { getPropertyStats } from "@/lib/analytics.functions";
+import { syncCianMessages, syncCianStats } from "@/lib/cian.functions";
+
 import { PLATFORMS, fetchPropertyListings, setSitePublished } from "@/lib/listings";
 import { fetchProperty, internalTitle } from "@/lib/properties";
 import { toISODate } from "@/lib/rentals";
@@ -70,6 +72,35 @@ function PromoDetailPage() {
     queryKey: ["property-stats", id, from, to],
     queryFn: () => loadStats({ data: { propertyId: id, from, to } }),
   });
+
+  const loadCianStats = useServerFn(syncCianStats);
+  const {
+    data: cianStats,
+    refetch: refetchCian,
+    isFetching: cianFetching,
+  } = useQuery({
+    queryKey: ["cian-stats", id, from, to],
+    queryFn: () => loadCianStats({ data: { propertyId: id, from, to } }),
+  });
+
+  const loadCianMessages = useServerFn(syncCianMessages);
+  const { data: cianMessages, refetch: refetchMessages } = useQuery({
+    queryKey: ["cian-messages", id],
+    queryFn: () => loadCianMessages({ data: { propertyId: id } }),
+  });
+
+  const cianTotals = (cianStats?.days ?? []).reduce(
+    (acc, d) => ({
+      impressions: acc.impressions + d.impressions,
+      views: acc.views + d.views,
+      contact_views: acc.contact_views + d.contact_views,
+      calls: acc.calls + d.calls,
+      messages: acc.messages + d.messages,
+      favorites: acc.favorites + d.favorites,
+    }),
+    { impressions: 0, views: 0, contact_views: 0, calls: 0, messages: 0, favorites: 0 },
+  );
+
 
   async function togglePublish() {
     if (!property) return;
@@ -227,6 +258,57 @@ function PromoDetailPage() {
         )}
       </section>
 
+      <section className="mt-6 rounded-xl border border-border bg-card p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Статистика ЦИАН</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void refetchCian();
+              void refetchMessages();
+            }}
+            disabled={cianFetching}
+          >
+            <RefreshCw className={"size-4 " + (cianFetching ? "animate-spin" : "")} />
+            Синхронизировать
+          </Button>
+        </div>
+
+        {cianStats?.error ? (
+          <p className="mt-3 text-sm text-muted-foreground">{cianStats.error}</p>
+        ) : null}
+
+        <dl className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <Metric label="Показы" value={cianTotals.impressions} />
+          <Metric label="Просмотры" value={cianTotals.views} />
+          <Metric label="Просмотры контактов" value={cianTotals.contact_views} />
+          <Metric label="Звонки" value={cianTotals.calls} />
+          <Metric label="Сообщения" value={cianTotals.messages} />
+          <Metric label="В избранном" value={cianTotals.favorites} />
+        </dl>
+
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold">Сообщения из чата ЦИАН</h3>
+          {cianMessages?.messages?.length ? (
+            <ul className="mt-3 space-y-3">
+              {cianMessages.messages.map((m) => (
+                <li key={m.id} className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    {m.author} · {new Date(m.sent_at).toLocaleString("ru-RU")}
+                  </p>
+                  <p className="mt-1 text-sm">{m.body}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {cianMessages?.error || "Сообщений пока нет"}
+            </p>
+          )}
+        </div>
+      </section>
+
       <section className="mt-6 grid gap-4 sm:grid-cols-2">
         {PLATFORMS.filter((p) => !p.available).map((p) => (
           <div key={p.value} className="rounded-xl border border-dashed border-border p-6">
@@ -238,6 +320,7 @@ function PromoDetailPage() {
           </div>
         ))}
       </section>
+
     </div>
   );
 }

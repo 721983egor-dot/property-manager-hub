@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { BarChart3, Globe, Search } from "lucide-react";
+import { BarChart3, Download, Globe, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { missingCianFields } from "@/lib/cian";
+import { publishToCian, unpublishFromCian } from "@/lib/cian.functions";
 import { PLATFORMS, fetchListings, setSitePublished } from "@/lib/listings";
 import {
   fetchProperties,
@@ -14,6 +17,7 @@ import {
   signedUrls,
   type Property,
 } from "@/lib/properties";
+
 
 export const Route = createFileRoute("/promo/")({
   head: () => ({
@@ -43,6 +47,9 @@ function PromoListPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState<string | null>(null);
+  const sendToCian = useServerFn(publishToCian);
+  const removeFromCian = useServerFn(unpublishFromCian);
+
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
@@ -85,7 +92,7 @@ function PromoListPage() {
   });
 
   async function togglePublish(p: Property) {
-    setBusy(p.id);
+    setBusy(p.id + "site");
     try {
       await setSitePublished(p.id, !p.published);
       await qc.invalidateQueries({ queryKey: ["properties"] });
@@ -98,14 +105,48 @@ function PromoListPage() {
     }
   }
 
+  async function toggleCian(p: Property, published: boolean) {
+    if (!published) {
+      const missing = missingCianFields(p);
+      if (missing.length > 0) {
+        toast.error(`Заполните для ЦИАН: ${missing.join(", ")}`);
+        return;
+      }
+    }
+    setBusy(p.id + "cian");
+    try {
+      if (published) {
+        await removeFromCian({ data: { propertyId: p.id } });
+        toast.success("Объявление снято с ЦИАН");
+      } else {
+        await sendToCian({ data: { propertyId: p.id } });
+        toast.success("Объект отправлен на ЦИАН");
+      }
+      await qc.invalidateQueries({ queryKey: ["property-listings"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ЦИАН не принял объявление");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 lg:px-10 lg:py-10">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Публикация и реклама</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Где опубликован каждый объект и сколько его смотрят.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Публикация и реклама</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Где опубликован каждый объект и сколько его смотрят.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link to="/promo/import">
+            <Download className="size-4" />
+            Загрузить объявления с ЦИАН
+          </Link>
+        </Button>
       </header>
+
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="relative min-w-[240px] flex-1">
@@ -183,6 +224,7 @@ function PromoListPage() {
                         platform.value === "site"
                           ? { published: p.published, at: entry["site"]?.at ?? null }
                           : entry[platform.value] ?? { published: false, at: null };
+                      const isCian = platform.value === "cian";
                       return (
                         <li
                           key={platform.value}
@@ -206,8 +248,10 @@ function PromoListPage() {
                             <Button
                               size="sm"
                               variant={state.published ? "outline" : "default"}
-                              disabled={busy === p.id}
-                              onClick={() => togglePublish(p)}
+                              disabled={busy === p.id + platform.value}
+                              onClick={() =>
+                                isCian ? toggleCian(p, state.published) : togglePublish(p)
+                              }
                             >
                               <Globe className="size-3.5" />
                               {state.published ? "Снять" : "Опубликовать"}
@@ -221,6 +265,7 @@ function PromoListPage() {
                       );
                     })}
                   </ul>
+
 
                   <Button asChild variant="outline" className="mt-4 w-full">
                     <Link to="/promo/$id" params={{ id: p.id }}>

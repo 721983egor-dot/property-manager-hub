@@ -223,6 +223,142 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_messages: {
+        Row: {
+          author: string
+          body: string
+          created_at: string
+          direction: string
+          external_chat_id: string
+          external_message_id: string
+          id: string
+          platform: Database["public"]["Enums"]["listing_platform"]
+          property_id: string
+          sent_at: string
+        }
+        Insert: {
+          author?: string
+          body?: string
+          created_at?: string
+          direction?: string
+          external_chat_id?: string
+          external_message_id?: string
+          id?: string
+          platform: Database["public"]["Enums"]["listing_platform"]
+          property_id: string
+          sent_at?: string
+        }
+        Update: {
+          author?: string
+          body?: string
+          created_at?: string
+          direction?: string
+          external_chat_id?: string
+          external_message_id?: string
+          id?: string
+          platform?: Database["public"]["Enums"]["listing_platform"]
+          property_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_messages_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_stats: {
+        Row: {
+          calls: number
+          contact_views: number
+          created_at: string
+          date: string
+          favorites: number
+          id: string
+          impressions: number
+          messages: number
+          platform: Database["public"]["Enums"]["listing_platform"]
+          property_id: string
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          calls?: number
+          contact_views?: number
+          created_at?: string
+          date: string
+          favorites?: number
+          id?: string
+          impressions?: number
+          messages?: number
+          platform: Database["public"]["Enums"]["listing_platform"]
+          property_id: string
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          calls?: number
+          contact_views?: number
+          created_at?: string
+          date?: string
+          favorites?: number
+          id?: string
+          impressions?: number
+          messages?: number
+          platform?: Database["public"]["Enums"]["listing_platform"]
+          property_id?: string
+          updated_at?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_stats_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_credentials: {
+        Row: {
+          account_id: string
+          account_label: string
+          connected_at: string | null
+          created_at: string
+          id: string
+          last_checked_at: string | null
+          last_error: string
+          platform: Database["public"]["Enums"]["listing_platform"]
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string
+          account_label?: string
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string
+          platform: Database["public"]["Enums"]["listing_platform"]
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          account_label?: string
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string
+          platform?: Database["public"]["Enums"]["listing_platform"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       properties: {
         Row: {
           address: string
@@ -409,6 +545,8 @@ export type Database = {
           property_id: string
           published: boolean
           published_at: string | null
+          sync_error: string
+          sync_status: string
           unpublished_at: string | null
           updated_at: string
         }
@@ -422,6 +560,8 @@ export type Database = {
           property_id: string
           published?: boolean
           published_at?: string | null
+          sync_error?: string
+          sync_status?: string
           unpublished_at?: string | null
           updated_at?: string
         }
@@ -435,6 +575,8 @@ export type Database = {
           property_id?: string
           published?: boolean
           published_at?: string | null
+          sync_error?: string
+          sync_status?: string
           unpublished_at?: string | null
           updated_at?: string
         }
