@@ -171,7 +171,7 @@ function RentPage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-[1280px] px-5 py-10 md:px-6 lg:px-8 lg:py-14">
         <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
             <FilterSelect
               value={type}
               onChange={(v) => updateSearch("type", v)}

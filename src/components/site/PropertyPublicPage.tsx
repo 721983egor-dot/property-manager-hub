@@ -388,12 +388,12 @@ export function PropertyPublicPage({ property, complex, photoUrls, freeFromIso }
                 .map((row, ri) => (
                   <dl
                     key={ri}
-                    className="grid grid-cols-3 gap-4 border-t border-site-line py-4"
+                    className="grid grid-cols-2 gap-4 border-t border-site-line py-4 sm:grid-cols-3"
                   >
                     {row.map((s) => (
                       <div key={s.label} className="min-w-0">
                         <dt className="text-[14px] font-semibold text-site-navy">{s.label}</dt>
-                        <dd className="mt-1 truncate text-[15px] text-site-muted">{s.value}</dd>
+                        <dd className="mt-1 line-clamp-2 text-[15px] leading-snug text-site-muted">{s.value}</dd>
                       </div>
                     ))}
                   </dl>
