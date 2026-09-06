@@ -12,7 +12,12 @@ export type PropertyListing = {
   external_id: string;
   external_url: string;
   last_synced_at: string | null;
+  sync_status: string;
+  sync_error: string;
 };
+
+const LISTING_COLUMNS =
+  "id, property_id, platform, published, published_at, unpublished_at, external_id, external_url, last_synced_at, sync_status, sync_error";
 
 export const PLATFORMS: {
   value: ListingPlatform;
@@ -20,13 +25,14 @@ export const PLATFORMS: {
   available: boolean;
 }[] = [
   { value: "site", label: "Сайт РМ", available: true },
+  { value: "cian", label: "ЦИАН", available: true },
   { value: "avito", label: "Авито", available: false },
-  { value: "cian", label: "ЦИАН", available: false },
 ];
 
 export function platformLabel(value: ListingPlatform) {
   return PLATFORMS.find((p) => p.value === value)?.label ?? value;
 }
+
 
 /** Все записи о публикациях (по всем объектам). */
 export async function fetchListings(): Promise<PropertyListing[]> {
