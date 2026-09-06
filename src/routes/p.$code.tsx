@@ -1,8 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import {
-  queryOptions,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { queryOptions } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,10 +7,14 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
-import { fetchPublishedProperties, propertyMetaDescription, propertyMetaTitle, publicStatusView, shortAddress, toISODate } from "@/lib/properties";
-import { addDays, formatDateRu, parseISODate } from "@/lib/rentals";
+import {
+  fetchPublishedProperties,
+  publicStatusView,
+  signedUrls,
+  toISODate,
+} from "@/lib/properties";
+import { addDays, parseISODate } from "@/lib/rentals";
 import { fetchSelectionByCode } from "@/lib/selections";
-import { cn } from "@/lib/utils";
 
 const selectionQueryOptions = (code: string) =>
   queryOptions({
@@ -67,13 +68,18 @@ export const Route = createFileRoute("/p/$code")({
       todayIso,
     );
 
-    const freeFromIso = new Map<string, string | undefined>();
+    const freeFromIso: Record<string, string> = {};
     for (const p of selectedProperties) {
       const booking = bookings[p.id];
-      if (booking && publicStatusView(p.status, booking, todayIso).tone === "gold") {
-        freeFromIso.set(p.id, toISODate(addDays(parseISODate(booking.end_date), 1)));
+      if (booking) {
+        freeFromIso[p.id] = toISODate(addDays(parseISODate(booking.end_date), 1));
       }
     }
+
+    const photoPaths = selectedProperties
+      .map((p) => p.photos[0]?.path)
+      .filter((path): path is string => Boolean(path));
+    const photoUrls = await signedUrls(photoPaths);
 
     return {
       code: selection.code,
@@ -82,6 +88,7 @@ export const Route = createFileRoute("/p/$code")({
       count: selectedProperties.length,
       properties: selectedProperties,
       freeFromIso,
+      photoUrls,
     };
   },
   component: SelectionPublicPage,
@@ -90,7 +97,6 @@ export const Route = createFileRoute("/p/$code")({
 
 function SelectionPublicPage() {
   const data = Route.useLoaderData();
-  const todayIso = toISODate(new Date());
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-site-navy">
@@ -103,9 +109,7 @@ function SelectionPublicPage() {
                 Персональная подборка
               </p>
               <h1 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                {data.clientName
-                  ? `Объекты для ${data.clientName}`
-                  : "Подборка объектов"}
+                {data.clientName ? `Объекты для ${data.clientName}` : "Подборка объектов"}
               </h1>
               {data.comment ? (
                 <p className="mt-4 text-base leading-relaxed text-white/80">{data.comment}</p>
@@ -116,18 +120,16 @@ function SelectionPublicPage() {
 
         <section className="mx-auto max-w-[1280px] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {data.properties.map((property) => {
-              const photoUrl =
-                property.photos[0]?.signed_url ?? property.photos[0]?.url ?? undefined;
-              return (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  photoUrl={photoUrl}
-                  freeFromIso={data.freeFromIso.get(property.id)}
-                />
-              );
-            })}
+            {data.properties.map((property) => (
+              <PropertyCard
+                key={property.id}
+                property={property}
+                photoUrl={
+                  property.photos[0]?.path ? data.photoUrls[property.photos[0].path] : undefined
+                }
+                freeFromIso={data.freeFromIso[property.id] ?? null}
+              />
+            ))}
           </div>
 
           <div className="mt-12 flex flex-col items-center justify-center gap-4 border-t border-border pt-12 text-center">
