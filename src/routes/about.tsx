@@ -289,10 +289,6 @@ function AboutPage() {
             </div>
           </div>
 
-          <p className="mt-10 text-sm font-semibold text-site-navy">
-            Егор Мошков
-            <span className="block text-site-muted">Резиденция & Море</span>
-          </p>
         </div>
       </section>
 
