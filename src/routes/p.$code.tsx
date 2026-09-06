@@ -9,11 +9,9 @@ import { PropertyCard } from "@/components/site/PropertyCard";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import {
   fetchPublishedProperties,
-  publicStatusView,
   signedUrls,
-  toISODate,
 } from "@/lib/properties";
-import { addDays, parseISODate } from "@/lib/rentals";
+import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 import { fetchSelectionByCode } from "@/lib/selections";
 
 const selectionQueryOptions = (code: string) =>
