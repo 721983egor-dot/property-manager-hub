@@ -192,6 +192,7 @@ export type Database = {
           address: string
           appliances: string[]
           area: number | null
+          availability_note: string
           bathroom_features: string[]
           bathrooms: number
           card_highlights: string[]
@@ -209,6 +210,8 @@ export type Database = {
           latitude: number | null
           location_description: string
           longitude: number | null
+          management_fee_type: Database["public"]["Enums"]["management_fee_type"]
+          management_fee_value: number | null
           outdoor_spaces: string[]
           photos: Json
           price_month: number | null
@@ -217,6 +220,7 @@ export type Database = {
           rent_terms: string
           rooms: number
           seasonal_pricing: boolean
+          service_type: Database["public"]["Enums"]["property_service_type"]
           source_url: string | null
           status: Database["public"]["Enums"]["property_status"]
           summer_price_month: number | null
@@ -230,6 +234,7 @@ export type Database = {
           address?: string
           appliances?: string[]
           area?: number | null
+          availability_note?: string
           bathroom_features?: string[]
           bathrooms?: number
           card_highlights?: string[]
@@ -247,6 +252,8 @@ export type Database = {
           latitude?: number | null
           location_description?: string
           longitude?: number | null
+          management_fee_type?: Database["public"]["Enums"]["management_fee_type"]
+          management_fee_value?: number | null
           outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null
@@ -255,6 +262,7 @@ export type Database = {
           rent_terms?: string
           rooms?: number
           seasonal_pricing?: boolean
+          service_type?: Database["public"]["Enums"]["property_service_type"]
           source_url?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           summer_price_month?: number | null
@@ -268,6 +276,7 @@ export type Database = {
           address?: string
           appliances?: string[]
           area?: number | null
+          availability_note?: string
           bathroom_features?: string[]
           bathrooms?: number
           card_highlights?: string[]
@@ -285,6 +294,8 @@ export type Database = {
           latitude?: number | null
           location_description?: string
           longitude?: number | null
+          management_fee_type?: Database["public"]["Enums"]["management_fee_type"]
+          management_fee_value?: number | null
           outdoor_spaces?: string[]
           photos?: Json
           price_month?: number | null
@@ -293,6 +304,7 @@ export type Database = {
           rent_terms?: string
           rooms?: number
           seasonal_pricing?: boolean
+          service_type?: Database["public"]["Enums"]["property_service_type"]
           source_url?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           summer_price_month?: number | null
@@ -370,6 +382,8 @@ export type Database = {
       booking_price_type: "fixed" | "periodic"
       booking_source: "avito" | "cian" | "website" | "social" | "referral"
       booking_status: "active" | "cancelled" | "completed"
+      management_fee_type: "percent" | "amount"
+      property_service_type: "management" | "commission_only"
       property_status: "free" | "rented" | "booked" | "archived"
       property_type: "apartment" | "aparts" | "house" | "villa" | "townhouse"
       rental_status: "booked" | "rented" | "blocked"
@@ -503,6 +517,8 @@ export const Constants = {
       booking_price_type: ["fixed", "periodic"],
       booking_source: ["avito", "cian", "website", "social", "referral"],
       booking_status: ["active", "cancelled", "completed"],
+      management_fee_type: ["percent", "amount"],
+      property_service_type: ["management", "commission_only"],
       property_status: ["free", "rented", "booked", "archived"],
       property_type: ["apartment", "aparts", "house", "villa", "townhouse"],
       rental_status: ["booked", "rented", "blocked"],

@@ -88,7 +88,7 @@ function CalendarPage() {
     [complexes],
   );
 
-  const rows = properties;
+  const rows = properties.filter((p) => p.service_type !== "commission_only");
 
   const todayIso = toISODate(today);
   const bookingsByProperty = useMemo(() => {

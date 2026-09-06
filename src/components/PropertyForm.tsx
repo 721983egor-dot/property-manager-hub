@@ -43,6 +43,7 @@ import {
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
   ROOM_OPTIONS,
+  SERVICE_TYPES,
   SUMMER_SEASON_LABEL,
   roomsLabel,
 
@@ -53,6 +54,8 @@ import {
   type PropertyPhoto,
   type PropertyStatus,
   type PropertyType,
+  type ServiceType,
+  type ManagementFeeType,
 } from "@/lib/properties";
 
 const NO_COMPLEX = "__none__";
@@ -95,6 +98,16 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [rooms, setRooms] = useState(String(initial?.rooms ?? 1));
   const [bathrooms, setBathrooms] = useState(String(initial?.bathrooms ?? 1));
   const [status, setStatus] = useState<PropertyStatus>(initial?.status ?? "free");
+  const [serviceType, setServiceType] = useState<ServiceType>(
+    initial?.service_type ?? "management",
+  );
+  const [feeType, setFeeType] = useState<ManagementFeeType>(
+    initial?.management_fee_type ?? "percent",
+  );
+  const [feeValue, setFeeValue] = useState(
+    initial?.management_fee_value != null ? String(initial.management_fee_value) : "",
+  );
+  const [availabilityNote, setAvailabilityNote] = useState(initial?.availability_note ?? "");
   const [published, setPublished] = useState(Boolean(initial?.published));
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
@@ -297,6 +310,10 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       location_description: locationDescription,
       rent_terms: rentTermsLines.map((l) => l.trim()).filter(Boolean).join("\n"),
       card_highlights: cardHighlights,
+      service_type: serviceType,
+      management_fee_type: feeType,
+      management_fee_value: serviceType === "management" ? toNum(feeValue) : null,
+      availability_note: serviceType === "commission_only" ? availabilityNote.trim() : "",
     });
 
   };
@@ -306,6 +323,21 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Основная информация</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <Field label="Тип услуги (только в RM OS)" className="md:col-span-2">
+            <Select value={serviceType} onValueChange={(v) => setServiceType(v as ServiceType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SERVICE_TYPES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
           <Field label="Тип объекта" className="md:col-span-2">
             <Select value={type} onValueChange={(v) => setType(v as PropertyType)}>
               <SelectTrigger>
@@ -477,20 +509,30 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </Field>
           ) : null}
 
-          <Field label="Статус">
-            <Select value={status} onValueChange={(v) => setStatus(v as PropertyStatus)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PROPERTY_STATUSES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          {serviceType === "commission_only" ? (
+            <Field label="Занятость объекта (только в RM OS)" className="md:col-span-2">
+              <Input
+                value={availabilityNote}
+                onChange={(e) => setAvailabilityNote(e.target.value)}
+                placeholder="Свободен с 15.10.2026"
+              />
+            </Field>
+          ) : (
+            <Field label="Статус">
+              <Select value={status} onValueChange={(v) => setStatus(v as PropertyStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROPERTY_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
         </div>
 
         <div className="flex items-start gap-3 md:col-span-2">
@@ -543,6 +585,34 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               placeholder="50000"
             />
           </Field>
+          {serviceType === "management" ? (
+            <Field label="Стоимость управления (только в RM OS)">
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  step={feeType === "percent" ? 1 : 1000}
+                  value={feeValue}
+                  onChange={(e) => setFeeValue(e.target.value)}
+                  placeholder={feeType === "percent" ? "10" : "15000"}
+                  className="flex-1"
+                />
+                <Select
+                  value={feeType}
+                  onValueChange={(v) => setFeeType(v as ManagementFeeType)}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percent">%</SelectItem>
+                    <SelectItem value="amount">₽</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </Field>
+          ) : null}
+
           <Field label="Коммунальные платежи в месяц (примерно)">
             <Input
               type="number"
