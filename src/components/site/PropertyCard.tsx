@@ -13,7 +13,6 @@ import {
 
 type Props = {
   property: Property;
-  complexName?: string | null | undefined;
   photoUrl?: string | undefined;
   /** Первый свободный день (ISO) — для объектов на управлении. */
   freeFromIso?: string | null;
