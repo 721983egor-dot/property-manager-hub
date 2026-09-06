@@ -1,10 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { infrastructureLabel } from "@/lib/complexes";
 import {
   formatArea,
   formatLandArea,
   formatMoney,
-  houseHighlightLabel,
+  highlightLabel,
   isHouseType,
   type Property,
 } from "@/lib/properties";
