@@ -81,13 +81,13 @@ export function PropertyCard(props: Props) {
         <div className="mt-5 h-px w-2/3 bg-site-gold/40" />
 
         <div className="mt-5 space-y-1.5 text-base text-site-muted">
-          <p>
+          <p className="truncate">
             {property.complex_id
               ? property.complex_name
               : shortAddress(property.address) || "\u00A0"}
           </p>
-          {highlights.length > 0 ? <p>{highlights.join(" · ")}</p> : <p>&nbsp;</p>}
-          {specs.length > 0 ? <p>{specs.join(" · ")}</p> : <p>&nbsp;</p>}
+          <p className="truncate">{highlights.length > 0 ? highlights.join(" · ") : "\u00A0"}</p>
+          <p className="truncate">{specs.length > 0 ? specs.join(" · ") : "\u00A0"}</p>
         </div>
 
         <div className="mt-6 h-px w-2/3 bg-site-gold/40" />
