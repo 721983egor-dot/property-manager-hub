@@ -175,7 +175,6 @@ function ObjectsPage() {
         toast.success("Ссылка на подборку скопирована");
       });
       setSelectedIds(new Set());
-      setClientName("");
       setComment("");
       setSaveList(false);
       setDialogOpen(false);
