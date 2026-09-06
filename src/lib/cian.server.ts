@@ -143,7 +143,7 @@ function roomsFromTitle(title: string): number | null {
 
 function areaFromTitle(title: string): number | null {
   const m = title.match(/([\d]+[.,]?\d*)\s*м²/i);
-  return m ? Number(m[1].replace(",", ".")) : null;
+  return m?.[1] ? Number(m[1].replace(",", ".")) : null;
 }
 
 /** Карточки объявлений из последних сообщений чатов: offerId → адрес/цена/фото. */
