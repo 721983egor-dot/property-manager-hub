@@ -6,13 +6,13 @@ import {
   highlightLabel,
   isHouseType,
   publicStatusView,
+  shortAddress,
   STATUS_TONE_CLASS,
   type Property,
 } from "@/lib/properties";
 
 type Props = {
   property: Property;
-  complexName?: string | null | undefined;
   photoUrl?: string | undefined;
   /** Первый свободный день (ISO) — для объектов на управлении. */
   freeFromIso?: string | null;
@@ -26,7 +26,7 @@ function bedroomsLabel(rooms: number) {
 }
 
 export function PropertyCard(props: Props) {
-  const { property, complexName, photoUrl } = props;
+  const { property, photoUrl } = props;
   const statusView = publicStatusView(property, props.freeFromIso);
   const isHouse = isHouseType(property.type);
   const highlights = (property.card_highlights ?? []).slice(0, 3).map(highlightLabel);
@@ -79,7 +79,9 @@ export function PropertyCard(props: Props) {
         <div className="mt-5 h-px w-2/3 bg-site-gold/40" />
 
         <div className="mt-5 space-y-1.5 text-base text-site-muted">
-          {!isHouse ? <p>{complexName || "\u00A0"}</p> : null}
+          {!isHouse ? (
+            <p>{shortAddress(property.address) || "\u00A0"}</p>
+          ) : null}
           {highlights.length > 0 ? <p>{highlights.join(" · ")}</p> : <p>&nbsp;</p>}
           {specs.length > 0 ? <p>{specs.join(" · ")}</p> : <p>&nbsp;</p>}
         </div>

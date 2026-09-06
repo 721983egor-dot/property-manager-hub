@@ -87,11 +87,6 @@ function RentPage() {
     queryFn: fetchComplexes,
   });
 
-  const complexMap = useMemo(
-    () => new Map(complexes.map((c) => [c.id, c.name])),
-    [complexes],
-  );
-
   const todayIso = useMemo(() => toISODate(new Date()), []);
   const propertyIds = useMemo(
     () => allProperties.map((p) => p.id),
@@ -242,10 +237,6 @@ function RentPage() {
               <PropertyCard
                 key={property.id}
                 property={property}
-                complexName={
-                  property.complex_name ||
-                  (property.complex_id ? complexMap.get(property.complex_id) : null)
-                }
                 photoUrl={
                   property.photos[0]?.path ? urls[property.photos[0].path] : undefined
                 }
