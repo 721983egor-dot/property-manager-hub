@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
-import logo from "@/assets/site/logo.png";
+import logo from "@/assets/site/logo_navy.png";
 
 const NAV = [
   { to: "/rent", label: "Объекты" },
