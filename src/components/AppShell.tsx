@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Building2, CalendarDays, Inbox, Users } from "lucide-react";
+import { Bookmark, Building2, CalendarDays, Inbox, Users } from "lucide-react";
 
 import type { ReactNode } from "react";
 
@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 
 /** Префиксы внутренних разделов RM OS — всё остальное рендерится как публичный сайт. */
-const CRM_PREFIXES = ["/objects", "/calendar", "/crm", "/complexes"];
+const CRM_PREFIXES = ["/objects", "/calendar", "/crm", "/complexes", "/selections"];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
