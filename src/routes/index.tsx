@@ -48,7 +48,6 @@ export const Route = createFileRoute("/")({
         content:
           "Апартаменты, дома премиум и бизнес класса в Сочи. Только реальные объекты, прозрачные условия, сервис и обслуживание.",
       },
-      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "/" },
     ],
