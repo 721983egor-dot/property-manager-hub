@@ -5,6 +5,7 @@ export type Selection = {
   code: string;
   client_name: string;
   comment: string;
+  saved: boolean;
   created_at: string;
   updated_at: string;
 };
