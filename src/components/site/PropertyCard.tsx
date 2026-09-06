@@ -6,6 +6,7 @@ import {
   highlightLabel,
   isHouseType,
   publicStatusView,
+  shortAddress,
   STATUS_TONE_CLASS,
   type Property,
 } from "@/lib/properties";
