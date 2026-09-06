@@ -10,7 +10,7 @@ import img4 from "@/assets/site/mgmt_p4.jpg";
 export const Route = createFileRoute("/management")({
   head: () => ({
     meta: [
-      { title: "Доходное управление апартаментами и домами в г. Сочи" },
+      { title: "Доходное управление апартаментами и домами в Сочи — Резиденция&Море" },
       {
         name: "description",
         content:
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/management")({
       },
       {
         property: "og:title",
-        content: "Доходное управление апартаментами и домами в г. Сочи",
+        content: "Доходное управление апартаментами и домами в Сочи — Резиденция&Море",
       },
       {
         property: "og:description",
