@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MessageCircle, Phone, Send } from "lucide-react";
+import {
+  Building2,
+  FileCheck2,
+  MessageCircle,
+  Phone,
+  Send,
+  ShieldCheck,
+  Sofa,
+} from "lucide-react";
 
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import { SITE_PHONE_TEL, SITE_TELEGRAM, SITE_WHATSAPP } from "@/lib/site";
 import heroImg from "@/assets/site/about_hero.jpg";
-import img2 from "@/assets/site/about_p2.jpg";
 import img3 from "@/assets/site/about_p3.jpg";
 
 export const Route = createFileRoute("/about")({
@@ -49,6 +56,29 @@ const US = [
   "контроль оплат и коммунальных расходов;",
   "коммуникация с арендатором;",
   "бытовые и технические заявки.",
+];
+
+const PRINCIPLES = [
+  {
+    icon: FileCheck2,
+    title: "Прозрачность",
+    text: "Собственник понимает, что происходит с объектом: какие платежи поступают, какие задачи решаются и какие вопросы возникают в процессе аренды.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Ответственность",
+    text: "Мы не исчезаем после заселения арендатора, а сопровождаем объект на протяжении срока аренды и остаёмся точкой контакта по текущим вопросам.",
+  },
+  {
+    icon: Building2,
+    title: "Качество объектов",
+    text: "Мы работаем с недвижимостью, которую можно достойно представить рынку и качественно сопровождать: квартирами, апартаментами, домами и виллами в хорошем состоянии.",
+  },
+  {
+    icon: Sofa,
+    title: "Спокойствие собственника",
+    text: "Наша цель — чтобы собственник получал доход от объекта без ежедневного участия в операционных вопросах аренды и обслуживания.",
+  },
 ];
 
 function AboutPage() {
