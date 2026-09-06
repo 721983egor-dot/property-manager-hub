@@ -73,14 +73,16 @@ export function PropertyCard(props: Props) {
         </h3>
 
         {statusView ? (
-          <p className={`mt-3 text-base font-bold ${STATUS_TONE_CLASS[statusView.tone]}`}>
+          <p
+            className={`mt-2 min-h-[1.5rem] truncate text-base font-bold ${STATUS_TONE_CLASS[statusView.tone]}`}
+          >
             {statusView.text}
           </p>
         ) : null}
 
-        <div className="mt-5 h-px w-2/3 bg-site-gold/40" />
+        <div className="mt-3 h-px w-2/3 bg-site-gold/40" />
 
-        <p className="mt-5 truncate text-base text-site-muted">
+        <p className="mt-4 truncate text-base text-site-muted">
           {property.complex_id
             ? property.complex_name
             : shortAddress(property.address) || "\u00A0"}
@@ -108,9 +110,9 @@ export function PropertyCard(props: Props) {
           ))}
         </div>
 
-        <div className="mt-6 h-px w-2/3 bg-site-gold/40" />
+        <div className="mt-10 h-px w-2/3 bg-site-gold/40" />
 
-        <div className="mt-6 flex items-center justify-between gap-4">
+        <div className="mt-5 flex items-center justify-between gap-4">
           <span className="inline-flex items-center justify-center rounded-lg bg-site-navy px-6 py-3 text-sm font-semibold text-site-navy-foreground transition-colors group-hover:bg-site-navy/90">
             Подробнее
           </span>
