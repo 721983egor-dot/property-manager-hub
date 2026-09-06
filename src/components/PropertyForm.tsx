@@ -358,6 +358,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Квартира в ЖК Кислород"
+              maxLength={80}
             />
           </Field>
 

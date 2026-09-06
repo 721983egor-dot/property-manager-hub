@@ -68,7 +68,9 @@ export function PropertyCard(props: Props) {
       </div>
 
       <div className="flex flex-1 flex-col px-6 py-7">
-        <h3 className="text-xl font-bold leading-snug text-site-navy">{property.title}</h3>
+        <h3 className="min-h-[3.5rem] text-xl font-bold leading-snug text-site-navy line-clamp-2">
+          {property.title}
+        </h3>
 
         {statusView ? (
           <p className={`mt-3 text-base font-bold ${STATUS_TONE_CLASS[statusView.tone]}`}>
@@ -79,9 +81,11 @@ export function PropertyCard(props: Props) {
         <div className="mt-5 h-px w-2/3 bg-site-gold/40" />
 
         <div className="mt-5 space-y-1.5 text-base text-site-muted">
-          {!isHouse ? (
-            <p>{shortAddress(property.address) || "\u00A0"}</p>
-          ) : null}
+          <p>
+            {property.complex_id
+              ? property.complex_name
+              : shortAddress(property.address) || "\u00A0"}
+          </p>
           {highlights.length > 0 ? <p>{highlights.join(" · ")}</p> : <p>&nbsp;</p>}
           {specs.length > 0 ? <p>{specs.join(" · ")}</p> : <p>&nbsp;</p>}
         </div>

@@ -170,13 +170,6 @@ function RentPage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-[1280px] px-5 py-10 md:px-6 lg:px-8 lg:py-14">
         <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm text-site-muted">Найдено объектов</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight text-site-navy">
-              {isLoading ? "—" : visible.length}
-            </p>
-          </div>
-
           <div className="flex flex-wrap items-center gap-3">
             <FilterSelect
               value={type}
