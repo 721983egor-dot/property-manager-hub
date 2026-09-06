@@ -183,6 +183,7 @@ function PromoListPage() {
                         platform.value === "site"
                           ? { published: p.published, at: entry["site"]?.at ?? null }
                           : entry[platform.value] ?? { published: false, at: null };
+                      const isCian = platform.value === "cian";
                       return (
                         <li
                           key={platform.value}
@@ -206,8 +207,10 @@ function PromoListPage() {
                             <Button
                               size="sm"
                               variant={state.published ? "outline" : "default"}
-                              disabled={busy === p.id}
-                              onClick={() => togglePublish(p)}
+                              disabled={busy === p.id + platform.value}
+                              onClick={() =>
+                                isCian ? toggleCian(p, state.published) : togglePublish(p)
+                              }
                             >
                               <Globe className="size-3.5" />
                               {state.published ? "Снять" : "Опубликовать"}
@@ -221,6 +224,7 @@ function PromoListPage() {
                       );
                     })}
                   </ul>
+
 
                   <Button asChild variant="outline" className="mt-4 w-full">
                     <Link to="/promo/$id" params={{ id: p.id }}>
