@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
     meta: [
       {
         title:
-          "Резиденция&Море - Аренда премиум апартаментов и домов в г. Сочи",
+          "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
       },
       {
         name: "description",
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:title",
         content:
-          "Резиденция&Море - Аренда премиум апартаментов и домов в г. Сочи",
+          "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
       },
       {
         property: "og:description",
