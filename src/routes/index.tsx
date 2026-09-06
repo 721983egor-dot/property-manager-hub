@@ -22,9 +22,9 @@ import {
 } from "@/lib/site";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
-import heroImg from "@/assets/site/home_hero.jpg";
+import heroAsset from "@/assets/site/hero_villa_sunset.jpg.asset.json";
 import aboutImg from "@/assets/site/mgmt_p2.jpg";
-import selectionImg from "@/assets/site/home_selection.jpg";
+import selectionImg from "@/assets/site/home_p5.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -170,7 +170,7 @@ function HomePage() {
       {/* Первый экран */}
       <section className="relative flex min-h-[88vh] items-center overflow-hidden bg-site-navy">
         <img
-          src={heroImg}
+          src={heroAsset.url}
           alt="Апартаменты и дома премиум класса в Сочи"
           className="absolute inset-0 h-full w-full object-cover"
         />
