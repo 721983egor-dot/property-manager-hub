@@ -1,0 +1,15 @@
+{
+    auto_https off
+}
+
+{$DOMAIN} {
+    tls {$TLS_EMAIL}
+
+    @admin path /admin/* /objects/* /calendar/* /crm/* /complexes/* /selections/* /promo/* /chats/* /assistant/* /system/*
+
+    reverse_proxy /api/* app:3000
+    reverse_proxy /_server/* app:3000
+    reverse_proxy /* app:3000
+
+    encode gzip
+}
