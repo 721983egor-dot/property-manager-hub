@@ -133,6 +133,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [cianJkId, setCianJkId] = useState(
     initial?.cian_jk_id != null ? String(initial.cian_jk_id) : "",
   );
+  const [isApartments, setIsApartments] = useState(
+    initial?.is_apartments == null ? "none" : initial.is_apartments ? "yes" : "no",
+  );
   const [landArea, setLandArea] = useState(
     initial?.land_area != null ? String(initial.land_area) : "",
   );
