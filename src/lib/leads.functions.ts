@@ -8,7 +8,7 @@ const leadSchema = z.object({
   name: z.string().trim().min(2, "Укажите имя").max(120),
   phone: z.string().trim().min(5, "Укажите телефон").max(32),
   topic: z.string().trim().max(40).optional().default(""),
-  message: z.string().trim().max(2000).optional().default(""),
+  message: z.string().trim().max(4000).optional().default(""),
   source: z.string().trim().max(60).optional().default("site"),
 });
 

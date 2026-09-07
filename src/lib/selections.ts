@@ -43,6 +43,8 @@ export async function createSelection(input: {
   clientName?: string;
   comment?: string;
   saved?: boolean;
+  /** Писать событие selection_add по каждому объекту (по умолчанию true). */
+  trackEvents?: boolean;
 }): Promise<SelectionWithItems> {
   const propertyIds = input.propertyIds.filter(Boolean);
   if (propertyIds.length === 0) {
@@ -74,7 +76,9 @@ export async function createSelection(input: {
   const { error: itemsError } = await supabase.from("selection_items").insert(items);
   if (itemsError) throw itemsError;
 
-  for (const propertyId of propertyIds) trackEvent(propertyId, "selection_add");
+  if (input.trackEvents ?? true) {
+    for (const propertyId of propertyIds) trackEvent(propertyId, "selection_add");
+  }
 
   return {
     ...selection,

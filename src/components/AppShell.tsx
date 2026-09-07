@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteCartBar } from "@/components/site/SiteCartBar";
 
 /** Префиксы внутренних разделов RM OS — всё остальное рендерится как публичный сайт. */
 const CRM_PREFIXES = [
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />
+        <SiteCartBar />
       </div>
     );
   }
