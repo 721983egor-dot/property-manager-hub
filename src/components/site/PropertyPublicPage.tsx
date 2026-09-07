@@ -290,11 +290,13 @@ export function PropertyPublicPage({
       onClick={copyLink}
       aria-label="Поделиться"
       title={copied ? "Ссылка скопирована" : "Поделиться"}
-      className="grid size-14 shrink-0 place-items-center rounded-2xl bg-site-navy text-site-navy-foreground transition-colors hover:bg-site-navy/90"
+      className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-site-line bg-background px-4 text-[14px] font-medium text-site-navy transition-colors hover:border-site-navy/20 hover:bg-site-navy-soft"
     >
-      {copied ? <Check className="size-5 text-site-green" /> : <Share2 className="size-5" />}
+      {copied ? <Check className="size-4 text-site-green" /> : <Share2 className="size-4" />}
+      {copied ? "Скопировано" : "Поделиться"}
     </button>
   );
+
 
   const arrowButton = (
     onClick: () => void,
@@ -376,9 +378,13 @@ export function PropertyPublicPage({
               </p>
             ) : null}
 
-            <h1 className="mt-2 font-body text-[32px] font-bold leading-[1.15] tracking-tight lg:text-[36px]">
-              {property.title}
-            </h1>
+            <div className="mt-2 flex items-start justify-between gap-4">
+              <h1 className="font-body text-[32px] font-bold leading-[1.15] tracking-tight lg:text-[36px]">
+                {property.title}
+              </h1>
+              {shareButton}
+            </div>
+
 
             {property.address ? (
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px] text-site-muted">
@@ -423,8 +429,8 @@ export function PropertyPublicPage({
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {contactButton()}
               <CartToggleButton propertyId={property.id} variant="inline" />
-              {shareButton}
             </div>
+
           </div>
         </div>
 
@@ -673,8 +679,8 @@ export function PropertyPublicPage({
               <div className="flex flex-wrap items-center gap-3">
                 {contactButton()}
                 <CartToggleButton propertyId={property.id} variant="inline" />
-                {shareButton}
               </div>
+
               {property.price_month != null ? (
                 <p className="whitespace-nowrap font-body text-[28px] font-bold tracking-tight">
                   {formatMoney(property.price_month)}
