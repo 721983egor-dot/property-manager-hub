@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageCircle, Phone, Send, X } from "lucide-react";
 
 import {
@@ -15,6 +15,12 @@ export function SiteChatWidget() {
   const [open, setOpen] = useState(false);
   const { count } = useSiteCart();
   const bottom = count > 0 ? "bottom-24" : "bottom-5";
+
+  useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener("rm-open-chat", openChat);
+    return () => window.removeEventListener("rm-open-chat", openChat);
+  }, []);
 
   return (
     <div className={`fixed right-4 z-50 flex flex-col items-end gap-3 ${bottom} md:right-6`}>

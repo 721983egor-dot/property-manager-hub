@@ -17,6 +17,8 @@ import {
   updateThreadContact,
 } from "@/lib/chat.functions";
 import { Button } from "@/components/ui/button";
+import { ChatText } from "@/components/ChatText";
+import { SendSelectionDialog } from "@/components/SendSelectionDialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -226,7 +228,7 @@ function ChatsPage() {
                         : "ml-auto bg-primary text-primary-foreground")
                     }
                   >
-                    <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                    <ChatText text={m.body} />
                     <p className="mt-0.5 text-[10px] opacity-70">
                       {format(new Date(m.created_at), "d MMM, HH:mm", { locale: ru })}
                     </p>
