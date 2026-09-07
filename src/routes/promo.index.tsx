@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PLATFORMS, fetchListings, setSitePublished } from "@/lib/listings";
 import { setCianPublished } from "@/lib/cian.functions";
+import { setYandexPublished } from "@/lib/yandex-realty.functions";
 import {
   fetchProperties,
   formatMoney,
@@ -97,6 +98,7 @@ function PromoListPage() {
   });
 
   const setCian = useServerFn(setCianPublished);
+  const setYandex = useServerFn(setYandexPublished);
 
   async function togglePublish(p: Property) {
     setBusy(p.id + "site");
@@ -112,15 +114,17 @@ function PromoListPage() {
     }
   }
 
-  /** Включает или убирает объект из фида ЦИАН. */
-  async function toggleCian(p: Property, published: boolean) {
-    setBusy(p.id + "cian");
+  /** Включает или убирает объект из фида ЦИАН / Яндекс Недвижимости. */
+  async function toggleFeed(p: Property, platform: "cian" | "yandex", published: boolean) {
+    setBusy(p.id + platform);
+    const label = platform === "cian" ? "ЦИАН" : "Яндекс Недвижимость";
     try {
-      await setCian({ data: { propertyId: p.id, published: !published } });
+      const fn = platform === "cian" ? setCian : setYandex;
+      await fn({ data: { propertyId: p.id, published: !published } });
       await qc.invalidateQueries({ queryKey: ["property-listings"] });
-      toast.success(published ? "Убран из фида ЦИАН" : "Добавлен в фид ЦИАН");
+      toast.success(published ? `Убран из фида ${label}` : `Добавлен в фид ${label}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию на ЦИАН");
+      toast.error(e instanceof Error ? e.message : `Не удалось изменить публикацию на ${label}`);
     } finally {
       setBusy(null);
     }
