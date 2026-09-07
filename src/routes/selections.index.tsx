@@ -95,7 +95,7 @@ function SelectionsPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="truncate text-lg font-semibold">
-                        Подборка от {formatDate(s.created_at)}
+                        {s.name.trim() || `Подборка от ${formatDate(s.created_at)}`}
                       </h3>
                     </div>
                     {s.comment ? (
@@ -108,10 +108,10 @@ function SelectionsPage() {
                       href={link}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                      className="mt-2 inline-flex max-w-full items-center gap-1 truncate text-sm text-primary hover:underline"
                     >
                       {link}
-                      <ExternalLink className="size-3.5" />
+                      <ExternalLink className="size-3.5 shrink-0" />
                     </a>
                   </div>
 
