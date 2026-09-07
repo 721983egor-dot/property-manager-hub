@@ -405,7 +405,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Field>
           )}
 
-          <Field label="Адрес объекта" className="md:col-span-2">
+          <Field label="Адрес объекта" className="md:col-span-2" platforms={["ЯН", "Авито", "ЦИАН"]}>
             <AddressAutocomplete
               value={address}
               onChange={(v) => {
@@ -435,7 +435,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Field>
 
           {isHouse ? null : (
-            <Field label="Этаж объекта">
+            <Field label="Этаж объекта" platforms={["ЯН", "Авито", "ЦИАН"]}>
               <Input
                 type="number"
                 min={-5}
@@ -446,7 +446,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </Field>
           )}
 
-          <Field label={isHouse ? "Этажность" : "Количество этажей"}>
+          <Field label={isHouse ? "Этажность" : "Количество этажей"} platforms={["ЯН", "ЦИАН"]}>
             <Input
               type="number"
               min={1}
@@ -456,7 +456,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             />
           </Field>
 
-          <Field label="Планировка">
+          <Field label="Планировка" platforms={["ЯН", "Авито"]}>
             <Select value={rooms} onValueChange={setRooms}>
               <SelectTrigger>
                 <SelectValue />
@@ -486,7 +486,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </Select>
           </Field>
 
-          <Field label="Площадь, м²">
+          <Field label="Площадь, м²" platforms={["ЯН", "Авито", "ЦИАН"]}>
             <Input
               type="number"
               min={0}
@@ -498,7 +498,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           </Field>
 
           {isHouse ? (
-            <Field label="Площадь участка, сот.">
+            <Field label="Площадь участка, сот." platforms={["ЦИАН"]}>
               <Input
                 type="number"
                 min={0}
@@ -556,7 +556,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Стоимость</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-3">
-          <Field label={seasonal ? "Цена в месяц (не сезон)" : "Цена в месяц"}>
+          <Field label={seasonal ? "Цена в месяц (не сезон)" : "Цена в месяц"} platforms={["ЯН", "Авито", "ЦИАН"]}>
             <Input
               type="number"
               min={0}
@@ -566,7 +566,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               placeholder="100000"
             />
           </Field>
-          <Field label="Страховой депозит">
+          <Field label="Страховой депозит" platforms={["ЯН", "ЦИАН"]}>
             <Input
               type="number"
               min={0}
@@ -832,7 +832,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
 
 
       <section className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-base font-semibold">Описание</h2>
+        <h2 className="text-base font-semibold">Описание<PlatformBadges platforms={["ЯН", "Авито", "ЦИАН"]} /></h2>
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -845,7 +845,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       <section className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">Фотографии</h2>
+            <h2 className="text-base font-semibold">Фотографии<PlatformBadges platforms={["ЯН", "Авито", "ЦИАН"]} /></h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Первая фотография — главная. Перетаскивайте фото мышкой, чтобы менять порядок.
             </p>
@@ -1002,16 +1002,51 @@ function Field({
   label,
   children,
   className,
+  platforms,
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
+  /** Площадки, для которых поле обязательно к публикации. */
+  platforms?: string[];
 }) {
   return (
     <div className={className}>
-      <Label className="mb-2 block text-sm font-medium">{label}</Label>
+      <Label className="mb-2 block text-sm font-medium">
+        {label}
+        {platforms && platforms.length > 0 ? (
+          <span className="ml-2 inline-flex gap-1 align-middle">
+            {platforms.map((p) => (
+              <span
+                key={p}
+                title={`Обязательно для ${p}`}
+                className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+              >
+                {p}
+              </span>
+            ))}
+          </span>
+        ) : null}
+      </Label>
       {children}
     </div>
+  );
+}
+
+/** Бейджи площадок для заголовков секций (Описание, Фотографии). */
+function PlatformBadges({ platforms }: { platforms: string[] }) {
+  return (
+    <span className="ml-2 inline-flex gap-1 align-middle">
+      {platforms.map((p) => (
+        <span
+          key={p}
+          title={`Обязательно для ${p}`}
+          className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+        >
+          {p}
+        </span>
+      ))}
+    </span>
   );
 }
 

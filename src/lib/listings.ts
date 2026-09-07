@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type ListingPlatform = "site" | "avito" | "cian";
+export type ListingPlatform = "site" | "avito" | "cian" | "yandex";
 
 export type PropertyListing = {
   id: string;
@@ -26,6 +26,7 @@ export const PLATFORMS: {
 }[] = [
   { value: "site", label: "Сайт РМ", available: true },
   { value: "cian", label: "ЦИАН", available: true },
+  { value: "yandex", label: "Яндекс Недвижимость", available: true },
   { value: "avito", label: "Авито", available: false },
 ];
 

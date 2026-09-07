@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { getPropertyStats } from "@/lib/analytics.functions";
 import { setCianPublished, syncCianMessages, syncCianStats } from "@/lib/cian.functions";
+import { setYandexPublished } from "@/lib/yandex-realty.functions";
 
 import { PLATFORMS, fetchPropertyListings, setSitePublished } from "@/lib/listings";
 import { fetchProperty, internalTitle } from "@/lib/properties";
@@ -53,8 +54,9 @@ function PromoDetailPage() {
   const qc = useQueryClient();
   const [rangeKey, setRangeKey] = useState<(typeof RANGES)[number]["key"]>("30");
   const [busy, setBusy] = useState(false);
-  const [cianBusy, setCianBusy] = useState(false);
+  const [feedBusy, setFeedBusy] = useState<"cian" | "yandex" | null>(null);
   const setCian = useServerFn(setCianPublished);
+  const setYandex = useServerFn(setYandexPublished);
 
   const days = RANGES.find((r) => r.key === rangeKey)!.days;
   const to = toISODate(new Date());
@@ -104,18 +106,20 @@ function PromoDetailPage() {
   );
 
 
-  /** Включает или убирает объект из фида ЦИАН. */
-  async function toggleCian(published: boolean) {
-    setCianBusy(true);
+  /** Включает или убирает объект из фида ЦИАН / Яндекс Недвижимости. */
+  async function toggleFeed(platform: "cian" | "yandex", published: boolean) {
+    setFeedBusy(platform);
+    const label = platform === "cian" ? "ЦИАН" : "Яндекс Недвижимость";
     try {
-      await setCian({ data: { propertyId: id, published: !published } });
+      const fn = platform === "cian" ? setCian : setYandex;
+      await fn({ data: { propertyId: id, published: !published } });
       await qc.invalidateQueries({ queryKey: ["property-listings", id] });
       await qc.invalidateQueries({ queryKey: ["property-listings"] });
-      toast.success(published ? "Убран из фида ЦИАН" : "Добавлен в фид ЦИАН");
+      toast.success(published ? `Убран из фида ${label}` : `Добавлен в фид ${label}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию на ЦИАН");
+      toast.error(e instanceof Error ? e.message : `Не удалось изменить публикацию на ${label}`);
     } finally {
-      setCianBusy(false);
+      setFeedBusy(null);
     }
   }
 
@@ -197,16 +201,18 @@ function PromoDetailPage() {
                 {!platform.available ? (
                   <p className="mt-2 text-xs text-muted-foreground">Подключение по API — скоро</p>
                 ) : null}
-                {platform.value === "cian" && property ? (
+                {(platform.value === "cian" || platform.value === "yandex") && property ? (
                   <div className="mt-3">
                     <Button
                       size="sm"
                       variant={published ? "outline" : "default"}
-                      disabled={cianBusy}
-                      onClick={() => toggleCian(published)}
+                      disabled={feedBusy === platform.value}
+                      onClick={() => toggleFeed(platform.value as "cian" | "yandex", published)}
                     >
                       <Globe className="size-3.5" />
-                      {published ? "Снять с ЦИАН" : "Опубликовать на ЦИАН"}
+                      {published
+                        ? `Снять с ${platform.label}`
+                        : `Опубликовать на ${platform.label}`}
                     </Button>
                     {published && row?.last_synced_at ? (
                       <p className="mt-2 text-xs text-muted-foreground">

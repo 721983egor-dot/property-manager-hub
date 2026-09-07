@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PLATFORMS, fetchListings, setSitePublished } from "@/lib/listings";
 import { setCianPublished } from "@/lib/cian.functions";
+import { setYandexPublished } from "@/lib/yandex-realty.functions";
 import {
   fetchProperties,
   formatMoney,
@@ -97,6 +98,7 @@ function PromoListPage() {
   });
 
   const setCian = useServerFn(setCianPublished);
+  const setYandex = useServerFn(setYandexPublished);
 
   async function togglePublish(p: Property) {
     setBusy(p.id + "site");
@@ -112,15 +114,17 @@ function PromoListPage() {
     }
   }
 
-  /** Включает или убирает объект из фида ЦИАН. */
-  async function toggleCian(p: Property, published: boolean) {
-    setBusy(p.id + "cian");
+  /** Включает или убирает объект из фида ЦИАН / Яндекс Недвижимости. */
+  async function toggleFeed(p: Property, platform: "cian" | "yandex", published: boolean) {
+    setBusy(p.id + platform);
+    const label = platform === "cian" ? "ЦИАН" : "Яндекс Недвижимость";
     try {
-      await setCian({ data: { propertyId: p.id, published: !published } });
+      const fn = platform === "cian" ? setCian : setYandex;
+      await fn({ data: { propertyId: p.id, published: !published } });
       await qc.invalidateQueries({ queryKey: ["property-listings"] });
-      toast.success(published ? "Убран из фида ЦИАН" : "Добавлен в фид ЦИАН");
+      toast.success(published ? `Убран из фида ${label}` : `Добавлен в фид ${label}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию на ЦИАН");
+      toast.error(e instanceof Error ? e.message : `Не удалось изменить публикацию на ${label}`);
     } finally {
       setBusy(null);
     }
@@ -228,7 +232,7 @@ function PromoListPage() {
                               at: null,
                               externalUrl: "",
                             });
-                      const isCian = platform.value === "cian";
+                      const isFeed = platform.value === "cian" || platform.value === "yandex";
                       return (
                         <li
                           key={platform.value}
@@ -248,7 +252,7 @@ function PromoListPage() {
                               </span>
                             ) : null}
                           </span>
-                          {isCian ? (
+                          {isFeed ? (
                             state.published ? (
                               <span className="flex items-center gap-2">
                                 {state.externalUrl ? (
@@ -262,8 +266,10 @@ function PromoListPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  disabled={busy === p.id + "cian"}
-                                  onClick={() => toggleCian(p, true)}
+                                  disabled={busy === p.id + platform.value}
+                                  onClick={() =>
+                                    toggleFeed(p, platform.value as "cian" | "yandex", true)
+                                  }
                                 >
                                   Снять
                                 </Button>
@@ -273,18 +279,22 @@ function PromoListPage() {
                                 <Button
                                   size="sm"
                                   variant="default"
-                                  disabled={busy === p.id + "cian"}
-                                  onClick={() => toggleCian(p, false)}
+                                  disabled={busy === p.id + platform.value}
+                                  onClick={() =>
+                                    toggleFeed(p, platform.value as "cian" | "yandex", false)
+                                  }
                                 >
                                   <Globe className="size-3.5" />
                                   Опубликовать
                                 </Button>
-                                <Button asChild size="sm" variant="ghost">
-                                  <Link to="/promo/import" title="Связать с объявлением на ЦИАН">
-                                    <Link2 className="size-3.5" />
-                                    Связать
-                                  </Link>
-                                </Button>
+                                {platform.value === "cian" ? (
+                                  <Button asChild size="sm" variant="ghost">
+                                    <Link to="/promo/import" title="Связать с объявлением на ЦИАН">
+                                      <Link2 className="size-3.5" />
+                                      Связать
+                                    </Link>
+                                  </Button>
+                                ) : null}
                               </span>
                             )
                           ) : platform.available ? (

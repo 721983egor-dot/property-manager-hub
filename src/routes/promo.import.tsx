@@ -14,6 +14,7 @@ import {
   testCianConnection,
 } from "@/lib/cian.functions";
 import { matchOffers, type MatchConfidence } from "@/lib/cian";
+import { getYandexFeedInfo, setYandexAutoPublish } from "@/lib/yandex-realty.functions";
 import { fetchListings } from "@/lib/listings";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 
@@ -52,6 +53,8 @@ function CianImportPage() {
   const saveLinks = useServerFn(linkCianOffers);
   const loadFeedInfo = useServerFn(getCianFeedInfo);
   const setAutoPublish = useServerFn(setCianAutoPublish);
+  const loadYandexFeedInfo = useServerFn(getYandexFeedInfo);
+  const setYandexAuto = useServerFn(setYandexAutoPublish);
 
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -64,6 +67,11 @@ function CianImportPage() {
   const { data: feedInfo } = useQuery({
     queryKey: ["cian-feed-info"],
     queryFn: () => loadFeedInfo({}),
+  });
+
+  const { data: yandexFeedInfo } = useQuery({
+    queryKey: ["yandex-feed-info"],
+    queryFn: () => loadYandexFeedInfo({}),
   });
 
   const {
@@ -181,7 +189,9 @@ function CianImportPage() {
         </Button>
       </header>
 
-      {feedInfo ? <FeedSettings info={feedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["cian-feed-info"] })} toggleAuto={(enabled) => setAutoPublish({ data: { enabled } })} /> : null}
+      {feedInfo ? <FeedSettings label="ЦИАН" cabinetHint="Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). Площадка будет забирать файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без лишних действий." info={feedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["cian-feed-info"] })} toggleAuto={(enabled) => setAutoPublish({ data: { enabled } })} /> : null}
+
+      {yandexFeedInfo ? <FeedSettings label="Яндекс Недвижимость" cabinetHint="Вставьте ссылку на фид в кабинете Яндекс Недвижимости (раздел загрузки объявлений агентства). Площадка будет забирать файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без лишних действий." info={yandexFeedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["yandex-feed-info"] })} toggleAuto={(enabled) => setYandexAuto({ data: { enabled } })} /> : null}
 
       {connection && !connection.connected ? (
         <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
@@ -337,10 +347,14 @@ function CianImportPage() {
 
 /** Настройки автопубликации: ссылка на XML-фид и переключатель автозагрузки. */
 function FeedSettings({
+  label,
+  cabinetHint,
   info,
   onChanged,
   toggleAuto,
 }: {
+  label: string;
+  cabinetHint: string;
   info: { autoPublish: boolean; inFeed: number; withErrors: number; feedPath: string };
   onChanged: () => void;
   toggleAuto: (enabled: boolean) => Promise<unknown>;
@@ -372,12 +386,8 @@ function FeedSettings({
 
   return (
     <section className="mt-6 rounded-xl border border-border bg-card p-5">
-      <h2 className="text-sm font-semibold">Автопубликация через XML-фид</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). Площадка будет забирать
-        файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без
-        лишних действий.
-      </p>
+      <h2 className="text-sm font-semibold">Автопубликация {label} через XML-фид</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{cabinetHint}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <code className="min-w-[220px] flex-1 truncate rounded-md border border-input bg-muted/50 px-3 py-2 text-xs">
           {feedUrl}
