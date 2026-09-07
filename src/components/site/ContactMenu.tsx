@@ -7,7 +7,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
   SITE_TELEGRAM,
   SITE_WHATSAPP,
@@ -79,7 +78,7 @@ export function ContactMenu({ children, contentClassName, onOpenChange }: Props)
         >
           <a href={SITE_PHONE_TEL} onClick={(e) => e.stopPropagation()}>
             <Phone className="mr-2.5 size-4 text-site-navy" />
-            Позвонить <span className="ml-auto text-xs text-site-muted">{SITE_PHONE_DISPLAY}</span>
+            Позвонить
           </a>
         </DropdownMenuItem>
       </DropdownMenuContent>
