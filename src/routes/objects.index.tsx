@@ -587,7 +587,9 @@ function Row({
         ) : null}
       </td>
       <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.deposit)}</td>
-      <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.commission)}</td>
+      <td className="px-4 py-4 text-muted-foreground">
+        {property.commission == null ? "—" : property.commission === 0 ? "0%" : `${property.commission}%`}
+      </td>
       <td className="px-4 py-4">
         <StatusBadge status={property.status} />
       </td>

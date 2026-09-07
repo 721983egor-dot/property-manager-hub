@@ -106,12 +106,10 @@ function flatRoomsCount(rooms: number): number {
   return rooms;
 }
 
-/** Комиссия клиента в процентах от месячной цены (в базе она хранится в рублях). */
+/** Комиссия клиента в процентах от месячной цены (в базе хранится как процент). */
 function clientFeePercent(property: Property): number | null {
   if (property.commission == null) return null;
-  if (property.commission === 0) return 0;
-  if (!property.price_month) return null;
-  return Math.round((property.commission / property.price_month) * 100);
+  return Math.round(property.commission);
 }
 
 /** Условия сделки — порядок элементов по схеме ЦИАН. */

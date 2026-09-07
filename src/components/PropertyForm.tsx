@@ -682,15 +682,20 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               placeholder="100000"
             />
           </Field>
-          <Field label="Комиссия">
-            <Input
-              type="number"
-              min={0}
-              step={1000}
-              value={commission}
-              onChange={(e) => setCommission(e.target.value)}
-              placeholder="50000"
-            />
+          <Field label="Комиссия, %" platforms={["ЦИАН"]}>
+            <Select value={commission || "none"} onValueChange={(v) => setCommission(v === "none" ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Не указано" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Не указано</SelectItem>
+                {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
+                  <SelectItem key={v} value={String(v)}>
+                    {v === 0 ? "Без комиссии" : `${v}%`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
           {serviceType === "management" ? (
             <Field label="Стоимость управления (только в RM OS)">
