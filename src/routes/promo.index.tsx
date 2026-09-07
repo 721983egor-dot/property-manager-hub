@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BarChart3, Download, ExternalLink, Globe, Link2, Search } from "lucide-react";
@@ -7,6 +8,7 @@ import { BarChart3, Download, ExternalLink, Globe, Link2, Search } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PLATFORMS, fetchListings, setSitePublished } from "@/lib/listings";
+import { setCianPublished } from "@/lib/cian.functions";
 import {
   fetchProperties,
   formatMoney,
@@ -94,6 +96,8 @@ function PromoListPage() {
     );
   });
 
+  const setCian = useServerFn(setCianPublished);
+
   async function togglePublish(p: Property) {
     setBusy(p.id + "site");
     try {
@@ -103,6 +107,20 @@ function PromoListPage() {
       toast.success(p.published ? "Снято с публикации" : "Опубликовано на сайте");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Включает или убирает объект из фида ЦИАН. */
+  async function toggleCian(p: Property, published: boolean) {
+    setBusy(p.id + "cian");
+    try {
+      await setCian({ data: { propertyId: p.id, published: !published } });
+      await qc.invalidateQueries({ queryKey: ["property-listings"] });
+      toast.success(published ? "Убран из фида ЦИАН" : "Добавлен в фид ЦИАН");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию на ЦИАН");
     } finally {
       setBusy(null);
     }
@@ -232,23 +250,42 @@ function PromoListPage() {
                           </span>
                           {isCian ? (
                             state.published ? (
-                              <Button asChild size="sm" variant="outline">
-                                <a
-                                  href={state.externalUrl || "https://www.cian.ru"}
-                                  target="_blank"
-                                  rel="noreferrer"
+                              <span className="flex items-center gap-2">
+                                {state.externalUrl ? (
+                                  <Button asChild size="sm" variant="outline">
+                                    <a href={state.externalUrl} target="_blank" rel="noreferrer">
+                                      <ExternalLink className="size-3.5" />
+                                      Открыть
+                                    </a>
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={busy === p.id + "cian"}
+                                  onClick={() => toggleCian(p, true)}
                                 >
-                                  <ExternalLink className="size-3.5" />
-                                  Открыть
-                                </a>
-                              </Button>
+                                  Снять
+                                </Button>
+                              </span>
                             ) : (
-                              <Button asChild size="sm" variant="default">
-                                <Link to="/promo/import">
-                                  <Link2 className="size-3.5" />
-                                  Связать
-                                </Link>
-                              </Button>
+                              <span className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  disabled={busy === p.id + "cian"}
+                                  onClick={() => toggleCian(p, false)}
+                                >
+                                  <Globe className="size-3.5" />
+                                  Опубликовать
+                                </Button>
+                                <Button asChild size="sm" variant="ghost">
+                                  <Link to="/promo/import" title="Связать с объявлением на ЦИАН">
+                                    <Link2 className="size-3.5" />
+                                    Связать
+                                  </Link>
+                                </Button>
+                              </span>
                             )
                           ) : platform.available ? (
                             <Button
