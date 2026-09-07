@@ -8,13 +8,7 @@ import {
   SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
 } from "@/lib/site";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { SiteLeadForm } from "@/components/site/SiteLeadForm";
+import { ContactMenu } from "@/components/site/ContactMenu";
 import logo from "@/assets/site/logo_navy.png";
 
 const NAV = [
