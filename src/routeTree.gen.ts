@@ -39,6 +39,7 @@ import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.previ
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
+import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/public/feeds/yandex[.]xml'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -191,6 +192,12 @@ const ApiPublicFeedsCianDotxmlRoute =
     path: '/api/public/feeds/cian.xml',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicFeedsYandexDotxmlRoute =
+  ApiPublicFeedsYandexDotxmlRouteImport.update({
+    id: '/api/public/feeds/yandex.xml',
+    path: '/api/public/feeds/yandex.xml',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
+  '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -254,6 +262,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
+  '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -287,6 +296,7 @@ export interface FileRoutesById {
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
+  '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/cian-sync'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
+    | '/api/public/feeds/yandex.xml'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/cian-sync'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
+    | '/api/public/feeds/yandex.xml'
   id:
     | '__root__'
     | '/'
@@ -384,6 +396,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/cian-sync'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
+    | '/api/public/feeds/yandex.xml'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -415,6 +428,7 @@ export interface RootRouteChildren {
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
+  ApiPublicFeedsYandexDotxmlRoute: typeof ApiPublicFeedsYandexDotxmlRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -629,6 +643,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFeedsCianDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/feeds/yandex.xml': {
+      id: '/api/public/feeds/yandex.xml'
+      path: '/api/public/feeds/yandex.xml'
+      fullPath: '/api/public/feeds/yandex.xml'
+      preLoaderRoute: typeof ApiPublicFeedsYandexDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -673,6 +694,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
+  ApiPublicFeedsYandexDotxmlRoute: ApiPublicFeedsYandexDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
