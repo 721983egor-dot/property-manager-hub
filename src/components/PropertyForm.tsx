@@ -331,6 +331,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       wc_location_type: isHouse ? wcLocation : "",
       land_status: isHouse ? landStatus : "",
       cian_jk_id: isHouse ? null : toNum(cianJkId),
+      is_apartments: isHouse ? null : isApartments === "none" ? null : isApartments === "yes",
     });
 
   };
@@ -631,15 +632,29 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               </Field>
             </>
           ) : (
-            <Field label="ID жилого комплекса на ЦИАН" platforms={["ЦИАН"]}>
-              <Input
-                type="number"
-                min={1}
-                value={cianJkId}
-                onChange={(e) => setCianJkId(e.target.value)}
-                placeholder="123456"
-              />
-            </Field>
+            <>
+              <Field label="ID жилого комплекса на ЦИАН" platforms={["ЦИАН"]}>
+                <Input
+                  type="number"
+                  min={1}
+                  value={cianJkId}
+                  onChange={(e) => setCianJkId(e.target.value)}
+                  placeholder="123456"
+                />
+              </Field>
+              <Field label="Юридический статус" platforms={["ЦИАН"]}>
+                <Select value={isApartments} onValueChange={setIsApartments}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Не указано" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Не указано</SelectItem>
+                    <SelectItem value="no">Квартира (жилое)</SelectItem>
+                    <SelectItem value="yes">Апартаменты (нежилое)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </>
           )}
         </div>
       </section>
