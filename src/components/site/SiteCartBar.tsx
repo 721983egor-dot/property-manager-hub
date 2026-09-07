@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Heart, Send, Share2, X } from "lucide-react";
+import { CheckCircle2, Heart, MessageCircle, Send, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { trackEvent } from "@/lib/analytics";
@@ -9,6 +9,8 @@ import { submitLead } from "@/lib/leads.functions";
 import { fetchPublishedProperties, formatMoney, signedUrls } from "@/lib/properties";
 import { createSelection } from "@/lib/selections";
 import { cartHint, useSiteCart } from "@/lib/site-cart";
+import { sendVisitorMessage } from "@/lib/chat.functions";
+import { getVisitorKey } from "@/lib/site-chat";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,6 +44,8 @@ export function SiteCartBar() {
   const [listOpen, setListOpen] = useState(false);
   const [leadOpen, setLeadOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [sendingChat, setSendingChat] = useState(false);
+  const sendChat = useServerFn(sendVisitorMessage);
   const [showHint, setShowHint] = useState(() =>
     typeof window === "undefined" ? false : count > 0 && !cartHint.seen(),
   );
