@@ -447,7 +447,9 @@ export type Database = {
           availability_note: string
           bathroom_features: string[]
           bathrooms: number
+          beds_count: number | null
           card_highlights: string[]
+          cian_jk_id: number | null
           commission: number | null
           complex_id: string | null
           complex_name: string
@@ -459,6 +461,7 @@ export type Database = {
           id: string
           internal_name: string
           land_area: number | null
+          land_status: string
           latitude: number | null
           location_description: string
           longitude: number | null
@@ -470,6 +473,7 @@ export type Database = {
           published: boolean
           ref_id: number
           rent_terms: string
+          repair_type: string
           rooms: number
           seasonal_pricing: boolean
           service_type: Database["public"]["Enums"]["property_service_type"]
@@ -481,6 +485,7 @@ export type Database = {
           type: Database["public"]["Enums"]["property_type"]
           updated_at: string
           utilities_month: number | null
+          wc_location_type: string
         }
         Insert: {
           address?: string
@@ -489,7 +494,9 @@ export type Database = {
           availability_note?: string
           bathroom_features?: string[]
           bathrooms?: number
+          beds_count?: number | null
           card_highlights?: string[]
+          cian_jk_id?: number | null
           commission?: number | null
           complex_id?: string | null
           complex_name?: string
@@ -501,6 +508,7 @@ export type Database = {
           id?: string
           internal_name?: string
           land_area?: number | null
+          land_status?: string
           latitude?: number | null
           location_description?: string
           longitude?: number | null
@@ -512,6 +520,7 @@ export type Database = {
           published?: boolean
           ref_id?: number
           rent_terms?: string
+          repair_type?: string
           rooms?: number
           seasonal_pricing?: boolean
           service_type?: Database["public"]["Enums"]["property_service_type"]
@@ -523,6 +532,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
           utilities_month?: number | null
+          wc_location_type?: string
         }
         Update: {
           address?: string
@@ -531,7 +541,9 @@ export type Database = {
           availability_note?: string
           bathroom_features?: string[]
           bathrooms?: number
+          beds_count?: number | null
           card_highlights?: string[]
+          cian_jk_id?: number | null
           commission?: number | null
           complex_id?: string | null
           complex_name?: string
@@ -543,6 +555,7 @@ export type Database = {
           id?: string
           internal_name?: string
           land_area?: number | null
+          land_status?: string
           latitude?: number | null
           location_description?: string
           longitude?: number | null
@@ -554,6 +567,7 @@ export type Database = {
           published?: boolean
           ref_id?: number
           rent_terms?: string
+          repair_type?: string
           rooms?: number
           seasonal_pricing?: boolean
           service_type?: Database["public"]["Enums"]["property_service_type"]
@@ -565,6 +579,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
           utilities_month?: number | null
+          wc_location_type?: string
         }
         Relationships: [
           {
