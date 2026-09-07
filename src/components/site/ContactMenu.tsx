@@ -17,16 +17,18 @@ type Props = {
   children: React.ReactNode;
   /** Дополнительные классы для выпадающего контента. */
   contentClassName?: string;
+  /** Вызывается при открытии/закрытии меню. */
+  onOpenChange?: (open: boolean) => void;
 };
 
 /** Кнопка «Связаться» с выбором канала: чат, WhatsApp, Telegram, звонок. */
-export function ContactMenu({ children, contentClassName }: Props) {
+export function ContactMenu({ children, contentClassName, onOpenChange }: Props) {
   const openChat = () => {
     window.dispatchEvent(new CustomEvent("rm-open-chat"));
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
