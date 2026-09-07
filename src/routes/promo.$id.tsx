@@ -104,6 +104,21 @@ function PromoDetailPage() {
   );
 
 
+  /** Включает или убирает объект из фида ЦИАН. */
+  async function toggleCian(published: boolean) {
+    setCianBusy(true);
+    try {
+      await setCian({ data: { propertyId: id, published: !published } });
+      await qc.invalidateQueries({ queryKey: ["property-listings", id] });
+      await qc.invalidateQueries({ queryKey: ["property-listings"] });
+      toast.success(published ? "Убран из фида ЦИАН" : "Добавлен в фид ЦИАН");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию на ЦИАН");
+    } finally {
+      setCianBusy(false);
+    }
+  }
+
   async function togglePublish() {
     if (!property) return;
     setBusy(true);
