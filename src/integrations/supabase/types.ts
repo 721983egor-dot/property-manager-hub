@@ -118,6 +118,83 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          direction: string
+          id: string
+          read_at: string | null
+          thread_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          direction: string
+          id?: string
+          read_at?: string | null
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          read_at?: string | null
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          created_at: string
+          first_page: string
+          id: string
+          last_message_at: string
+          last_visitor_message_at: string | null
+          name: string
+          phone: string
+          status: string
+          unread_count: number
+          updated_at: string
+          visitor_key: string
+        }
+        Insert: {
+          created_at?: string
+          first_page?: string
+          id?: string
+          last_message_at?: string
+          last_visitor_message_at?: string | null
+          name?: string
+          phone?: string
+          status?: string
+          unread_count?: number
+          updated_at?: string
+          visitor_key: string
+        }
+        Update: {
+          created_at?: string
+          first_page?: string
+          id?: string
+          last_message_at?: string
+          last_visitor_message_at?: string | null
+          name?: string
+          phone?: string
+          status?: string
+          unread_count?: number
+          updated_at?: string
+          visitor_key?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           blacklist_reason: string
