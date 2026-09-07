@@ -1,5 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bookmark, Bot, Building2, CalendarDays, Inbox, Megaphone, MessagesSquare, Users } from "lucide-react";
+import {
+  Bookmark,
+  Bot,
+  Building2,
+  CalendarDays,
+  Inbox,
+  Megaphone,
+  MessagesSquare,
+  Settings,
+  Users,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -22,6 +32,7 @@ const CRM_PREFIXES = [
   "/promo",
   "/chats",
   "/assistant",
+  "/system",
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -110,6 +121,14 @@ function CrmShell({ children }: { children: ReactNode }) {
           >
             <Bot className="size-4" />
             Помощник
+          </Link>
+
+          <Link
+            to="/system/update"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
+          >
+            <Settings className="size-4" />
+            Обновление системы
           </Link>
 
           <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">

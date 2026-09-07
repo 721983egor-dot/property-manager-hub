@@ -1,0 +1,16 @@
+# Deploy-агент: получает команды из RM OS и управляет обновлениями на сервере
+FROM python:3.12-alpine
+
+WORKDIR /agent
+
+RUN apk add --no-cache docker-cli docker-compose git bash curl postgresql-client
+
+COPY deploy/deploy-agent.py .
+COPY deploy/requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8080
+
+CMD ["python", "deploy-agent.py"]
