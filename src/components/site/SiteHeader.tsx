@@ -74,12 +74,14 @@ export function SiteHeader() {
           >
             {SITE_PHONE_DISPLAY}
           </a>
-          <button
-            onClick={() => setLeadOpen(true)}
-            className="hidden rounded-md bg-site-gold px-4 py-2 text-[13px] font-semibold text-site-navy transition-colors hover:bg-site-gold/85 sm:block"
-          >
-            Связаться с нами
-          </button>
+          <ContactMenu>
+            <button
+              type="button"
+              className="hidden cursor-pointer rounded-md bg-site-gold px-4 py-2 text-[13px] font-semibold text-site-navy transition-colors hover:bg-site-gold/85 sm:block"
+            >
+              Связаться с нами
+            </button>
+          </ContactMenu>
           <button
             className="rounded-md p-2 text-site-navy lg:hidden"
             onClick={() => setMenuOpen((v) => !v)}
