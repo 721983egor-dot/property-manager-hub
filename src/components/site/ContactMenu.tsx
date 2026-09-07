@@ -28,7 +28,7 @@ export function ContactMenu({ children, contentClassName, onOpenChange }: Props)
   };
 
   return (
-    <DropdownMenu onOpenChange={onOpenChange}>
+    <DropdownMenu {...(onOpenChange ? { onOpenChange } : {})}>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
