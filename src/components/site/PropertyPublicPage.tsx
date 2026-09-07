@@ -429,8 +429,8 @@ export function PropertyPublicPage({
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {contactButton()}
               <CartToggleButton propertyId={property.id} variant="inline" />
-              {shareButton}
             </div>
+
           </div>
         </div>
 
