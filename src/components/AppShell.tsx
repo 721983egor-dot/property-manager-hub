@@ -32,6 +32,7 @@ const CRM_PREFIXES = [
   "/promo",
   "/chats",
   "/assistant",
+  "/system",
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
