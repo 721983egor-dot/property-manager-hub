@@ -1,6 +1,7 @@
 import { createFileRoute, stripSearchParams, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { Heart } from "lucide-react";
 
 import { PropertyCard } from "@/components/site/PropertyCard";
 import {
@@ -170,6 +171,10 @@ function RentPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-[1280px] px-5 py-10 md:px-6 lg:px-8 lg:py-14">
+        <p className="mb-6 flex items-center gap-2 text-sm text-site-muted">
+          <Heart className="size-4 shrink-0 fill-site-gold text-site-gold" />
+          Нажимайте на сердечко у понравившихся объектов — соберём их в вашу подборку, чтобы записаться на просмотр всех сразу или поделиться с близкими.
+        </p>
         <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
             <FilterSelect

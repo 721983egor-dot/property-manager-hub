@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { CartToggleButton } from "@/components/site/CartToggleButton";
 import {
   formatArea,
   formatLandArea,
@@ -52,7 +53,8 @@ export function PropertyCard(props: Props) {
       params={{ id: property.id }}
       className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white transition-shadow duration-300 hover:shadow-[0_18px_50px_-30px_rgba(14,27,44,0.45)]"
     >
-      <div className="aspect-[4/3] overflow-hidden bg-site-navy-soft">
+      <div className="relative aspect-[4/3] overflow-hidden bg-site-navy-soft">
+        <CartToggleButton propertyId={property.id} />
         {photoUrl ? (
           <img
             src={photoUrl}
