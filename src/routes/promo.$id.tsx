@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { getPropertyStats } from "@/lib/analytics.functions";
 import { setCianPublished, syncCianMessages, syncCianStats } from "@/lib/cian.functions";
+import { setYandexPublished } from "@/lib/yandex-realty.functions";
 
 import { PLATFORMS, fetchPropertyListings, setSitePublished } from "@/lib/listings";
 import { fetchProperty, internalTitle } from "@/lib/properties";
@@ -53,8 +54,9 @@ function PromoDetailPage() {
   const qc = useQueryClient();
   const [rangeKey, setRangeKey] = useState<(typeof RANGES)[number]["key"]>("30");
   const [busy, setBusy] = useState(false);
-  const [cianBusy, setCianBusy] = useState(false);
+  const [feedBusy, setFeedBusy] = useState<"cian" | "yandex" | null>(null);
   const setCian = useServerFn(setCianPublished);
+  const setYandex = useServerFn(setYandexPublished);
 
   const days = RANGES.find((r) => r.key === rangeKey)!.days;
   const to = toISODate(new Date());
