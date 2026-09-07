@@ -30,6 +30,7 @@ import { Route as PromoImportRouteImport } from './routes/promo.import'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
 import { Route as SelectionsIndexRouteImport } from './routes/selections.index'
+import { Route as SystemUpdateRouteImport } from './routes/system.update'
 import { Route as ComplexesIdEditRouteImport } from './routes/complexes.$id.edit'
 import { Route as CrmClientsIndexRouteImport } from './routes/crm.clients.index'
 import { Route as CrmClientsIdRouteImport } from './routes/crm.clients.$id'
@@ -147,6 +148,11 @@ const SelectionsIndexRoute = SelectionsIndexRouteImport.update({
   path: '/selections/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SystemUpdateRoute = SystemUpdateRouteImport.update({
+  id: '/system/update',
+  path: '/system/update',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComplexesIdEditRoute = ComplexesIdEditRouteImport.update({
   id: '/complexes/$id/edit',
   path: '/complexes/$id/edit',
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/promo/$id': typeof PromoIdRoute
   '/promo/import': typeof PromoImportRoute
   '/rent/$id': typeof RentIdRoute
+  '/system/update': typeof SystemUpdateRoute
   '/assistant/': typeof AssistantIndexRoute
   '/chats/': typeof ChatsIndexRoute
   '/complexes/': typeof ComplexesIndexRoute
@@ -253,6 +260,7 @@ export interface FileRoutesByTo {
   '/promo/$id': typeof PromoIdRoute
   '/promo/import': typeof PromoImportRoute
   '/rent/$id': typeof RentIdRoute
+  '/system/update': typeof SystemUpdateRoute
   '/assistant': typeof AssistantIndexRoute
   '/chats': typeof ChatsIndexRoute
   '/complexes': typeof ComplexesIndexRoute
@@ -288,6 +296,7 @@ export interface FileRoutesById {
   '/promo/$id': typeof PromoIdRoute
   '/promo/import': typeof PromoImportRoute
   '/rent/$id': typeof RentIdRoute
+  '/system/update': typeof SystemUpdateRoute
   '/assistant/': typeof AssistantIndexRoute
   '/chats/': typeof ChatsIndexRoute
   '/complexes/': typeof ComplexesIndexRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/import'
     | '/rent/$id'
+    | '/system/update'
     | '/assistant/'
     | '/chats/'
     | '/complexes/'
@@ -357,6 +367,7 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/import'
     | '/rent/$id'
+    | '/system/update'
     | '/assistant'
     | '/chats'
     | '/complexes'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/import'
     | '/rent/$id'
+    | '/system/update'
     | '/assistant/'
     | '/chats/'
     | '/complexes/'
@@ -425,6 +437,7 @@ export interface RootRouteChildren {
   PCodeRoute: typeof PCodeRoute
   PromoIdRoute: typeof PromoIdRoute
   PromoImportRoute: typeof PromoImportRoute
+  SystemUpdateRoute: typeof SystemUpdateRoute
   AssistantIndexRoute: typeof AssistantIndexRoute
   ChatsIndexRoute: typeof ChatsIndexRoute
   ComplexesIndexRoute: typeof ComplexesIndexRoute
@@ -593,6 +606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SelectionsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/system/update': {
+      id: '/system/update'
+      path: '/system/update'
+      fullPath: '/system/update'
+      preLoaderRoute: typeof SystemUpdateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/complexes/$id/edit': {
       id: '/complexes/$id/edit'
       path: '/complexes/$id/edit'
@@ -699,6 +719,7 @@ const rootRouteChildren: RootRouteChildren = {
   PCodeRoute: PCodeRoute,
   PromoIdRoute: PromoIdRoute,
   PromoImportRoute: PromoImportRoute,
+  SystemUpdateRoute: SystemUpdateRoute,
   AssistantIndexRoute: AssistantIndexRoute,
   ChatsIndexRoute: ChatsIndexRoute,
   ComplexesIndexRoute: ComplexesIndexRoute,
