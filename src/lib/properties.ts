@@ -67,6 +67,7 @@ export type Property = {
   wc_location_type: string;
   land_status: string;
   cian_jk_id: number | null;
+  is_apartments: boolean | null;
   created_at: string;
   updated_at: string;
 };
@@ -359,6 +360,7 @@ function normalize(row: Record<string, unknown>): Property {
       typeof row['wc_location_type'] === "string" ? (row['wc_location_type'] as string) : "",
     land_status: typeof row['land_status'] === "string" ? (row['land_status'] as string) : "",
     cian_jk_id: num(row['cian_jk_id']),
+    is_apartments: typeof row['is_apartments'] === "boolean" ? (row['is_apartments'] as boolean) : null,
     availability_note:
       typeof row['availability_note'] === "string" ? (row['availability_note'] as string) : "",
   };
@@ -432,6 +434,7 @@ export type PropertyInput = {
   wc_location_type: string;
   land_status: string;
   cian_jk_id: number | null;
+  is_apartments: boolean | null;
 };
 
 /** Базовый текст условий аренды — подставляется в форму и редактируется. */

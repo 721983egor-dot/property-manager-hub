@@ -185,9 +185,9 @@ export function cianSchemaGaps(p: Property): string[] {
   if (isLand) {
     if (p.total_floors == null) gaps.push("этажность дома");
     if (!p.land_status) gaps.push("назначение участка");
-    if (!p.wc_location_type) gaps.push("расположение санузла");
-  } else if (p.cian_jk_id == null) {
-    gaps.push("ID жилого комплекса на ЦИАН");
+  } else {
+    if (p.cian_jk_id == null) gaps.push("ID жилого комплекса на ЦИАН");
+    if (p.is_apartments == null) gaps.push("юридический статус (апартаменты или квартира)");
   }
   return gaps;
 }
