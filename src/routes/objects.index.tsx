@@ -425,7 +425,18 @@ function ObjectsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-4 overflow-hidden py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="selection-name">Название подборки</Label>
+              <Input
+                id="selection-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Варианты для Александра"
+                className="w-full"
+              />
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="selection-comment">Комментарий для клиента</Label>
               <Textarea
@@ -434,6 +445,7 @@ function ObjectsPage() {
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Например: варианты под ваши даты и бюджет"
                 rows={3}
+                className="w-full resize-none"
               />
             </div>
 
@@ -449,9 +461,9 @@ function ObjectsPage() {
             </div>
 
             {selectionLinkPreview && (
-              <div className="flex items-center gap-2 rounded-md border border-dashed border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 overflow-hidden rounded-md border border-dashed border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
                 <Copy className="size-4 shrink-0" />
-                <span className="truncate">{selectionLinkPreview}</span>
+                <span className="min-w-0 truncate">{selectionLinkPreview}</span>
               </div>
             )}
           </div>
@@ -468,6 +480,7 @@ function ObjectsPage() {
               onClick={() =>
                 createSelectionMutation.mutate({
                   propertyIds: Array.from(selectedIds),
+                  name,
                   comment,
                   saved: saveList,
                 })
