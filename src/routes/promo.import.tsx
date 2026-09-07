@@ -14,6 +14,7 @@ import {
   testCianConnection,
 } from "@/lib/cian.functions";
 import { matchOffers, type MatchConfidence } from "@/lib/cian";
+import { getYandexFeedInfo, setYandexAutoPublish } from "@/lib/yandex-realty.functions";
 import { fetchListings } from "@/lib/listings";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 
@@ -52,6 +53,8 @@ function CianImportPage() {
   const saveLinks = useServerFn(linkCianOffers);
   const loadFeedInfo = useServerFn(getCianFeedInfo);
   const setAutoPublish = useServerFn(setCianAutoPublish);
+  const loadYandexFeedInfo = useServerFn(getYandexFeedInfo);
+  const setYandexAuto = useServerFn(setYandexAutoPublish);
 
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
