@@ -139,7 +139,7 @@ function SelectionPublicPage() {
                 Персональная подборка
               </p>
               <h1 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                Подборка объектов
+                {data.name.trim() || "Подборка объектов"}
               </h1>
               {data.comment ? (
                 <p className="mt-4 text-base leading-relaxed text-white/80">{data.comment}</p>
