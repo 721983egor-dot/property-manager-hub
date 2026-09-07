@@ -290,7 +290,7 @@ function ObjectViewPage() {
               <Item
                 label="Комиссия"
                 value={
-                  data.commission == null ? null : data.commission === 0 ? "Без комиссии" : `${data.commission}%`
+                  data.commission == null ? "—" : data.commission === 0 ? "Без комиссии" : `${data.commission}%`
                 }
               />
               <Item label="Коммунальные в месяц" value={formatMoney(data.utilities_month)} />
