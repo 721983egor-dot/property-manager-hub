@@ -107,6 +107,35 @@ export function SiteCartBar() {
     }
   };
 
+  const sendToChat = async () => {
+    if (sendingChat) return;
+    setSendingChat(true);
+    try {
+      const selection = await createSelection({
+        propertyIds: ids,
+        name: "Подборка клиента",
+        saved: false,
+        trackEvents: false,
+      });
+      const url = `${window.location.origin}/p/${selection.code}`;
+      const list = selected.map((p, i) => `${i + 1}. ${p.title}`).join("\n");
+      await sendChat({
+        data: {
+          visitorKey: getVisitorKey(),
+          body: `Мне понравились эти объекты:\n${list}\n\nМоя подборка: ${url}`,
+          page: window.location.pathname,
+        },
+      });
+      setListOpen(false);
+      window.dispatchEvent(new CustomEvent("rm-open-chat"));
+      toast.success("Подборка отправлена менеджеру в чат");
+    } catch {
+      toast.error("Не удалось отправить подборку в чат. Попробуйте ещё раз.");
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
   return (
     <>
       <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 font-site sm:px-6 sm:pb-5">
