@@ -196,7 +196,11 @@ function offerXml(property: Property, externalId: string, origin: string): strin
     coordinates,
     tag("FlatRoomsCount", flatRoomsCount(property.rooms)),
     phones,
-    `<IsApartments>${property.type === "aparts" ? "true" : "false"}</IsApartments>`,
+    // Юридический статус берём из карточки. Если он не заполнен — элемент не выводим,
+    // чтобы не выдавать неизвестное значение за «не апартаменты».
+    property.is_apartments == null
+      ? ""
+      : `<IsApartments>${property.is_apartments ? "true" : "false"}</IsApartments>`,
     tag("TotalArea", property.area),
     tag("FloorNumber", property.floor),
     jk,
