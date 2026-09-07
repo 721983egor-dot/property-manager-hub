@@ -683,6 +683,7 @@ export type Database = {
           comment: string
           created_at: string
           id: string
+          name: string
           saved: boolean
           updated_at: string
         }
@@ -692,6 +693,7 @@ export type Database = {
           comment?: string
           created_at?: string
           id?: string
+          name?: string
           saved?: boolean
           updated_at?: string
         }
@@ -701,6 +703,7 @@ export type Database = {
           comment?: string
           created_at?: string
           id?: string
+          name?: string
           saved?: boolean
           updated_at?: string
         }
