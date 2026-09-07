@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClientOnly } from "@tanstack/react-router";
+import { ClientOnly, Link } from "@tanstack/react-router";
 import { Check, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 
 import { YandexMap } from "@/components/YandexMap";
@@ -323,9 +323,9 @@ export function PropertyPublicPage({
       <div className="mx-auto w-full max-w-[1170px] px-5 pb-24 pt-8 lg:px-8">
         {/* ===== Хлебные крошки ===== */}
         <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-site-muted">
-          <span className="transition-colors hover:text-site-navy">Главная</span>
+          <Link to="/" className="transition-colors hover:text-site-navy">Главная</Link>
           <span className="text-site-gold">→</span>
-          <span className="transition-colors hover:text-site-navy">Долгосрочная аренда</span>
+          <Link to="/rent" className="transition-colors hover:text-site-navy">Долгосрочная аренда</Link>
           <span className="text-site-gold">→</span>
           <span className="font-semibold text-site-navy">{property.title}</span>
         </nav>
