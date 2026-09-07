@@ -13,8 +13,8 @@ import { useSiteCart } from "@/lib/site-cart";
 /** Плавающий чат: WhatsApp, Telegram, звонок и сообщение через форму. */
 export function SiteChatWidget() {
   const [open, setOpen] = useState(false);
-  const cart = useSiteCart();
-  const bottom = cart.length > 0 ? "bottom-24" : "bottom-5";
+  const { count } = useSiteCart();
+  const bottom = count > 0 ? "bottom-24" : "bottom-5";
 
   return (
     <div className={`fixed right-4 z-50 flex flex-col items-end gap-3 ${bottom} md:right-6`}>
