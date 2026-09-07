@@ -364,7 +364,13 @@ function FeedSettings({
 }: {
   label: string;
   cabinetHint: string;
-  info: { autoPublish: boolean; inFeed: number; withErrors: number; feedPath: string };
+  info: {
+    autoPublish: boolean;
+    inFeed: number;
+    withErrors: number;
+    feedPath: string;
+    issues?: { label: string; fields: string[]; blocking: boolean }[];
+  };
   onChanged: () => void;
   toggleAuto: (enabled: boolean) => Promise<unknown>;
 }) {
@@ -422,6 +428,19 @@ function FeedSettings({
           Публиковать новые объекты автоматически
         </label>
       </div>
+      {info.issues && info.issues.length > 0 ? (
+        <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
+          <p className="text-sm font-medium">Что нужно заполнить вручную</p>
+          <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+            {info.issues.map((issue) => (
+              <li key={issue.label}>
+                <span className="text-foreground">{issue.label}</span>: {issue.fields.join(", ")}
+                {issue.blocking ? " — объект не попадает в выгрузку" : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

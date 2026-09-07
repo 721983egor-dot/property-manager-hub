@@ -150,10 +150,17 @@ export function matchOffers(
   });
 }
 
+/** Категория ЦИАН по типу объекта. */
+export function cianCategoryOf(type: Property["type"]): string {
+  if (type === "house" || type === "villa") return "houseRent";
+  if (type === "townhouse") return "townhouseRent";
+  return "flatRent";
+}
+
 /** Поля, без которых объявление на ЦИАН не примут. */
 export function missingCianFields(p: Property): string[] {
   const missing: string[] = [];
-  const isLand = p.type === "house" || p.type === "villa" || p.type === "townhouse";
+  const isLand = cianCategoryOf(p.type) !== "flatRent";
   if (!p.address.trim()) missing.push("адрес");
   if (p.area == null) missing.push("площадь");
   if (p.price_month == null) missing.push("цена за месяц");
@@ -164,3 +171,24 @@ export function missingCianFields(p: Property): string[] {
   if (!p.description.trim()) missing.push("описание");
   return missing;
 }
+
+/**
+ * Поля, которые требует официальная схема ЦИАН, но которых пока нет в карточке.
+ * Объект всё равно попадает в фид — эти пропуски показываем в отчёте проверки.
+ */
+export function cianSchemaGaps(p: Property): string[] {
+  const gaps: string[] = [];
+  const isLand = cianCategoryOf(p.type) !== "flatRent";
+  if (p.beds_count == null) gaps.push("спальных мест");
+  if (!p.repair_type) gaps.push("состояние ремонта");
+  if (p.commission == null) gaps.push("комиссия");
+  if (isLand) {
+    if (p.total_floors == null) gaps.push("этажность дома");
+    if (!p.land_status) gaps.push("назначение участка");
+    if (!p.wc_location_type) gaps.push("расположение санузла");
+  } else if (p.cian_jk_id == null) {
+    gaps.push("ID жилого комплекса на ЦИАН");
+  }
+  return gaps;
+}
+

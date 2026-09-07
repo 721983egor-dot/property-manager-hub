@@ -62,6 +62,11 @@ export type Property = {
   management_fee_type: ManagementFeeType;
   management_fee_value: number | null;
   availability_note: string;
+  beds_count: number | null;
+  repair_type: string;
+  wc_location_type: string;
+  land_status: string;
+  cian_jk_id: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -348,6 +353,12 @@ function normalize(row: Record<string, unknown>): Property {
       ? "amount"
       : "percent") as ManagementFeeType,
     management_fee_value: num(row['management_fee_value']),
+    beds_count: num(row['beds_count']),
+    repair_type: typeof row['repair_type'] === "string" ? (row['repair_type'] as string) : "",
+    wc_location_type:
+      typeof row['wc_location_type'] === "string" ? (row['wc_location_type'] as string) : "",
+    land_status: typeof row['land_status'] === "string" ? (row['land_status'] as string) : "",
+    cian_jk_id: num(row['cian_jk_id']),
     availability_note:
       typeof row['availability_note'] === "string" ? (row['availability_note'] as string) : "",
   };
@@ -416,6 +427,11 @@ export type PropertyInput = {
   management_fee_type: ManagementFeeType;
   management_fee_value: number | null;
   availability_note: string;
+  beds_count: number | null;
+  repair_type: string;
+  wc_location_type: string;
+  land_status: string;
+  cian_jk_id: number | null;
 };
 
 /** Базовый текст условий аренды — подставляется в форму и редактируется. */

@@ -124,6 +124,15 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     initial?.commission != null ? String(initial.commission) : "",
   );
   const [area, setArea] = useState(initial?.area != null ? String(initial.area) : "");
+  const [bedsCount, setBedsCount] = useState(
+    initial?.beds_count != null ? String(initial.beds_count) : "",
+  );
+  const [repairType, setRepairType] = useState(initial?.repair_type ?? "");
+  const [wcLocation, setWcLocation] = useState(initial?.wc_location_type ?? "");
+  const [landStatus, setLandStatus] = useState(initial?.land_status ?? "");
+  const [cianJkId, setCianJkId] = useState(
+    initial?.cian_jk_id != null ? String(initial.cian_jk_id) : "",
+  );
   const [landArea, setLandArea] = useState(
     initial?.land_area != null ? String(initial.land_area) : "",
   );
@@ -314,6 +323,11 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       management_fee_type: feeType,
       management_fee_value: serviceType === "management" ? toNum(feeValue) : null,
       availability_note: serviceType === "commission_only" ? availabilityNote.trim() : "",
+      beds_count: toNum(bedsCount),
+      repair_type: repairType,
+      wc_location_type: isHouse ? wcLocation : "",
+      land_status: isHouse ? landStatus : "",
+      cian_jk_id: isHouse ? null : toNum(cianJkId),
     });
 
   };
@@ -550,6 +564,80 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               Объект появится на публичной странице со списком аренды.
             </span>
           </label>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Данные для площадок</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Эти поля требует ЦИАН. Пока они пустые, объявление в выгрузке считается неполным.
+        </p>
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <Field label="Спальных мест" platforms={["ЦИАН"]}>
+            <Input
+              type="number"
+              min={1}
+              value={bedsCount}
+              onChange={(e) => setBedsCount(e.target.value)}
+              placeholder="4"
+            />
+          </Field>
+          <Field label="Состояние ремонта" platforms={["ЦИАН"]}>
+            <Select value={repairType || "none"} onValueChange={(v) => setRepairType(v === "none" ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Не указано" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Не указано</SelectItem>
+                <SelectItem value="cosmetic">Косметический</SelectItem>
+                <SelectItem value="euro">Евроремонт</SelectItem>
+                <SelectItem value="design">Дизайнерский</SelectItem>
+                <SelectItem value="no">Без ремонта</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          {isHouse ? (
+            <>
+              <Field label="Санузел" platforms={["ЦИАН"]}>
+                <Select value={wcLocation || "none"} onValueChange={(v) => setWcLocation(v === "none" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Не указано" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Не указано</SelectItem>
+                    <SelectItem value="indoors">В доме</SelectItem>
+                    <SelectItem value="outdoors">На улице</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Назначение участка" platforms={["ЦИАН"]}>
+                <Select value={landStatus || "none"} onValueChange={(v) => setLandStatus(v === "none" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Не указано" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Не указано</SelectItem>
+                    <SelectItem value="individualHousingConstruction">ИЖС</SelectItem>
+                    <SelectItem value="gardening">Садоводство</SelectItem>
+                    <SelectItem value="suburbanNonProfitPartnership">Дачное некоммерческое партнёрство</SelectItem>
+                    <SelectItem value="privateFarm">Личное подсобное хозяйство</SelectItem>
+                    <SelectItem value="farm">Фермерское хозяйство</SelectItem>
+                    <SelectItem value="industrialLand">Земля промышленного назначения</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </>
+          ) : (
+            <Field label="ID жилого комплекса на ЦИАН" platforms={["ЦИАН"]}>
+              <Input
+                type="number"
+                min={1}
+                value={cianJkId}
+                onChange={(e) => setCianJkId(e.target.value)}
+                placeholder="123456"
+              />
+            </Field>
+          )}
         </div>
       </section>
 

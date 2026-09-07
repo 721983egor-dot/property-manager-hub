@@ -306,5 +306,19 @@ export const getCianFeedInfo = createServerFn({ method: "GET" }).handler(async (
     inFeed: selection.included.length,
     withErrors: selection.skipped.length,
     feedPath: "/api/public/feeds/cian.xml",
+    issues: [
+      ...selection.skipped.map((s) => ({
+        label: `${s.property.ref_id} — ${s.property.title}`,
+        fields: s.missing,
+        blocking: true,
+      })),
+      ...selection.included
+        .filter((i) => i.gaps.length > 0)
+        .map((i) => ({
+          label: `${i.property.ref_id} — ${i.property.title}`,
+          fields: i.gaps,
+          blocking: false,
+        })),
+    ],
   };
 });
