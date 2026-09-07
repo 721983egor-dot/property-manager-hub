@@ -6,7 +6,7 @@ export function ChatText({ text, className }: { text: string; className?: string
   return (
     <p className={"whitespace-pre-wrap break-words " + (className ?? "")}>
       {parts.map((part, i) =>
-        URL_RE.test(part) && part.startsWith("http") ? (
+        part.startsWith("http://") || part.startsWith("https://") ? (
           <a
             key={i}
             href={part}
