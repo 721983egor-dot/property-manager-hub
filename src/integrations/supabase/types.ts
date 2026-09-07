@@ -801,7 +801,7 @@ export type Database = {
       booking_source: "avito" | "cian" | "website" | "social" | "referral"
       booking_status: "active" | "cancelled" | "completed"
       lead_status: "new" | "in_work" | "done" | "rejected"
-      listing_platform: "site" | "avito" | "cian"
+      listing_platform: "site" | "avito" | "cian" | "yandex"
       management_fee_type: "percent" | "amount"
       property_event_type:
         | "page_view"
@@ -943,7 +943,7 @@ export const Constants = {
       booking_source: ["avito", "cian", "website", "social", "referral"],
       booking_status: ["active", "cancelled", "completed"],
       lead_status: ["new", "in_work", "done", "rejected"],
-      listing_platform: ["site", "avito", "cian"],
+      listing_platform: ["site", "avito", "cian", "yandex"],
       management_fee_type: ["percent", "amount"],
       property_event_type: [
         "page_view",

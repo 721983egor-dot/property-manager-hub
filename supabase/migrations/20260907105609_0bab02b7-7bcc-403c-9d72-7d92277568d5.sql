@@ -1,0 +1,1 @@
+ALTER TYPE public.listing_platform ADD VALUE IF NOT EXISTS 'yandex';
