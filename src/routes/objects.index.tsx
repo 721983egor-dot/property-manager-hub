@@ -95,6 +95,7 @@ function ObjectsPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [name, setName] = useState("");
   const [comment, setComment] = useState("");
   const [saveList, setSaveList] = useState(false);
 
@@ -175,6 +176,7 @@ function ObjectsPage() {
         toast.success("Ссылка на подборку скопирована");
       });
       setSelectedIds(new Set());
+      setName("");
       setComment("");
       setSaveList(false);
       setDialogOpen(false);
