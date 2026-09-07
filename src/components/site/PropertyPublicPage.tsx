@@ -679,8 +679,8 @@ export function PropertyPublicPage({
               <div className="flex flex-wrap items-center gap-3">
                 {contactButton()}
                 <CartToggleButton propertyId={property.id} variant="inline" />
-                {shareButton}
               </div>
+
               {property.price_month != null ? (
                 <p className="whitespace-nowrap font-body text-[28px] font-bold tracking-tight">
                   {formatMoney(property.price_month)}
