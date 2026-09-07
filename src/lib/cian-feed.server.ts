@@ -3,7 +3,7 @@
  * Только сервер: читает объекты и публикации через сервисный клиент.
  */
 
-import { missingCianFields } from "@/lib/cian";
+import { cianSchemaGaps, missingCianFields } from "@/lib/cian";
 import type { Property } from "@/lib/properties";
 
 type Row = Record<string, unknown>;
@@ -38,7 +38,7 @@ function cianCategory(type: string): string {
 }
 
 export type FeedSelection = {
-  included: { property: Property; externalId: string }[];
+  included: { property: Property; externalId: string; gaps: string[] }[];
   skipped: { property: Property; missing: string[] }[];
   autoPublish: boolean;
 };
@@ -88,7 +88,7 @@ export async function computeFeedSelection(): Promise<FeedSelection> {
 
     // У связанных сверкой объявлений оставляем их ID ЦИАН, остальным — UUID объекта.
     const externalId = String(listing?.["external_id"] || property.id);
-    included.push({ property, externalId });
+    included.push({ property, externalId, gaps: cianSchemaGaps(property) });
   }
 
   return { included, skipped, autoPublish };
