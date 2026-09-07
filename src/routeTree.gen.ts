@@ -37,6 +37,8 @@ import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
 import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
 import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
+import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
+import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -178,6 +180,17 @@ const ApiPublicCronCianSyncRoute = ApiPublicCronCianSyncRouteImport.update({
   path: '/api/public/cron/cian-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicFeedPhotoSplatRoute = ApiPublicFeedPhotoSplatRouteImport.update({
+  id: '/api/public/feed-photo/$',
+  path: '/api/public/feed-photo/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicFeedsCianDotxmlRoute =
+  ApiPublicFeedsCianDotxmlRouteImport.update({
+    id: '/api/public/feeds/cian.xml',
+    path: '/api/public/feeds/cian.xml',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -208,6 +221,8 @@ export interface FileRoutesByFullPath {
   '/crm/leads/': typeof CrmLeadsIndexRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
+  '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -237,6 +252,8 @@ export interface FileRoutesByTo {
   '/crm/leads': typeof CrmLeadsIndexRoute
   '/objects/$id': typeof ObjectsIdIndexRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
+  '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -268,6 +285,8 @@ export interface FileRoutesById {
   '/crm/leads/': typeof CrmLeadsIndexRoute
   '/objects/$id/': typeof ObjectsIdIndexRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
+  '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -300,6 +319,8 @@ export interface FileRouteTypes {
     | '/crm/leads/'
     | '/objects/$id/'
     | '/api/public/cron/cian-sync'
+    | '/api/public/feed-photo/$'
+    | '/api/public/feeds/cian.xml'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -329,6 +350,8 @@ export interface FileRouteTypes {
     | '/crm/leads'
     | '/objects/$id'
     | '/api/public/cron/cian-sync'
+    | '/api/public/feed-photo/$'
+    | '/api/public/feeds/cian.xml'
   id:
     | '__root__'
     | '/'
@@ -359,6 +382,8 @@ export interface FileRouteTypes {
     | '/crm/leads/'
     | '/objects/$id/'
     | '/api/public/cron/cian-sync'
+    | '/api/public/feed-photo/$'
+    | '/api/public/feeds/cian.xml'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -388,6 +413,8 @@ export interface RootRouteChildren {
   CrmLeadsIndexRoute: typeof CrmLeadsIndexRoute
   ObjectsIdIndexRoute: typeof ObjectsIdIndexRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
+  ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
+  ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -588,6 +615,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronCianSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/feed-photo/$': {
+      id: '/api/public/feed-photo/$'
+      path: '/api/public/feed-photo/$'
+      fullPath: '/api/public/feed-photo/$'
+      preLoaderRoute: typeof ApiPublicFeedPhotoSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/feeds/cian.xml': {
+      id: '/api/public/feeds/cian.xml'
+      path: '/api/public/feeds/cian.xml'
+      fullPath: '/api/public/feeds/cian.xml'
+      preLoaderRoute: typeof ApiPublicFeedsCianDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -630,6 +671,8 @@ const rootRouteChildren: RootRouteChildren = {
   CrmLeadsIndexRoute: CrmLeadsIndexRoute,
   ObjectsIdIndexRoute: ObjectsIdIndexRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
+  ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
+  ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
