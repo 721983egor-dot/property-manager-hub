@@ -16,7 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { getPropertyStats } from "@/lib/analytics.functions";
-import { syncCianMessages, syncCianStats } from "@/lib/cian.functions";
+import { setCianPublished, syncCianMessages, syncCianStats } from "@/lib/cian.functions";
 
 import { PLATFORMS, fetchPropertyListings, setSitePublished } from "@/lib/listings";
 import { fetchProperty, internalTitle } from "@/lib/properties";
@@ -53,6 +53,8 @@ function PromoDetailPage() {
   const qc = useQueryClient();
   const [rangeKey, setRangeKey] = useState<(typeof RANGES)[number]["key"]>("30");
   const [busy, setBusy] = useState(false);
+  const [cianBusy, setCianBusy] = useState(false);
+  const setCian = useServerFn(setCianPublished);
 
   const days = RANGES.find((r) => r.key === rangeKey)!.days;
   const to = toISODate(new Date());
@@ -101,6 +103,21 @@ function PromoDetailPage() {
     { impressions: 0, views: 0, contact_views: 0, calls: 0, messages: 0, favorites: 0 },
   );
 
+
+  /** Включает или убирает объект из фида ЦИАН. */
+  async function toggleCian(published: boolean) {
+    setCianBusy(true);
+    try {
+      await setCian({ data: { propertyId: id, published: !published } });
+      await qc.invalidateQueries({ queryKey: ["property-listings", id] });
+      await qc.invalidateQueries({ queryKey: ["property-listings"] });
+      toast.success(published ? "Убран из фида ЦИАН" : "Добавлен в фид ЦИАН");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию на ЦИАН");
+    } finally {
+      setCianBusy(false);
+    }
+  }
 
   async function togglePublish() {
     if (!property) return;
@@ -179,6 +196,27 @@ function PromoDetailPage() {
                 ) : null}
                 {!platform.available ? (
                   <p className="mt-2 text-xs text-muted-foreground">Подключение по API — скоро</p>
+                ) : null}
+                {platform.value === "cian" && property ? (
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      variant={published ? "outline" : "default"}
+                      disabled={cianBusy}
+                      onClick={() => toggleCian(published)}
+                    >
+                      <Globe className="size-3.5" />
+                      {published ? "Снять с ЦИАН" : "Опубликовать на ЦИАН"}
+                    </Button>
+                    {published && row?.last_synced_at ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Синхронизация: {new Date(row.last_synced_at).toLocaleString("ru-RU")}
+                      </p>
+                    ) : null}
+                    {row?.sync_error ? (
+                      <p className="mt-2 text-xs text-destructive">{row.sync_error}</p>
+                    ) : null}
+                  </div>
                 ) : null}
               </li>
             );

@@ -1,12 +1,18 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, ChevronLeft, HelpCircle, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Copy, HelpCircle, RefreshCw, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { fetchCianOffers, linkCianOffers, testCianConnection } from "@/lib/cian.functions";
+import {
+  fetchCianOffers,
+  getCianFeedInfo,
+  linkCianOffers,
+  setCianAutoPublish,
+  testCianConnection,
+} from "@/lib/cian.functions";
 import { matchOffers, type MatchConfidence } from "@/lib/cian";
 import { fetchListings } from "@/lib/listings";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
@@ -40,9 +46,12 @@ const CONFIDENCE_LABEL: Record<MatchConfidence, string> = {
 
 function CianImportPage() {
   const router = useRouter();
+  const qc = useQueryClient();
   const loadOffers = useServerFn(fetchCianOffers);
   const checkConnection = useServerFn(testCianConnection);
   const saveLinks = useServerFn(linkCianOffers);
+  const loadFeedInfo = useServerFn(getCianFeedInfo);
+  const setAutoPublish = useServerFn(setCianAutoPublish);
 
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -50,6 +59,11 @@ function CianImportPage() {
   const { data: connection } = useQuery({
     queryKey: ["cian-connection"],
     queryFn: () => checkConnection({}),
+  });
+
+  const { data: feedInfo } = useQuery({
+    queryKey: ["cian-feed-info"],
+    queryFn: () => loadFeedInfo({}),
   });
 
   const {
@@ -166,6 +180,8 @@ function CianImportPage() {
           Обновить список
         </Button>
       </header>
+
+      {feedInfo ? <FeedSettings info={feedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["cian-feed-info"] })} toggleAuto={(enabled) => setAutoPublish({ data: { enabled } })} /> : null}
 
       {connection && !connection.connected ? (
         <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
@@ -316,5 +332,77 @@ function CianImportPage() {
         </>
       )}
     </div>
+  );
+}
+
+/** Настройки автопубликации: ссылка на XML-фид и переключатель автозагрузки. */
+function FeedSettings({
+  info,
+  onChanged,
+  toggleAuto,
+}: {
+  info: { autoPublish: boolean; inFeed: number; withErrors: number; feedPath: string };
+  onChanged: () => void;
+  toggleAuto: (enabled: boolean) => Promise<unknown>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const feedUrl = typeof window === "undefined" ? info.feedPath : window.location.origin + info.feedPath;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(feedUrl);
+      toast.success("Ссылка на фид скопирована");
+    } catch {
+      toast.error("Не удалось скопировать ссылку");
+    }
+  }
+
+  async function toggle() {
+    setSaving(true);
+    try {
+      await toggleAuto(!info.autoPublish);
+      toast.success(info.autoPublish ? "Автопубликация выключена" : "Автопубликация включена");
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось изменить настройку");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="mt-6 rounded-xl border border-border bg-card p-5">
+      <h2 className="text-sm font-semibold">Автопубликация через XML-фид</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). Площадка будет забирать
+        файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без
+        лишних действий.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <code className="min-w-[220px] flex-1 truncate rounded-md border border-input bg-muted/50 px-3 py-2 text-xs">
+          {feedUrl}
+        </code>
+        <Button size="sm" variant="outline" onClick={copy}>
+          <Copy className="size-3.5" />
+          Скопировать
+        </Button>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          В фиде сейчас: {info.inFeed}
+          {info.withErrors > 0 ? ` · не хватает данных у ${info.withErrors}` : ""}
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={info.autoPublish}
+            disabled={saving}
+            onChange={toggle}
+            className="size-4 accent-primary"
+          />
+          Публиковать новые объекты автоматически
+        </label>
+      </div>
+    </section>
   );
 }

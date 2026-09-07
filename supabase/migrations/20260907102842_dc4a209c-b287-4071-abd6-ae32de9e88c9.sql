@@ -1,0 +1,1 @@
+ALTER TABLE public.platform_credentials ADD COLUMN IF NOT EXISTS auto_publish boolean NOT NULL DEFAULT false;

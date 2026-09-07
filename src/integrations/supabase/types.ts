@@ -404,6 +404,7 @@ export type Database = {
         Row: {
           account_id: string
           account_label: string
+          auto_publish: boolean
           connected_at: string | null
           created_at: string
           id: string
@@ -415,6 +416,7 @@ export type Database = {
         Insert: {
           account_id?: string
           account_label?: string
+          auto_publish?: boolean
           connected_at?: string | null
           created_at?: string
           id?: string
@@ -426,6 +428,7 @@ export type Database = {
         Update: {
           account_id?: string
           account_label?: string
+          auto_publish?: boolean
           connected_at?: string | null
           created_at?: string
           id?: string
