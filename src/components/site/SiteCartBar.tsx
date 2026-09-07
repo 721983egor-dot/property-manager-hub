@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Heart, Send, Share2, X } from "lucide-react";
+import { CheckCircle2, Heart, MessageCircle, Send, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { trackEvent } from "@/lib/analytics";
@@ -9,6 +9,8 @@ import { submitLead } from "@/lib/leads.functions";
 import { fetchPublishedProperties, formatMoney, signedUrls } from "@/lib/properties";
 import { createSelection } from "@/lib/selections";
 import { cartHint, useSiteCart } from "@/lib/site-cart";
+import { sendVisitorMessage } from "@/lib/chat.functions";
+import { getVisitorKey } from "@/lib/site-chat";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,6 +44,8 @@ export function SiteCartBar() {
   const [listOpen, setListOpen] = useState(false);
   const [leadOpen, setLeadOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [sendingChat, setSendingChat] = useState(false);
+  const sendChat = useServerFn(sendVisitorMessage);
   const [showHint, setShowHint] = useState(() =>
     typeof window === "undefined" ? false : count > 0 && !cartHint.seen(),
   );
@@ -104,6 +108,35 @@ export function SiteCartBar() {
       toast.error("Не удалось создать ссылку. Попробуйте ещё раз.");
     } finally {
       setSharing(false);
+    }
+  };
+
+  const sendToChat = async () => {
+    if (sendingChat) return;
+    setSendingChat(true);
+    try {
+      const selection = await createSelection({
+        propertyIds: ids,
+        name: "Подборка клиента",
+        saved: false,
+        trackEvents: false,
+      });
+      const url = `${window.location.origin}/p/${selection.code}`;
+      const list = selected.map((p, i) => `${i + 1}. ${p.title}`).join("\n");
+      await sendChat({
+        data: {
+          visitorKey: getVisitorKey(),
+          body: `Мне понравились эти объекты:\n${list}\n\nМоя подборка: ${url}`,
+          page: window.location.pathname,
+        },
+      });
+      setListOpen(false);
+      window.dispatchEvent(new CustomEvent("rm-open-chat"));
+      toast.success("Подборка отправлена менеджеру в чат");
+    } catch {
+      toast.error("Не удалось отправить подборку в чат. Попробуйте ещё раз.");
+    } finally {
+      setSendingChat(false);
     }
   };
 
@@ -182,6 +215,17 @@ export function SiteCartBar() {
                 <Share2 className="size-4" />
                 {sharing ? "Создаём…" : "Поделиться"}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={sendToChat}
+                disabled={sendingChat}
+                title="Отправить подборку менеджеру в чат"
+                className="h-10 border-site-line px-4 text-sm text-site-navy hover:border-site-gold/60"
+              >
+                <MessageCircle className="size-4" />
+                {sendingChat ? "Отправляем…" : "В чат менеджеру"}
+              </Button>
               <button
                 type="button"
                 onClick={clear}
@@ -251,6 +295,16 @@ export function SiteCartBar() {
             >
               <Send className="size-4" />
               Записаться на просмотр
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={sendToChat}
+              disabled={sendingChat}
+              className="h-11 border-site-line text-site-navy hover:border-site-gold/60"
+            >
+              <MessageCircle className="size-4" />
+              {sendingChat ? "Отправляем…" : "Отправить менеджеру в чат"}
             </Button>
             <Button
               type="button"

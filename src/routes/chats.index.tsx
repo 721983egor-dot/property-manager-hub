@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CheckCheck, SendHorizonal, Trash2, UserPlus } from "lucide-react";
+import { CheckCheck, ListPlus, SendHorizonal, Trash2, UserPlus } from "lucide-react";
 
 import {
   createLeadFromThread,
@@ -17,6 +17,8 @@ import {
   updateThreadContact,
 } from "@/lib/chat.functions";
 import { Button } from "@/components/ui/button";
+import { ChatText } from "@/components/ChatText";
+import { SendSelectionDialog } from "@/components/SendSelectionDialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -42,6 +44,7 @@ function ChatsPage() {
   const [text, setText] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [selectionOpen, setSelectionOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   const { data: threadsData } = useQuery({
@@ -187,6 +190,10 @@ function ChatsPage() {
                   Сохранить
                 </Button>
                 <div className="ml-auto flex items-center gap-2">
+                  <Button size="sm" onClick={() => setSelectionOpen(true)}>
+                    <ListPlus className="size-4" />
+                    Отправить подборку
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -226,7 +233,7 @@ function ChatsPage() {
                         : "ml-auto bg-primary text-primary-foreground")
                     }
                   >
-                    <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                    <ChatText text={m.body} />
                     <p className="mt-0.5 text-[10px] opacity-70">
                       {format(new Date(m.created_at), "d MMM, HH:mm", { locale: ru })}
                     </p>
@@ -261,6 +268,16 @@ function ChatsPage() {
                   Отправить
                 </Button>
               </form>
+
+              <SendSelectionDialog
+                open={selectionOpen}
+                onOpenChange={setSelectionOpen}
+                threadId={active.id}
+                onSent={() => {
+                  queryClient.invalidateQueries({ queryKey: ["chat-messages", active.id] });
+                  queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+                }}
+              />
             </>
           )}
         </section>

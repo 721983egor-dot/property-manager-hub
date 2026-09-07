@@ -8,6 +8,7 @@ import {
   type ChatMessage,
 } from "@/lib/chat.functions";
 import { chatTime, getVisitorKey } from "@/lib/site-chat";
+import { ChatText } from "@/components/ChatText";
 
 /** Переписка клиента с менеджером прямо на сайте. */
 export function SiteChatPanel() {
@@ -34,9 +35,11 @@ export function SiteChatPanel() {
       }
     };
     void tick();
+    window.addEventListener("rm-chat-refresh", tick);
     const timer = window.setInterval(tick, 5000);
     return () => {
       cancelled = true;
+      window.removeEventListener("rm-chat-refresh", tick);
       window.clearInterval(timer);
     };
   }, [load]);
@@ -94,7 +97,7 @@ export function SiteChatPanel() {
                   : "self-start bg-site-navy-soft text-site-navy")
               }
             >
-              <p className="whitespace-pre-wrap break-words">{m.body}</p>
+              <ChatText text={m.body} />
               <p className="mt-0.5 text-[10px] opacity-60">{chatTime(m.created_at)}</p>
             </div>
           ))
