@@ -232,7 +232,7 @@ function PromoListPage() {
                               at: null,
                               externalUrl: "",
                             });
-                      const isCian = platform.value === "cian";
+                      const isFeed = platform.value === "cian" || platform.value === "yandex";
                       return (
                         <li
                           key={platform.value}
@@ -252,7 +252,7 @@ function PromoListPage() {
                               </span>
                             ) : null}
                           </span>
-                          {isCian ? (
+                          {isFeed ? (
                             state.published ? (
                               <span className="flex items-center gap-2">
                                 {state.externalUrl ? (
@@ -266,8 +266,10 @@ function PromoListPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  disabled={busy === p.id + "cian"}
-                                  onClick={() => toggleCian(p, true)}
+                                  disabled={busy === p.id + platform.value}
+                                  onClick={() =>
+                                    toggleFeed(p, platform.value as "cian" | "yandex", true)
+                                  }
                                 >
                                   Снять
                                 </Button>
@@ -277,18 +279,22 @@ function PromoListPage() {
                                 <Button
                                   size="sm"
                                   variant="default"
-                                  disabled={busy === p.id + "cian"}
-                                  onClick={() => toggleCian(p, false)}
+                                  disabled={busy === p.id + platform.value}
+                                  onClick={() =>
+                                    toggleFeed(p, platform.value as "cian" | "yandex", false)
+                                  }
                                 >
                                   <Globe className="size-3.5" />
                                   Опубликовать
                                 </Button>
-                                <Button asChild size="sm" variant="ghost">
-                                  <Link to="/promo/import" title="Связать с объявлением на ЦИАН">
-                                    <Link2 className="size-3.5" />
-                                    Связать
-                                  </Link>
-                                </Button>
+                                {platform.value === "cian" ? (
+                                  <Button asChild size="sm" variant="ghost">
+                                    <Link to="/promo/import" title="Связать с объявлением на ЦИАН">
+                                      <Link2 className="size-3.5" />
+                                      Связать
+                                    </Link>
+                                  </Button>
+                                ) : null}
                               </span>
                             )
                           ) : platform.available ? (
