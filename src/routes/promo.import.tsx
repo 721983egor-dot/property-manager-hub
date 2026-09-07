@@ -193,6 +193,9 @@ function CianImportPage() {
 
       {yandexFeedInfo ? <FeedSettings label="Яндекс Недвижимость" cabinetHint="Вставьте ссылку на фид в кабинете Яндекс Недвижимости (раздел загрузки объявлений агентства). Площадка будет забирать файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без лишних действий." info={yandexFeedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["yandex-feed-info"] })} toggleAuto={(enabled) => setYandexAuto({ data: { enabled } })} /> : null}
 
+      <YandexApiPanel />
+
+
       {connection && !connection.connected ? (
         <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
           <h2 className="text-sm font-semibold">Кабинет ЦИАН не подключён</h2>
