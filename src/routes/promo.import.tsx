@@ -1,12 +1,18 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, ChevronLeft, HelpCircle, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Copy, HelpCircle, RefreshCw, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { fetchCianOffers, linkCianOffers, testCianConnection } from "@/lib/cian.functions";
+import {
+  fetchCianOffers,
+  getCianFeedInfo,
+  linkCianOffers,
+  setCianAutoPublish,
+  testCianConnection,
+} from "@/lib/cian.functions";
 import { matchOffers, type MatchConfidence } from "@/lib/cian";
 import { fetchListings } from "@/lib/listings";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
@@ -40,9 +46,12 @@ const CONFIDENCE_LABEL: Record<MatchConfidence, string> = {
 
 function CianImportPage() {
   const router = useRouter();
+  const qc = useQueryClient();
   const loadOffers = useServerFn(fetchCianOffers);
   const checkConnection = useServerFn(testCianConnection);
   const saveLinks = useServerFn(linkCianOffers);
+  const loadFeedInfo = useServerFn(getCianFeedInfo);
+  const setAutoPublish = useServerFn(setCianAutoPublish);
 
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -50,6 +59,11 @@ function CianImportPage() {
   const { data: connection } = useQuery({
     queryKey: ["cian-connection"],
     queryFn: () => checkConnection({}),
+  });
+
+  const { data: feedInfo } = useQuery({
+    queryKey: ["cian-feed-info"],
+    queryFn: () => loadFeedInfo({}),
   });
 
   const {
@@ -166,6 +180,8 @@ function CianImportPage() {
           Обновить список
         </Button>
       </header>
+
+      {feedInfo ? <FeedSettings info={feedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["cian-feed-info"] })} toggleAuto={(enabled) => setAutoPublish({ data: { enabled } })} /> : null}
 
       {connection && !connection.connected ? (
         <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
