@@ -7,7 +7,7 @@ import {
   SITE_TELEGRAM,
   SITE_WHATSAPP,
 } from "@/lib/site";
-import { SiteLeadForm } from "@/components/site/SiteLeadForm";
+import { SiteChatPanel } from "@/components/site/SiteChatPanel";
 import { useSiteCart } from "@/lib/site-cart";
 
 /** Плавающий чат: WhatsApp, Telegram, звонок и сообщение через форму. */
@@ -55,11 +55,11 @@ export function SiteChatWidget() {
             </a>
           </div>
 
-          <div className="px-4 pb-4 pt-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-site-muted">
-              Или оставьте сообщение
+          <div className="mt-4 border-t border-site-line pt-1">
+            <p className="px-4 pt-2 text-xs font-semibold uppercase tracking-wider text-site-muted">
+              Или напишите нам здесь
             </p>
-            <SiteLeadForm source="site-chat" buttonLabel="Отправить сообщение" />
+            <SiteChatPanel />
           </div>
         </div>
       )}
