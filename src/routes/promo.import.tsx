@@ -15,6 +15,12 @@ import {
 } from "@/lib/cian.functions";
 import { matchOffers, type MatchConfidence } from "@/lib/cian";
 import { getYandexFeedInfo, setYandexAutoPublish } from "@/lib/yandex-realty.functions";
+import {
+  getYandexFeedStatus,
+  syncYandexStats,
+  type YandexFeedStatus,
+  type YandexStatsResult,
+} from "@/lib/yandex-stats.functions";
 import { fetchListings } from "@/lib/listings";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 
@@ -192,6 +198,9 @@ function CianImportPage() {
       {feedInfo ? <FeedSettings label="ЦИАН" cabinetHint="Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). Площадка будет забирать файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без лишних действий." info={feedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["cian-feed-info"] })} toggleAuto={(enabled) => setAutoPublish({ data: { enabled } })} /> : null}
 
       {yandexFeedInfo ? <FeedSettings label="Яндекс Недвижимость" cabinetHint="Вставьте ссылку на фид в кабинете Яндекс Недвижимости (раздел загрузки объявлений агентства). Площадка будет забирать файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без лишних действий." info={yandexFeedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["yandex-feed-info"] })} toggleAuto={(enabled) => setYandexAuto({ data: { enabled } })} /> : null}
+
+      <YandexApiPanel />
+
 
       {connection && !connection.connected ? (
         <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
@@ -413,6 +422,104 @@ function FeedSettings({
           Публиковать новые объекты автоматически
         </label>
       </div>
+    </section>
+  );
+}
+
+/** Проверка фида и статистика через партнёрское API Яндекс Недвижимости. */
+function YandexApiPanel() {
+  const checkFeed = useServerFn(getYandexFeedStatus);
+  const loadStats = useServerFn(syncYandexStats);
+  const [busy, setBusy] = useState<"feed" | "stats" | null>(null);
+  const [status, setStatus] = useState<YandexFeedStatus | null>(null);
+  const [stats, setStats] = useState<YandexStatsResult | null>(null);
+
+  async function runFeed() {
+    setBusy("feed");
+    try {
+      setStatus(await checkFeed({}));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось получить статус фида");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function runStats() {
+    setBusy("stats");
+    try {
+      const res = await loadStats({ data: { days: 30 } });
+      setStats(res);
+      if (res.configured) toast.success("Статистика обновлена");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось получить статистику");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const notConfigured =
+    (status && !status.configured) || (stats && !stats.configured);
+
+  return (
+    <section className="mt-6 rounded-xl border border-border bg-card p-5">
+      <h2 className="text-sm font-semibold">Проверка объявлений на Яндекс Недвижимости</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Показывает, какие объявления площадка приняла, а какие отклонила и почему, и подтягивает
+        просмотры со звонками за последние 30 дней.
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" disabled={busy !== null} onClick={runFeed}>
+          <RefreshCw className={busy === "feed" ? "size-3.5 animate-spin" : "size-3.5"} />
+          Проверить фид
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy !== null} onClick={runStats}>
+          <RefreshCw className={busy === "stats" ? "size-3.5 animate-spin" : "size-3.5"} />
+          Обновить статистику
+        </Button>
+      </div>
+
+      {notConfigured ? (
+        <p className="mt-3 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+          Пока не хватает данных от Яндекса: нужен clientID и ключ доступа. Как их пришлют —
+          сохраним, и обе кнопки заработают сразу.
+        </p>
+      ) : null}
+
+      {status?.configured ? (
+        <div className="mt-4 text-sm">
+          <p className="text-muted-foreground">
+            Всего объявлений: {status.total} · принято: {status.accepted} · отклонено:{" "}
+            {status.rejected}
+          </p>
+          {status.problems.length > 0 ? (
+            <ul className="mt-2 grid gap-1">
+              {status.problems.map((p) => (
+                <li key={p.externalId} className="flex items-start gap-2">
+                  <XCircle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+                  <span>
+                    <span className="font-medium">{p.externalId}</span> — {p.message}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 flex items-center gap-2 text-muted-foreground">
+              <CheckCircle2 className="size-3.5 text-emerald-600" />
+              Ошибок нет
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      {stats?.configured ? (
+        <div className="mt-4 text-sm text-muted-foreground">
+          Период {stats.from} — {stats.to}: объявлений {stats.offers.length}, просмотров{" "}
+          {stats.offers.reduce((s, o) => s + o.views, 0)}, звонков{" "}
+          {stats.offers.reduce((s, o) => s + o.calls, 0)}
+        </div>
+      ) : null}
     </section>
   );
 }
