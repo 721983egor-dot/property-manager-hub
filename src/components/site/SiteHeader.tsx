@@ -8,13 +8,7 @@ import {
   SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
 } from "@/lib/site";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { SiteLeadForm } from "@/components/site/SiteLeadForm";
+import { ContactMenu } from "@/components/site/ContactMenu";
 import logo from "@/assets/site/logo_navy.png";
 
 const NAV = [
@@ -27,7 +21,6 @@ const NAV = [
 export function SiteHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
-  const [leadOpen, setLeadOpen] = useState(false);
 
   const isActive = (to: string) =>
     to === "/" ? pathname === "/" : pathname.startsWith(to);
@@ -81,12 +74,14 @@ export function SiteHeader() {
           >
             {SITE_PHONE_DISPLAY}
           </a>
-          <button
-            onClick={() => setLeadOpen(true)}
-            className="hidden rounded-md bg-site-gold px-4 py-2 text-[13px] font-semibold text-site-navy transition-colors hover:bg-site-gold/85 sm:block"
-          >
-            Связаться с нами
-          </button>
+          <ContactMenu>
+            <button
+              type="button"
+              className="hidden cursor-pointer rounded-md bg-site-gold px-4 py-2 text-[13px] font-semibold text-site-navy transition-colors hover:bg-site-gold/85 sm:block"
+            >
+              Связаться с нами
+            </button>
+          </ContactMenu>
           <button
             className="rounded-md p-2 text-site-navy lg:hidden"
             onClick={() => setMenuOpen((v) => !v)}
@@ -116,32 +111,18 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                setLeadOpen(true);
-              }}
-              className="mt-2 rounded-md bg-site-gold px-4 py-2.5 text-sm font-semibold text-site-navy"
-            >
-              Связаться с нами
-            </button>
+            <ContactMenu contentClassName="w-full min-w-[12rem]">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                className="mt-2 w-full cursor-pointer rounded-md bg-site-gold px-4 py-2.5 text-left text-sm font-semibold text-site-navy"
+              >
+                Связаться с нами
+              </button>
+            </ContactMenu>
           </div>
         </nav>
       )}
-
-      <Dialog open={leadOpen} onOpenChange={setLeadOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-site text-site-navy">
-              Связаться c нами
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-site-muted">
-            Заполните форму и мы свяжемся с вами в ближайшее время
-          </p>
-          <SiteLeadForm source="site-header" buttonLabel="Заказать звонок" />
-        </DialogContent>
-      </Dialog>
     </header>
   );
 }
