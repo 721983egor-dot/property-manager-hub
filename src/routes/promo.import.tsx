@@ -334,3 +334,75 @@ function CianImportPage() {
     </div>
   );
 }
+
+/** Настройки автопубликации: ссылка на XML-фид и переключатель автозагрузки. */
+function FeedSettings({
+  info,
+  onChanged,
+  toggleAuto,
+}: {
+  info: { autoPublish: boolean; inFeed: number; withErrors: number; feedPath: string };
+  onChanged: () => void;
+  toggleAuto: (enabled: boolean) => Promise<unknown>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const feedUrl = typeof window === "undefined" ? info.feedPath : window.location.origin + info.feedPath;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(feedUrl);
+      toast.success("Ссылка на фид скопирована");
+    } catch {
+      toast.error("Не удалось скопировать ссылку");
+    }
+  }
+
+  async function toggle() {
+    setSaving(true);
+    try {
+      await toggleAuto(!info.autoPublish);
+      toast.success(info.autoPublish ? "Автопубликация выключена" : "Автопубликация включена");
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось изменить настройку");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="mt-6 rounded-xl border border-border bg-card p-5">
+      <h2 className="text-sm font-semibold">Автопубликация через XML-фид</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). Площадка будет забирать
+        файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без
+        лишних действий.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <code className="min-w-[220px] flex-1 truncate rounded-md border border-input bg-muted/50 px-3 py-2 text-xs">
+          {feedUrl}
+        </code>
+        <Button size="sm" variant="outline" onClick={copy}>
+          <Copy className="size-3.5" />
+          Скопировать
+        </Button>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          В фиде сейчас: {info.inFeed}
+          {info.withErrors > 0 ? ` · не хватает данных у ${info.withErrors}` : ""}
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={info.autoPublish}
+            disabled={saving}
+            onChange={toggle}
+            className="size-4 accent-primary"
+          />
+          Публиковать новые объекты автоматически
+        </label>
+      </div>
+    </section>
+  );
+}
