@@ -25,40 +25,46 @@ export function SiteChatWidget() {
   return (
     <div className={`fixed right-4 z-50 flex flex-col items-end gap-3 ${bottom} md:right-6`}>
       {open && (
-        <div className="w-[min(92vw,340px)] overflow-hidden rounded-2xl border border-site-line bg-white shadow-2xl">
+          <div className="w-[min(92vw,340px)] overflow-hidden rounded-2xl border border-site-line bg-white shadow-2xl">
           <div className="bg-site-navy px-5 py-4 text-site-navy-foreground">
-            <p className="font-site text-base font-semibold">Чем можем помочь?</p>
-            <p className="mt-1 text-xs text-white/70">
-              Напишите нам удобным способом — ответим в рабочее время
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2 px-4 pt-4">
-            <a
-              href={SITE_WHATSAPP}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-3 rounded-xl border border-site-line px-3 py-2.5 text-sm font-medium text-site-navy transition-colors hover:border-site-gold hover:bg-site-gold-soft"
-            >
-              <MessageCircle className="size-4 text-site-gold" />
-              Написать в WhatsApp
-            </a>
-            <a
-              href={SITE_TELEGRAM}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-3 rounded-xl border border-site-line px-3 py-2.5 text-sm font-medium text-site-navy transition-colors hover:border-site-gold hover:bg-site-gold-soft"
-            >
-              <Send className="size-4 text-site-gold" />
-              Написать в Telegram
-            </a>
-            <a
-              href={SITE_PHONE_TEL}
-              className="flex items-center gap-3 rounded-xl border border-site-line px-3 py-2.5 text-sm font-medium text-site-navy transition-colors hover:border-site-gold hover:bg-site-gold-soft"
-            >
-              <Phone className="size-4 text-site-gold" />
-              {SITE_PHONE_DISPLAY}
-            </a>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-site text-base font-semibold">Чем можем помочь?</p>
+                <p className="mt-1 text-xs text-white/70">
+                  Напишите нам — ответим в рабочее время
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <a
+                  href={SITE_WHATSAPP}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="WhatsApp"
+                  aria-label="Написать в WhatsApp"
+                  className="flex size-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-site-gold"
+                >
+                  <MessageCircle className="size-5" />
+                </a>
+                <a
+                  href={SITE_TELEGRAM}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Telegram"
+                  aria-label="Написать в Telegram"
+                  className="flex size-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-site-gold"
+                >
+                  <Send className="size-5" />
+                </a>
+                <a
+                  href={SITE_PHONE_TEL}
+                  title="Позвонить"
+                  aria-label={SITE_PHONE_DISPLAY}
+                  className="flex size-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-site-gold"
+                >
+                  <Phone className="size-5" />
+                </a>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 border-t border-site-line pt-1">
