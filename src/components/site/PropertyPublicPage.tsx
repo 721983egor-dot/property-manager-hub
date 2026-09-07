@@ -3,6 +3,7 @@ import { ClientOnly } from "@tanstack/react-router";
 import { Check, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 
 import { YandexMap } from "@/components/YandexMap";
+import { CartToggleButton } from "@/components/site/CartToggleButton";
 
 import {
   APPLIANCE_OPTIONS,
@@ -668,8 +669,9 @@ export function PropertyPublicPage({
 
             {/* Итоговая строка: кнопки + цена */}
             <div className="mt-8 flex flex-wrap items-center justify-between gap-5">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 {contactButton()}
+                <CartToggleButton propertyId={property.id} variant="inline" />
                 {shareButton}
               </div>
               {property.price_month != null ? (
