@@ -16,7 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { getPropertyStats } from "@/lib/analytics.functions";
-import { syncCianMessages, syncCianStats } from "@/lib/cian.functions";
+import { setCianPublished, syncCianMessages, syncCianStats } from "@/lib/cian.functions";
 
 import { PLATFORMS, fetchPropertyListings, setSitePublished } from "@/lib/listings";
 import { fetchProperty, internalTitle } from "@/lib/properties";
@@ -179,6 +179,27 @@ function PromoDetailPage() {
                 ) : null}
                 {!platform.available ? (
                   <p className="mt-2 text-xs text-muted-foreground">Подключение по API — скоро</p>
+                ) : null}
+                {platform.value === "cian" && property ? (
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      variant={published ? "outline" : "default"}
+                      disabled={cianBusy}
+                      onClick={() => toggleCian(published)}
+                    >
+                      <Globe className="size-3.5" />
+                      {published ? "Снять с ЦИАН" : "Опубликовать на ЦИАН"}
+                    </Button>
+                    {published && row?.last_synced_at ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Синхронизация: {new Date(row.last_synced_at).toLocaleString("ru-RU")}
+                      </p>
+                    ) : null}
+                    {row?.sync_error ? (
+                      <p className="mt-2 text-xs text-destructive">{row.sync_error}</p>
+                    ) : null}
+                  </div>
                 ) : null}
               </li>
             );
