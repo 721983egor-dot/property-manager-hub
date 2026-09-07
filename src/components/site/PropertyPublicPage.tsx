@@ -290,11 +290,13 @@ export function PropertyPublicPage({
       onClick={copyLink}
       aria-label="Поделиться"
       title={copied ? "Ссылка скопирована" : "Поделиться"}
-      className="grid size-14 shrink-0 place-items-center rounded-2xl bg-site-navy text-site-navy-foreground transition-colors hover:bg-site-navy/90"
+      className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-site-line bg-background px-4 text-[14px] font-medium text-site-navy transition-colors hover:border-site-navy/20 hover:bg-site-navy-soft"
     >
-      {copied ? <Check className="size-5 text-site-green" /> : <Share2 className="size-5" />}
+      {copied ? <Check className="size-4 text-site-green" /> : <Share2 className="size-4" />}
+      {copied ? "Скопировано" : "Поделиться"}
     </button>
   );
+
 
   const arrowButton = (
     onClick: () => void,
