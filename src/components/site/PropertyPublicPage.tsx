@@ -4,6 +4,7 @@ import { Check, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 
 import { YandexMap } from "@/components/YandexMap";
 import { CartToggleButton } from "@/components/site/CartToggleButton";
+import { ContactMenu } from "@/components/site/ContactMenu";
 
 import {
   APPLIANCE_OPTIONS,
@@ -272,16 +273,17 @@ export function PropertyPublicPage({
   }
 
   const contactButton = (className = "") => (
-    <button
-      type="button"
-      onClick={onContact}
-      className={
-        "h-14 w-[240px] max-w-full shrink-0 rounded-2xl bg-site-navy px-10 text-[16px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
-        className
-      }
-    >
-      Связаться
-    </button>
+    <ContactMenu onOpenChange={(open) => open && onContact?.()}>
+      <button
+        type="button"
+        className={
+          "h-14 w-[240px] max-w-full shrink-0 cursor-pointer rounded-2xl bg-site-navy px-10 text-[16px] font-semibold whitespace-nowrap text-site-navy-foreground transition-colors hover:bg-site-navy/90 " +
+          className
+        }
+      >
+        Связаться
+      </button>
+    </ContactMenu>
   );
 
   const shareButton = (
