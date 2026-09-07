@@ -4,6 +4,7 @@ import { trackEvent } from "@/lib/analytics";
 export type Selection = {
   id: string;
   code: string;
+  name: string;
   client_name: string;
   comment: string;
   saved: boolean;
@@ -38,6 +39,7 @@ function generateCode(): string {
 
 export async function createSelection(input: {
   propertyIds: string[];
+  name?: string;
   clientName?: string;
   comment?: string;
   saved?: boolean;
@@ -52,6 +54,7 @@ export async function createSelection(input: {
     .from("selections")
     .insert({
       code,
+      name: input.name?.trim() ?? "",
       client_name: input.clientName?.trim() ?? "",
       comment: input.comment?.trim() ?? "",
       saved: input.saved ?? false,

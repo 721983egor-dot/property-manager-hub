@@ -16,6 +16,7 @@ import { fetchSelectionByCode } from "@/lib/selections";
 
 type LoaderData = {
   code: string;
+  name: string;
   comment: string;
   count: number;
   properties: Property[];
@@ -32,9 +33,11 @@ const selectionQueryOptions = (code: string) =>
 export const Route = createFileRoute("/p/$code")({
   head: ({ loaderData }) => {
     const data = loaderData as LoaderData | undefined;
-    const title = data
-      ? `Подборка — ${data.count} объектов — Резиденция&Море`
-      : "Подборка объектов — Резиденция&Море";
+    const title = data?.name.trim()
+      ? `${data.name.trim()} — Резиденция&Море`
+      : data
+        ? `Подборка — ${data.count} объектов — Резиденция&Море`
+        : "Подборка объектов — Резиденция&Море";
     const description = data
       ? `Персональная подборка объектов долгосрочной аренды в Сочи от Резиденция&Море. ${data.count} объектов.`
       : "Персональная подборка объектов долгосрочной аренды в Сочи.";
@@ -91,6 +94,7 @@ export const Route = createFileRoute("/p/$code")({
 
     return {
       code: selection.code,
+      name: selection.name,
       comment: selection.comment,
       count: selectedProperties.length,
       properties: selectedProperties,
@@ -135,7 +139,7 @@ function SelectionPublicPage() {
                 Персональная подборка
               </p>
               <h1 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                Подборка объектов
+                {data.name.trim() || "Подборка объектов"}
               </h1>
               {data.comment ? (
                 <p className="mt-4 text-base leading-relaxed text-white/80">{data.comment}</p>
