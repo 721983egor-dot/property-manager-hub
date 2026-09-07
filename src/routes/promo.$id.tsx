@@ -53,6 +53,8 @@ function PromoDetailPage() {
   const qc = useQueryClient();
   const [rangeKey, setRangeKey] = useState<(typeof RANGES)[number]["key"]>("30");
   const [busy, setBusy] = useState(false);
+  const [cianBusy, setCianBusy] = useState(false);
+  const setCian = useServerFn(setCianPublished);
 
   const days = RANGES.find((r) => r.key === rangeKey)!.days;
   const to = toISODate(new Date());
