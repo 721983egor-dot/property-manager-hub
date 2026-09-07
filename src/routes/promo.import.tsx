@@ -347,10 +347,14 @@ function CianImportPage() {
 
 /** Настройки автопубликации: ссылка на XML-фид и переключатель автозагрузки. */
 function FeedSettings({
+  label,
+  cabinetHint,
   info,
   onChanged,
   toggleAuto,
 }: {
+  label: string;
+  cabinetHint: string;
   info: { autoPublish: boolean; inFeed: number; withErrors: number; feedPath: string };
   onChanged: () => void;
   toggleAuto: (enabled: boolean) => Promise<unknown>;
@@ -382,12 +386,8 @@ function FeedSettings({
 
   return (
     <section className="mt-6 rounded-xl border border-border bg-card p-5">
-      <h2 className="text-sm font-semibold">Автопубликация через XML-фид</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). Площадка будет забирать
-        файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без
-        лишних действий.
-      </p>
+      <h2 className="text-sm font-semibold">Автопубликация {label} через XML-фид</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{cabinetHint}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <code className="min-w-[220px] flex-1 truncate rounded-md border border-input bg-muted/50 px-3 py-2 text-xs">
           {feedUrl}
