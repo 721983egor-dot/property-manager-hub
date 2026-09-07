@@ -8,7 +8,7 @@ import type { Property } from "@/lib/properties";
 
 type Row = Record<string, unknown>;
 
-const PHONE_COUNTRY_CODE = "+7";
+const PHONE_COUNTRY_CODE = "7";
 const PHONE_NUMBER = "9384420809";
 
 function esc(value: string): string {
@@ -99,6 +99,13 @@ export function feedPhotoUrl(origin: string, path: string): string {
   return `${origin}/api/public/feed-photo/${path.split("/").map(encodeURIComponent).join("/")}`;
 }
 
+/** Комнатность по правилам ЦИАН: 9 — студия, 6 — многокомнатная, 7 — свободная планировка. */
+function flatRoomsCount(rooms: number): number {
+  if (rooms <= 0) return 9;
+  if (rooms > 5) return 6;
+  return rooms;
+}
+
 /** Один объект фида. */
 function offerXml(property: Property, externalId: string, origin: string): string {
   const photos = (property.photos ?? [])
@@ -119,9 +126,17 @@ function offerXml(property: Property, externalId: string, origin: string): strin
 
   const bargainTerms = `<BargainTerms>${tag("Price", property.price_month)}<Currency>rur</Currency><LeaseTermType>longTerm</LeaseTermType>${tag("Deposit", property.deposit)}${utilities}</BargainTerms>`;
 
-  const isHouse = property.type === "house" || property.type === "villa";
+  const category = cianCategory(property.type);
+  const isLand = category === "houseRent" || category === "townhouseRent";
 
-  return `<object>${tag("Category", cianCategory(property.type))}${tag("ExternalId", externalId)}${tag("Description", property.description)}${tag("Address", property.address)}${coordinates}<Phones><PhoneSchema>${tag("CountryCode", PHONE_COUNTRY_CODE)}${tag("Number", PHONE_NUMBER)}</PhoneSchema></Phones>${tag("TotalArea", property.area)}${isHouse ? tag("LandArea", property.land_area) + tag("LandAreaUnitType", "sotka") : tag("FloorNumber", property.floor)}${property.total_floors != null ? tag("AllFloorsCount", property.total_floors) : ""}${property.rooms > 0 ? tag("Rooms", property.rooms) : ""}${tag("SeparateWcsCount", property.bathrooms > 0 ? property.bathrooms : null)}<Photos>${photos}</Photos>${bargainTerms}</object>`;
+  // Дома и таунхаусы: обязателен участок. Квартиры: комнатность, этаж и этажность дома.
+  const specific = isLand
+    ? `<Land>${tag("Area", property.land_area)}<AreaUnitType>sotka</AreaUnitType></Land>`
+    : `${tag("FlatRoomsCount", flatRoomsCount(property.rooms))}${tag("FloorNumber", property.floor)}<Building>${tag("FloorsCount", property.total_floors)}</Building>${property.type === "aparts" ? "<IsApartments>true</IsApartments>" : ""}`;
+
+  const wcs = property.bathrooms > 0 ? tag("SeparateWcsCount", property.bathrooms) : "";
+
+  return `<Object>${tag("Category", category)}${tag("ExternalId", externalId)}${tag("Description", property.description)}${tag("Address", property.address)}${coordinates}<Phones><PhoneSchema>${tag("CountryCode", PHONE_COUNTRY_CODE)}${tag("Number", PHONE_NUMBER)}</PhoneSchema></Phones>${tag("TotalArea", property.area)}${specific}${wcs}<Photos>${photos}</Photos>${bargainTerms}</Object>`;
 }
 
 /** Полный XML фида. */
@@ -129,5 +144,5 @@ export function buildFeedXml(selection: FeedSelection, origin: string): string {
   const objects = selection.included
     .map(({ property, externalId }) => offerXml(property, externalId, origin))
     .join("");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<feed><feed_version>2</feed_version>${objects}</feed>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<Feed><Feed_Version>2</Feed_Version>${objects}</Feed>`;
 }

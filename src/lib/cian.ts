@@ -153,10 +153,13 @@ export function matchOffers(
 /** Поля, без которых объявление на ЦИАН не примут. */
 export function missingCianFields(p: Property): string[] {
   const missing: string[] = [];
+  const isLand = p.type === "house" || p.type === "villa" || p.type === "townhouse";
   if (!p.address.trim()) missing.push("адрес");
   if (p.area == null) missing.push("площадь");
   if (p.price_month == null) missing.push("цена за месяц");
-  if (p.type !== "house" && p.type !== "villa" && p.floor == null) missing.push("этаж");
+  if (!isLand && p.floor == null) missing.push("этаж");
+  if (!isLand && p.total_floors == null) missing.push("этажность дома");
+  if (isLand && p.land_area == null) missing.push("площадь участка");
   if ((p.photos ?? []).length === 0) missing.push("фотографии");
   if (!p.description.trim()) missing.push("описание");
   return missing;
