@@ -215,6 +215,17 @@ export function SiteCartBar() {
                 <Share2 className="size-4" />
                 {sharing ? "Создаём…" : "Поделиться"}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={sendToChat}
+                disabled={sendingChat}
+                title="Отправить подборку менеджеру в чат"
+                className="h-10 border-site-line px-4 text-sm text-site-navy hover:border-site-gold/60"
+              >
+                <MessageCircle className="size-4" />
+                {sendingChat ? "Отправляем…" : "В чат менеджеру"}
+              </Button>
               <button
                 type="button"
                 onClick={clear}
