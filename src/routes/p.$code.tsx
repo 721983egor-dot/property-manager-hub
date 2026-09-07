@@ -94,6 +94,7 @@ export const Route = createFileRoute("/p/$code")({
 
     return {
       code: selection.code,
+      name: selection.name,
       comment: selection.comment,
       count: selectedProperties.length,
       properties: selectedProperties,
