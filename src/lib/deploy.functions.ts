@@ -16,14 +16,17 @@ async function callDeployAgent(path: string, body?: unknown) {
     throw new Error("Deploy-агент не настроен. Добавьте DEPLOY_AGENT_URL и DEPLOY_AGENT_TOKEN в переменные окружения сервера.");
   }
 
-  const res = await fetch(`${agentUrl.replace(/\/$/, "")}${path}`, {
+  const init: RequestInit = {
     method: body ? "POST" : "GET",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  };
+  if (body) {
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(`${agentUrl.replace(/\/$/, "")}${path}`, init);
 
   const text = await res.text();
   let json: unknown = null;
