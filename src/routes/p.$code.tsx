@@ -33,12 +33,11 @@ const selectionQueryOptions = (code: string) =>
 export const Route = createFileRoute("/p/$code")({
   head: ({ loaderData }) => {
     const data = loaderData as LoaderData | undefined;
-    const titleBase = data?.name.trim()
-      ? data.name.trim()
-      : `Подборка — ${data?.count ?? 0} объектов — Резиденция&Море`;
     const title = data?.name.trim()
       ? `${data.name.trim()} — Резиденция&Море`
-      : titleBase;
+      : data
+        ? `Подборка — ${data.count} объектов — Резиденция&Море`
+        : "Подборка объектов — Резиденция&Море";
     const description = data
       ? `Персональная подборка объектов долгосрочной аренды в Сочи от Резиденция&Море. ${data.count} объектов.`
       : "Персональная подборка объектов долгосрочной аренды в Сочи.";
