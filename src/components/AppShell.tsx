@@ -1,5 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bookmark, Building2, CalendarDays, Inbox, Megaphone, Users } from "lucide-react";
+import { Bookmark, Building2, CalendarDays, Inbox, Megaphone, MessagesSquare, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+
+import { fetchThreads } from "@/lib/chat.functions";
 
 import type { ReactNode } from "react";
 
@@ -16,6 +20,7 @@ const CRM_PREFIXES = [
   "/complexes",
   "/selections",
   "/promo",
+  "/chats",
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -33,6 +38,18 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     );
   }
+
+  return <CrmShell>{children}</CrmShell>;
+}
+
+function CrmShell({ children }: { children: ReactNode }) {
+  const loadThreads = useServerFn(fetchThreads);
+  const { data } = useQuery({
+    queryKey: ["chat-threads"],
+    queryFn: () => loadThreads({ data: undefined }),
+    refetchInterval: 15000,
+  });
+  const unread = (data?.threads ?? []).reduce((sum, t) => sum + t.unread_count, 0);
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -71,6 +88,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Megaphone className="size-4" />
             Публикация
+          </Link>
+
+          <Link
+            to="/chats"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
+          >
+            <MessagesSquare className="size-4" />
+            Чаты
+            {unread > 0 && (
+              <span className="ml-auto rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                {unread}
+              </span>
+            )}
           </Link>
 
           <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
