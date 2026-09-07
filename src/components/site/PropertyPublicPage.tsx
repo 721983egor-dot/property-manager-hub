@@ -36,6 +36,7 @@ import { infrastructureLabel, type Complex } from "@/lib/complexes";
  */
 export type PublicPropertyView = Pick<
   Property,
+  | "id"
   | "title"
   | "outdoor_spaces"
   | "appliances"
