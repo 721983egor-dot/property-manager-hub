@@ -169,7 +169,7 @@ function HomePage() {
       {/* Первый экран */}
       <section className="relative flex min-h-[88vh] items-center overflow-hidden bg-site-navy">
         <img
-          src={heroAsset.url}
+          src={heroImage}
           alt="Апартаменты и дома премиум класса в Сочи"
           className="absolute inset-0 h-full w-full object-cover"
         />
