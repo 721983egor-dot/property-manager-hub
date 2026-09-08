@@ -1,13 +1,7 @@
 # Сборка приложения RM OS для self-hosted развёртывания
-FROM node:22-alpine AS builder
+FROM oven/bun:1-alpine AS builder
 
 WORKDIR /app
-
-# Установка зависимостей
-COPY package.json bunfig.toml ./
-RUN apk add --no-cache curl && \
-    curl -fsSL https://bun.sh/install | bash && \
-    mv /root/.bun/bin/bun /usr/local/bin/bun
 
 COPY . .
 
