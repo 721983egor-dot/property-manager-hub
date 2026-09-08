@@ -833,7 +833,7 @@ export type Database = {
         | "lead_submit"
         | "selection_add"
       property_service_type: "management" | "commission_only"
-      property_status: "free" | "rented" | "booked" | "archived"
+      property_status: "free" | "rented" | "booked" | "archived" | "soon_free"
       property_type: "apartment" | "aparts" | "house" | "villa" | "townhouse"
       rental_status: "booked" | "rented" | "blocked"
     }
@@ -976,7 +976,7 @@ export const Constants = {
         "selection_add",
       ],
       property_service_type: ["management", "commission_only"],
-      property_status: ["free", "rented", "booked", "archived"],
+      property_status: ["free", "rented", "booked", "archived", "soon_free"],
       property_type: ["apartment", "aparts", "house", "villa", "townhouse"],
       rental_status: ["booked", "rented", "blocked"],
     },

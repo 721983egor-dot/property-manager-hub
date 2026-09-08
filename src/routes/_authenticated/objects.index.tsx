@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -90,7 +91,7 @@ function ObjectsPage() {
   const [type, setType] = useState<string>(ALL);
   const [complex, setComplex] = useState<string>(ALL);
   const [rooms, setRooms] = useState<string>(ALL);
-  const [status, setStatus] = useState<string>(ALL);
+  const [statuses, setStatuses] = useState<PropertyStatus[]>([]);
   const [sort, setSort] = useState<string>(ALL);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -115,14 +116,15 @@ function ObjectsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const rows = properties.filter((p) => {
-      if (p.status === "archived" && tab !== "archive" && status !== "archived") return false;
+      if (p.status === "archived" && tab !== "archive" && !statuses.includes("archived"))
+        return false;
       if (tab === "archive" && p.status !== "archived") return false;
       if (q && !`${p.title} ${p.internal_name} ${p.complex_name}`.toLowerCase().includes(q))
         return false;
       if (type !== ALL && p.type !== type) return false;
       if (complex !== ALL && p.complex_name !== complex) return false;
       if (rooms !== ALL && p.rooms !== Number(rooms)) return false;
-      if (status !== ALL && p.status !== status) return false;
+      if (statuses.length > 0 && !statuses.includes(p.status)) return false;
       return true;
     });
 
@@ -139,7 +141,7 @@ function ObjectsPage() {
     }
 
     return rows;
-  }, [properties, tab, search, type, complex, rooms, status, sort]);
+  }, [properties, tab, search, type, complex, rooms, statuses, sort]);
 
   const photoPaths = filtered.map((p) => p.photos[0]?.path).filter(Boolean) as string[];
   const { data: urls = {} } = useQuery({
@@ -191,7 +193,7 @@ function ObjectsPage() {
     type !== ALL ||
     complex !== ALL ||
     rooms !== ALL ||
-    status !== ALL ||
+    statuses.length > 0 ||
     sort !== ALL;
 
   const resetFilters = () => {
@@ -199,8 +201,14 @@ function ObjectsPage() {
     setType(ALL);
     setComplex(ALL);
     setRooms(ALL);
-    setStatus(ALL);
+    setStatuses([]);
     setSort(ALL);
+  };
+
+  const toggleStatus = (value: PropertyStatus) => {
+    setStatuses((prev) =>
+      prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value],
+    );
   };
 
   const allFilteredSelected =
@@ -304,12 +312,40 @@ function ObjectsPage() {
           placeholder="Планировка"
           options={ROOM_OPTIONS.map((r) => ({ value: String(r), label: roomsLabel(r) }))}
         />
-        <FilterSelect
-          value={status}
-          onChange={setStatus}
-          placeholder="Статус"
-          options={PROPERTY_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="h-10 w-[210px] shrink-0 justify-between font-normal">
+              <span className="truncate">
+                {statuses.length === 0
+                  ? "Статус: все"
+                  : statuses.length === 1
+                    ? (PROPERTY_STATUSES.find((s) => s.value === statuses[0])?.label ?? "Статус")
+                    : `Статусов: ${statuses.length}`}
+              </span>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            {PROPERTY_STATUSES.map((s) => (
+              <DropdownMenuCheckboxItem
+                key={s.value}
+                checked={statuses.includes(s.value)}
+                onCheckedChange={() => toggleStatus(s.value)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                {s.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+            {statuses.length > 0 ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setStatuses([])}>
+                  Сбросить статусы
+                </DropdownMenuItem>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <FilterSelect
           value={sort}
           onChange={setSort}

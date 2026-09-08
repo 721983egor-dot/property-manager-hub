@@ -9,7 +9,7 @@ export type AssistantAction = {
   propertyLabel: string;
   platform?: "cian" | "yandex" | "site";
   price?: number;
-  status?: "free" | "rented" | "booked" | "archived";
+  status?: "free" | "soon_free" | "rented" | "booked" | "archived";
   summary: string;
 };
 
