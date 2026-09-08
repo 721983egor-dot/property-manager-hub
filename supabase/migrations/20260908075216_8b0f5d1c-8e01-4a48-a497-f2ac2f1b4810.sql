@@ -1,0 +1,1 @@
+CREATE POLICY "temp_migration_read_property_photos" ON storage.objects FOR SELECT TO anon USING (bucket_id = 'property-photos');

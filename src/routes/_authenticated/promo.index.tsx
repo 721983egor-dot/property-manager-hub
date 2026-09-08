@@ -19,7 +19,7 @@ import {
 } from "@/lib/properties";
 
 
-export const Route = createFileRoute("/promo/")({
+export const Route = createFileRoute("/_authenticated/promo/")({
   head: () => ({
     meta: [
       { title: "Публикация и реклама — RM OS" },

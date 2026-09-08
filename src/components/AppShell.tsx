@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarDays,
   Inbox,
+  LogOut,
   Megaphone,
   MessagesSquare,
   Settings,
@@ -14,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
 import { fetchThreads } from "@/lib/chat.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 import type { ReactNode } from "react";
 
@@ -38,6 +40,8 @@ const CRM_PREFIXES = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isCrm = CRM_PREFIXES.some((p) => pathname.startsWith(p));
+
+  if (pathname === "/auth") return <>{children}</>;
 
   if (!isCrm) {
     return (
@@ -150,6 +154,20 @@ function CrmShell({ children }: { children: ReactNode }) {
           </Link>
         </nav>
 
+        <div className="mt-auto p-3">
+          <button
+            type="button"
+            onClick={() => {
+              void supabase.auth.signOut().then(() => {
+                window.location.href = "/auth";
+              });
+            }}
+            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+          >
+            <LogOut className="size-4" />
+            Выйти
+          </button>
+        </div>
       </aside>
       <main className="min-w-0 flex-1">{children}</main>
     </div>

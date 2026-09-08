@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ComplexForm } from "@/components/ComplexForm";
 import { fetchComplex, updateComplex, type ComplexInput } from "@/lib/complexes";
 
-export const Route = createFileRoute("/complexes/$id/edit")({
+export const Route = createFileRoute("/_authenticated/complexes/$id/edit")({
   head: () => ({
     meta: [
       { title: "Редактирование комплекса — RM OS" },

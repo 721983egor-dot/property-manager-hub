@@ -23,7 +23,7 @@ import { PLATFORMS, fetchPropertyListings, setSitePublished } from "@/lib/listin
 import { fetchProperty, internalTitle } from "@/lib/properties";
 import { toISODate } from "@/lib/rentals";
 
-export const Route = createFileRoute("/promo/$id")({
+export const Route = createFileRoute("/_authenticated/promo/$id")({
   head: () => ({
     meta: [
       { title: "Статистика объекта — RM OS" },

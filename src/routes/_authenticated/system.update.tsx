@@ -22,7 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export const Route = createFileRoute("/system/update")({
+export const Route = createFileRoute("/_authenticated/system/update")({
   head: () => ({
     meta: [{ title: "Обновление системы — RM OS" }],
   }),

@@ -24,7 +24,7 @@ import {
 import { fetchListings } from "@/lib/listings";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 
-export const Route = createFileRoute("/promo/import")({
+export const Route = createFileRoute("/_authenticated/promo/import")({
   head: () => ({
     meta: [
       { title: "Сверка объявлений ЦИАН — RM OS" },

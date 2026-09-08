@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { PropertyForm } from "@/components/PropertyForm";
 import { createProperty, type PropertyInput } from "@/lib/properties";
 
-export const Route = createFileRoute("/objects/new")({
+export const Route = createFileRoute("/_authenticated/objects/new")({
   head: () => ({
     meta: [
       { title: "Новый объект — RM OS" },

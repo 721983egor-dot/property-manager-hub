@@ -54,7 +54,7 @@ import {
 import { createSelection } from "@/lib/selections";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/objects/")({
+export const Route = createFileRoute("/_authenticated/objects/")({
   head: () => ({
     meta: [
       { title: "Объекты — RM OS" },

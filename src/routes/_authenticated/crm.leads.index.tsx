@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export const Route = createFileRoute("/crm/leads/")({
+export const Route = createFileRoute("/_authenticated/crm/leads/")({
   head: () => ({
     meta: [{ title: "Заявки — RM OS" }, { name: "robots", content: "noindex" }],
   }),

@@ -29,7 +29,7 @@ import {
   yandexMapsUrl,
 } from "@/lib/properties";
 
-export const Route = createFileRoute("/objects/$id/")({
+export const Route = createFileRoute("/_authenticated/objects/$id/")({
   head: () => ({
     meta: [
       { title: "Карточка объекта — RM OS" },
