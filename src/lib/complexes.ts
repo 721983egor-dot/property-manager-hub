@@ -9,6 +9,7 @@ export type Complex = {
   photos: PropertyPhoto[];
   main_photo: string | null;
   infrastructure: string[];
+  show_in_site_filter: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -45,6 +46,7 @@ function normalize(row: Record<string, unknown>): Complex {
     description: typeof row['description'] === "string" ? (row['description'] as string) : "",
     location_description:
       typeof row['location_description'] === "string" ? (row['location_description'] as string) : "",
+    show_in_site_filter: row['show_in_site_filter'] !== false,
   };
 }
 
@@ -71,6 +73,7 @@ export type ComplexInput = {
   photos: PropertyPhoto[];
   main_photo: string | null;
   infrastructure: string[];
+  show_in_site_filter: boolean;
 };
 
 export async function createComplex(input: ComplexInput): Promise<Complex> {
