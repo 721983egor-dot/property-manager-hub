@@ -238,6 +238,7 @@ export type Database = {
           main_photo: string | null
           name: string
           photos: Json
+          show_in_site_filter: boolean
           updated_at: string
         }
         Insert: {
@@ -249,6 +250,7 @@ export type Database = {
           main_photo?: string | null
           name: string
           photos?: Json
+          show_in_site_filter?: boolean
           updated_at?: string
         }
         Update: {
@@ -260,6 +262,7 @@ export type Database = {
           main_photo?: string | null
           name?: string
           photos?: Json
+          show_in_site_filter?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -478,6 +481,7 @@ export type Database = {
           rooms: number
           seasonal_pricing: boolean
           service_type: Database["public"]["Enums"]["property_service_type"]
+          sort_order: number | null
           source_url: string | null
           status: Database["public"]["Enums"]["property_status"]
           summer_price_month: number | null
@@ -526,6 +530,7 @@ export type Database = {
           rooms?: number
           seasonal_pricing?: boolean
           service_type?: Database["public"]["Enums"]["property_service_type"]
+          sort_order?: number | null
           source_url?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           summer_price_month?: number | null
@@ -574,6 +579,7 @@ export type Database = {
           rooms?: number
           seasonal_pricing?: boolean
           service_type?: Database["public"]["Enums"]["property_service_type"]
+          sort_order?: number | null
           source_url?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           summer_price_month?: number | null

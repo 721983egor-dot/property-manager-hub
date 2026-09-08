@@ -1,7 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  GripVertical,
+  Plus,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BookingDialog } from "@/components/BookingDialog";
-import { fetchProperties, internalTitle } from "@/lib/properties";
+import { fetchProperties, internalTitle, savePropertyOrder } from "@/lib/properties";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchComplexes } from "@/lib/complexes";
 import { type Booking, fetchBookings, shortName } from "@/lib/bookings";
 import {
@@ -88,7 +99,54 @@ function CalendarPage() {
     [complexes],
   );
 
-  const rows = properties.filter((p) => p.service_type !== "commission_only");
+  const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
+  const [namesCollapsed, setNamesCollapsed] = useState(false);
+  useEffect(() => {
+    setNamesCollapsed(isMobile);
+  }, [isMobile]);
+
+  const baseRows = useMemo(() => {
+    const list = properties.filter((p) => p.service_type !== "commission_only");
+    return [...list].sort((a, b) => {
+      const ao = a.sort_order ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.sort_order ?? Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return internalTitle(a).localeCompare(internalTitle(b), "ru");
+    });
+  }, [properties]);
+
+  const [order, setOrder] = useState<string[]>([]);
+  const baseKey = baseRows.map((p) => p.id).join("|");
+  useEffect(() => {
+    setOrder(baseRows.map((p) => p.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseKey]);
+
+  const rows = useMemo(() => {
+    const map = new Map(baseRows.map((p) => [p.id, p]));
+    const ordered = order.map((id) => map.get(id)).filter(Boolean) as typeof baseRows;
+    return ordered.length === baseRows.length ? ordered : baseRows;
+  }, [baseRows, order]);
+
+  const orderMutation = useMutation({
+    mutationFn: (ids: string[]) => savePropertyOrder(ids),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["properties"] }),
+    onError: () => toast.error("Не удалось сохранить порядок объектов"),
+  });
+
+  const moveRow = (from: number, to: number) => {
+    if (to < 0 || to >= rows.length || from === to) return;
+    const ids = rows.map((p) => p.id);
+    const [item] = ids.splice(from, 1);
+    if (!item) return;
+    ids.splice(to, 0, item);
+    setOrder(ids);
+    orderMutation.mutate(ids);
+  };
+
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const nameWidth = namesCollapsed ? 64 : 260;
 
   const todayIso = toISODate(today);
   const bookingsByProperty = useMemo(() => {
@@ -248,8 +306,23 @@ function CalendarPage() {
         <div className="min-w-max">
           {/* Шапка */}
           <div className="sticky top-0 z-30 flex bg-card">
-            <div className="sticky left-0 z-40 w-[260px] shrink-0 border-b border-r border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground">
-              Объект
+            <div
+              style={{ width: nameWidth }}
+              className="sticky left-0 z-40 flex shrink-0 items-center gap-1 border-b border-r border-border bg-card px-2 py-2 text-xs font-medium text-muted-foreground"
+            >
+              <button
+                type="button"
+                onClick={() => setNamesCollapsed((v) => !v)}
+                aria-label={namesCollapsed ? "Показать названия" : "Скрыть названия"}
+                className="grid size-7 shrink-0 place-items-center rounded-md border border-border bg-card"
+              >
+                {namesCollapsed ? (
+                  <PanelLeftOpen className="size-4" />
+                ) : (
+                  <PanelLeftClose className="size-4" />
+                )}
+              </button>
+              {!namesCollapsed && <span className="truncate">Объект</span>}
             </div>
             <div style={{ width: gridWidth }} className="shrink-0 border-b border-border">
               <div className="flex">
@@ -289,20 +362,91 @@ function CalendarPage() {
           </div>
 
           {/* Строки объектов */}
-          {rows.map((property) => {
+          {rows.map((property, rowIndex) => {
             const list = bookingsByProperty.get(property.id) ?? [];
             const complexName =
               (property.complex_id ? complexMap.get(property.complex_id) : null) ??
               property.complex_name;
 
             return (
-              <div key={property.id} className="flex">
-                <div className="sticky left-0 z-20 w-[260px] shrink-0 border-b border-r border-border bg-card px-4 py-3">
-                  <div className="truncate text-sm font-medium">{internalTitle(property)}</div>
-                  {complexName ? (
-                    <div className="truncate text-xs text-muted-foreground">{complexName}</div>
-                  ) : null}
+              <div
+                key={property.id}
+                className={cn("flex", dragIndex === rowIndex && "opacity-60")}
+                onDragOver={(e) => {
+                  if (dragIndex !== null) e.preventDefault();
+                }}
+                onDrop={() => {
+                  if (dragIndex !== null) moveRow(dragIndex, rowIndex);
+                  setDragIndex(null);
+                }}
+              >
+                <div
+                  style={{ width: nameWidth }}
+                  draggable
+                  onDragStart={() => setDragIndex(rowIndex)}
+                  onDragEnd={() => setDragIndex(null)}
+                  title={internalTitle(property)}
+                  className="sticky left-0 z-20 flex shrink-0 items-center gap-2 border-b border-r border-border bg-card px-2 py-3"
+                >
+                  {namesCollapsed ? (
+                    <div className="flex w-full flex-col items-center gap-1">
+                      <span className="text-[11px] font-semibold leading-none">
+                        №{property.ref_id}
+                      </span>
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          aria-label="Выше"
+                          onClick={() => moveRow(rowIndex, rowIndex - 1)}
+                          className="text-muted-foreground"
+                        >
+                          <ChevronUp className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Ниже"
+                          onClick={() => moveRow(rowIndex, rowIndex + 1)}
+                          className="text-muted-foreground"
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">
+                          {internalTitle(property)}
+                        </div>
+                        {complexName ? (
+                          <div className="truncate text-xs text-muted-foreground">
+                            {complexName}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 flex-col">
+                        <button
+                          type="button"
+                          aria-label="Выше"
+                          onClick={() => moveRow(rowIndex, rowIndex - 1)}
+                          className="text-muted-foreground"
+                        >
+                          <ChevronUp className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Ниже"
+                          onClick={() => moveRow(rowIndex, rowIndex + 1)}
+                          className="text-muted-foreground"
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
+
 
                 <div
                   style={{ width: gridWidth }}

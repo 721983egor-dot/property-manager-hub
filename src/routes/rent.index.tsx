@@ -187,7 +187,9 @@ function RentPage() {
               value={complex}
               onChange={(v) => updateSearch("complex", v)}
               placeholder="Комплекс"
-              options={complexes.map((c) => ({ value: c.id, label: c.name }))}
+              options={complexes
+                .filter((c) => c.show_in_site_filter || c.id === complex)
+                .map((c) => ({ value: c.id, label: c.name }))}
             />
             <FilterSelect
               value={rooms}

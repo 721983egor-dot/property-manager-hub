@@ -327,7 +327,36 @@ function ObjectsPage() {
         ) : null}
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card">
+      {/* Мобильная версия — карточки вместо таблицы */}
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:hidden">
+        {isLoading ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Загрузка...</p>
+        ) : filtered.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Объекты не найдены</p>
+        ) : (
+          filtered.map((p) => (
+            <MobileCard
+              key={p.id}
+              property={p}
+              photoUrl={p.photos[0]?.path ? urls[p.photos[0].path] : undefined}
+              selected={selectedIds.has(p.id)}
+              onToggle={() => toggleId(p.id)}
+              onStatus={(next) => statusMutation.mutate({ id: p.id, next })}
+              onDelete={() => {
+                if (
+                  window.confirm(
+                    `Удалить объект «${internalTitle(p)}»? Это действие нельзя отменить.`,
+                  )
+                ) {
+                  deleteMutation.mutate(p.id);
+                }
+              }}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="mt-6 hidden overflow-x-auto rounded-xl border border-border bg-card lg:block">
         <table className="w-full min-w-[1250px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -636,5 +665,124 @@ function Row({
         </div>
       </td>
     </tr>
+  );
+}
+
+function MobileCard({
+  property,
+  photoUrl,
+  selected,
+  onToggle,
+  onStatus,
+  onDelete,
+}: {
+  property: Property;
+  photoUrl?: string | undefined;
+  selected: boolean;
+  onToggle: () => void;
+  onStatus: (next: PropertyStatus) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="relative flex aspect-[16/10] items-center justify-center bg-muted">
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt={property.title}
+            loading="lazy"
+            className="size-full object-cover"
+          />
+        ) : (
+          <ImageIcon className="size-6 text-muted-foreground" />
+        )}
+        <div className="absolute left-2 top-2 rounded-md bg-background/90 p-1.5">
+          <Checkbox checked={selected} onCheckedChange={onToggle} aria-label="Выбрать объект" />
+        </div>
+        <div className="absolute right-2 top-2">
+          <StatusBadge status={property.status} />
+        </div>
+      </div>
+
+      <div className="p-3">
+        <Link
+          to="/objects/$id"
+          params={{ id: property.id }}
+          className="block font-medium leading-snug"
+        >
+          {internalTitle(property)}
+        </Link>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          ID: {property.ref_id}
+          {property.complex_name ? ` · ${property.complex_name}` : ""}
+        </p>
+
+        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          <Spec label="Тип" value={typeLabel(property.type)} />
+          <Spec label="Планировка" value={roomsLabel(property.rooms)} />
+          <Spec label="Этаж" value={floorLabel(property)} />
+          <Spec label="Санузлы" value={String(property.bathrooms)} />
+          <Spec label="Цена в месяц" value={formatMoney(property.price_month)} />
+          <Spec label="Депозит" value={formatMoney(property.deposit)} />
+          <Spec
+            label="Комиссия"
+            value={property.commission == null ? "—" : `${property.commission}%`}
+          />
+          {property.seasonal_pricing && property.summer_price_month != null ? (
+            <Spec
+              label={`Лето (${SUMMER_SEASON_LABEL})`}
+              value={formatMoney(property.summer_price_month)}
+            />
+          ) : null}
+        </dl>
+
+        <div className="mt-3 flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="flex-1">
+            <Link to="/objects/$id/edit" params={{ id: property.id }}>
+              <Pencil className="size-4" />
+              Редактировать
+            </Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Статус
+              </DropdownMenuLabel>
+              {PROPERTY_STATUSES.map((s) => (
+                <DropdownMenuItem
+                  key={s.value}
+                  disabled={s.value === property.status}
+                  onSelect={() => onStatus(s.value)}
+                >
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={onDelete}
+              >
+                <Trash2 className="size-4" />
+                Удалить объект
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Spec({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="truncate font-medium">{value}</dd>
+    </div>
   );
 }
