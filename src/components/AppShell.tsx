@@ -8,7 +8,9 @@ import {
   Megaphone,
   MessagesSquare,
   Menu,
+  Send,
   Settings,
+
   Sparkles,
   Users,
 } from "lucide-react";
@@ -99,6 +101,11 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <Settings className="size-4 shrink-0" />
         Обновление системы
       </Link>
+      <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Send className="size-4 shrink-0" />
+        Ассистент в Telegram
+      </Link>
+
 
       <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         CRM
