@@ -22,7 +22,7 @@ import {
 } from "@/lib/site";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
-import heroAsset from "@/assets/site/hero_villa_sunset.jpg.asset.json";
+import heroImage from "@/assets/site/hero_villa_sunset.jpg";
 import aboutImg from "@/assets/site/home_about.jpg";
 import selectionImg from "@/assets/site/home_p5.jpg";
 
