@@ -129,7 +129,9 @@ function RootComponent() {
         <Outlet />
       </AppShell>
       <Toaster position="top-right" />
+      <YandexMetrika />
     </QueryClientProvider>
   );
+
 }
 
