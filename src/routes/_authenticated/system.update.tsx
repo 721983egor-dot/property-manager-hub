@@ -39,7 +39,32 @@ const PROGRESS_STEPS = [
   "Проверка работоспособности…",
 ];
 
+/** Обрыв связи из-за перезапуска приложения, а не реальная ошибка обновления. */
+function isRestartError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? "");
+  if (!message.trim()) return true;
+  return /invariant failed|failed to fetch|networkerror|load failed|network request failed|502|503|504|aborted|terminated/i.test(
+    message,
+  );
+}
+
+/** Ждём, пока приложение снова начнёт отвечать после перезапуска. */
+async function waitForAppRestart(timeoutMs = 5 * 60 * 1000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    try {
+      const res = await fetch("/api/public/health", { cache: "no-store" });
+      if (res.ok) return true;
+    } catch {
+      // приложение ещё перезапускается
+    }
+  }
+  return false;
+}
+
 function SystemUpdatePage() {
+
   const queryClient = useQueryClient();
   const loadStatus = useServerFn(getDeployStatus);
   const doDeploy = useServerFn(triggerDeploy);
@@ -74,7 +99,26 @@ function SystemUpdatePage() {
   }, [operation]);
 
   const deployMutation = useMutation({
-    mutationFn: () => doDeploy({ data: undefined }),
+    mutationFn: async () => {
+      try {
+        return await doDeploy({ data: undefined });
+      } catch (err) {
+        // Во время обновления приложение перезапускается, поэтому ответ на запрос
+        // теряется. Это не ошибка — дожидаемся, пока приложение снова поднимется.
+        if (!isRestartError(err)) throw err;
+        setActiveStep(PROGRESS_STEPS.length - 1);
+        const back = await waitForAppRestart();
+        if (!back) {
+          throw new Error(
+            "Приложение не ответило после обновления. Подождите минуту и обновите страницу.",
+          );
+        }
+        return {
+          ok: true,
+          message: "Обновление применено, приложение перезапущено",
+        };
+      }
+    },
     onMutate: () => {
       setOperation("deploy");
       setProgress(5);
@@ -89,7 +133,20 @@ function SystemUpdatePage() {
   });
 
   const rollbackMutation = useMutation({
-    mutationFn: () => doRollback({ data: undefined }),
+    mutationFn: async () => {
+      try {
+        return await doRollback({ data: undefined });
+      } catch (err) {
+        if (!isRestartError(err)) throw err;
+        const back = await waitForAppRestart();
+        if (!back) {
+          throw new Error(
+            "Приложение не ответило после отката. Подождите минуту и обновите страницу.",
+          );
+        }
+        return { ok: true, message: "Откат применён, приложение перезапущено" };
+      }
+    },
     onMutate: () => {
       setOperation("rollback");
       setProgress(5);
@@ -102,6 +159,7 @@ function SystemUpdatePage() {
       queryClient.invalidateQueries({ queryKey: ["deploy-status"] });
     },
   });
+
 
   const agentConfigured = !(status && status.message?.includes("Deploy-агент не настроен"));
 
