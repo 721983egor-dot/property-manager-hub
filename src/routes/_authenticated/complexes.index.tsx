@@ -100,7 +100,72 @@ function ComplexesPage() {
         </div>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card">
+      {/* Мобильная версия — карточки */}
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:hidden">
+        {isLoading ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Загрузка...</p>
+        ) : filtered.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Комплексы не найдены</p>
+        ) : (
+          filtered.map((c) => {
+            const path = mainPhotoPath(c);
+            return (
+              <div
+                key={c.id}
+                className="overflow-hidden rounded-xl border border-border bg-card"
+              >
+                <Link to="/complexes/$id/edit" params={{ id: c.id }} className="block">
+                  <div className="flex aspect-[16/9] items-center justify-center bg-muted">
+                    {path && urls[path] ? (
+                      <img
+                        src={urls[path]}
+                        alt={c.name}
+                        loading="lazy"
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="size-6 text-muted-foreground" />
+                    )}
+                  </div>
+                </Link>
+                <div className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      to="/complexes/$id/edit"
+                      params={{ id: c.id }}
+                      className="min-w-0 flex-1 truncate font-medium"
+                    >
+                      {c.name}
+                    </Link>
+                    <Button asChild variant="outline" size="sm" className="shrink-0">
+                      <Link to="/complexes/$id/edit" params={{ id: c.id }}>
+                        <Pencil className="size-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                  {c.show_in_site_filter ? null : (
+                    <p className="mt-1 text-xs text-muted-foreground">Скрыт в фильтре на сайте</p>
+                  )}
+                  {c.infrastructure.length > 0 && (
+                    <ul className="mt-2 flex flex-wrap gap-1.5">
+                      {c.infrastructure.slice(0, 4).map((i) => (
+                        <li
+                          key={i}
+                          className="rounded-md border border-border bg-muted px-2 py-0.5 text-xs"
+                        >
+                          {infrastructureLabel(i)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="mt-6 hidden overflow-x-auto rounded-xl border border-border bg-card lg:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
