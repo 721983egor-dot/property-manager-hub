@@ -22,7 +22,7 @@ import {
 } from "@/lib/site";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
-import heroAsset from "@/assets/site/hero_villa_sunset.jpg.asset.json";
+import heroImage from "@/assets/site/hero_villa_sunset.jpg";
 import aboutImg from "@/assets/site/home_about.jpg";
 import selectionImg from "@/assets/site/home_p5.jpg";
 
@@ -169,7 +169,7 @@ function HomePage() {
       {/* Первый экран */}
       <section className="relative flex min-h-[88vh] items-center overflow-hidden bg-site-navy">
         <img
-          src={heroAsset.url}
+          src={heroImage}
           alt="Апартаменты и дома премиум класса в Сочи"
           className="absolute inset-0 h-full w-full object-cover"
         />
