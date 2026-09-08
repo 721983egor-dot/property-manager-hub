@@ -40,10 +40,10 @@ function TelegramSettingsPage() {
     typeof window === "undefined" ? "" : window.location.origin,
   );
 
-  const query = useQuery({ queryKey: ["telegram-status"], queryFn: () => status({ data: {} }) });
+  const query = useQuery({ queryKey: ["telegram-status"], queryFn: () => status(undefined as never) });
 
   const codeMutation = useMutation({
-    mutationFn: () => createCode({ data: {} }),
+    mutationFn: () => createCode(undefined as never),
     onSuccess: (r) => setCode(r.code),
     onError: (e: Error) => toast.error(e.message),
   });
