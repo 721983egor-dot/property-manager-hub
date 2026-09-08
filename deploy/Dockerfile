@@ -13,6 +13,9 @@ ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
 ENV VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
 ENV VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
 ENV NODE_ENV=production
+# Собираем под обычный Node-сервер, а не под Cloudflare
+ENV NITRO_PRESET=node-server
+ENV SERVER_PRESET=node-server
 
 RUN bun install && bun run build
 

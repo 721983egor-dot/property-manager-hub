@@ -2,16 +2,14 @@
     auto_https disable_redirects
 }
 
-{$DOMAIN} {
-    tls {$TLS_EMAIL}
-
-    handle /auth/* {
+(supabase) {
+    handle_path /auth/v1/* {
         reverse_proxy supabase-auth:9999
     }
-    handle /rest/* {
+    handle_path /rest/v1/* {
         reverse_proxy supabase-rest:3000
     }
-    handle /storage/* {
+    handle_path /storage/v1/* {
         reverse_proxy supabase-storage:5000
     }
     handle {
@@ -21,20 +19,12 @@
     encode gzip
 }
 
+{$DOMAIN} {
+    tls {$TLS_EMAIL}
+    import supabase
+}
+
 # Доступ по IP до переключения DNS
 :80 {
-    handle /auth/* {
-        reverse_proxy supabase-auth:9999
-    }
-    handle /rest/* {
-        reverse_proxy supabase-rest:3000
-    }
-    handle /storage/* {
-        reverse_proxy supabase-storage:5000
-    }
-    handle {
-        reverse_proxy app:3000
-    }
-
-    encode gzip
+    import supabase
 }
