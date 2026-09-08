@@ -11,9 +11,14 @@ RUN apk add --no-cache curl && \
 
 COPY . .
 
-# Переменные для сборки под Node SSR
+# Переменные для сборки (попадают в клиентский бандл)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_SUPABASE_PROJECT_ID
+ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+ENV VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
 ENV NODE_ENV=production
-ENV NITRO_PRESET=node-server
 
 RUN bun install && bun run build
 
