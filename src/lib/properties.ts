@@ -7,7 +7,7 @@ export type PropertyType = "apartment" | "aparts" | "house" | "villa" | "townhou
 export function isHouseType(type: PropertyType) {
   return type === "house" || type === "villa";
 }
-export type PropertyStatus = "free" | "rented" | "booked" | "archived";
+export type PropertyStatus = "free" | "soon_free" | "rented" | "booked" | "archived";
 
 export type PropertyPhoto = { path: string };
 
@@ -231,6 +231,7 @@ export const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
 
 export const PROPERTY_STATUSES: { value: PropertyStatus; label: string }[] = [
   { value: "free", label: "Свободен" },
+  { value: "soon_free", label: "Скоро освободится" },
   { value: "rented", label: "Сдан" },
   { value: "booked", label: "Забронирован" },
   { value: "archived", label: "Архив" },
@@ -560,6 +561,12 @@ export function publicStatusView(
   freeFromIso?: string | null,
 ): PublicStatusView {
   if (p.status === "free") return { text: "Сейчас свободно", tone: "green" };
+  if (p.status === "soon_free") {
+    if (freeFromIso) {
+      return { text: `Освободится с ${formatDateLongRu(freeFromIso)}`, tone: "gold" };
+    }
+    return { text: "Скоро освободится", tone: "gold" };
+  }
   if (p.status === "booked") return { text: "Объект забронирован", tone: "yellow" };
   if (p.status === "rented") {
     if ((p.service_type ?? "management") === "management" && freeFromIso) {

@@ -69,6 +69,8 @@
   --color-status-free-soft: var(--status-free-soft);
   --color-status-rented: var(--status-rented);
   --color-status-rented-soft: var(--status-rented-soft);
+  --color-status-soon: var(--status-soon);
+  --color-status-soon-soft: var(--status-soon-soft);
   --color-status-booked: var(--status-booked);
   --color-status-booked-soft: var(--status-booked-soft);
   --color-status-archived: var(--status-archived);
@@ -123,6 +125,8 @@
   --status-free-soft: oklch(0.95 0.05 155);
   --status-rented: oklch(0.5 0.13 250);
   --status-rented-soft: oklch(0.95 0.03 250);
+  --status-soon: oklch(0.55 0.13 50);
+  --status-soon-soft: oklch(0.95 0.05 60);
   --status-booked: oklch(0.55 0.13 70);
   --status-booked-soft: oklch(0.95 0.05 80);
   --status-archived: oklch(0.5 0.01 258);
