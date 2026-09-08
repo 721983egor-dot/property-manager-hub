@@ -2,6 +2,8 @@
     auto_https disable_redirects
 }
 
+# Общие правила: служебные адреса базы/входа/фото идут в свои сервисы,
+# всё остальное — в приложение (сайт и RM OS).
 (supabase) {
     handle_path /auth/v1/* {
         reverse_proxy supabase-auth:9999
@@ -20,6 +22,12 @@
 }
 
 {$DOMAIN} {
+    tls {$TLS_EMAIL}
+    import supabase
+}
+
+# Служебный адрес для входа менеджеров
+rm-os.{$DOMAIN} {
     tls {$TLS_EMAIL}
     import supabase
 }

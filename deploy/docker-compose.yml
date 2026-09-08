@@ -27,7 +27,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - SUPABASE_URL=https://${DOMAIN}
+      # Внутренний адрес: контейнер обращается к своим сервисам напрямую,
+      # не выходя в интернет через домен.
+      - SUPABASE_URL=http://caddy
       - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_PROJECT_ID=${SUPABASE_PROJECT_ID}
@@ -72,13 +74,13 @@ services:
       - GOTRUE_API_PORT=9999
       - API_EXTERNAL_URL=https://${DOMAIN}/auth
       - GOTRUE_DB_DRIVER=postgres
-      - GOTRUE_DB_DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
+      - GOTRUE_DB_DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@supabase-db:5432/postgres?search_path=auth
       - GOTRUE_JWT_SECRET=${JWT_SECRET}
       - GOTRUE_JWT_AUD=authenticated
       - GOTRUE_JWT_EXP=3600
       - GOTRUE_EXTERNAL_EMAIL_ENABLED=true
       - GOTRUE_MAILER_AUTOCONFIRM=true
-      - GOTRUE_DISABLE_SIGNUP=false
+      - GOTRUE_DISABLE_SIGNUP=true
       - GOTRUE_SITE_URL=https://${DOMAIN}
       - GOTRUE_URI_ALLOW_LIST=
     depends_on:
