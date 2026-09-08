@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
+import { YandexMetrika } from "@/components/site/YandexMetrika";
+
 
 function NotFoundComponent() {
   return (
