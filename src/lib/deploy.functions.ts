@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireUser } from "@/lib/auth-user-middleware";
 
 const deployResponseSchema = z.object({
   ok: z.boolean(),
@@ -50,7 +50,7 @@ async function callDeployAgent(path: string, body?: unknown) {
 
 /** Информация о текущей и последней доступной версии приложения. */
 export const getDeployStatus = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireUser])
   .handler(async () => {
     try {
       const status = await callDeployAgent("/status");
@@ -66,14 +66,14 @@ export const getDeployStatus = createServerFn({ method: "GET" })
 
 /** Запускает обновление сайта до последней версии из GitHub. */
 export const triggerDeploy = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireUser])
   .handler(async () => {
     return callDeployAgent("/deploy", { source: "rm-os-ui" });
   });
 
 /** Откатывает сайт на предыдущую версию. */
 export const triggerRollback = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireUser])
   .handler(async () => {
     return callDeployAgent("/rollback", { source: "rm-os-ui" });
   });
