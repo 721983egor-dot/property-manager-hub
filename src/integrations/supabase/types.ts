@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          actor_email: string
+          actor_id: string | null
+          changes: Json
+          created_at: string
+          id: string
+          record_id: string | null
+          source: string
+          summary: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: string
+          record_id?: string | null
+          source?: string
+          summary?: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string
+          actor_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: string
+          record_id?: string | null
+          source?: string
+          summary?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
+      ai_action_proposals: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          input: Json
+          result: string
+          status: string
+          summary: string
+          tool_name: string
+          updated_at: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          input?: Json
+          result?: string
+          status?: string
+          summary?: string
+          tool_name: string
+          updated_at?: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          input?: Json
+          result?: string
+          status?: string
+          summary?: string
+          tool_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      assistant_messages: {
+        Row: {
+          actions: Json
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          actions?: Json
+          content?: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id?: string | null
+        }
+        Update: {
+          actions?: Json
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       booking_price_periods: {
         Row: {
           booking_id: string
