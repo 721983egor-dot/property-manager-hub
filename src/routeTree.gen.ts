@@ -33,6 +33,7 @@ import { Route as AuthenticatedPromoIdRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
 import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
+import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedComplexesIdEditRouteImport } from './routes/_authenticated/complexes.$id.edit'
 import { Route as AuthenticatedCrmClientsIndexRouteImport } from './routes/_authenticated/crm.clients.index'
 import { Route as AuthenticatedCrmClientsIdRouteImport } from './routes/_authenticated/crm.clients.$id'
@@ -171,6 +172,11 @@ const AuthenticatedSystemUpdateRoute =
     path: '/system/update',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
+  id: '/api/public/health',
+  path: '/api/public/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedComplexesIdEditRoute =
   AuthenticatedComplexesIdEditRouteImport.update({
     id: '/complexes/$id/edit',
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/complexes/': typeof AuthenticatedComplexesIndexRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByTo {
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/assistant': typeof AuthenticatedAssistantIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/complexes': typeof AuthenticatedComplexesIndexRoute
@@ -327,6 +335,7 @@ export interface FileRoutesById {
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
   '/_authenticated/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/complexes/': typeof AuthenticatedComplexesIndexRoute
@@ -365,6 +374,7 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/import'
     | '/system/update'
+    | '/api/public/health'
     | '/assistant/'
     | '/chats/'
     | '/complexes/'
@@ -400,6 +410,7 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/import'
     | '/system/update'
+    | '/api/public/health'
     | '/assistant'
     | '/chats'
     | '/complexes'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/_authenticated/promo/$id'
     | '/_authenticated/promo/import'
     | '/_authenticated/system/update'
+    | '/api/public/health'
     | '/_authenticated/assistant/'
     | '/_authenticated/chats/'
     | '/_authenticated/complexes/'
@@ -467,6 +479,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RentRoute: typeof RentRouteWithChildren
   PCodeRoute: typeof PCodeRoute
+  ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
@@ -643,6 +656,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemUpdateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/health': {
+      id: '/api/public/health'
+      path: '/api/public/health'
+      fullPath: '/api/public/health'
+      preLoaderRoute: typeof ApiPublicHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/complexes/$id/edit': {
       id: '/_authenticated/complexes/$id/edit'
       path: '/complexes/$id/edit'
@@ -793,6 +813,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RentRoute: RentRouteWithChildren,
   PCodeRoute: PCodeRoute,
+  ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
