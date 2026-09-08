@@ -327,7 +327,36 @@ function ObjectsPage() {
         ) : null}
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card">
+      {/* Мобильная версия — карточки вместо таблицы */}
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:hidden">
+        {isLoading ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Загрузка...</p>
+        ) : filtered.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Объекты не найдены</p>
+        ) : (
+          filtered.map((p) => (
+            <MobileCard
+              key={p.id}
+              property={p}
+              photoUrl={p.photos[0]?.path ? urls[p.photos[0].path] : undefined}
+              selected={selectedIds.has(p.id)}
+              onToggle={() => toggleId(p.id)}
+              onStatus={(next) => statusMutation.mutate({ id: p.id, next })}
+              onDelete={() => {
+                if (
+                  window.confirm(
+                    `Удалить объект «${internalTitle(p)}»? Это действие нельзя отменить.`,
+                  )
+                ) {
+                  deleteMutation.mutate(p.id);
+                }
+              }}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="mt-6 hidden overflow-x-auto rounded-xl border border-border bg-card lg:block">
         <table className="w-full min-w-[1250px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
