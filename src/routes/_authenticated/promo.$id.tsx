@@ -141,7 +141,7 @@ function PromoDetailPage() {
   const totals = stats?.totals;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <Link
         to="/promo"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -152,7 +152,7 @@ function PromoDetailPage() {
 
       <header className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             {property ? internalTitle(property) : "Объект"}
           </h1>
           {property ? (

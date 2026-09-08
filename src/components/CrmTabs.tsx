@@ -9,7 +9,7 @@ const ITEMS = [
 export function CrmTabs({ active }: { active: "clients" | "leads" }) {
   return (
     <div className="mt-6 border-b border-border">
-      <div className="flex gap-6">
+      <div className="flex gap-5 overflow-x-auto whitespace-nowrap sm:gap-6">
         {ITEMS.map((item) => {
           const isActive = item.key === active;
           return (

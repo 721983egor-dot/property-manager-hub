@@ -90,7 +90,7 @@ function ClientPage() {
   const today = toISODate(new Date());
 
   return (
-    <div className="mx-auto max-w-[1100px] px-6 py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <Link
         to="/crm/clients"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"

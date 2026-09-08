@@ -126,9 +126,9 @@ function ClientsPage() {
   }, [clients, byClient, properties, search, filter]);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 lg:px-10 lg:py-10">
-      <header className="flex items-start justify-between gap-6">
-        <h1 className="text-3xl font-semibold tracking-tight">CRM</h1>
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">CRM</h1>
         <Button size="lg" onClick={() => setDialogOpen(true)}>
           <Plus className="size-4" />
           Добавить клиента
@@ -138,7 +138,7 @@ function ClientsPage() {
       <CrmTabs active="clients" />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[280px] flex-1">
+        <div className="relative min-w-full flex-1 sm:min-w-[280px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
@@ -166,7 +166,7 @@ function ClientsPage() {
         </div>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-border">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>

@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Bookmark,
   Bot,
@@ -8,6 +9,7 @@ import {
   LogOut,
   Megaphone,
   MessagesSquare,
+  Menu,
   Settings,
   Users,
 } from "lucide-react";
@@ -16,6 +18,7 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { fetchThreads } from "@/lib/chat.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 import type { ReactNode } from "react";
 
@@ -58,14 +61,92 @@ export function AppShell({ children }: { children: ReactNode }) {
   return <CrmShell>{children}</CrmShell>;
 }
 
+const NAV_LINK_CLASS =
+  "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary";
+
+function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => void }) {
+  return (
+    <nav className="px-3 py-2">
+      <Link to="/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Building2 className="size-4 shrink-0" />
+        Объекты
+      </Link>
+      <Link to="/selections" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Bookmark className="size-4 shrink-0" />
+        Подборки
+      </Link>
+      <Link to="/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <CalendarDays className="size-4 shrink-0" />
+        Календарь
+      </Link>
+      <Link to="/promo" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Megaphone className="size-4 shrink-0" />
+        Публикация
+      </Link>
+      <Link to="/chats" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <MessagesSquare className="size-4 shrink-0" />
+        Чаты
+        {unread > 0 && (
+          <span className="ml-auto rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+            {unread}
+          </span>
+        )}
+      </Link>
+      <Link to="/assistant" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Bot className="size-4 shrink-0" />
+        Помощник
+      </Link>
+      <Link to="/system/update" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Settings className="size-4 shrink-0" />
+        Обновление системы
+      </Link>
+
+      <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        CRM
+      </p>
+      <Link to="/crm/clients" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Users className="size-4 shrink-0" />
+        Клиенты
+      </Link>
+      <Link to="/crm/leads" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Inbox className="size-4 shrink-0" />
+        Заявки
+      </Link>
+    </nav>
+  );
+}
+
+function SignOutButton() {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void supabase.auth.signOut().then(() => {
+          window.location.href = "/auth";
+        });
+      }}
+      className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+    >
+      <LogOut className="size-4" />
+      Выйти
+    </button>
+  );
+}
+
 function CrmShell({ children }: { children: ReactNode }) {
   const loadThreads = useServerFn(fetchThreads);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [menuOpen, setMenuOpen] = useState(false);
   const { data } = useQuery({
     queryKey: ["chat-threads"],
     queryFn: () => loadThreads({ data: undefined }),
     refetchInterval: 15000,
   });
   const unread = (data?.threads ?? []).reduce((sum, t) => sum + t.unread_count, 0);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -76,100 +157,52 @@ function CrmShell({ children }: { children: ReactNode }) {
           </span>
           <span className="text-[15px] font-semibold tracking-tight">RM OS</span>
         </div>
-        <nav className="px-3 py-2">
-          <Link
-            to="/objects"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <Building2 className="size-4" />
-            Объекты
-          </Link>
-          <Link
-            to="/selections"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <Bookmark className="size-4" />
-            Подборки
-          </Link>
-          <Link
-            to="/calendar"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <CalendarDays className="size-4" />
-            Календарь
-          </Link>
-          <Link
-            to="/promo"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <Megaphone className="size-4" />
-            Публикация
-          </Link>
-
-          <Link
-            to="/chats"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <MessagesSquare className="size-4" />
-            Чаты
-            {unread > 0 && (
-              <span className="ml-auto rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-                {unread}
-              </span>
-            )}
-          </Link>
-
-          <Link
-            to="/assistant"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <Bot className="size-4" />
-            Помощник
-          </Link>
-
-          <Link
-            to="/system/update"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <Settings className="size-4" />
-            Обновление системы
-          </Link>
-
-          <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            CRM
-          </p>
-          <Link
-            to="/crm/clients"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <Users className="size-4" />
-            Клиенты
-          </Link>
-          <Link
-            to="/crm/leads"
-            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary"
-          >
-            <Inbox className="size-4" />
-            Заявки
-          </Link>
-        </nav>
-
+        <CrmNav unread={unread} />
         <div className="mt-auto p-3">
-          <button
-            type="button"
-            onClick={() => {
-              void supabase.auth.signOut().then(() => {
-                window.location.href = "/auth";
-              });
-            }}
-            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
-          >
-            <LogOut className="size-4" />
-            Выйти
-          </button>
+          <SignOutButton />
         </div>
       </aside>
-      <main className="min-w-0 flex-1">{children}</main>
+
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent side="left" className="w-[17rem] bg-sidebar p-0 lg:hidden">
+          <SheetTitle className="flex h-14 items-center gap-2 px-5 text-[15px] font-semibold">
+            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Building2 className="size-4" />
+            </span>
+            RM OS
+          </SheetTitle>
+          <div className="flex h-[calc(100%-3.5rem)] flex-col overflow-y-auto">
+            <CrmNav unread={unread} onNavigate={() => setMenuOpen(false)} />
+            <div className="mt-auto p-3">
+              <SignOutButton />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Меню"
+            className="grid size-9 shrink-0 place-items-center rounded-md border border-border"
+          >
+            <Menu className="size-5" />
+          </button>
+          <span className="truncate text-[15px] font-semibold tracking-tight">RM OS</span>
+          {unread > 0 && (
+            <Link
+              to="/chats"
+              className="ml-auto flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-[12px] font-semibold text-primary-foreground"
+            >
+              <MessagesSquare className="size-3.5" />
+              {unread}
+            </Link>
+          )}
+        </header>
+        <main className="min-w-0 flex-1">{children}</main>
+      </div>
     </div>
   );
 }

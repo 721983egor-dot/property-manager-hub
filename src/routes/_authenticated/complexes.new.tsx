@@ -41,7 +41,7 @@ function NewComplexPage() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <Link
         to="/complexes"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -49,7 +49,7 @@ function NewComplexPage() {
         <ChevronLeft className="size-4" />
         Комплексы
       </Link>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight">Новый комплекс</h1>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Новый комплекс</h1>
       <div className="mt-6">
         <ComplexForm
           onSubmit={async (input) => {

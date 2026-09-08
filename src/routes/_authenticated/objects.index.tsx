@@ -244,9 +244,9 @@ function ObjectsPage() {
   }, [selectedList.length]);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 lg:px-10 lg:py-10">
-      <header className="flex items-start justify-between gap-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Объекты</h1>
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Объекты</h1>
         <Button size="lg" onClick={() => navigate({ to: "/objects/new" })}>
           <Plus className="size-4" />
           Добавить объект
@@ -256,7 +256,7 @@ function ObjectsPage() {
       <SectionTabs active="objects" />
 
       <div className="mt-6 border-b border-border">
-        <div className="flex gap-6">
+        <div className="flex gap-5 overflow-x-auto whitespace-nowrap sm:gap-6">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -276,7 +276,7 @@ function ObjectsPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[260px] flex-1">
+        <div className="relative min-w-full flex-1 sm:min-w-[260px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}

@@ -78,7 +78,7 @@ function ObjectViewPage() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <Link
         to="/objects"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -93,9 +93,9 @@ function ObjectViewPage() {
         <p className="mt-6 text-sm text-muted-foreground">Объект не найден</p>
       ) : (
         <>
-          <header className="mt-3 flex items-start justify-between gap-6">
+          <header className="mt-3 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight">{data.title}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{data.title}</h1>
               <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
                 <span>ID: {data.ref_id}</span>
                 <StatusBadge status={data.status} />

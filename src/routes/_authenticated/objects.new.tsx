@@ -33,7 +33,7 @@ function NewObjectPage() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <Link
         to="/objects"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -41,7 +41,7 @@ function NewObjectPage() {
         <ChevronLeft className="size-4" />
         Объекты
       </Link>
-      <h1 className="mb-6 mt-3 text-3xl font-semibold tracking-tight">Новый объект</h1>
+      <h1 className="mb-6 mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Новый объект</h1>
       <PropertyForm
         onSubmit={async (input) => {
           await mutation.mutateAsync(input);
