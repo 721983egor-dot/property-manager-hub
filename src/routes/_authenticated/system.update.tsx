@@ -39,7 +39,32 @@ const PROGRESS_STEPS = [
   "Проверка работоспособности…",
 ];
 
+/** Обрыв связи из-за перезапуска приложения, а не реальная ошибка обновления. */
+function isRestartError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? "");
+  if (!message.trim()) return true;
+  return /invariant failed|failed to fetch|networkerror|load failed|network request failed|502|503|504|aborted|terminated/i.test(
+    message,
+  );
+}
+
+/** Ждём, пока приложение снова начнёт отвечать после перезапуска. */
+async function waitForAppRestart(timeoutMs = 5 * 60 * 1000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    try {
+      const res = await fetch("/api/public/health", { cache: "no-store" });
+      if (res.ok) return true;
+    } catch {
+      // приложение ещё перезапускается
+    }
+  }
+  return false;
+}
+
 function SystemUpdatePage() {
+
   const queryClient = useQueryClient();
   const loadStatus = useServerFn(getDeployStatus);
   const doDeploy = useServerFn(triggerDeploy);
