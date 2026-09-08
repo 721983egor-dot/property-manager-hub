@@ -32,6 +32,7 @@ import { Route as AuthenticatedPromoIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPromoIdRouteImport } from './routes/_authenticated/promo.$id'
 import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
+import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authenticated/system.telegram'
 import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedComplexesIdEditRouteImport } from './routes/_authenticated/complexes.$id.edit'
@@ -45,6 +46,7 @@ import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/c
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
 import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/public/feeds/yandex[.]xml'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -166,6 +168,12 @@ const AuthenticatedSelectionsIndexRoute =
     path: '/selections/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemTelegramRoute =
+  AuthenticatedSystemTelegramRouteImport.update({
+    id: '/system/telegram',
+    path: '/system/telegram',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSystemUpdateRoute =
   AuthenticatedSystemUpdateRouteImport.update({
     id: '/system/update',
@@ -241,6 +249,12 @@ const ApiPublicFeedsYandexDotxmlRoute =
     path: '/api/public/feeds/yandex.xml',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram/webhook',
+    path: '/api/public/telegram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -259,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
+  '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/assistant/': typeof AuthenticatedAssistantIndexRoute
@@ -275,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
@@ -295,6 +311,7 @@ export interface FileRoutesByTo {
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
+  '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/assistant': typeof AuthenticatedAssistantIndexRoute
@@ -311,6 +328,7 @@ export interface FileRoutesByTo {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/leads': typeof AuthenticatedCrmLeadsIndexRoute
   '/objects/$id': typeof AuthenticatedObjectsIdIndexRoute
@@ -334,6 +352,7 @@ export interface FileRoutesById {
   '/_authenticated/objects/new': typeof AuthenticatedObjectsNewRoute
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
+  '/_authenticated/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/_authenticated/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/assistant/': typeof AuthenticatedAssistantIndexRoute
@@ -350,6 +369,7 @@ export interface FileRoutesById {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/_authenticated/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/_authenticated/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
@@ -373,6 +393,7 @@ export interface FileRouteTypes {
     | '/objects/new'
     | '/promo/$id'
     | '/promo/import'
+    | '/system/telegram'
     | '/system/update'
     | '/api/public/health'
     | '/assistant/'
@@ -389,6 +410,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/api/public/telegram/webhook'
     | '/crm/clients/'
     | '/crm/leads/'
     | '/objects/$id/'
@@ -409,6 +431,7 @@ export interface FileRouteTypes {
     | '/objects/new'
     | '/promo/$id'
     | '/promo/import'
+    | '/system/telegram'
     | '/system/update'
     | '/api/public/health'
     | '/assistant'
@@ -425,6 +448,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/api/public/telegram/webhook'
     | '/crm/clients'
     | '/crm/leads'
     | '/objects/$id'
@@ -447,6 +471,7 @@ export interface FileRouteTypes {
     | '/_authenticated/objects/new'
     | '/_authenticated/promo/$id'
     | '/_authenticated/promo/import'
+    | '/_authenticated/system/telegram'
     | '/_authenticated/system/update'
     | '/api/public/health'
     | '/_authenticated/assistant/'
@@ -463,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/api/public/telegram/webhook'
     | '/_authenticated/crm/clients/'
     | '/_authenticated/crm/leads/'
     | '/_authenticated/objects/$id/'
@@ -484,6 +510,7 @@ export interface RootRouteChildren {
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
   ApiPublicFeedsYandexDotxmlRoute: typeof ApiPublicFeedsYandexDotxmlRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -649,6 +676,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSelectionsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system/telegram': {
+      id: '/_authenticated/system/telegram'
+      path: '/system/telegram'
+      fullPath: '/system/telegram'
+      preLoaderRoute: typeof AuthenticatedSystemTelegramRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/system/update': {
       id: '/_authenticated/system/update'
       path: '/system/update'
@@ -740,6 +774,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFeedsYandexDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/webhook': {
+      id: '/api/public/telegram/webhook'
+      path: '/api/public/telegram/webhook'
+      fullPath: '/api/public/telegram/webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -749,6 +790,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedObjectsNewRoute: typeof AuthenticatedObjectsNewRoute
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
   AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
+  AuthenticatedSystemTelegramRoute: typeof AuthenticatedSystemTelegramRoute
   AuthenticatedSystemUpdateRoute: typeof AuthenticatedSystemUpdateRoute
   AuthenticatedAssistantIndexRoute: typeof AuthenticatedAssistantIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
@@ -771,6 +813,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedObjectsNewRoute: AuthenticatedObjectsNewRoute,
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
   AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
+  AuthenticatedSystemTelegramRoute: AuthenticatedSystemTelegramRoute,
   AuthenticatedSystemUpdateRoute: AuthenticatedSystemUpdateRoute,
   AuthenticatedAssistantIndexRoute: AuthenticatedAssistantIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
@@ -818,6 +861,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
   ApiPublicFeedsYandexDotxmlRoute: ApiPublicFeedsYandexDotxmlRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
