@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Bookmark,
   Bot,
   Building2,
   CalendarDays,
@@ -70,10 +69,6 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       <Link to="/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Building2 className="size-4 shrink-0" />
         Объекты
-      </Link>
-      <Link to="/selections" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Bookmark className="size-4 shrink-0" />
-        Подборки
       </Link>
       <Link to="/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <CalendarDays className="size-4 shrink-0" />

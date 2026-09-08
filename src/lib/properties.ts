@@ -68,6 +68,7 @@ export type Property = {
   land_status: string;
   cian_jk_id: number | null;
   is_apartments: boolean | null;
+  sort_order: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -363,7 +364,20 @@ function normalize(row: Record<string, unknown>): Property {
     is_apartments: typeof row['is_apartments'] === "boolean" ? (row['is_apartments'] as boolean) : null,
     availability_note:
       typeof row['availability_note'] === "string" ? (row['availability_note'] as string) : "",
+    sort_order: num(row['sort_order']),
   };
+}
+
+/** Сохраняет порядок объектов в календаре (перетаскивание строк). */
+export async function savePropertyOrder(ids: string[]) {
+  await Promise.all(
+    ids.map((id, index) =>
+      supabase
+        .from("properties")
+        .update({ sort_order: index } as never)
+        .eq("id", id),
+    ),
+  );
 }
 
 
