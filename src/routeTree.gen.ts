@@ -10,34 +10,36 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BookingRouteImport } from './routes/booking'
-import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ContactsRouteImport } from './routes/contacts'
 import { Route as ManagementRouteImport } from './routes/management'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RentRouteImport } from './routes/rent'
-import { Route as AssistantIndexRouteImport } from './routes/assistant.index'
-import { Route as ChatsIndexRouteImport } from './routes/chats.index'
-import { Route as ComplexesIndexRouteImport } from './routes/complexes.index'
-import { Route as ComplexesNewRouteImport } from './routes/complexes.new'
-import { Route as ObjectsIndexRouteImport } from './routes/objects.index'
-import { Route as ObjectsNewRouteImport } from './routes/objects.new'
+import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as PCodeRouteImport } from './routes/p.$code'
-import { Route as PromoIndexRouteImport } from './routes/promo.index'
-import { Route as PromoIdRouteImport } from './routes/promo.$id'
-import { Route as PromoImportRouteImport } from './routes/promo.import'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
-import { Route as SelectionsIndexRouteImport } from './routes/selections.index'
-import { Route as SystemUpdateRouteImport } from './routes/system.update'
-import { Route as ComplexesIdEditRouteImport } from './routes/complexes.$id.edit'
-import { Route as CrmClientsIndexRouteImport } from './routes/crm.clients.index'
-import { Route as CrmClientsIdRouteImport } from './routes/crm.clients.$id'
-import { Route as CrmLeadsIndexRouteImport } from './routes/crm.leads.index'
-import { Route as ObjectsIdIndexRouteImport } from './routes/objects.$id.index'
-import { Route as ObjectsIdEditRouteImport } from './routes/objects.$id.edit'
-import { Route as ObjectsIdPreviewRouteImport } from './routes/objects.$id.preview'
+import { Route as AuthenticatedAssistantIndexRouteImport } from './routes/_authenticated/assistant.index'
+import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats.index'
+import { Route as AuthenticatedComplexesIndexRouteImport } from './routes/_authenticated/complexes.index'
+import { Route as AuthenticatedComplexesNewRouteImport } from './routes/_authenticated/complexes.new'
+import { Route as AuthenticatedObjectsIndexRouteImport } from './routes/_authenticated/objects.index'
+import { Route as AuthenticatedObjectsNewRouteImport } from './routes/_authenticated/objects.new'
+import { Route as AuthenticatedPromoIndexRouteImport } from './routes/_authenticated/promo.index'
+import { Route as AuthenticatedPromoIdRouteImport } from './routes/_authenticated/promo.$id'
+import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
+import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
+import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
+import { Route as AuthenticatedComplexesIdEditRouteImport } from './routes/_authenticated/complexes.$id.edit'
+import { Route as AuthenticatedCrmClientsIndexRouteImport } from './routes/_authenticated/crm.clients.index'
+import { Route as AuthenticatedCrmClientsIdRouteImport } from './routes/_authenticated/crm.clients.$id'
+import { Route as AuthenticatedCrmLeadsIndexRouteImport } from './routes/_authenticated/crm.leads.index'
+import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authenticated/objects.$id.index'
+import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authenticated/objects.$id.edit'
+import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_authenticated/objects.$id.preview'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
@@ -48,19 +50,23 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BookingRoute = BookingRouteImport.update({
   id: '/booking',
   path: '/booking',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalendarRoute = CalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactsRoute = ContactsRouteImport.update({
@@ -83,54 +89,14 @@ const RentRoute = RentRouteImport.update({
   path: '/rent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AssistantIndexRoute = AssistantIndexRouteImport.update({
-  id: '/assistant/',
-  path: '/assistant/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChatsIndexRoute = ChatsIndexRouteImport.update({
-  id: '/chats/',
-  path: '/chats/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ComplexesIndexRoute = ComplexesIndexRouteImport.update({
-  id: '/complexes/',
-  path: '/complexes/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ComplexesNewRoute = ComplexesNewRouteImport.update({
-  id: '/complexes/new',
-  path: '/complexes/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ObjectsIndexRoute = ObjectsIndexRouteImport.update({
-  id: '/objects/',
-  path: '/objects/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ObjectsNewRoute = ObjectsNewRouteImport.update({
-  id: '/objects/new',
-  path: '/objects/new',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const PCodeRoute = PCodeRouteImport.update({
   id: '/p/$code',
   path: '/p/$code',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PromoIndexRoute = PromoIndexRouteImport.update({
-  id: '/promo/',
-  path: '/promo/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PromoIdRoute = PromoIdRouteImport.update({
-  id: '/promo/$id',
-  path: '/promo/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PromoImportRoute = PromoImportRouteImport.update({
-  id: '/promo/import',
-  path: '/promo/import',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentIndexRoute = RentIndexRouteImport.update({
@@ -143,51 +109,110 @@ const RentIdRoute = RentIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => RentRoute,
 } as any)
-const SelectionsIndexRoute = SelectionsIndexRouteImport.update({
-  id: '/selections/',
-  path: '/selections/',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedAssistantIndexRoute =
+  AuthenticatedAssistantIndexRouteImport.update({
+    id: '/assistant/',
+    path: '/assistant/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
+  id: '/chats/',
+  path: '/chats/',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const SystemUpdateRoute = SystemUpdateRouteImport.update({
-  id: '/system/update',
-  path: '/system/update',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedComplexesIndexRoute =
+  AuthenticatedComplexesIndexRouteImport.update({
+    id: '/complexes/',
+    path: '/complexes/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedComplexesNewRoute =
+  AuthenticatedComplexesNewRouteImport.update({
+    id: '/complexes/new',
+    path: '/complexes/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedObjectsIndexRoute =
+  AuthenticatedObjectsIndexRouteImport.update({
+    id: '/objects/',
+    path: '/objects/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedObjectsNewRoute = AuthenticatedObjectsNewRouteImport.update({
+  id: '/objects/new',
+  path: '/objects/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ComplexesIdEditRoute = ComplexesIdEditRouteImport.update({
-  id: '/complexes/$id/edit',
-  path: '/complexes/$id/edit',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedPromoIndexRoute = AuthenticatedPromoIndexRouteImport.update({
+  id: '/promo/',
+  path: '/promo/',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const CrmClientsIndexRoute = CrmClientsIndexRouteImport.update({
-  id: '/crm/clients/',
-  path: '/crm/clients/',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedPromoIdRoute = AuthenticatedPromoIdRouteImport.update({
+  id: '/promo/$id',
+  path: '/promo/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const CrmClientsIdRoute = CrmClientsIdRouteImport.update({
-  id: '/crm/clients/$id',
-  path: '/crm/clients/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CrmLeadsIndexRoute = CrmLeadsIndexRouteImport.update({
-  id: '/crm/leads/',
-  path: '/crm/leads/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ObjectsIdIndexRoute = ObjectsIdIndexRouteImport.update({
-  id: '/objects/$id/',
-  path: '/objects/$id/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ObjectsIdEditRoute = ObjectsIdEditRouteImport.update({
-  id: '/objects/$id/edit',
-  path: '/objects/$id/edit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ObjectsIdPreviewRoute = ObjectsIdPreviewRouteImport.update({
-  id: '/objects/$id/preview',
-  path: '/objects/$id/preview',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const AuthenticatedPromoImportRoute =
+  AuthenticatedPromoImportRouteImport.update({
+    id: '/promo/import',
+    path: '/promo/import',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSelectionsIndexRoute =
+  AuthenticatedSelectionsIndexRouteImport.update({
+    id: '/selections/',
+    path: '/selections/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSystemUpdateRoute =
+  AuthenticatedSystemUpdateRouteImport.update({
+    id: '/system/update',
+    path: '/system/update',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedComplexesIdEditRoute =
+  AuthenticatedComplexesIdEditRouteImport.update({
+    id: '/complexes/$id/edit',
+    path: '/complexes/$id/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCrmClientsIndexRoute =
+  AuthenticatedCrmClientsIndexRouteImport.update({
+    id: '/crm/clients/',
+    path: '/crm/clients/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCrmClientsIdRoute =
+  AuthenticatedCrmClientsIdRouteImport.update({
+    id: '/crm/clients/$id',
+    path: '/crm/clients/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCrmLeadsIndexRoute =
+  AuthenticatedCrmLeadsIndexRouteImport.update({
+    id: '/crm/leads/',
+    path: '/crm/leads/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedObjectsIdIndexRoute =
+  AuthenticatedObjectsIdIndexRouteImport.update({
+    id: '/objects/$id/',
+    path: '/objects/$id/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedObjectsIdEditRoute =
+  AuthenticatedObjectsIdEditRouteImport.update({
+    id: '/objects/$id/edit',
+    path: '/objects/$id/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedObjectsIdPreviewRoute =
+  AuthenticatedObjectsIdPreviewRouteImport.update({
+    id: '/objects/$id/preview',
+    path: '/objects/$id/preview',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicCronCianSyncRoute = ApiPublicCronCianSyncRouteImport.update({
   id: '/api/public/cron/cian-sync',
   path: '/api/public/cron/cian-sync',
@@ -214,243 +239,234 @@ const ApiPublicFeedsYandexDotxmlRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/auth': typeof AuthRoute
   '/booking': typeof BookingRoute
-  '/calendar': typeof CalendarRoute
   '/contacts': typeof ContactsRoute
   '/management': typeof ManagementRoute
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
-  '/complexes/new': typeof ComplexesNewRoute
-  '/objects/new': typeof ObjectsNewRoute
+  '/calendar': typeof AuthenticatedCalendarRoute
   '/p/$code': typeof PCodeRoute
-  '/promo/$id': typeof PromoIdRoute
-  '/promo/import': typeof PromoImportRoute
   '/rent/$id': typeof RentIdRoute
-  '/system/update': typeof SystemUpdateRoute
-  '/assistant/': typeof AssistantIndexRoute
-  '/chats/': typeof ChatsIndexRoute
-  '/complexes/': typeof ComplexesIndexRoute
-  '/objects/': typeof ObjectsIndexRoute
-  '/promo/': typeof PromoIndexRoute
   '/rent/': typeof RentIndexRoute
-  '/selections/': typeof SelectionsIndexRoute
-  '/complexes/$id/edit': typeof ComplexesIdEditRoute
-  '/crm/clients/$id': typeof CrmClientsIdRoute
-  '/objects/$id/edit': typeof ObjectsIdEditRoute
-  '/objects/$id/preview': typeof ObjectsIdPreviewRoute
-  '/crm/clients/': typeof CrmClientsIndexRoute
-  '/crm/leads/': typeof CrmLeadsIndexRoute
-  '/objects/$id/': typeof ObjectsIdIndexRoute
+  '/complexes/new': typeof AuthenticatedComplexesNewRoute
+  '/objects/new': typeof AuthenticatedObjectsNewRoute
+  '/promo/$id': typeof AuthenticatedPromoIdRoute
+  '/promo/import': typeof AuthenticatedPromoImportRoute
+  '/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/assistant/': typeof AuthenticatedAssistantIndexRoute
+  '/chats/': typeof AuthenticatedChatsIndexRoute
+  '/complexes/': typeof AuthenticatedComplexesIndexRoute
+  '/objects/': typeof AuthenticatedObjectsIndexRoute
+  '/promo/': typeof AuthenticatedPromoIndexRoute
+  '/selections/': typeof AuthenticatedSelectionsIndexRoute
+  '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
+  '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
+  '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
+  '/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
+  '/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/auth': typeof AuthRoute
   '/booking': typeof BookingRoute
-  '/calendar': typeof CalendarRoute
   '/contacts': typeof ContactsRoute
   '/management': typeof ManagementRoute
   '/privacy': typeof PrivacyRoute
-  '/complexes/new': typeof ComplexesNewRoute
-  '/objects/new': typeof ObjectsNewRoute
+  '/calendar': typeof AuthenticatedCalendarRoute
   '/p/$code': typeof PCodeRoute
-  '/promo/$id': typeof PromoIdRoute
-  '/promo/import': typeof PromoImportRoute
   '/rent/$id': typeof RentIdRoute
-  '/system/update': typeof SystemUpdateRoute
-  '/assistant': typeof AssistantIndexRoute
-  '/chats': typeof ChatsIndexRoute
-  '/complexes': typeof ComplexesIndexRoute
-  '/objects': typeof ObjectsIndexRoute
-  '/promo': typeof PromoIndexRoute
   '/rent': typeof RentIndexRoute
-  '/selections': typeof SelectionsIndexRoute
-  '/complexes/$id/edit': typeof ComplexesIdEditRoute
-  '/crm/clients/$id': typeof CrmClientsIdRoute
-  '/objects/$id/edit': typeof ObjectsIdEditRoute
-  '/objects/$id/preview': typeof ObjectsIdPreviewRoute
-  '/crm/clients': typeof CrmClientsIndexRoute
-  '/crm/leads': typeof CrmLeadsIndexRoute
-  '/objects/$id': typeof ObjectsIdIndexRoute
+  '/complexes/new': typeof AuthenticatedComplexesNewRoute
+  '/objects/new': typeof AuthenticatedObjectsNewRoute
+  '/promo/$id': typeof AuthenticatedPromoIdRoute
+  '/promo/import': typeof AuthenticatedPromoImportRoute
+  '/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/assistant': typeof AuthenticatedAssistantIndexRoute
+  '/chats': typeof AuthenticatedChatsIndexRoute
+  '/complexes': typeof AuthenticatedComplexesIndexRoute
+  '/objects': typeof AuthenticatedObjectsIndexRoute
+  '/promo': typeof AuthenticatedPromoIndexRoute
+  '/selections': typeof AuthenticatedSelectionsIndexRoute
+  '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
+  '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
+  '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/crm/clients': typeof AuthenticatedCrmClientsIndexRoute
+  '/crm/leads': typeof AuthenticatedCrmLeadsIndexRoute
+  '/objects/$id': typeof AuthenticatedObjectsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/auth': typeof AuthRoute
   '/booking': typeof BookingRoute
-  '/calendar': typeof CalendarRoute
   '/contacts': typeof ContactsRoute
   '/management': typeof ManagementRoute
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
-  '/complexes/new': typeof ComplexesNewRoute
-  '/objects/new': typeof ObjectsNewRoute
+  '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/p/$code': typeof PCodeRoute
-  '/promo/$id': typeof PromoIdRoute
-  '/promo/import': typeof PromoImportRoute
   '/rent/$id': typeof RentIdRoute
-  '/system/update': typeof SystemUpdateRoute
-  '/assistant/': typeof AssistantIndexRoute
-  '/chats/': typeof ChatsIndexRoute
-  '/complexes/': typeof ComplexesIndexRoute
-  '/objects/': typeof ObjectsIndexRoute
-  '/promo/': typeof PromoIndexRoute
   '/rent/': typeof RentIndexRoute
-  '/selections/': typeof SelectionsIndexRoute
-  '/complexes/$id/edit': typeof ComplexesIdEditRoute
-  '/crm/clients/$id': typeof CrmClientsIdRoute
-  '/objects/$id/edit': typeof ObjectsIdEditRoute
-  '/objects/$id/preview': typeof ObjectsIdPreviewRoute
-  '/crm/clients/': typeof CrmClientsIndexRoute
-  '/crm/leads/': typeof CrmLeadsIndexRoute
-  '/objects/$id/': typeof ObjectsIdIndexRoute
+  '/_authenticated/complexes/new': typeof AuthenticatedComplexesNewRoute
+  '/_authenticated/objects/new': typeof AuthenticatedObjectsNewRoute
+  '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
+  '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
+  '/_authenticated/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/_authenticated/assistant/': typeof AuthenticatedAssistantIndexRoute
+  '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
+  '/_authenticated/complexes/': typeof AuthenticatedComplexesIndexRoute
+  '/_authenticated/objects/': typeof AuthenticatedObjectsIndexRoute
+  '/_authenticated/promo/': typeof AuthenticatedPromoIndexRoute
+  '/_authenticated/selections/': typeof AuthenticatedSelectionsIndexRoute
+  '/_authenticated/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
+  '/_authenticated/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
+  '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/_authenticated/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
+  '/_authenticated/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
+  '/_authenticated/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/about'
+    | '/auth'
     | '/booking'
-    | '/calendar'
     | '/contacts'
     | '/management'
     | '/privacy'
     | '/rent'
+    | '/calendar'
+    | '/p/$code'
+    | '/rent/$id'
+    | '/rent/'
     | '/complexes/new'
     | '/objects/new'
-    | '/p/$code'
     | '/promo/$id'
     | '/promo/import'
-    | '/rent/$id'
     | '/system/update'
     | '/assistant/'
     | '/chats/'
     | '/complexes/'
     | '/objects/'
     | '/promo/'
-    | '/rent/'
     | '/selections/'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
-    | '/crm/clients/'
-    | '/crm/leads/'
-    | '/objects/$id/'
     | '/api/public/cron/cian-sync'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/crm/clients/'
+    | '/crm/leads/'
+    | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
+    | '/auth'
     | '/booking'
-    | '/calendar'
     | '/contacts'
     | '/management'
     | '/privacy'
+    | '/calendar'
+    | '/p/$code'
+    | '/rent/$id'
+    | '/rent'
     | '/complexes/new'
     | '/objects/new'
-    | '/p/$code'
     | '/promo/$id'
     | '/promo/import'
-    | '/rent/$id'
     | '/system/update'
     | '/assistant'
     | '/chats'
     | '/complexes'
     | '/objects'
     | '/promo'
-    | '/rent'
     | '/selections'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
-    | '/crm/clients'
-    | '/crm/leads'
-    | '/objects/$id'
     | '/api/public/cron/cian-sync'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/crm/clients'
+    | '/crm/leads'
+    | '/objects/$id'
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/about'
+    | '/auth'
     | '/booking'
-    | '/calendar'
     | '/contacts'
     | '/management'
     | '/privacy'
     | '/rent'
-    | '/complexes/new'
-    | '/objects/new'
+    | '/_authenticated/calendar'
     | '/p/$code'
-    | '/promo/$id'
-    | '/promo/import'
     | '/rent/$id'
-    | '/system/update'
-    | '/assistant/'
-    | '/chats/'
-    | '/complexes/'
-    | '/objects/'
-    | '/promo/'
     | '/rent/'
-    | '/selections/'
-    | '/complexes/$id/edit'
-    | '/crm/clients/$id'
-    | '/objects/$id/edit'
-    | '/objects/$id/preview'
-    | '/crm/clients/'
-    | '/crm/leads/'
-    | '/objects/$id/'
+    | '/_authenticated/complexes/new'
+    | '/_authenticated/objects/new'
+    | '/_authenticated/promo/$id'
+    | '/_authenticated/promo/import'
+    | '/_authenticated/system/update'
+    | '/_authenticated/assistant/'
+    | '/_authenticated/chats/'
+    | '/_authenticated/complexes/'
+    | '/_authenticated/objects/'
+    | '/_authenticated/promo/'
+    | '/_authenticated/selections/'
+    | '/_authenticated/complexes/$id/edit'
+    | '/_authenticated/crm/clients/$id'
+    | '/_authenticated/objects/$id/edit'
+    | '/_authenticated/objects/$id/preview'
     | '/api/public/cron/cian-sync'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/_authenticated/crm/clients/'
+    | '/_authenticated/crm/leads/'
+    | '/_authenticated/objects/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
+  AuthRoute: typeof AuthRoute
   BookingRoute: typeof BookingRoute
-  CalendarRoute: typeof CalendarRoute
   ContactsRoute: typeof ContactsRoute
   ManagementRoute: typeof ManagementRoute
   PrivacyRoute: typeof PrivacyRoute
   RentRoute: typeof RentRouteWithChildren
-  ComplexesNewRoute: typeof ComplexesNewRoute
-  ObjectsNewRoute: typeof ObjectsNewRoute
   PCodeRoute: typeof PCodeRoute
-  PromoIdRoute: typeof PromoIdRoute
-  PromoImportRoute: typeof PromoImportRoute
-  SystemUpdateRoute: typeof SystemUpdateRoute
-  AssistantIndexRoute: typeof AssistantIndexRoute
-  ChatsIndexRoute: typeof ChatsIndexRoute
-  ComplexesIndexRoute: typeof ComplexesIndexRoute
-  ObjectsIndexRoute: typeof ObjectsIndexRoute
-  PromoIndexRoute: typeof PromoIndexRoute
-  SelectionsIndexRoute: typeof SelectionsIndexRoute
-  ComplexesIdEditRoute: typeof ComplexesIdEditRoute
-  CrmClientsIdRoute: typeof CrmClientsIdRoute
-  ObjectsIdEditRoute: typeof ObjectsIdEditRoute
-  ObjectsIdPreviewRoute: typeof ObjectsIdPreviewRoute
-  CrmClientsIndexRoute: typeof CrmClientsIndexRoute
-  CrmLeadsIndexRoute: typeof CrmLeadsIndexRoute
-  ObjectsIdIndexRoute: typeof ObjectsIdIndexRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
@@ -466,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -473,18 +496,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/booking': {
       id: '/booking'
       path: '/booking'
       fullPath: '/booking'
       preLoaderRoute: typeof BookingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendar': {
-      id: '/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contacts': {
@@ -515,74 +538,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/assistant/': {
-      id: '/assistant/'
-      path: '/assistant'
-      fullPath: '/assistant/'
-      preLoaderRoute: typeof AssistantIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chats/': {
-      id: '/chats/'
-      path: '/chats'
-      fullPath: '/chats/'
-      preLoaderRoute: typeof ChatsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/complexes/': {
-      id: '/complexes/'
-      path: '/complexes'
-      fullPath: '/complexes/'
-      preLoaderRoute: typeof ComplexesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/complexes/new': {
-      id: '/complexes/new'
-      path: '/complexes/new'
-      fullPath: '/complexes/new'
-      preLoaderRoute: typeof ComplexesNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/objects/': {
-      id: '/objects/'
-      path: '/objects'
-      fullPath: '/objects/'
-      preLoaderRoute: typeof ObjectsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/objects/new': {
-      id: '/objects/new'
-      path: '/objects/new'
-      fullPath: '/objects/new'
-      preLoaderRoute: typeof ObjectsNewRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/calendar': {
+      id: '/_authenticated/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/p/$code': {
       id: '/p/$code'
       path: '/p/$code'
       fullPath: '/p/$code'
       preLoaderRoute: typeof PCodeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/promo/': {
-      id: '/promo/'
-      path: '/promo'
-      fullPath: '/promo/'
-      preLoaderRoute: typeof PromoIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/promo/$id': {
-      id: '/promo/$id'
-      path: '/promo/$id'
-      fullPath: '/promo/$id'
-      preLoaderRoute: typeof PromoIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/promo/import': {
-      id: '/promo/import'
-      path: '/promo/import'
-      fullPath: '/promo/import'
-      preLoaderRoute: typeof PromoImportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rent/': {
@@ -599,68 +566,131 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RentIdRouteImport
       parentRoute: typeof RentRoute
     }
-    '/selections/': {
-      id: '/selections/'
+    '/_authenticated/assistant/': {
+      id: '/_authenticated/assistant/'
+      path: '/assistant'
+      fullPath: '/assistant/'
+      preLoaderRoute: typeof AuthenticatedAssistantIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/chats/': {
+      id: '/_authenticated/chats/'
+      path: '/chats'
+      fullPath: '/chats/'
+      preLoaderRoute: typeof AuthenticatedChatsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/complexes/': {
+      id: '/_authenticated/complexes/'
+      path: '/complexes'
+      fullPath: '/complexes/'
+      preLoaderRoute: typeof AuthenticatedComplexesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/complexes/new': {
+      id: '/_authenticated/complexes/new'
+      path: '/complexes/new'
+      fullPath: '/complexes/new'
+      preLoaderRoute: typeof AuthenticatedComplexesNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/objects/': {
+      id: '/_authenticated/objects/'
+      path: '/objects'
+      fullPath: '/objects/'
+      preLoaderRoute: typeof AuthenticatedObjectsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/objects/new': {
+      id: '/_authenticated/objects/new'
+      path: '/objects/new'
+      fullPath: '/objects/new'
+      preLoaderRoute: typeof AuthenticatedObjectsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/promo/': {
+      id: '/_authenticated/promo/'
+      path: '/promo'
+      fullPath: '/promo/'
+      preLoaderRoute: typeof AuthenticatedPromoIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/promo/$id': {
+      id: '/_authenticated/promo/$id'
+      path: '/promo/$id'
+      fullPath: '/promo/$id'
+      preLoaderRoute: typeof AuthenticatedPromoIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/promo/import': {
+      id: '/_authenticated/promo/import'
+      path: '/promo/import'
+      fullPath: '/promo/import'
+      preLoaderRoute: typeof AuthenticatedPromoImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/selections/': {
+      id: '/_authenticated/selections/'
       path: '/selections'
       fullPath: '/selections/'
-      preLoaderRoute: typeof SelectionsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedSelectionsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/system/update': {
-      id: '/system/update'
+    '/_authenticated/system/update': {
+      id: '/_authenticated/system/update'
       path: '/system/update'
       fullPath: '/system/update'
-      preLoaderRoute: typeof SystemUpdateRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedSystemUpdateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/complexes/$id/edit': {
-      id: '/complexes/$id/edit'
+    '/_authenticated/complexes/$id/edit': {
+      id: '/_authenticated/complexes/$id/edit'
       path: '/complexes/$id/edit'
       fullPath: '/complexes/$id/edit'
-      preLoaderRoute: typeof ComplexesIdEditRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedComplexesIdEditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/crm/clients/': {
-      id: '/crm/clients/'
+    '/_authenticated/crm/clients/': {
+      id: '/_authenticated/crm/clients/'
       path: '/crm/clients'
       fullPath: '/crm/clients/'
-      preLoaderRoute: typeof CrmClientsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedCrmClientsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/crm/clients/$id': {
-      id: '/crm/clients/$id'
+    '/_authenticated/crm/clients/$id': {
+      id: '/_authenticated/crm/clients/$id'
       path: '/crm/clients/$id'
       fullPath: '/crm/clients/$id'
-      preLoaderRoute: typeof CrmClientsIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedCrmClientsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/crm/leads/': {
-      id: '/crm/leads/'
+    '/_authenticated/crm/leads/': {
+      id: '/_authenticated/crm/leads/'
       path: '/crm/leads'
       fullPath: '/crm/leads/'
-      preLoaderRoute: typeof CrmLeadsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedCrmLeadsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/objects/$id/': {
-      id: '/objects/$id/'
+    '/_authenticated/objects/$id/': {
+      id: '/_authenticated/objects/$id/'
       path: '/objects/$id'
       fullPath: '/objects/$id/'
-      preLoaderRoute: typeof ObjectsIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedObjectsIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/objects/$id/edit': {
-      id: '/objects/$id/edit'
+    '/_authenticated/objects/$id/edit': {
+      id: '/_authenticated/objects/$id/edit'
       path: '/objects/$id/edit'
       fullPath: '/objects/$id/edit'
-      preLoaderRoute: typeof ObjectsIdEditRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedObjectsIdEditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/objects/$id/preview': {
-      id: '/objects/$id/preview'
+    '/_authenticated/objects/$id/preview': {
+      id: '/_authenticated/objects/$id/preview'
       path: '/objects/$id/preview'
       fullPath: '/objects/$id/preview'
-      preLoaderRoute: typeof ObjectsIdPreviewRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedObjectsIdPreviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/cron/cian-sync': {
       id: '/api/public/cron/cian-sync'
@@ -693,6 +723,53 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedComplexesNewRoute: typeof AuthenticatedComplexesNewRoute
+  AuthenticatedObjectsNewRoute: typeof AuthenticatedObjectsNewRoute
+  AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
+  AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
+  AuthenticatedSystemUpdateRoute: typeof AuthenticatedSystemUpdateRoute
+  AuthenticatedAssistantIndexRoute: typeof AuthenticatedAssistantIndexRoute
+  AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
+  AuthenticatedComplexesIndexRoute: typeof AuthenticatedComplexesIndexRoute
+  AuthenticatedObjectsIndexRoute: typeof AuthenticatedObjectsIndexRoute
+  AuthenticatedPromoIndexRoute: typeof AuthenticatedPromoIndexRoute
+  AuthenticatedSelectionsIndexRoute: typeof AuthenticatedSelectionsIndexRoute
+  AuthenticatedComplexesIdEditRoute: typeof AuthenticatedComplexesIdEditRoute
+  AuthenticatedCrmClientsIdRoute: typeof AuthenticatedCrmClientsIdRoute
+  AuthenticatedObjectsIdEditRoute: typeof AuthenticatedObjectsIdEditRoute
+  AuthenticatedObjectsIdPreviewRoute: typeof AuthenticatedObjectsIdPreviewRoute
+  AuthenticatedCrmClientsIndexRoute: typeof AuthenticatedCrmClientsIndexRoute
+  AuthenticatedCrmLeadsIndexRoute: typeof AuthenticatedCrmLeadsIndexRoute
+  AuthenticatedObjectsIdIndexRoute: typeof AuthenticatedObjectsIdIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedComplexesNewRoute: AuthenticatedComplexesNewRoute,
+  AuthenticatedObjectsNewRoute: AuthenticatedObjectsNewRoute,
+  AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
+  AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
+  AuthenticatedSystemUpdateRoute: AuthenticatedSystemUpdateRoute,
+  AuthenticatedAssistantIndexRoute: AuthenticatedAssistantIndexRoute,
+  AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
+  AuthenticatedComplexesIndexRoute: AuthenticatedComplexesIndexRoute,
+  AuthenticatedObjectsIndexRoute: AuthenticatedObjectsIndexRoute,
+  AuthenticatedPromoIndexRoute: AuthenticatedPromoIndexRoute,
+  AuthenticatedSelectionsIndexRoute: AuthenticatedSelectionsIndexRoute,
+  AuthenticatedComplexesIdEditRoute: AuthenticatedComplexesIdEditRoute,
+  AuthenticatedCrmClientsIdRoute: AuthenticatedCrmClientsIdRoute,
+  AuthenticatedObjectsIdEditRoute: AuthenticatedObjectsIdEditRoute,
+  AuthenticatedObjectsIdPreviewRoute: AuthenticatedObjectsIdPreviewRoute,
+  AuthenticatedCrmClientsIndexRoute: AuthenticatedCrmClientsIndexRoute,
+  AuthenticatedCrmLeadsIndexRoute: AuthenticatedCrmLeadsIndexRoute,
+  AuthenticatedObjectsIdIndexRoute: AuthenticatedObjectsIdIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 interface RentRouteChildren {
   RentIdRoute: typeof RentIdRoute
   RentIndexRoute: typeof RentIndexRoute
@@ -707,32 +784,15 @@ const RentRouteWithChildren = RentRoute._addFileChildren(RentRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
+  AuthRoute: AuthRoute,
   BookingRoute: BookingRoute,
-  CalendarRoute: CalendarRoute,
   ContactsRoute: ContactsRoute,
   ManagementRoute: ManagementRoute,
   PrivacyRoute: PrivacyRoute,
   RentRoute: RentRouteWithChildren,
-  ComplexesNewRoute: ComplexesNewRoute,
-  ObjectsNewRoute: ObjectsNewRoute,
   PCodeRoute: PCodeRoute,
-  PromoIdRoute: PromoIdRoute,
-  PromoImportRoute: PromoImportRoute,
-  SystemUpdateRoute: SystemUpdateRoute,
-  AssistantIndexRoute: AssistantIndexRoute,
-  ChatsIndexRoute: ChatsIndexRoute,
-  ComplexesIndexRoute: ComplexesIndexRoute,
-  ObjectsIndexRoute: ObjectsIndexRoute,
-  PromoIndexRoute: PromoIndexRoute,
-  SelectionsIndexRoute: SelectionsIndexRoute,
-  ComplexesIdEditRoute: ComplexesIdEditRoute,
-  CrmClientsIdRoute: CrmClientsIdRoute,
-  ObjectsIdEditRoute: ObjectsIdEditRoute,
-  ObjectsIdPreviewRoute: ObjectsIdPreviewRoute,
-  CrmClientsIndexRoute: CrmClientsIndexRoute,
-  CrmLeadsIndexRoute: CrmLeadsIndexRoute,
-  ObjectsIdIndexRoute: ObjectsIdIndexRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
