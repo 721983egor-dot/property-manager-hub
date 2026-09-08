@@ -161,82 +161,101 @@ export function SiteCartBar() {
               </button>
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-2 px-4 py-3 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                dismissHint();
-                setListOpen(true);
-              }}
-              className="flex min-w-0 items-center gap-2 text-left"
-            >
-              <span className="flex -space-x-2">
-                {selected.slice(0, 3).map((p) => {
-                  const path = p.photos[0]?.path;
-                  const url = path ? photoUrls[path] : undefined;
-                  return url ? (
-                    <img
-                      key={p.id}
-                      src={url}
-                      alt=""
-                      className="size-8 rounded-full border-2 border-white object-cover"
-                    />
-                  ) : (
-                    <span
-                      key={p.id}
-                      className="size-8 rounded-full border-2 border-white bg-site-navy-soft"
-                    />
-                  );
-                })}
-              </span>
-              <span className="text-sm font-semibold text-site-navy underline-offset-4 hover:underline">
-                Выбрано: {count} {plural(count, "объект", "объекта", "объектов")}
-              </span>
-            </button>
-            <div className="ml-auto flex items-center gap-2">
+          <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:px-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  dismissHint();
+                  setListOpen(true);
+                }}
+                className="flex min-w-0 items-center gap-2 text-left"
+              >
+                <span className="flex -space-x-2">
+                  {selected.slice(0, 3).map((p) => {
+                    const path = p.photos[0]?.path;
+                    const url = path ? photoUrls[path] : undefined;
+                    return url ? (
+                      <img
+                        key={p.id}
+                        src={url}
+                        alt=""
+                        className="size-8 rounded-full border-2 border-white object-cover"
+                      />
+                    ) : (
+                      <span
+                        key={p.id}
+                        className="size-8 rounded-full border-2 border-white bg-site-navy-soft"
+                      />
+                    );
+                  })}
+                </span>
+                <span className="truncate text-sm font-semibold text-site-navy underline-offset-4 hover:underline">
+                  Выбрано: {count} {plural(count, "объект", "объекта", "объектов")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={clear}
+                aria-label="Очистить подборку"
+                title="Очистить подборку"
+                className="ml-auto grid size-9 shrink-0 place-items-center rounded-lg text-site-muted transition-colors hover:bg-site-navy-soft hover:text-site-navy sm:hidden"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 sm:ml-auto">
               <Button
                 type="button"
                 onClick={() => {
                   dismissHint();
                   setLeadOpen(true);
                 }}
-                className="h-10 bg-site-navy px-4 text-sm text-site-navy-foreground hover:bg-site-navy/90"
+                className="h-10 min-w-0 flex-1 bg-site-navy px-3 text-sm text-site-navy-foreground hover:bg-site-navy/90 sm:flex-none sm:px-4"
               >
-                <Send className="size-4" />
-                Записаться на просмотр
+                <Send className="size-4 shrink-0" />
+                <span className="truncate">Записаться на просмотр</span>
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={share}
                 disabled={sharing}
-                className="h-10 border-site-line px-4 text-sm text-site-navy hover:border-site-gold/60"
+                aria-label="Поделиться подборкой"
+                title="Поделиться подборкой"
+                className="size-10 shrink-0 border-site-line p-0 text-sm text-site-navy hover:border-site-gold/60 sm:h-10 sm:w-auto sm:px-4"
               >
                 <Share2 className="size-4" />
-                {sharing ? "Создаём…" : "Поделиться"}
+                <span className="hidden sm:inline">
+                  {sharing ? "Создаём…" : "Поделиться"}
+                </span>
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={sendToChat}
                 disabled={sendingChat}
+                aria-label="Отправить подборку менеджеру в чат"
                 title="Отправить подборку менеджеру в чат"
-                className="h-10 border-site-line px-4 text-sm text-site-navy hover:border-site-gold/60"
+                className="size-10 shrink-0 border-site-line p-0 text-sm text-site-navy hover:border-site-gold/60 sm:h-10 sm:w-auto sm:px-4"
               >
                 <MessageCircle className="size-4" />
-                {sendingChat ? "Отправляем…" : "В чат менеджеру"}
+                <span className="hidden sm:inline">
+                  {sendingChat ? "Отправляем…" : "В чат менеджеру"}
+                </span>
               </Button>
               <button
                 type="button"
                 onClick={clear}
                 aria-label="Очистить подборку"
                 title="Очистить подборку"
-                className="grid size-10 place-items-center rounded-lg text-site-muted transition-colors hover:bg-site-navy-soft hover:text-site-navy"
+                className="hidden size-10 shrink-0 place-items-center rounded-lg text-site-muted transition-colors hover:bg-site-navy-soft hover:text-site-navy sm:grid"
               >
                 <X className="size-4" />
               </button>
             </div>
           </div>
+
         </div>
       </div>
 
