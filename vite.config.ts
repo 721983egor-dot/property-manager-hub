@@ -6,15 +6,13 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-// Для self-hosted сборки (Docker на своём сервере) задайте SELF_HOSTED=1:
-// тогда Nitro собирает node-server вместо Cloudflare Worker.
-const selfHosted = process.env["SELF_HOSTED"] === "1";
-
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  ...(selfHosted ? { nitro: { preset: "node-server" } } : {}),
+  // На своём сервере (Docker) собирает node-server; в среде Lovable этот
+  // параметр игнорируется и сборка остаётся под Cloudflare.
+  nitro: { preset: "node-server" },
 });
