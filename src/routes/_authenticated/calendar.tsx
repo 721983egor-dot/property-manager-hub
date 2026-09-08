@@ -306,8 +306,23 @@ function CalendarPage() {
         <div className="min-w-max">
           {/* Шапка */}
           <div className="sticky top-0 z-30 flex bg-card">
-            <div className="sticky left-0 z-40 w-[260px] shrink-0 border-b border-r border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground">
-              Объект
+            <div
+              style={{ width: nameWidth }}
+              className="sticky left-0 z-40 flex shrink-0 items-center gap-1 border-b border-r border-border bg-card px-2 py-2 text-xs font-medium text-muted-foreground"
+            >
+              <button
+                type="button"
+                onClick={() => setNamesCollapsed((v) => !v)}
+                aria-label={namesCollapsed ? "Показать названия" : "Скрыть названия"}
+                className="grid size-7 shrink-0 place-items-center rounded-md border border-border bg-card"
+              >
+                {namesCollapsed ? (
+                  <PanelLeftOpen className="size-4" />
+                ) : (
+                  <PanelLeftClose className="size-4" />
+                )}
+              </button>
+              {!namesCollapsed && <span className="truncate">Объект</span>}
             </div>
             <div style={{ width: gridWidth }} className="shrink-0 border-b border-border">
               <div className="flex">
