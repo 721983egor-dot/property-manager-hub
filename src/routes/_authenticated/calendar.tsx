@@ -362,20 +362,91 @@ function CalendarPage() {
           </div>
 
           {/* Строки объектов */}
-          {rows.map((property) => {
+          {rows.map((property, rowIndex) => {
             const list = bookingsByProperty.get(property.id) ?? [];
             const complexName =
               (property.complex_id ? complexMap.get(property.complex_id) : null) ??
               property.complex_name;
 
             return (
-              <div key={property.id} className="flex">
-                <div className="sticky left-0 z-20 w-[260px] shrink-0 border-b border-r border-border bg-card px-4 py-3">
-                  <div className="truncate text-sm font-medium">{internalTitle(property)}</div>
-                  {complexName ? (
-                    <div className="truncate text-xs text-muted-foreground">{complexName}</div>
-                  ) : null}
+              <div
+                key={property.id}
+                className={cn("flex", dragIndex === rowIndex && "opacity-60")}
+                onDragOver={(e) => {
+                  if (dragIndex !== null) e.preventDefault();
+                }}
+                onDrop={() => {
+                  if (dragIndex !== null) moveRow(dragIndex, rowIndex);
+                  setDragIndex(null);
+                }}
+              >
+                <div
+                  style={{ width: nameWidth }}
+                  draggable
+                  onDragStart={() => setDragIndex(rowIndex)}
+                  onDragEnd={() => setDragIndex(null)}
+                  title={internalTitle(property)}
+                  className="sticky left-0 z-20 flex shrink-0 items-center gap-2 border-b border-r border-border bg-card px-2 py-3"
+                >
+                  {namesCollapsed ? (
+                    <div className="flex w-full flex-col items-center gap-1">
+                      <span className="text-[11px] font-semibold leading-none">
+                        №{property.ref_id}
+                      </span>
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          aria-label="Выше"
+                          onClick={() => moveRow(rowIndex, rowIndex - 1)}
+                          className="text-muted-foreground"
+                        >
+                          <ChevronUp className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Ниже"
+                          onClick={() => moveRow(rowIndex, rowIndex + 1)}
+                          className="text-muted-foreground"
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">
+                          {internalTitle(property)}
+                        </div>
+                        {complexName ? (
+                          <div className="truncate text-xs text-muted-foreground">
+                            {complexName}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 flex-col">
+                        <button
+                          type="button"
+                          aria-label="Выше"
+                          onClick={() => moveRow(rowIndex, rowIndex - 1)}
+                          className="text-muted-foreground"
+                        >
+                          <ChevronUp className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Ниже"
+                          onClick={() => moveRow(rowIndex, rowIndex + 1)}
+                          className="text-muted-foreground"
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
+
 
                 <div
                   style={{ width: gridWidth }}
