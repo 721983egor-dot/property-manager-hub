@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   caddy:
     image: caddy:2-alpine
@@ -18,28 +16,31 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+      args:
+        VITE_SUPABASE_URL: https://${DOMAIN}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${SUPABASE_PROJECT_ID}
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - SUPABASE_URL=http://supabase-db:54321
+      - SUPABASE_URL=https://${DOMAIN}
       - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_PROJECT_ID=${SUPABASE_PROJECT_ID}
-      - STORAGE_ENDPOINT=http://minio:9000
-      - STORAGE_BUCKET=property-photos
-      - STORAGE_ACCESS_KEY=${MINIO_ROOT_USER}
-      - STORAGE_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - CIAN_API_KEY=${CIAN_API_KEY}
       - YANDEX_REALTY_TOKEN=${YANDEX_REALTY_TOKEN}
       - YANDEX_GEOCODER_API_KEY=${YANDEX_GEOCODER_API_KEY}
       - YANDEX_MAPS_JS_API_KEY=${YANDEX_MAPS_JS_API_KEY}
       - YANDEX_SUGGEST_API_KEY=${YANDEX_SUGGEST_API_KEY}
       - LOVABLE_CRON_SECRET=${LOVABLE_CRON_SECRET}
+      - DEPLOY_AGENT_URL=http://deploy-agent:8080
       - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
     depends_on:
       - supabase-db
-      - minio
+      - supabase-auth
+      - supabase-rest
+      - supabase-storage
     networks:
       - rm-os
 
@@ -51,6 +52,12 @@ services:
       - POSTGRES_DB=postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/z-99-roles.sh:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     networks:
       - rm-os
 
@@ -60,21 +67,25 @@ services:
     environment:
       - GOTRUE_API_HOST=0.0.0.0
       - GOTRUE_API_PORT=9999
+      - API_EXTERNAL_URL=https://${DOMAIN}/auth
       - GOTRUE_DB_DRIVER=postgres
-      - GOTRUE_DB_DATABASE_URL=postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
+      - GOTRUE_DB_DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
       - GOTRUE_JWT_SECRET=${JWT_SECRET}
+      - GOTRUE_JWT_AUD=authenticated
       - GOTRUE_JWT_EXP=3600
-      - GOTRUE_EXTERNAL_EMAIL_ENABLED=false
+      - GOTRUE_EXTERNAL_EMAIL_ENABLED=true
+      - GOTRUE_MAILER_AUTOCONFIRM=true
+      - GOTRUE_DISABLE_SIGNUP=false
       - GOTRUE_SITE_URL=https://${DOMAIN}
       - GOTRUE_URI_ALLOW_LIST=
-      - GOTRUE_DISABLE_SIGNUP=false
     depends_on:
-      - supabase-db
+      supabase-db:
+        condition: service_healthy
     networks:
       - rm-os
 
   supabase-rest:
-    image: supabase/postgrest:v12.2.0
+    image: postgrest/postgrest:v12.2.3
     restart: unless-stopped
     environment:
       - PGRST_DB_URI=postgres://authenticator:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
@@ -82,19 +93,34 @@ services:
       - PGRST_DB_ANON_ROLE=anon
       - PGRST_JWT_SECRET=${JWT_SECRET}
     depends_on:
-      - supabase-db
+      supabase-db:
+        condition: service_healthy
     networks:
       - rm-os
 
-  minio:
-    image: minio/minio:latest
+  supabase-storage:
+    image: supabase/storage-api:v1.22.17
     restart: unless-stopped
-    command: server /data --console-address ":9001"
     environment:
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - ANON_KEY=${SUPABASE_PUBLISHABLE_KEY}
+      - SERVICE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - AUTH_JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
+      - DB_DRIVER=postgres
+      - FILE_SIZE_LIMIT=52428800
+      - STORAGE_BACKEND=file
+      - FILE_STORAGE_BACKEND_PATH=/var/lib/storage
+      - TENANT_ID=rm-os
+      - REGION=local
+      - GLOBAL_S3_BUCKET=stub
+      - ENABLE_IMAGE_TRANSFORMATION=false
+      - IS_MULTITENANT=false
+      - POSTGREST_URL=http://supabase-rest:3000
     volumes:
-      - minio_data:/data
+      - storage_data:/var/lib/storage
+    depends_on:
+      supabase-db:
+        condition: service_healthy
     networks:
       - rm-os
 
@@ -109,13 +135,11 @@ services:
       - DOMAIN=${DOMAIN}
       - APP_IMAGE=rm-os-app
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - BACKUP_BUCKET=${BACKUP_BUCKET}
-      - BACKUP_ENDPOINT=${BACKUP_ENDPOINT}
-      - BACKUP_ACCESS_KEY=${BACKUP_ACCESS_KEY}
-      - BACKUP_SECRET_KEY=${BACKUP_SECRET_KEY}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - deploy_data:/data
+      - /opt/rm-os/repo:/data/repo
+      - /opt/rm-os/backups:/data/backups
     networks:
       - rm-os
 
@@ -123,7 +147,7 @@ volumes:
   caddy_data:
   caddy_config:
   postgres_data:
-  minio_data:
+  storage_data:
   deploy_data:
 
 networks:

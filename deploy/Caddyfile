@@ -1,15 +1,40 @@
 {
-    auto_https off
+    auto_https disable_redirects
 }
 
 {$DOMAIN} {
     tls {$TLS_EMAIL}
 
-    @admin path /admin/* /objects/* /calendar/* /crm/* /complexes/* /selections/* /promo/* /chats/* /assistant/* /system/*
+    handle /auth/* {
+        reverse_proxy supabase-auth:9999
+    }
+    handle /rest/* {
+        reverse_proxy supabase-rest:3000
+    }
+    handle /storage/* {
+        reverse_proxy supabase-storage:5000
+    }
+    handle {
+        reverse_proxy app:3000
+    }
 
-    reverse_proxy /api/* app:3000
-    reverse_proxy /_server/* app:3000
-    reverse_proxy /* app:3000
+    encode gzip
+}
+
+# Доступ по IP до переключения DNS
+:80 {
+    handle /auth/* {
+        reverse_proxy supabase-auth:9999
+    }
+    handle /rest/* {
+        reverse_proxy supabase-rest:3000
+    }
+    handle /storage/* {
+        reverse_proxy supabase-storage:5000
+    }
+    handle {
+        reverse_proxy app:3000
+    }
 
     encode gzip
 }

@@ -12,4 +12,7 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // На своём сервере (Docker) собирает node-server; в среде Lovable этот
+  // параметр игнорируется и сборка остаётся под Cloudflare.
+  nitro: { preset: "node-server" },
 });
