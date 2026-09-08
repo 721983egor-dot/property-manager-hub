@@ -256,7 +256,7 @@ function ObjectsPage() {
       <SectionTabs active="objects" />
 
       <div className="mt-6 border-b border-border">
-        <div className="flex gap-6">
+        <div className="flex gap-5 overflow-x-auto whitespace-nowrap sm:gap-6">
           {TABS.map((t) => (
             <button
               key={t.key}
