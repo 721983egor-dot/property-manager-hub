@@ -1,0 +1,1 @@
+CREATE POLICY "no direct access" ON public.telegram_updates FOR SELECT TO authenticated USING (false);
