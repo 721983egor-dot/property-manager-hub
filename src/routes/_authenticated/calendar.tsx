@@ -99,7 +99,54 @@ function CalendarPage() {
     [complexes],
   );
 
-  const rows = properties.filter((p) => p.service_type !== "commission_only");
+  const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
+  const [namesCollapsed, setNamesCollapsed] = useState(false);
+  useEffect(() => {
+    setNamesCollapsed(isMobile);
+  }, [isMobile]);
+
+  const baseRows = useMemo(() => {
+    const list = properties.filter((p) => p.service_type !== "commission_only");
+    return [...list].sort((a, b) => {
+      const ao = a.sort_order ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.sort_order ?? Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return internalTitle(a).localeCompare(internalTitle(b), "ru");
+    });
+  }, [properties]);
+
+  const [order, setOrder] = useState<string[]>([]);
+  const baseKey = baseRows.map((p) => p.id).join("|");
+  useEffect(() => {
+    setOrder(baseRows.map((p) => p.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseKey]);
+
+  const rows = useMemo(() => {
+    const map = new Map(baseRows.map((p) => [p.id, p]));
+    const ordered = order.map((id) => map.get(id)).filter(Boolean) as typeof baseRows;
+    return ordered.length === baseRows.length ? ordered : baseRows;
+  }, [baseRows, order]);
+
+  const orderMutation = useMutation({
+    mutationFn: (ids: string[]) => savePropertyOrder(ids),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["properties"] }),
+    onError: () => toast.error("Не удалось сохранить порядок объектов"),
+  });
+
+  const moveRow = (from: number, to: number) => {
+    if (to < 0 || to >= rows.length || from === to) return;
+    const ids = rows.map((p) => p.id);
+    const [item] = ids.splice(from, 1);
+    if (!item) return;
+    ids.splice(to, 0, item);
+    setOrder(ids);
+    orderMutation.mutate(ids);
+  };
+
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const nameWidth = namesCollapsed ? 64 : 260;
 
   const todayIso = toISODate(today);
   const bookingsByProperty = useMemo(() => {
