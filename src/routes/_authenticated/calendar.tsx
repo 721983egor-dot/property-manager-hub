@@ -373,17 +373,17 @@ function CalendarPage() {
                 key={property.id}
                 className={cn("flex", dragIndex === rowIndex && "opacity-60")}
                 onDragOver={(e) => {
-                  if (dragIndex !== null) e.preventDefault();
+                  if (!isMobile && dragIndex !== null) e.preventDefault();
                 }}
                 onDrop={() => {
-                  if (dragIndex !== null) moveRow(dragIndex, rowIndex);
+                  if (!isMobile && dragIndex !== null) moveRow(dragIndex, rowIndex);
                   setDragIndex(null);
                 }}
               >
                 <div
                   style={{ width: nameWidth }}
-                  draggable
-                  onDragStart={() => setDragIndex(rowIndex)}
+                  draggable={!isMobile}
+                  onDragStart={() => !isMobile && setDragIndex(rowIndex)}
                   onDragEnd={() => setDragIndex(null)}
                   title={internalTitle(property)}
                   className="sticky left-0 z-20 flex shrink-0 items-center gap-2 border-b border-r border-border bg-card px-2 py-3"
@@ -397,7 +397,7 @@ function CalendarPage() {
                         {shortPropertyLabel(property)}
                       </span>
 
-                      <div className="flex flex-col">
+                      <div className="hidden sm:flex flex-col">
                         <button
                           type="button"
                           aria-label="Выше"
@@ -418,7 +418,7 @@ function CalendarPage() {
                     </div>
                   ) : (
                     <>
-                      <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" />
+                      <GripVertical className="hidden sm:block size-4 shrink-0 cursor-grab text-muted-foreground" />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">
                           {internalTitle(property)}
@@ -429,7 +429,7 @@ function CalendarPage() {
                           </div>
                         ) : null}
                       </div>
-                      <div className="flex shrink-0 flex-col">
+                      <div className="hidden sm:flex shrink-0 flex-col">
                         <button
                           type="button"
                           aria-label="Выше"
