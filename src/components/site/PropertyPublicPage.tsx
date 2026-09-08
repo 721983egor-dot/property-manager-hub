@@ -381,12 +381,13 @@ export function PropertyPublicPage({
               </p>
             ) : null}
 
-            <div className="mt-2 flex items-start justify-between gap-4">
-              <h1 className="font-body text-[32px] font-bold leading-[1.15] tracking-tight lg:text-[36px]">
+            <div className="mt-2 flex items-start justify-between gap-3 sm:gap-4">
+              <h1 className="min-w-0 font-body text-[24px] font-bold leading-[1.15] tracking-tight sm:text-[32px] lg:text-[36px]">
                 {property.title}
               </h1>
               {shareButton}
             </div>
+
 
 
             {property.address ? (
