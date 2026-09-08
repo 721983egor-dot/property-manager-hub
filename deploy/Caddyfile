@@ -2,16 +2,34 @@
     auto_https disable_redirects
 }
 
+# Разрешаем служебным адресам отвечать на запросы со служебного поддомена RM OS
+(cors) {
+    header {
+        Access-Control-Allow-Origin "https://rm-os.{$DOMAIN}"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "authorization, apikey, content-type, x-client-info, prefer, range, x-supabase-api-version, accept-profile, content-profile"
+        Access-Control-Expose-Headers "content-range, content-length, x-total-count"
+        Vary "Origin"
+        defer
+    }
+    @preflight method OPTIONS
+    respond @preflight 204
+}
+
 # Общие правила: служебные адреса базы/входа/фото идут в свои сервисы,
 # всё остальное — в приложение (сайт и RM OS).
 (supabase) {
     handle_path /auth/v1/* {
+        import cors
         reverse_proxy supabase-auth:9999
     }
     handle_path /rest/v1/* {
+        import cors
         reverse_proxy supabase-rest:3000
     }
     handle_path /storage/v1/* {
+        import cors
         reverse_proxy supabase-storage:5000
     }
     handle {
