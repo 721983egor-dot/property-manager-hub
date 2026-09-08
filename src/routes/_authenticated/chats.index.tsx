@@ -22,7 +22,7 @@ import { SendSelectionDialog } from "@/components/SendSelectionDialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/chats/")({
+export const Route = createFileRoute("/_authenticated/chats/")({
   head: () => ({
     meta: [{ title: "Чаты — RM OS" }, { name: "robots", content: "noindex" }],
   }),

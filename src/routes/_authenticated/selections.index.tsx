@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SectionTabs } from "@/components/SectionTabs";
 import { deleteSelection, fetchSelections } from "@/lib/selections";
 
-export const Route = createFileRoute("/selections/")({
+export const Route = createFileRoute("/_authenticated/selections/")({
   head: () => ({
     meta: [
       { title: "Подборки — RM OS" },

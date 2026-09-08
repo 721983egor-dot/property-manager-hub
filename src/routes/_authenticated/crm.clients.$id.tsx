@@ -26,7 +26,7 @@ import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/crm/clients/$id")({
+export const Route = createFileRoute("/_authenticated/crm/clients/$id")({
   head: () => ({
     meta: [
       { title: "Карточка клиента — CRM RM OS" },

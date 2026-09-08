@@ -10,7 +10,7 @@ import type { AssistantAction, AssistantChatMessage } from "@/lib/assistant.func
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export const Route = createFileRoute("/assistant/")({
+export const Route = createFileRoute("/_authenticated/assistant/")({
   head: () => ({
     meta: [{ title: "Помощник — RM OS" }, { name: "robots", content: "noindex" }],
   }),

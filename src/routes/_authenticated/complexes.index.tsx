@@ -22,7 +22,7 @@ import {
 } from "@/lib/complexes";
 import { signedUrls } from "@/lib/properties";
 
-export const Route = createFileRoute("/complexes/")({
+export const Route = createFileRoute("/_authenticated/complexes/")({
   head: () => ({
     meta: [
       { title: "Комплексы — RM OS" },

@@ -6,7 +6,7 @@ import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { fetchComplex } from "@/lib/complexes";
 import { fetchProperty, signedUrls } from "@/lib/properties";
 
-export const Route = createFileRoute("/objects/$id/preview")({
+export const Route = createFileRoute("/_authenticated/objects/$id/preview")({
   head: () => ({
     meta: [
       { title: "Предпросмотр объекта на сайте — RM OS" },

@@ -25,7 +25,7 @@ import { fetchProperties, internalTitle } from "@/lib/properties";
 import { formatDateRu } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/crm/clients/")({
+export const Route = createFileRoute("/_authenticated/crm/clients/")({
   head: () => ({
     meta: [
       { title: "Клиенты — CRM RM OS" },

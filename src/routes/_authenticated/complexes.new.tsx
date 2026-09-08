@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ComplexForm } from "@/components/ComplexForm";
 import { createComplex, type ComplexInput } from "@/lib/complexes";
 
-export const Route = createFileRoute("/complexes/new")({
+export const Route = createFileRoute("/_authenticated/complexes/new")({
   head: () => ({
     meta: [
       { title: "Новый комплекс — RM OS" },
