@@ -159,8 +159,26 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
               Этот текст показывается в блоке «Локация» у всех объектов комплекса.
             </p>
           </div>
+          <div className="rounded-lg border border-border p-4">
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={showInSiteFilter}
+                onChange={(e) => setShowInSiteFilter(e.target.checked)}
+                className="mt-0.5 size-4 accent-[hsl(var(--primary))]"
+              />
+              <span>
+                Показывать комплекс в списке выбора на сайте
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Снимите галочку, если в комплексе всего один объект — тогда комплекс не будет
+                  появляться в фильтре на сайте.
+                </span>
+              </span>
+            </label>
+          </div>
         </div>
       </section>
+
 
       <section className={box}>
         <h2 className="text-base font-semibold">Инфраструктура</h2>
