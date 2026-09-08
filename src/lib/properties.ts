@@ -247,6 +247,21 @@ export function internalTitle(p: { internal_name?: string | null; title: string 
   return p.internal_name?.trim() ? p.internal_name : p.title;
 }
 
+/** Короткая понятная метка объекта для узкой колонки календаря. */
+export function shortPropertyLabel(
+  p: { internal_name?: string | null; title: string },
+  max = 22,
+): string {
+  const title = internalTitle(p);
+  if (title.length <= max) return title;
+  const [first] = title.split(/\s+/);
+  if (first && first.length > 0 && first.length <= max - 1) {
+    return `${first}…`;
+  }
+  return `${title.slice(0, max - 1)}…`;
+}
+
+
 export function typeLabel(value: PropertyType) {
   const normalized: PropertyType =
     value === "villa" ? "house" : value === "aparts" ? "apartment" : value;
