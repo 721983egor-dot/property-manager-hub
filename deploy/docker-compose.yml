@@ -27,7 +27,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - SUPABASE_URL=https://${DOMAIN}
+      # Внутренний адрес: контейнер обращается к своим сервисам напрямую,
+      # не выходя в интернет через домен.
+      - SUPABASE_URL=http://caddy
       - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_PROJECT_ID=${SUPABASE_PROJECT_ID}
@@ -78,7 +80,7 @@ services:
       - GOTRUE_JWT_EXP=3600
       - GOTRUE_EXTERNAL_EMAIL_ENABLED=true
       - GOTRUE_MAILER_AUTOCONFIRM=true
-      - GOTRUE_DISABLE_SIGNUP=false
+      - GOTRUE_DISABLE_SIGNUP=true
       - GOTRUE_SITE_URL=https://${DOMAIN}
       - GOTRUE_URI_ALLOW_LIST=
     depends_on:

@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "temp_migration_read_property_photos" ON storage.objects;
