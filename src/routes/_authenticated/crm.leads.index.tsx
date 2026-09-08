@@ -70,7 +70,7 @@ function LeadsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 py-8">
+    <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="text-2xl font-bold tracking-tight">Заявки с сайта</h1>
       <CrmTabs active="leads" />
 

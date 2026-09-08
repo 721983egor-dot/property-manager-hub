@@ -131,10 +131,10 @@ function PromoListPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Публикация и реклама</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Публикация и реклама</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Где опубликован каждый объект и сколько его смотрят.
           </p>

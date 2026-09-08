@@ -244,9 +244,9 @@ function ObjectsPage() {
   }, [selectedList.length]);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 lg:px-10 lg:py-10">
-      <header className="flex items-start justify-between gap-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Объекты</h1>
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Объекты</h1>
         <Button size="lg" onClick={() => navigate({ to: "/objects/new" })}>
           <Plus className="size-4" />
           Добавить объект
