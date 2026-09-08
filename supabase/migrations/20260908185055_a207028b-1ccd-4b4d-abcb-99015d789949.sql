@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.log_activity() FROM PUBLIC, anon, authenticated;

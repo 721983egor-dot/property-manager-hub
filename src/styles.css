@@ -189,3 +189,35 @@
     color: var(--color-foreground);
   }
 }
+
+/* Ассистент: голубое ИИ-сияние */
+:root {
+  --ai-glow: oklch(0.72 0.15 230);
+}
+
+@keyframes ai-glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 3px color-mix(in oklch, var(--ai-glow) 70%, transparent));
+  }
+  50% {
+    filter: drop-shadow(0 0 9px var(--ai-glow));
+  }
+}
+
+@utility ai-glow {
+  color: var(--ai-glow);
+  animation: ai-glow-pulse 2.6s ease-in-out infinite;
+}
+
+@utility ai-glow-ring {
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--ai-glow) 45%, transparent),
+    0 0 18px color-mix(in oklch, var(--ai-glow) 35%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-glow {
+    animation: none;
+  }
+}

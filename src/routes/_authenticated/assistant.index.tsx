@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { Bot, Check, SendHorizonal, X } from "lucide-react";
+import { Check, SendHorizonal, Sparkles, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/assistant/")({
   head: () => ({
-    meta: [{ title: "Помощник — RM OS" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Ассистент — RM OS" }, { name: "robots", content: "noindex" }],
   }),
   component: AssistantPage,
 });
@@ -21,9 +21,10 @@ type Bubble = AssistantChatMessage & { actions?: AssistantAction[] };
 
 const SUGGESTIONS = [
   "Сколько просмотров и звонков за 30 дней по площадкам?",
-  "Какие объекты опубликованы, но без заявок?",
+  "Собери подборку из свободных двушек до 80 000 ₽",
   "Что мешает опубликовать объекты на ЦИАН?",
   "Покажи ближайшие заезды и выезды",
+  "Что менялось в системе за неделю?",
 ];
 
 function AssistantPage() {
@@ -78,10 +79,10 @@ function AssistantPage() {
   return (
     <div className="flex h-screen flex-col">
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-6">
-        <Bot className="size-5 text-primary" />
-        <h1 className="text-[15px] font-semibold tracking-tight">Помощник</h1>
+        <Sparkles className="ai-glow size-5" />
+        <h1 className="text-[15px] font-semibold tracking-tight">Ассистент</h1>
         <span className="text-sm text-muted-foreground">
-          спросите про объекты, статистику и публикации
+          знает все объекты, сделки, клиентов, календарь и журнал системы
         </span>
       </header>
 

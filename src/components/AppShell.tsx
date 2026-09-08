@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Bot,
   Building2,
   CalendarDays,
   Inbox,
@@ -10,6 +9,7 @@ import {
   MessagesSquare,
   Menu,
   Settings,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -87,9 +87,13 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
           </span>
         )}
       </Link>
-      <Link to="/assistant" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Bot className="size-4 shrink-0" />
-        Помощник
+      <Link
+        to="/assistant"
+        onClick={onNavigate}
+        className={`${NAV_LINK_CLASS} ai-glow-ring my-1 rounded-md`}
+      >
+        <Sparkles className="ai-glow size-4 shrink-0" />
+        Ассистент
       </Link>
       <Link to="/system/update" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Settings className="size-4 shrink-0" />

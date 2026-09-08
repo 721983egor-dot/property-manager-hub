@@ -1,0 +1,208 @@
+import { tool } from "ai";
+import { z } from "zod";
+
+import { propertyLabel } from "@/lib/ai/context.server";
+
+import type { AssistantToolContext } from "@/lib/ai/context.server";
+
+const PLATFORM_NAME: Record<string, string> = {
+  site: "Сайт РМ",
+  cian: "ЦИАН",
+  yandex: "Яндекс Недвижимость",
+  avito: "Авито",
+};
+
+const money = (v: number) => `${v.toLocaleString("ru-RU")} ₽`;
+
+/**
+ * Инструменты изменения. Ничего не меняют сразу — только формируют
+ * предложение, которое менеджер подтверждает кнопкой.
+ */
+export function createMutateTools(ctx: AssistantToolContext) {
+  const label = async (ref: string) => {
+    const p = await ctx.findProperty(ref);
+    if (!p) return null;
+    return { id: p["id"] as string, text: propertyLabel(p as never), row: p };
+  };
+
+  return {
+    proposePublish: tool({
+      description:
+        "Предложить публикацию или снятие объекта с площадки (site, cian, yandex, avito). Требует подтверждения менеджера.",
+      inputSchema: z.object({
+        ref: z.string(),
+        platform: z.enum(["site", "cian", "yandex", "avito"]),
+        publish: z.boolean(),
+      }),
+      execute: async ({ ref, platform, publish }) => {
+        const p = await label(ref);
+        if (!p) return { error: "Объект не найден" };
+        const summary = `${publish ? "Опубликовать" : "Снять с публикации"} «${p.text}» — ${PLATFORM_NAME[platform]}`;
+        ctx.propose({ tool: "setPublished", summary, input: { propertyId: p.id, platform, publish } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposePropertyUpdate: tool({
+      description:
+        "Предложить изменение полей объекта: цена, статус, депозит, комиссия (в %), коммунальные, описание, условия аренды, заметка о доступности.",
+      inputSchema: z.object({
+        ref: z.string(),
+        priceMonth: z.number().optional(),
+        status: z.enum(["free", "soon_free", "rented", "booked", "archived"]).optional(),
+        deposit: z.number().optional(),
+        commission: z.number().optional(),
+        utilitiesMonth: z.number().optional(),
+        description: z.string().optional(),
+        rentTerms: z.string().optional(),
+        availabilityNote: z.string().optional(),
+      }),
+      execute: async ({ ref, ...fields }) => {
+        const p = await label(ref);
+        if (!p) return { error: "Объект не найден" };
+        const parts: string[] = [];
+        if (fields.priceMonth != null) parts.push(`цена ${money(fields.priceMonth)}/мес`);
+        if (fields.status) parts.push(`статус «${fields.status}»`);
+        if (fields.deposit != null) parts.push(`депозит ${money(fields.deposit)}`);
+        if (fields.commission != null) parts.push(`комиссия ${fields.commission}%`);
+        if (fields.utilitiesMonth != null) parts.push(`коммунальные ${money(fields.utilitiesMonth)}`);
+        if (fields.description) parts.push("новое описание");
+        if (fields.rentTerms) parts.push("новые условия аренды");
+        if (fields.availabilityNote) parts.push("заметка о доступности");
+        if (!parts.length) return { error: "Не указано ни одного изменения" };
+        const summary = `Изменить «${p.text}»: ${parts.join(", ")}`;
+        ctx.propose({ tool: "updateProperty", summary, input: { propertyId: p.id, fields } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeCreateProperty: tool({
+      description:
+        "Предложить создание нового объекта с заполненной карточкой. Объект создаётся неопубликованным.",
+      inputSchema: z.object({
+        title: z.string(),
+        type: z.enum(["apartment", "aparts", "house", "villa", "townhouse"]),
+        rooms: z.number(),
+        bathrooms: z.number().optional(),
+        address: z.string().optional(),
+        complexName: z.string().optional(),
+        area: z.number().optional(),
+        floor: z.number().optional(),
+        totalFloors: z.number().optional(),
+        priceMonth: z.number().optional(),
+        deposit: z.number().optional(),
+        commission: z.number().optional(),
+        description: z.string().optional(),
+      }),
+      execute: async (input) => {
+        const summary = `Создать объект «${input.title}» (${input.rooms} комн.${input.priceMonth ? `, ${money(input.priceMonth)}/мес` : ""})`;
+        ctx.propose({ tool: "createProperty", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeSelection: tool({
+      description:
+        "Предложить создание подборки объектов для клиента. Указывать номера объектов (ref_id) списком.",
+      inputSchema: z.object({
+        refs: z.array(z.string()),
+        name: z.string().optional(),
+        clientName: z.string().optional(),
+        comment: z.string().optional(),
+      }),
+      execute: async ({ refs, name, clientName, comment }) => {
+        const found: { id: string; text: string }[] = [];
+        for (const r of refs) {
+          const p = await label(r);
+          if (p) found.push({ id: p.id, text: p.text });
+        }
+        if (!found.length) return { error: "Объекты не найдены" };
+        const summary = `Создать подборку${name ? ` «${name}»` : ""}${clientName ? ` для ${clientName}` : ""}: ${found.map((f) => f.text).join("; ")}`;
+        ctx.propose({
+          tool: "createSelection",
+          summary,
+          input: {
+            propertyIds: found.map((f) => f.id),
+            name: name ?? "",
+            clientName: clientName ?? "",
+            comment: comment ?? "",
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeBooking: tool({
+      description:
+        "Предложить бронь в календаре: объект, клиент (имя и телефон или существующий), даты, цена в месяц, день оплаты, депозит.",
+      inputSchema: z.object({
+        ref: z.string(),
+        clientName: z.string(),
+        clientPhone: z.string().optional(),
+        startDate: z.string(),
+        endDate: z.string(),
+        priceMonth: z.number().optional(),
+        paymentDay: z.number().optional(),
+        deposit: z.number().optional(),
+        source: z.enum(["avito", "cian", "website", "social", "referral"]).optional(),
+        comment: z.string().optional(),
+      }),
+      execute: async ({ ref, ...rest }) => {
+        const p = await label(ref);
+        if (!p) return { error: "Объект не найден" };
+        const summary = `Добавить бронь «${p.text}» для ${rest.clientName}: ${rest.startDate} — ${rest.endDate}${rest.priceMonth ? `, ${money(rest.priceMonth)}/мес` : ""}`;
+        ctx.propose({ tool: "createBooking", summary, input: { propertyId: p.id, ...rest } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeCancelBooking: tool({
+      description: "Предложить отмену брони по объекту и дате начала.",
+      inputSchema: z.object({ ref: z.string(), startDate: z.string() }),
+      execute: async ({ ref, startDate }) => {
+        const p = await label(ref);
+        if (!p) return { error: "Объект не найден" };
+        const summary = `Отменить бронь «${p.text}» с ${startDate}`;
+        ctx.propose({ tool: "cancelBooking", summary, input: { propertyId: p.id, startDate } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeClient: tool({
+      description:
+        "Предложить создание клиента или изменение его данных (комментарий, чёрный список).",
+      inputSchema: z.object({
+        fullName: z.string(),
+        phone: z.string().optional(),
+        comment: z.string().optional(),
+        blacklisted: z.boolean().optional(),
+        blacklistReason: z.string().optional(),
+      }),
+      execute: async (input) => {
+        const existing = await ctx.findClient(input.phone || input.fullName);
+        const summary = existing
+          ? `Обновить клиента ${existing["full_name"] as string}`
+          : `Создать клиента ${input.fullName}${input.phone ? ` (${input.phone})` : ""}`;
+        ctx.propose({
+          tool: "upsertClient",
+          summary,
+          input: { ...input, clientId: existing ? (existing["id"] as string) : null },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeLeadStatus: tool({
+      description: "Предложить смену статуса заявки клиента.",
+      inputSchema: z.object({
+        leadId: z.string(),
+        status: z.enum(["new", "in_work", "done", "rejected"]),
+      }),
+      execute: async ({ leadId, status }) => {
+        const summary = `Изменить статус заявки на «${status}»`;
+        ctx.propose({ tool: "setLeadStatus", summary, input: { leadId, status } });
+        return { proposed: true, summary };
+      },
+    }),
+  };
+}
