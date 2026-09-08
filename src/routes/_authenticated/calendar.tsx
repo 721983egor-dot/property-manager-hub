@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BookingDialog } from "@/components/BookingDialog";
-import { fetchProperties, internalTitle } from "@/lib/properties";
+import { fetchProperties, internalTitle, savePropertyOrder } from "@/lib/properties";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchComplexes } from "@/lib/complexes";
 import { type Booking, fetchBookings, shortName } from "@/lib/bookings";
 import {
