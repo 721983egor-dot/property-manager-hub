@@ -276,7 +276,7 @@ function ObjectsPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[260px] flex-1">
+        <div className="relative min-w-full flex-1 sm:min-w-[260px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
