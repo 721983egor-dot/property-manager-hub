@@ -83,8 +83,9 @@ export function SiteChatPanel() {
       >
         {messages.length === 0 ? (
           <div className="rounded-xl bg-site-navy-soft px-3 py-2.5 text-sm text-site-navy">
-            Здравствуйте! Напишите ваш вопрос — ответим в рабочее время. Если срочно,
-            позвоните или напишите в WhatsApp.
+            Здравствуйте! Напишите ваш вопрос — ответим в рабочее время. Или
+            оставьте заявку.
+
           </div>
         ) : (
           messages.map((m) => (
