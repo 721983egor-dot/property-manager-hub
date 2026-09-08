@@ -918,6 +918,117 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_accounts: {
+        Row: {
+          active: boolean
+          chat_id: number
+          created_at: string
+          display_name: string
+          id: string
+          last_seen_at: string | null
+          telegram_user_id: number
+          updated_at: string
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          active?: boolean
+          chat_id: number
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_seen_at?: string | null
+          telegram_user_id: number
+          updated_at?: string
+          user_id?: string | null
+          username?: string
+        }
+        Update: {
+          active?: boolean
+          chat_id?: number
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_seen_at?: string | null
+          telegram_user_id?: number
+          updated_at?: string
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
+      telegram_link_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by_email: string
+          expires_at: string
+          used_at: string | null
+          used_by_telegram_id: number | null
+          user_id: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by_email?: string
+          expires_at: string
+          used_at?: string | null
+          used_by_telegram_id?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by_email?: string
+          expires_at?: string
+          used_at?: string | null
+          used_by_telegram_id?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      telegram_messages: {
+        Row: {
+          chat_id: number
+          content: string
+          created_at: string
+          id: string
+          role: string
+          transcript: string
+        }
+        Insert: {
+          chat_id: number
+          content?: string
+          created_at?: string
+          id?: string
+          role: string
+          transcript?: string
+        }
+        Update: {
+          chat_id?: number
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          transcript?: string
+        }
+        Relationships: []
+      }
+      telegram_updates: {
+        Row: {
+          created_at: string
+          update_id: number
+        }
+        Insert: {
+          created_at?: string
+          update_id: number
+        }
+        Update: {
+          created_at?: string
+          update_id?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
