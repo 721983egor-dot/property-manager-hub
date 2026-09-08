@@ -241,6 +241,9 @@ function Row({
         >
           {complex.name}
         </Link>
+        {complex.show_in_site_filter ? null : (
+          <div className="mt-1 text-xs text-muted-foreground">Скрыт в фильтре на сайте</div>
+        )}
       </td>
       <td className="max-w-[380px] px-4 py-4 text-muted-foreground">
         <span className="line-clamp-2">{complex.description || "—"}</span>
