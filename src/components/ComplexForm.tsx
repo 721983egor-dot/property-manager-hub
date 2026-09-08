@@ -28,6 +28,7 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [mainPhoto, setMainPhoto] = useState<string | null>(initial?.main_photo ?? null);
   const [infrastructure, setInfrastructure] = useState<string[]>(initial?.infrastructure ?? []);
+  const [showInSiteFilter, setShowInSiteFilter] = useState(initial?.show_in_site_filter ?? true);
   const [uploading, setUploading] = useState(false);
 
   const paths = photos.map((p) => p.path);
@@ -116,6 +117,7 @@ export function ComplexForm({ initial, onSubmit, onCancel, submitting, compact }
       photos,
       main_photo: mainPhoto ?? photos[0]?.path ?? null,
       infrastructure,
+      show_in_site_filter: showInSiteFilter,
     });
   };
 
