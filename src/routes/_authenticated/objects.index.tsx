@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -311,12 +312,40 @@ function ObjectsPage() {
           placeholder="Планировка"
           options={ROOM_OPTIONS.map((r) => ({ value: String(r), label: roomsLabel(r) }))}
         />
-        <FilterSelect
-          value={status}
-          onChange={setStatus}
-          placeholder="Статус"
-          options={PROPERTY_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="h-10 w-[210px] shrink-0 justify-between font-normal">
+              <span className="truncate">
+                {statuses.length === 0
+                  ? "Статус: все"
+                  : statuses.length === 1
+                    ? (PROPERTY_STATUSES.find((s) => s.value === statuses[0])?.label ?? "Статус")
+                    : `Статусов: ${statuses.length}`}
+              </span>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            {PROPERTY_STATUSES.map((s) => (
+              <DropdownMenuCheckboxItem
+                key={s.value}
+                checked={statuses.includes(s.value)}
+                onCheckedChange={() => toggleStatus(s.value)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                {s.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+            {statuses.length > 0 ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setStatuses([])}>
+                  Сбросить статусы
+                </DropdownMenuItem>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <FilterSelect
           value={sort}
           onChange={setSort}
