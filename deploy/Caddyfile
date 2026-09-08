@@ -44,9 +44,10 @@
     import supabase
 }
 
-# Служебный адрес для входа менеджеров
+# Служебный адрес для входа менеджеров: корень ведёт сразу в RM OS
 rm-os.{$DOMAIN} {
     tls {$TLS_EMAIL}
+    redir / /objects 302
     import supabase
 }
 
