@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BookingDialog } from "@/components/BookingDialog";
-import { fetchProperties, internalTitle, savePropertyOrder } from "@/lib/properties";
+import { fetchProperties, internalTitle, savePropertyOrder, shortPropertyLabel } from "@/lib/properties";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchComplexes } from "@/lib/complexes";
 import { type Booking, fetchBookings, shortName } from "@/lib/bookings";
@@ -146,7 +146,7 @@ function CalendarPage() {
   };
 
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const nameWidth = namesCollapsed ? 64 : 260;
+  const nameWidth = namesCollapsed ? 96 : 260;
 
   const todayIso = toISODate(today);
   const bookingsByProperty = useMemo(() => {
@@ -390,9 +390,13 @@ function CalendarPage() {
                 >
                   {namesCollapsed ? (
                     <div className="flex w-full flex-col items-center gap-1">
-                      <span className="text-[11px] font-semibold leading-none">
-                        №{property.ref_id}
+                      <span
+                        className="line-clamp-2 text-center text-[10px] font-semibold leading-tight break-words"
+                        title={internalTitle(property)}
+                      >
+                        {shortPropertyLabel(property)}
                       </span>
+
                       <div className="flex flex-col">
                         <button
                           type="button"
