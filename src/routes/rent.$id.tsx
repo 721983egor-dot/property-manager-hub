@@ -72,7 +72,8 @@ function RentDetailPage() {
 
   const todayIso = toISODate(new Date());
   const needsBooking =
-    data.status === "rented" && (data.service_type ?? "management") === "management";
+    (data.status === "rented" || data.status === "soon_free") &&
+    (data.service_type ?? "management") === "management";
   const { data: currentBooking } = useQuery({
     queryKey: ["current-booking", id, todayIso],
     queryFn: () => fetchCurrentBooking(id, todayIso),
