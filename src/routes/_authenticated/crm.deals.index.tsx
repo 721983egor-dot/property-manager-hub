@@ -92,7 +92,7 @@ function DealsPage() {
     [clients],
   );
   const propertyName = useMemo(
-    () => new Map(properties.map((p) => [p.id, `${p.ref_id} — ${internalTitle(p)}`])),
+    () => new Map(properties.map((p) => [p.id, `${internalTitle(p)}`])),
     [properties],
   );
 
@@ -171,15 +171,23 @@ function DealsPage() {
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
-          variant={closedView === "won" ? "default" : "outline"}
-          size="sm"
+          variant="outline"
+          className={
+            closedView === "won"
+              ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-600/90 hover:text-white"
+              : "border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
+          }
           onClick={() => setClosedView(closedView === "won" ? null : "won")}
         >
-          Успешные ({wonDeals.length})
+          Успешные сделки ({wonDeals.length})
         </Button>
         <Button
-          variant={closedView === "lost" ? "default" : "outline"}
-          size="sm"
+          variant="outline"
+          className={
+            closedView === "lost"
+              ? "border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
+              : "border-destructive/40 text-destructive hover:bg-destructive/10"
+          }
           onClick={() => setClosedView(closedView === "lost" ? null : "lost")}
         >
           Отказы ({lostDeals.length})

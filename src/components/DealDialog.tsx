@@ -107,7 +107,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
       if (field === "client_id") return clients.find((c) => c.id === value)?.full_name ?? "—";
       if (field === "property_id") {
         const p = properties.find((x) => x.id === value);
-        return p ? `${p.ref_id} — ${internalTitle(p)}` : "—";
+        return p ? `${internalTitle(p)}` : "—";
       }
       if (field === "responsible_id") {
         const s = (staffData?.staff ?? []).find((x) => x.id === value);
@@ -123,7 +123,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   const propertyLabel = useMemo(
     () => (id: string) => {
       const p = properties.find((x) => x.id === id);
-      return p ? `${p.ref_id} — ${internalTitle(p)}` : "объект";
+      return p ? `${internalTitle(p)}` : "объект";
     },
     [properties],
   );
@@ -269,7 +269,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
                   <SelectItem value={NONE}>Не выбран</SelectItem>
                   {properties.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.ref_id} — {internalTitle(p)}
+                      {internalTitle(p)}
                     </SelectItem>
                   ))}
                 </SelectContent>
