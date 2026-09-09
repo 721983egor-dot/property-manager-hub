@@ -180,11 +180,10 @@ function CrmShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
+      <CrmNotifications />
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
-        <div className="flex h-16 items-center gap-2 px-6">
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Building2 className="size-4" />
-          </span>
+        <div className="flex h-16 items-center gap-2.5 px-5">
+          <img src={logoNavy} alt="Резиденция&Море" className="h-7 w-auto shrink-0" />
           <span className="text-[15px] font-semibold tracking-tight">RM OS</span>
         </div>
         <CrmNav unread={unread} />
@@ -195,12 +194,11 @@ function CrmShell({ children }: { children: ReactNode }) {
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="left" className="w-[17rem] bg-sidebar p-0 lg:hidden">
-          <SheetTitle className="flex h-14 items-center gap-2 px-5 text-[15px] font-semibold">
-            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Building2 className="size-4" />
-            </span>
+          <SheetTitle className="flex h-14 items-center gap-2.5 px-5 text-[15px] font-semibold">
+            <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
             RM OS
           </SheetTitle>
+
           <div className="flex h-[calc(100%-3.5rem)] flex-col overflow-y-auto">
             <CrmNav unread={unread} onNavigate={() => setMenuOpen(false)} />
             <div className="mt-auto p-3">
