@@ -16,7 +16,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizePhone } from "@/lib/bookings";
-import { fetchCrmClients, saveClient, type CrmClient } from "@/lib/clients";
+import {
+  fetchCrmClients,
+  formatPhone,
+  phoneDigits,
+  saveClient,
+  type CrmClient,
+} from "@/lib/clients";
 
 type Props = {
   open: boolean;
