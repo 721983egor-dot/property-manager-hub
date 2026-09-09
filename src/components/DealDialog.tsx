@@ -390,16 +390,39 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           )}
         </div>
 
-        {isWonStage ? (
-          <p className="text-sm text-muted-foreground">
-            Стадия «Успешно»: после кнопки «Сохранить» откроется окно закрытия сделки — объект, даты и условия аренды.
-          </p>
-        ) : null}
-
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          {lostStage ? (
+            <Button
+              variant="outline"
+              className="text-destructive sm:mr-auto"
+              disabled={mutation.isPending}
+              onClick={() => {
+                setPendingClose("lost");
+                mutation.mutate(lostStage.id);
+              }}
+            >
+              Отказ
+            </Button>
+          ) : null}
           <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!stageId || mutation.isPending}>
-            {isWonStage ? "Сохранить и закрыть сделку" : "Сохранить"}
+          <Button
+            variant="outline"
+            disabled={!wonStage || mutation.isPending}
+            onClick={() => {
+              setPendingClose("won");
+              mutation.mutate(stageId);
+            }}
+          >
+            Успешно
+          </Button>
+          <Button
+            onClick={() => {
+              setPendingClose(null);
+              mutation.mutate(undefined);
+            }}
+            disabled={!stageId || mutation.isPending}
+          >
+            Сохранить
           </Button>
         </DialogFooter>
 
@@ -408,22 +431,23 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           onOpenChange={setNewClientOpen}
           onSaved={(id) => setClientId(id)}
         />
-
-        {wonDeal ? (
-          <DealWonDialog
-            open={wonOpen}
-            onOpenChange={setWonOpen}
-            deal={wonDeal}
-            stageId={stageId}
-            properties={properties}
-            onClosed={() => {
-              setSavedDealId(null);
-              onOpenChange(false);
-            }}
-          />
-        ) : null}
       </DialogContent>
     </Dialog>
 
+    {wonDeal && wonStage ? (
+      <DealWonDialog
+        open={wonOpen}
+        onOpenChange={(v) => {
+          setWonOpen(v);
+          if (!v) setSavedDealId(null);
+        }}
+        deal={wonDeal}
+        stageId={wonStage.id}
+        properties={properties}
+        onClosed={() => setSavedDealId(null)}
+      />
+    ) : null}
+    </>
   );
 }
+
