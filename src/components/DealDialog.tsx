@@ -83,6 +83,11 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     setCustom(deal?.custom ?? {});
   }, [open, deal, defaultStageId, stages, profile?.id]);
 
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.id === (clientId === NONE ? null : clientId)) ?? null,
+    [clients, clientId],
+  );
+
   const mutation = useMutation({
     mutationFn: () =>
       saveDeal(deal?.id ?? null, {
