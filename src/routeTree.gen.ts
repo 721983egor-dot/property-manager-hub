@@ -39,6 +39,7 @@ import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedComplexesIdEditRouteImport } from './routes/_authenticated/complexes.$id.edit'
 import { Route as AuthenticatedCrmClientsIndexRouteImport } from './routes/_authenticated/crm.clients.index'
 import { Route as AuthenticatedCrmClientsIdRouteImport } from './routes/_authenticated/crm.clients.$id'
+import { Route as AuthenticatedCrmDealsIndexRouteImport } from './routes/_authenticated/crm.deals.index'
 import { Route as AuthenticatedCrmLeadsIndexRouteImport } from './routes/_authenticated/crm.leads.index'
 import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authenticated/objects.$id.index'
 import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authenticated/objects.$id.edit'
@@ -210,6 +211,12 @@ const AuthenticatedCrmClientsIdRoute =
     path: '/crm/clients/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCrmDealsIndexRoute =
+  AuthenticatedCrmDealsIndexRouteImport.update({
+    id: '/crm/deals/',
+    path: '/crm/deals/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCrmLeadsIndexRoute =
   AuthenticatedCrmLeadsIndexRouteImport.update({
     id: '/crm/leads/',
@@ -300,6 +307,7 @@ export interface FileRoutesByFullPath {
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
+  '/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
   '/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
 }
@@ -339,6 +347,7 @@ export interface FileRoutesByTo {
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients': typeof AuthenticatedCrmClientsIndexRoute
+  '/crm/deals': typeof AuthenticatedCrmDealsIndexRoute
   '/crm/leads': typeof AuthenticatedCrmLeadsIndexRoute
   '/objects/$id': typeof AuthenticatedObjectsIdIndexRoute
 }
@@ -381,6 +390,7 @@ export interface FileRoutesById {
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
+  '/_authenticated/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
   '/_authenticated/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/_authenticated/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
 }
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/api/public/feeds/yandex.xml'
     | '/api/public/telegram/webhook'
     | '/crm/clients/'
+    | '/crm/deals/'
     | '/crm/leads/'
     | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
@@ -462,6 +473,7 @@ export interface FileRouteTypes {
     | '/api/public/feeds/yandex.xml'
     | '/api/public/telegram/webhook'
     | '/crm/clients'
+    | '/crm/deals'
     | '/crm/leads'
     | '/objects/$id'
   id:
@@ -503,6 +515,7 @@ export interface FileRouteTypes {
     | '/api/public/feeds/yandex.xml'
     | '/api/public/telegram/webhook'
     | '/_authenticated/crm/clients/'
+    | '/_authenticated/crm/deals/'
     | '/_authenticated/crm/leads/'
     | '/_authenticated/objects/$id/'
   fileRoutesById: FileRoutesById
@@ -738,6 +751,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCrmClientsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/crm/deals/': {
+      id: '/_authenticated/crm/deals/'
+      path: '/crm/deals'
+      fullPath: '/crm/deals/'
+      preLoaderRoute: typeof AuthenticatedCrmDealsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/crm/leads/': {
       id: '/_authenticated/crm/leads/'
       path: '/crm/leads'
@@ -824,6 +844,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedObjectsIdEditRoute: typeof AuthenticatedObjectsIdEditRoute
   AuthenticatedObjectsIdPreviewRoute: typeof AuthenticatedObjectsIdPreviewRoute
   AuthenticatedCrmClientsIndexRoute: typeof AuthenticatedCrmClientsIndexRoute
+  AuthenticatedCrmDealsIndexRoute: typeof AuthenticatedCrmDealsIndexRoute
   AuthenticatedCrmLeadsIndexRoute: typeof AuthenticatedCrmLeadsIndexRoute
   AuthenticatedObjectsIdIndexRoute: typeof AuthenticatedObjectsIdIndexRoute
 }
@@ -848,6 +869,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedObjectsIdEditRoute: AuthenticatedObjectsIdEditRoute,
   AuthenticatedObjectsIdPreviewRoute: AuthenticatedObjectsIdPreviewRoute,
   AuthenticatedCrmClientsIndexRoute: AuthenticatedCrmClientsIndexRoute,
+  AuthenticatedCrmDealsIndexRoute: AuthenticatedCrmDealsIndexRoute,
   AuthenticatedCrmLeadsIndexRoute: AuthenticatedCrmLeadsIndexRoute,
   AuthenticatedObjectsIdIndexRoute: AuthenticatedObjectsIdIndexRoute,
 }
