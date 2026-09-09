@@ -107,6 +107,25 @@ export async function deleteDealStage(id: string) {
   if (error) throw new Error("Нельзя удалить стадию, пока в ней есть сделки");
 }
 
+/** Стандартный набор стадий — восстановление, если список пуст. */
+export const DEFAULT_STAGES: StageInput[] = [
+  { name: "Новая", color: "#0ea5e9", position: 0, kind: "open" },
+  { name: "Показ", color: "#6366f1", position: 1, kind: "open" },
+  { name: "Переговоры", color: "#f59e0b", position: 2, kind: "open" },
+  { name: "Договор", color: "#8b5cf6", position: 3, kind: "open" },
+  { name: "Успешно", color: "#10b981", position: 4, kind: "won" },
+  { name: "Отказ", color: "#ef4444", position: 5, kind: "lost" },
+];
+
+export async function createDefaultStages() {
+  const existing = await fetchDealStages();
+  if (existing.length > 0) return existing.length;
+  const { error } = await supabase.from("deal_stages").insert(DEFAULT_STAGES as never);
+  if (error) throw error;
+  return DEFAULT_STAGES.length;
+}
+
+
 /* ---------------- поля ---------------- */
 
 export async function fetchDealFields(): Promise<DealField[]> {
