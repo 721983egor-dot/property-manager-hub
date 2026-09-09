@@ -32,7 +32,7 @@ import { DealShowings } from "@/components/DealShowings";
 import { DealWonDialog } from "@/components/DealWonDialog";
 
 import { fetchProperties, internalTitle } from "@/lib/properties";
-import { DEAL_SOURCES, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
+import { DEAL_SOURCES, deleteDeal, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
 
 const NONE = "__none__";
 
@@ -76,6 +76,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [wonOpen, setWonOpen] = useState(false);
   const [savedDealId, setSavedDealId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
 
 
@@ -447,31 +448,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           )}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
-          {lostStage ? (
-            <Button
-              variant="outline"
-              className="text-destructive sm:mr-auto"
-              disabled={mutation.isPending}
-              onClick={() => {
-                setPendingClose("lost");
-                mutation.mutate(lostStage.id);
-              }}
-            >
-              Отказ
-            </Button>
-          ) : null}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-          <Button
-            variant="outline"
-            disabled={!wonStage || mutation.isPending}
-            onClick={() => {
-              setPendingClose("won");
-              mutation.mutate(stageId);
-            }}
-          >
-            Успешно
-          </Button>
+        <DialogFooter>
           <Button
             onClick={() => {
               setPendingClose(null);
