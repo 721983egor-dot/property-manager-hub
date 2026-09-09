@@ -55,7 +55,7 @@ export const Route = createFileRoute("/rent/")({
         },
         {
           property: "og:title",
-          content: "Долгосрочная арренда недвижимости в Сочи — Резиденция&Море",
+          content: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море",
         },
         {
           property: "og:description",
