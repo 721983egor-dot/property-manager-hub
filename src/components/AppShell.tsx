@@ -218,7 +218,9 @@ function CrmShell({ children }: { children: ReactNode }) {
           >
             <Menu className="size-5" />
           </button>
+          <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
           <span className="truncate text-[15px] font-semibold tracking-tight">RM OS</span>
+
           {unread > 0 && (
             <Link
               to="/chats"
