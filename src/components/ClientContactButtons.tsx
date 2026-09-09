@@ -22,17 +22,29 @@ type Props = {
   onClick?: (e: React.MouseEvent) => void;
 };
 
+type LinkDef = {
+  href: string;
+  label: string;
+  color: string;
+  icon?: React.ComponentType<{ className?: string }>;
+};
+
 /** Кнопки связи с клиентом: позвонить, WhatsApp, Telegram, MAX. */
 export function ClientContactButtons({ phone, variant = "full", className, onClick }: Props) {
   const digits = phoneDigits(phone);
   if (digits.length !== 11) return null;
 
   const formatted = formatPhone(phone);
-  const links = [
+  const links: LinkDef[] = [
     { href: waLink(phone), icon: MessageCircle, label: "WhatsApp", color: "text-site-green" },
     { href: tgLink(phone), icon: Send, label: "Telegram", color: "text-site-navy" },
     { href: maxLink(phone), label: "MAX", color: "text-site-navy" },
-  ] as const;
+  ];
+
+  const stopAndForward = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick?.(e);
+  };
 
   if (variant === "row") {
     return (
@@ -41,10 +53,7 @@ export function ClientContactButtons({ phone, variant = "full", className, onCli
           href={`tel:+${digits}`}
           title={`Позвонить ${formatted}`}
           className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick?.(e);
-          }}
+          onClick={stopAndForward}
         >
           <Phone className="size-4" />
         </a>
@@ -59,12 +68,13 @@ export function ClientContactButtons({ phone, variant = "full", className, onCli
               "rounded-md p-1.5 transition-colors hover:bg-muted",
               color,
             )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick?.(e);
-            }}
+            onClick={stopAndForward}
           >
-            {Icon ? <Icon className="size-4" /> : <span className="block min-w-[1rem] text-center text-xs font-bold leading-4">M</span>}
+            {Icon ? (
+              <Icon className="size-4" />
+            ) : (
+              <span className="block min-w-[1rem] text-center text-xs font-bold leading-4">M</span>
+            )}
           </a>
         ))}
       </div>
@@ -78,10 +88,7 @@ export function ClientContactButtons({ phone, variant = "full", className, onCli
         size="sm"
         asChild
         className="gap-1.5"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick?.(e);
-        }}
+        onClick={stopAndForward}
       >
         <a href={`tel:+${digits}`} title={`Позвонить ${formatted}`}>
           <Phone className="size-4" />
@@ -95,13 +102,11 @@ export function ClientContactButtons({ phone, variant = "full", className, onCli
           size="sm"
           asChild
           className="gap-1.5"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick?.(e);
-          }}
+          onClick={stopAndForward}
         >
           <a href={href} target="_blank" rel="noreferrer" title={`${label} ${formatted}`}>
-            <Icon className={cn("size-4", color)} />
+            {Icon && <Icon className={cn("size-4", color)} />}
+            {!Icon && <span className="size-4 text-center text-xs font-bold leading-4">M</span>}
             {label}
           </a>
         </Button>
