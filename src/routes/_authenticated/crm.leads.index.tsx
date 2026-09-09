@@ -6,7 +6,10 @@ import { ru } from "date-fns/locale";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { toast } from "sonner";
+
 import { CrmTabs } from "@/components/CrmTabs";
+import { convertLeadToDeal } from "@/lib/deals";
 import {
   LEAD_STATUS_OPTIONS,
   deleteLead,
@@ -64,6 +67,16 @@ function LeadsPage() {
     mutationFn: ({ id, status }: { id: string; status: LeadStatus }) =>
       updateLeadStatus(id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+  });
+
+  const convertMutation = useMutation({
+    mutationFn: convertLeadToDeal,
+    onSuccess: (_id, lead) => {
+      statusMutation.mutate({ id: lead.id, status: "in_work" });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      toast.success("Сделка создана — откройте вкладку «Сделки»");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось создать сделку"),
   });
 
   const deleteMutation = useMutation({
