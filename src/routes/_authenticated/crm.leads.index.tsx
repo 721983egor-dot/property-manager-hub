@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Trash2 } from "lucide-react";
+import { ClientContactButtons } from "@/components/ClientContactButtons";
 import { useState } from "react";
 
 import { toast } from "sonner";
