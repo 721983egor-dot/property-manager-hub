@@ -9,7 +9,7 @@ const DEFAULT_STAGES = [
   { name: "Договор", color: "#8b5cf6", position: 3, kind: "open" },
   { name: "Успешно", color: "#10b981", position: 4, kind: "won" },
   { name: "Отказ", color: "#ef4444", position: 5, kind: "lost" },
-] as const;
+];
 
 /** Восстанавливает стадии через сервер после обязательной проверки роли администратора. */
 export const createDefaultDealStages = createServerFn({ method: "POST" })
