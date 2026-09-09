@@ -216,8 +216,25 @@
     0 0 18px color-mix(in oklch, var(--ai-glow) 35%, transparent);
 }
 
+@keyframes chat-ring-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--site-gold) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 12px color-mix(in oklch, var(--site-gold) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--site-gold) 0%, transparent);
+  }
+}
+
+@utility chat-pulse {
+  animation: chat-ring-pulse 2s ease-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .ai-glow {
+  .ai-glow,
+  .chat-pulse {
     animation: none;
   }
 }
