@@ -207,7 +207,10 @@ function CrmMobileNav({ unread }: { unread: number }) {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
-      <div className="grid h-16 grid-cols-5 items-center px-2">
+      <div
+        className="grid h-16 items-center px-2"
+        style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+      >
         {items.map((item) => {
           const active = pathname.startsWith(item.to);
           const isAssistant = item.to === "/assistant";
