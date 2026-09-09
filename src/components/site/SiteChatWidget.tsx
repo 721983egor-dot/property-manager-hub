@@ -14,7 +14,7 @@ import { useSiteCart } from "@/lib/site-cart";
 export function SiteChatWidget() {
   const [open, setOpen] = useState(false);
   const { count } = useSiteCart();
-  const bottom = count > 0 ? "bottom-24" : "bottom-5";
+  const bottom = count > 0 ? "bottom-32" : "bottom-8";
 
   useEffect(() => {
     const openChat = () => setOpen(true);
