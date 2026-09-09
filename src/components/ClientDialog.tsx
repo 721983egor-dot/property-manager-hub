@@ -58,9 +58,11 @@ export function ClientDialog({ open, onOpenChange, client }: Props) {
   const save = useMutation({
     mutationFn: async () => {
       if (!fullName.trim()) throw new Error("Укажите ФИО клиента");
+      const digits = phoneDigits(phone);
+      if (digits.length !== 11) throw new Error("Введите корректный номер телефона");
       return saveClient(client?.id ?? null, {
         full_name: fullName.trim(),
-        phone: phone.trim(),
+        phone: formatPhone(phone),
         comment: comment.trim(),
         blacklisted,
         blacklist_reason: blacklisted ? reason.trim() : "",
