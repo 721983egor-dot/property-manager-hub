@@ -80,7 +80,7 @@ export function SiteChatWidget() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Закрыть чат" : "Открыть чат"}
-        className="flex size-14 items-center justify-center rounded-full bg-site-gold text-site-navy shadow-xl transition-transform hover:scale-105"
+        className="flex size-14 items-center justify-center rounded-full bg-site-gold text-site-navy shadow-xl transition-transform hover:scale-105 chat-pulse"
       >
         {open ? <X className="size-6" /> : <MessageCircle className="size-6" />}
       </button>
