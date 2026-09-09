@@ -584,7 +584,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-10 w-[180px] shrink-0">
+      <SelectTrigger className="h-10 w-full min-w-0 sm:w-[180px] sm:shrink-0">
         <SelectValue placeholder={placeholder}>
           {value === ALL ? placeholder : (options.find((o) => o.value === value)?.label ?? value)}
         </SelectValue>
