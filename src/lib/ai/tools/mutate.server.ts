@@ -222,6 +222,96 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeDealShowing: tool({
+      description:
+        "Предложить добавление показа объекта в сделку CRM (объект, дата, заметка). Требует подтверждения менеджера.",
+      inputSchema: z.object({
+        dealId: z.string(),
+        propertyRef: z.string().describe("ID объекта или его номер ref_id"),
+        shownAt: z.string().describe("Дата показа в формате ГГГГ-ММ-ДД"),
+        note: z.string().optional(),
+      }),
+      execute: async ({ dealId, propertyRef, shownAt, note }) => {
+        const { data: deal } = await ctx.admin
+          .from("deals")
+          .select("title")
+          .eq("id", dealId)
+          .maybeSingle();
+        if (!deal) return { error: "Сделка не найдена" };
+        const numeric = Number(propertyRef);
+        const { data: property } = await ctx.admin
+          .from("properties")
+          .select("id, ref_id, internal_name, title")
+          .or(
+            Number.isFinite(numeric) && propertyRef.trim() !== ""
+              ? `id.eq.${propertyRef},ref_id.eq.${numeric}`
+              : `id.eq.${propertyRef}`,
+          )
+          .maybeSingle();
+        if (!property) return { error: "Объект не найден" };
+        const summary = `Добавить показ объекта №${property.ref_id} (${property.internal_name || property.title}) в сделку «${deal.title}» на ${shownAt}`;
+        ctx.propose({
+          tool: "addDealShowing",
+          summary,
+          input: { dealId, propertyId: property.id, shownAt, note: note ?? "" },
+        });
+        return { proposed: summary };
+      },
+    }),
+
+    proposeDealWon: tool({
+      description:
+        "Предложить успешное закрытие сделки: объект, даты заезда и выезда, цена в месяц, депозит, комиссия, день ежемесячной оплаты. Требует подтверждения менеджера.",
+      inputSchema: z.object({
+        dealId: z.string(),
+        propertyRef: z.string(),
+        startDate: z.string(),
+        endDate: z.string(),
+        priceMonth: z.number(),
+        deposit: z.number(),
+        commission: z.number().optional(),
+        paymentDay: z.number(),
+      }),
+      execute: async ({ dealId, propertyRef, startDate, endDate, priceMonth, deposit, commission, paymentDay }) => {
+        const { data: deal } = await ctx.admin
+          .from("deals")
+          .select("title, client_id")
+          .eq("id", dealId)
+          .maybeSingle();
+        if (!deal) return { error: "Сделка не найдена" };
+        const numeric = Number(propertyRef);
+        const { data: property } = await ctx.admin
+          .from("properties")
+          .select("id, ref_id, internal_name, title, service_type")
+          .or(
+            Number.isFinite(numeric) && propertyRef.trim() !== ""
+              ? `id.eq.${propertyRef},ref_id.eq.${numeric}`
+              : `id.eq.${propertyRef}`,
+          )
+          .maybeSingle();
+        if (!property) return { error: "Объект не найден" };
+        const summary = `Закрыть сделку «${deal.title}» успешно: объект №${property.ref_id}, ${startDate} — ${endDate}, ${priceMonth} ₽/мес, депозит ${deposit} ₽, оплата ${paymentDay} числа`;
+        ctx.propose({
+          tool: "closeDealWon",
+          summary,
+          input: {
+            dealId,
+            propertyId: property.id,
+            clientId: deal.client_id,
+            serviceType: property.service_type,
+            startDate,
+            endDate,
+            priceMonth,
+            deposit,
+            commission: commission ?? null,
+            paymentDay,
+          },
+        });
+        return { proposed: summary };
+      },
+    }),
+
+
     proposeDeal: tool({
 
       description:
