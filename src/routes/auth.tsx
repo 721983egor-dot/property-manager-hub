@@ -59,7 +59,6 @@ function AuthPage() {
       >
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <img src={logoNavy} alt="Резиденция&Море" className="h-12 w-auto" />
-          <span className="text-base font-semibold tracking-tight">RM OS</span>
         </div>
 
         <h1 className="mb-1 text-xl font-semibold">Вход для сотрудников</h1>

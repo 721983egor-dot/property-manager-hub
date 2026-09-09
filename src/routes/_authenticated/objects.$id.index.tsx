@@ -93,25 +93,27 @@ function ObjectViewPage() {
         <p className="mt-6 text-sm text-muted-foreground">Объект не найден</p>
       ) : (
         <>
-          <header className="mt-3 flex flex-wrap items-start justify-between gap-4">
-            <div>
+          <header className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{data.title}</h1>
               <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
                 <span>ID: {data.ref_id}</span>
                 <StatusBadge status={data.status} />
               </div>
             </div>
-            <div className="flex shrink-0 gap-2">
-              <Button asChild size="lg" variant="outline">
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0">
+              <Button asChild variant="outline" className="min-w-0 px-3 sm:h-11 sm:px-5">
                 <Link to="/objects/$id/preview" params={{ id: data.id }}>
                   <ExternalLink className="size-4" />
-                  Предпросмотр на сайте
+                  <span className="sm:hidden">На сайте</span>
+                  <span className="hidden sm:inline">Предпросмотр на сайте</span>
                 </Link>
               </Button>
-              <Button asChild size="lg">
+              <Button asChild className="min-w-0 px-3 sm:h-11 sm:px-5">
                 <Link to="/objects/$id/edit" params={{ id: data.id }}>
                   <Pencil className="size-4" />
-                  Редактировать
+                  <span className="sm:hidden">Изменить</span>
+                  <span className="hidden sm:inline">Редактировать</span>
                 </Link>
               </Button>
             </div>
