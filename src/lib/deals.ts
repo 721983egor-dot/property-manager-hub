@@ -121,9 +121,10 @@ export async function createDefaultStages() {
   const existing = await fetchDealStages();
   if (existing.length > 0) return existing.length;
   const { error } = await supabase.from("deal_stages").insert(DEFAULT_STAGES as never);
-  if (error) throw error;
+  if (error) throw new Error(error.message || "Не удалось создать стадии");
   return DEFAULT_STAGES.length;
 }
+
 
 
 /* ---------------- поля ---------------- */
