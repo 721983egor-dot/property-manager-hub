@@ -380,5 +380,36 @@ export function createReadTools(ctx: AssistantToolContext) {
         return { periodDays: period, entries: data ?? [] };
       },
     }),
+
+    getStaff: tool({
+      description:
+        "Сотрудники RM OS: ФИО, телефон, дата рождения, почта для входа и уровень доступа (администратор или менеджер).",
+      inputSchema: z.object({ query: z.string().optional() }),
+      execute: async ({ query }) => {
+        let q = admin
+          .from("profiles")
+          .select("id, email, full_name, phone, birth_date, created_at")
+          .order("created_at", { ascending: true })
+          .limit(100);
+        if (query) {
+          const term = `%${query}%`;
+          q = q.or(`full_name.ilike.${term},email.ilike.${term},phone.ilike.${term}`);
+        }
+        const [{ data, error }, { data: roles }] = await Promise.all([
+          q,
+          admin.from("user_roles").select("user_id, role"),
+        ]);
+        if (error) return { error: error.message };
+        const roleMap = new Map<string, string>();
+        for (const r of roles ?? []) {
+          if (r.role === "admin") roleMap.set(r.user_id, "admin");
+          else if (!roleMap.has(r.user_id)) roleMap.set(r.user_id, "manager");
+        }
+        return (data ?? []).map((p) => ({
+          ...p,
+          role: roleMap.get(p.id) === "admin" ? "Администратор" : "Менеджер",
+        }));
+      },
+    }),
   };
 }

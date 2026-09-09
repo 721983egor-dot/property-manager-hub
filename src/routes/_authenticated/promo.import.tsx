@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
@@ -42,7 +43,11 @@ export const Route = createFileRoute("/_authenticated/promo/import")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: CianImportPage,
+  component: () => (
+    <AdminOnly>
+      <CianImportPage />
+    </AdminOnly>
+  ),
 });
 
 const CONFIDENCE_LABEL: Record<MatchConfidence, string> = {

@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAccess } from "@/hooks/useAccess";
 import { SectionTabs } from "@/components/SectionTabs";
 import {
   deleteComplex,
@@ -76,14 +77,18 @@ function ComplexesPage() {
     onError: () => toast.error("Не удалось удалить комплекс"),
   });
 
+  const { isAdmin } = useAccess();
+
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Комплексы</h1>
-        <Button size="lg" onClick={() => navigate({ to: "/complexes/new" })}>
-          <Plus className="size-4" />
-          Добавить комплекс
-        </Button>
+        {isAdmin ? (
+          <Button size="lg" onClick={() => navigate({ to: "/complexes/new" })}>
+            <Plus className="size-4" />
+            Добавить комплекс
+          </Button>
+        ) : null}
       </header>
 
       <SectionTabs active="complexes" />
@@ -137,11 +142,13 @@ function ComplexesPage() {
                     >
                       {c.name}
                     </Link>
-                    <Button asChild variant="outline" size="sm" className="shrink-0">
-                      <Link to="/complexes/$id/edit" params={{ id: c.id }}>
-                        <Pencil className="size-4" />
-                      </Link>
-                    </Button>
+                    {isAdmin ? (
+                      <Button asChild variant="outline" size="sm" className="shrink-0">
+                        <Link to="/complexes/$id/edit" params={{ id: c.id }}>
+                          <Pencil className="size-4" />
+                        </Link>
+                      </Button>
+                    ) : null}
                   </div>
                   {c.show_in_site_filter ? null : (
                     <p className="mt-1 text-xs text-muted-foreground">Скрыт в фильтре на сайте</p>
@@ -217,6 +224,7 @@ function Row({
   photoUrl?: string | undefined;
   onDelete: () => void;
 }) {
+  const { isAdmin } = useAccess();
   return (
     <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
       <td className="px-5 py-4">
@@ -266,6 +274,8 @@ function Row({
       </td>
       <td className="px-4 py-4">
         <div className="flex items-center justify-end gap-2">
+          {!isAdmin ? null : (
+          <>
           <Button asChild variant="outline" size="sm">
             <Link to="/complexes/$id/edit" params={{ id: complex.id }}>
               <Pencil className="size-4" />
@@ -294,6 +304,8 @@ function Row({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </>
+          )}
         </div>
       </td>
     </tr>

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -25,7 +26,11 @@ export const Route = createFileRoute("/_authenticated/system/telegram")({
       },
     ],
   }),
-  component: TelegramSettingsPage,
+  component: () => (
+    <AdminOnly>
+      <TelegramSettingsPage />
+    </AdminOnly>
+  ),
 });
 
 function TelegramSettingsPage() {

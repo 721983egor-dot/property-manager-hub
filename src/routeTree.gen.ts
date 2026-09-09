@@ -32,6 +32,7 @@ import { Route as AuthenticatedPromoIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPromoIdRouteImport } from './routes/_authenticated/promo.$id'
 import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
+import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
 import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authenticated/system.telegram'
 import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
@@ -168,6 +169,12 @@ const AuthenticatedSelectionsIndexRoute =
     path: '/selections/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemStaffRoute =
+  AuthenticatedSystemStaffRouteImport.update({
+    id: '/system/staff',
+    path: '/system/staff',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSystemTelegramRoute =
   AuthenticatedSystemTelegramRouteImport.update({
     id: '/system/telegram',
@@ -273,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
+  '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
@@ -311,6 +319,7 @@ export interface FileRoutesByTo {
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
+  '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
@@ -352,6 +361,7 @@ export interface FileRoutesById {
   '/_authenticated/objects/new': typeof AuthenticatedObjectsNewRoute
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
+  '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
   '/_authenticated/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/_authenticated/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
@@ -393,6 +403,7 @@ export interface FileRouteTypes {
     | '/objects/new'
     | '/promo/$id'
     | '/promo/import'
+    | '/system/staff'
     | '/system/telegram'
     | '/system/update'
     | '/api/public/health'
@@ -431,6 +442,7 @@ export interface FileRouteTypes {
     | '/objects/new'
     | '/promo/$id'
     | '/promo/import'
+    | '/system/staff'
     | '/system/telegram'
     | '/system/update'
     | '/api/public/health'
@@ -471,6 +483,7 @@ export interface FileRouteTypes {
     | '/_authenticated/objects/new'
     | '/_authenticated/promo/$id'
     | '/_authenticated/promo/import'
+    | '/_authenticated/system/staff'
     | '/_authenticated/system/telegram'
     | '/_authenticated/system/update'
     | '/api/public/health'
@@ -676,6 +689,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSelectionsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system/staff': {
+      id: '/_authenticated/system/staff'
+      path: '/system/staff'
+      fullPath: '/system/staff'
+      preLoaderRoute: typeof AuthenticatedSystemStaffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/system/telegram': {
       id: '/_authenticated/system/telegram'
       path: '/system/telegram'
@@ -790,6 +810,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedObjectsNewRoute: typeof AuthenticatedObjectsNewRoute
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
   AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
+  AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
   AuthenticatedSystemTelegramRoute: typeof AuthenticatedSystemTelegramRoute
   AuthenticatedSystemUpdateRoute: typeof AuthenticatedSystemUpdateRoute
   AuthenticatedAssistantIndexRoute: typeof AuthenticatedAssistantIndexRoute
@@ -813,6 +834,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedObjectsNewRoute: AuthenticatedObjectsNewRoute,
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
   AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
+  AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
   AuthenticatedSystemTelegramRoute: AuthenticatedSystemTelegramRoute,
   AuthenticatedSystemUpdateRoute: AuthenticatedSystemUpdateRoute,
   AuthenticatedAssistantIndexRoute: AuthenticatedAssistantIndexRoute,

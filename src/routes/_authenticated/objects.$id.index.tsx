@@ -5,6 +5,7 @@ import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-rea
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { useAccess } from "@/hooks/useAccess";
 import { BookingDialog } from "@/components/BookingDialog";
 import { YandexMap } from "@/components/YandexMap";
 import { fetchCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/_authenticated/objects/$id/")({
 
 function ObjectViewPage() {
   const { id } = Route.useParams();
+  const { isAdmin } = useAccess();
   const todayIso = toISODate(new Date());
   const [bookingOpen, setBookingOpen] = useState(false);
   const { data: currentBooking = null } = useQuery({
@@ -109,13 +111,15 @@ function ObjectViewPage() {
                   <span className="hidden sm:inline">Предпросмотр на сайте</span>
                 </Link>
               </Button>
-              <Button asChild className="min-w-0 px-3 sm:h-11 sm:px-5">
-                <Link to="/objects/$id/edit" params={{ id: data.id }}>
-                  <Pencil className="size-4" />
-                  <span className="sm:hidden">Изменить</span>
-                  <span className="hidden sm:inline">Редактировать</span>
-                </Link>
-              </Button>
+              {isAdmin ? (
+                <Button asChild className="min-w-0 px-3 sm:h-11 sm:px-5">
+                  <Link to="/objects/$id/edit" params={{ id: data.id }}>
+                    <Pencil className="size-4" />
+                    <span className="sm:hidden">Изменить</span>
+                    <span className="hidden sm:inline">Редактировать</span>
+                  </Link>
+                </Button>
+              ) : null}
             </div>
           </header>
 
@@ -215,11 +219,13 @@ function ObjectViewPage() {
             <section className="mt-6 rounded-xl border border-border bg-card p-6">
               <div className="flex items-start justify-between gap-4">
                 <h2 className="text-base font-semibold">О комплексе</h2>
-                <Button asChild variant="ghost" size="sm">
-                  <Link to="/complexes/$id/edit" params={{ id: complex.id }}>
-                    Редактировать комплекс
-                  </Link>
-                </Button>
+                {isAdmin ? (
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to="/complexes/$id/edit" params={{ id: complex.id }}>
+                      Редактировать комплекс
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
               <p className="mt-3 text-lg font-medium">{complex.name}</p>
               <div className="mt-4 grid gap-5 sm:grid-cols-[240px_minmax(0,1fr)]">

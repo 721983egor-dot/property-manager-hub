@@ -13,12 +13,14 @@ import {
   Settings,
 
   Sparkles,
+  UserRound,
   Users,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
 import { fetchThreads } from "@/lib/chat.functions";
+import { useAccess } from "@/hooks/useAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CrmNotifications } from "@/components/CrmNotifications";
@@ -72,6 +74,7 @@ const NAV_LINK_CLASS =
 function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith("/system"));
+  const { isAdmin } = useAccess();
 
   return (
     <nav className="px-3 py-2">
@@ -83,27 +86,31 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <CalendarDays className="size-4 shrink-0" />
         Календарь
       </Link>
-      <Link to="/promo" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Megaphone className="size-4 shrink-0" />
-        Публикация
-      </Link>
-      <Link to="/chats" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <MessagesSquare className="size-4 shrink-0" />
-        Чаты
-        {unread > 0 && (
-          <span className="ml-auto rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-            {unread}
-          </span>
-        )}
-      </Link>
-      <Link
-        to="/assistant"
-        onClick={onNavigate}
-        className={`${NAV_LINK_CLASS} ai-glow-ring my-1 rounded-md`}
-      >
-        <Sparkles className="ai-glow size-4 shrink-0" />
-        Ассистент
-      </Link>
+      {isAdmin && (
+        <>
+          <Link to="/promo" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <Megaphone className="size-4 shrink-0" />
+            Публикация
+          </Link>
+          <Link to="/chats" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <MessagesSquare className="size-4 shrink-0" />
+            Чаты
+            {unread > 0 && (
+              <span className="ml-auto rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                {unread}
+              </span>
+            )}
+          </Link>
+          <Link
+            to="/assistant"
+            onClick={onNavigate}
+            className={`${NAV_LINK_CLASS} ai-glow-ring my-1 rounded-md`}
+          >
+            <Sparkles className="ai-glow size-4 shrink-0" />
+            Ассистент
+          </Link>
+        </>
+      )}
 
       <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         CRM
@@ -112,10 +119,12 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <Users className="size-4 shrink-0" />
         Клиенты
       </Link>
-      <Link to="/crm/leads" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Inbox className="size-4 shrink-0" />
-        Заявки
-      </Link>
+      {isAdmin && (
+        <Link to="/crm/leads" onClick={onNavigate} className={NAV_LINK_CLASS}>
+          <Inbox className="size-4 shrink-0" />
+          Заявки
+        </Link>
+      )}
 
       <button
         type="button"
@@ -131,14 +140,22 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       </button>
       {settingsOpen && (
         <div className="ml-3 border-l border-border pl-2">
-          <Link to="/system/update" onClick={onNavigate} className={NAV_LINK_CLASS}>
-            <Settings className="size-4 shrink-0" />
-            Обновление системы
+          <Link to="/system/staff" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <UserRound className="size-4 shrink-0" />
+            Сотрудники
           </Link>
-          <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
-            <Send className="size-4 shrink-0" />
-            Ассистент в Telegram
-          </Link>
+          {isAdmin && (
+            <>
+              <Link to="/system/update" onClick={onNavigate} className={NAV_LINK_CLASS}>
+                <Settings className="size-4 shrink-0" />
+                Обновление системы
+              </Link>
+              <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
+                <Send className="size-4 shrink-0" />
+                Ассистент в Telegram
+              </Link>
+            </>
+          )}
         </div>
       )}
     </nav>
@@ -163,6 +180,11 @@ function SignOutButton() {
   );
 }
 
+function CrmShellNotifications() {
+  const { isAdmin } = useAccess();
+  return isAdmin ? <CrmNotifications /> : null;
+}
+
 function CrmShell({ children }: { children: ReactNode }) {
   const loadThreads = useServerFn(fetchThreads);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -180,7 +202,7 @@ function CrmShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
-      <CrmNotifications />
+      <CrmShellNotifications />
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
         <div className="flex h-16 items-center gap-2.5 px-5">
           <img src={logoNavy} alt="Резиденция&Море" className="h-7 w-auto shrink-0" />

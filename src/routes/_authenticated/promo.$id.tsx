@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -40,7 +41,11 @@ export const Route = createFileRoute("/_authenticated/promo/$id")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: PromoDetailPage,
+  component: () => (
+    <AdminOnly>
+      <PromoDetailPage />
+    </AdminOnly>
+  ),
 });
 
 const RANGES = [

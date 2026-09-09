@@ -8,6 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { BookingDialog } from "@/components/BookingDialog";
 import { ClientDialog } from "@/components/ClientDialog";
+import { useAccess } from "@/hooks/useAccess";
 import {
   fetchClientBookings,
   priceOn,
@@ -51,6 +52,7 @@ function ClientPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  const { isAdmin } = useAccess();
   const [bookingOpen, setBookingOpen] = useState(false);
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
 
@@ -131,16 +133,20 @@ function ClientPage() {
               <Plus className="size-4" />
               Создать бронирование
             </Button>
-            <Button onClick={() => setEditOpen(true)}>Редактировать</Button>
-            <Button
-              variant="destructive"
-              disabled={remove.isPending}
-              onClick={() => {
-                if (window.confirm("Удалить клиента?")) remove.mutate();
-              }}
-            >
-              {remove.isPending ? "Удаление..." : "Удалить"}
-            </Button>
+            {isAdmin ? (
+              <>
+                <Button onClick={() => setEditOpen(true)}>Редактировать</Button>
+                <Button
+                  variant="destructive"
+                  disabled={remove.isPending}
+                  onClick={() => {
+                    if (window.confirm("Удалить клиента?")) remove.mutate();
+                  }}
+                >
+                  {remove.isPending ? "Удаление..." : "Удалить"}
+                </Button>
+              </>
+            ) : null}
           </div>
         </div>
       </div>

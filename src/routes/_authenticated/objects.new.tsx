@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -15,7 +16,11 @@ export const Route = createFileRoute("/_authenticated/objects/new")({
       { property: "og:description", content: "Добавление объекта недвижимости в реестр RM OS." },
     ],
   }),
-  component: NewObjectPage,
+  component: () => (
+    <AdminOnly>
+      <NewObjectPage />
+    </AdminOnly>
+  ),
 });
 
 function NewObjectPage() {

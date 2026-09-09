@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { Check, SendHorizonal, Sparkles, X } from "lucide-react";
@@ -14,7 +15,11 @@ export const Route = createFileRoute("/_authenticated/assistant/")({
   head: () => ({
     meta: [{ title: "Ассистент — RM OS" }, { name: "robots", content: "noindex" }],
   }),
-  component: AssistantPage,
+  component: () => (
+    <AdminOnly>
+      <AssistantPage />
+    </AdminOnly>
+  ),
 });
 
 type Bubble = AssistantChatMessage & { actions?: AssistantAction[] };

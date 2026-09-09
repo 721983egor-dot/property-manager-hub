@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -26,7 +27,11 @@ export const Route = createFileRoute("/_authenticated/system/update")({
   head: () => ({
     meta: [{ title: "Обновление системы — RM OS" }],
   }),
-  component: SystemUpdatePage,
+  component: () => (
+    <AdminOnly>
+      <SystemUpdatePage />
+    </AdminOnly>
+  ),
 });
 
 const PROGRESS_STEPS = [
