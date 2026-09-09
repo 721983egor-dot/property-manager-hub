@@ -515,3 +515,30 @@ export async function closeDealAsWon(
 
   await markPropertyRented(input.property_id);
 }
+
+/* ---------------- показы и сделки по объекту ---------------- */
+
+/** Все показы объекта из сделок — для раздела «Публикация и реклама». */
+export async function fetchPropertyShowings(propertyId: string): Promise<DealShowing[]> {
+  const { data, error } = await supabase
+    .from("deal_showings")
+    .select("id, deal_id, property_id, shown_at, note, author_id, author_name, created_at")
+    .eq("property_id", propertyId)
+    .order("shown_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as DealShowing[];
+}
+
+/** Сделки, связанные с объектом (текущие и закрытые). */
+export async function fetchPropertyDeals(propertyId: string): Promise<Deal[]> {
+  const { data, error } = await supabase
+    .from("deals")
+    .select(DEAL_COLUMNS)
+    .or(`property_id.eq.${propertyId},closed_property_id.eq.${propertyId}`)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((d) => ({
+    ...(d as Deal),
+    custom: ((d as { custom: unknown }).custom ?? {}) as Record<string, unknown>,
+  }));
+}
