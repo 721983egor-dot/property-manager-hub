@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CrmNotifications } from "@/components/CrmNotifications";
 import logoNavy from "@/assets/site/logo_navy.png";
+import { cn } from "@/lib/utils";
 
 import type { ReactNode } from "react";
 
@@ -206,9 +207,11 @@ function CrmMobileNav({ unread }: { unread: number }) {
   const items = MOBILE_NAV.filter((item) => !item.adminOnly || isAdmin);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_-6px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden"
+    >
       <div
-        className="grid h-16 items-center px-2"
+        className="grid h-16 items-center px-1"
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       >
         {items.map((item) => {
@@ -220,12 +223,12 @@ function CrmMobileNav({ unread }: { unread: number }) {
               <Link
                 key={item.to}
                 to={item.to}
-                className="flex flex-col items-center justify-center gap-0.5 py-1"
+                className="group relative flex flex-col items-center justify-center gap-0.5 py-1"
               >
-                <span className="ai-glow-ring grid size-10 place-items-center rounded-full bg-primary text-primary-foreground">
+                <span className="ai-glow-ring grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform group-active:scale-95">
                   <Sparkles className="ai-glow size-5" />
                 </span>
-                <span className="text-[10px] font-medium text-muted-foreground">
+                <span className="text-[10px] font-semibold text-primary">
                   {item.label}
                 </span>
               </Link>
@@ -235,22 +238,24 @@ function CrmMobileNav({ unread }: { unread: number }) {
             <Link
               key={item.to}
               to={item.to}
-              className="relative flex flex-col items-center justify-center gap-0.5 py-1"
+              className={cn(
+                "relative flex flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-1.5 transition-colors",
+                active
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+              )}
             >
-              <Icon
-                className={`size-5 transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground"
-                }`}
-              />
+              <Icon className="size-6 transition-colors" />
               <span
-                className={`text-[10px] font-medium transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground"
-                }`}
+                className={cn(
+                  "w-full truncate text-center text-[10px]",
+                  active ? "font-semibold" : "font-medium",
+                )}
               >
                 {item.label}
               </span>
               {item.to === "/chats" && unread > 0 && (
-                <span className="absolute right-2 top-0 rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
+                <span className="absolute right-0 top-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
                   {unread}
                 </span>
               )}
@@ -327,7 +332,7 @@ function CrmShell({ children }: { children: ReactNode }) {
             </Link>
           )}
         </header>
-        <main className="min-w-0 flex-1 pb-16 lg:pb-0">{children}</main>
+        <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
         <CrmMobileNav unread={unread} />
       </div>
     </div>
