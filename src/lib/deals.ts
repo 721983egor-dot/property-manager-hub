@@ -233,3 +233,52 @@ export function customValueLabel(field: DealField, value: unknown) {
   }
   return String(value);
 }
+
+/** Превращает заявку с сайта в сделку: находит или создаёт клиента и ставит первую стадию. */
+export async function convertLeadToDeal(lead: {
+  id: string;
+  name: string;
+  phone: string;
+  topic: string;
+  message: string;
+}) {
+  const stages = await fetchDealStages();
+  const stage = stages.find((s) => s.kind === "open") ?? stages[0];
+  if (!stage) throw new Error("Сначала настройте стадии сделок");
+
+  let clientId: string | null = null;
+  if (lead.phone.trim()) {
+    const { data } = await supabase
+      .from("clients")
+      .select("id")
+      .ilike("phone", `%${lead.phone.trim().slice(-10)}%`)
+      .limit(1);
+    clientId = (data ?? [])[0]?.id ?? null;
+  }
+  if (!clientId) {
+    const { data, error } = await supabase
+      .from("clients")
+      .insert({ full_name: lead.name || "Клиент с сайта", phone: lead.phone } as never)
+      .select("id")
+      .single();
+    if (error) throw error;
+    clientId = (data as { id: string }).id;
+  }
+
+  const { data: userData } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("deals")
+    .insert({
+      title: lead.name ? `Заявка — ${lead.name}` : "Заявка с сайта",
+      stage_id: stage.id,
+      client_id: clientId,
+      lead_id: lead.id,
+      responsible_id: userData.user?.id ?? null,
+      source: "Сайт",
+      comment: lead.message,
+    } as never)
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
