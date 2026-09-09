@@ -204,17 +204,18 @@ export function SiteCartBar() {
                 <X className="size-4" />
               </button>
             </div>
-            <div className="flex items-center gap-2 sm:ml-auto">
+            <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-2 sm:ml-auto sm:flex">
               <Button
                 type="button"
                 onClick={() => {
                   dismissHint();
                   setLeadOpen(true);
                 }}
-                className="h-10 min-w-0 flex-1 bg-site-navy px-3 text-sm text-site-navy-foreground hover:bg-site-navy/90 sm:flex-none sm:px-4"
+                className="h-10 min-w-0 bg-site-navy px-3 text-sm text-site-navy-foreground hover:bg-site-navy/90 sm:flex-none sm:px-4"
               >
                 <Send className="size-4 shrink-0" />
-                <span className="truncate">Записаться на просмотр</span>
+                <span className="sm:hidden">Записаться</span>
+                <span className="hidden sm:inline">Записаться на просмотр</span>
               </Button>
               <Button
                 type="button"
@@ -237,11 +238,11 @@ export function SiteCartBar() {
                 disabled={sendingChat}
                 aria-label="Отправить подборку менеджеру в чат"
                 title="Отправить подборку менеджеру в чат"
-                className="size-10 shrink-0 border-site-line p-0 text-sm text-site-navy hover:border-site-gold/60 sm:h-10 sm:w-auto sm:px-4"
+                className="h-10 w-full min-w-0 border-site-line px-2 text-sm text-site-navy hover:border-site-gold/60 sm:w-auto sm:shrink-0 sm:px-4"
               >
-                <MessageCircle className="size-4" />
-                <span className="hidden sm:inline">
-                  {sendingChat ? "Отправляем…" : "В чат менеджеру"}
+                <MessageCircle className="size-4 shrink-0" />
+                <span className="truncate">
+                  {sendingChat ? "Отправляем…" : "Подборку в чат"}
                 </span>
               </Button>
               <button
