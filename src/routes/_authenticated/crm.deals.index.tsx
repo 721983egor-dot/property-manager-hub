@@ -230,8 +230,20 @@ function DealsPage() {
 
       {isLoading ? (
         <p className="mt-10 text-center text-muted-foreground">Загружаем сделки…</p>
+      ) : boardStages.length === 0 ? (
+        <div className="mt-8 rounded-lg border border-dashed border-border p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Стадии сделок не найдены. Создайте стандартный набор — потом их можно переименовать.
+          </p>
+          {isAdmin && (
+            <Button className="mt-4" disabled={stagesInit.isPending} onClick={() => stagesInit.mutate()}>
+              Создать стандартные стадии
+            </Button>
+          )}
+        </div>
       ) : (
         <div className="mt-5 flex gap-4 overflow-x-auto pb-4">
+
           {boardStages.map((stage) => {
             const items = visible.filter((d) => d.stage_id === stage.id);
             const total = items.reduce((sum, d) => sum + (d.budget ?? 0), 0);
