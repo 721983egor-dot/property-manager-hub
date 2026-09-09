@@ -372,6 +372,161 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_fields: {
+        Row: {
+          archived: boolean
+          created_at: string
+          field_type: string
+          id: string
+          key: string
+          label: string
+          options: string[]
+          position: number
+          show_in_card: boolean
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          field_type?: string
+          id?: string
+          key: string
+          label: string
+          options?: string[]
+          position?: number
+          show_in_card?: boolean
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          field_type?: string
+          id?: string
+          key?: string
+          label?: string
+          options?: string[]
+          position?: number
+          show_in_card?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deal_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deals: {
+        Row: {
+          adults: number
+          budget: number | null
+          children: number
+          client_id: string | null
+          comment: string
+          created_at: string
+          custom: Json
+          id: string
+          lead_id: string | null
+          position: number
+          property_id: string | null
+          responsible_id: string | null
+          source: string
+          stage_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          adults?: number
+          budget?: number | null
+          children?: number
+          client_id?: string | null
+          comment?: string
+          created_at?: string
+          custom?: Json
+          id?: string
+          lead_id?: string | null
+          position?: number
+          property_id?: string | null
+          responsible_id?: string | null
+          source?: string
+          stage_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          adults?: number
+          budget?: number | null
+          children?: number
+          client_id?: string | null
+          comment?: string
+          created_at?: string
+          custom?: Json
+          id?: string
+          lead_id?: string | null
+          position?: number
+          property_id?: string | null
+          responsible_id?: string | null
+          source?: string
+          stage_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "deal_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           created_at: string

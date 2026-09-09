@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarDays,
   ChevronDown,
+  Handshake,
   Inbox,
   LogOut,
   Megaphone,
@@ -115,6 +116,10 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         CRM
       </p>
+      <Link to="/crm/deals" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Handshake className="size-4 shrink-0" />
+        Сделки
+      </Link>
       <Link to="/crm/clients" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Users className="size-4 shrink-0" />
         Клиенты

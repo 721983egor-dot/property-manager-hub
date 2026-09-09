@@ -204,5 +204,63 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+
+    proposeDeal: tool({
+      description:
+        "Предложить создание или изменение сделки CRM: название, стадия, клиент, объект, источник, бюджет, взрослые, дети, комментарий, дополнительные поля. Требует подтверждения менеджера.",
+      inputSchema: z.object({
+        dealId: z.string().optional(),
+        title: z.string().optional(),
+        stage: z.string().optional(),
+        clientRef: z.string().optional(),
+        propertyRef: z.string().optional(),
+        source: z.string().optional(),
+        budget: z.number().optional(),
+        adults: z.number().optional(),
+        children: z.number().optional(),
+        comment: z.string().optional(),
+        custom: z.record(z.string(), z.string()).optional(),
+      }),
+      execute: async (input) => {
+        const { data: stages } = await ctx.admin
+          .from("deal_stages")
+          .select("id, name")
+          .order("position");
+        const stageRow = input.stage
+          ? (stages ?? []).find((s) => s.name.toLowerCase() === input.stage!.toLowerCase())
+          : null;
+        if (input.stage && !stageRow) return { error: "Стадия не найдена" };
+        const client = input.clientRef ? await ctx.findClient(input.clientRef) : null;
+        const property = input.propertyRef ? await label(input.propertyRef) : null;
+        const parts: string[] = [];
+        if (input.title) parts.push(`«${input.title}»`);
+        if (stageRow) parts.push(`стадия «${stageRow.name}»`);
+        if (client) parts.push(`клиент ${client["full_name"] as string}`);
+        if (property) parts.push(`объект ${property.text}`);
+        if (input.budget != null) parts.push(`бюджет ${money(input.budget)}`);
+        if (input.adults != null || input.children != null)
+          parts.push(`гости ${input.adults ?? 0} взр. / ${input.children ?? 0} дет.`);
+        if (input.source) parts.push(`источник ${input.source}`);
+        const summary = `${input.dealId ? "Изменить" : "Создать"} сделку: ${parts.join(", ") || "без изменений"}`;
+        ctx.propose({
+          tool: "upsertDeal",
+          summary,
+          input: {
+            dealId: input.dealId ?? null,
+            stageId: stageRow?.id ?? (stages ?? [])[0]?.id ?? null,
+            clientId: client ? (client["id"] as string) : null,
+            propertyId: property?.id ?? null,
+            title: input.title ?? null,
+            source: input.source ?? null,
+            budget: input.budget ?? null,
+            adults: input.adults ?? null,
+            children: input.children ?? null,
+            comment: input.comment ?? null,
+            custom: input.custom ?? null,
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
   };
 }

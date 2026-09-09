@@ -221,6 +221,32 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (error) throw new Error(error.message);
     return "Статус заявки обновлён";
   },
+
+  upsertDeal: async (input) => {
+    const dealId = input["dealId"] as string | null;
+    const patch: Record<string, unknown> = {};
+    if (input["title"] != null) patch["title"] = input["title"];
+    if (input["stageId"] != null) patch["stage_id"] = input["stageId"];
+    if (input["clientId"] != null) patch["client_id"] = input["clientId"];
+    if (input["propertyId"] != null) patch["property_id"] = input["propertyId"];
+    if (input["source"] != null) patch["source"] = input["source"];
+    if (input["budget"] != null) patch["budget"] = input["budget"];
+    if (input["adults"] != null) patch["adults"] = input["adults"];
+    if (input["children"] != null) patch["children"] = input["children"];
+    if (input["comment"] != null) patch["comment"] = input["comment"];
+    if (input["custom"] != null) patch["custom"] = input["custom"];
+    if (dealId) {
+      const { error } = await supabaseAdmin.from("deals").update(patch as never).eq("id", dealId);
+      if (error) throw new Error(error.message);
+      return "Сделка обновлена";
+    }
+    const stageId = must(patch["stage_id"] as string, "Не указана стадия сделки");
+    const { error } = await supabaseAdmin
+      .from("deals")
+      .insert({ ...patch, stage_id: stageId, title: (patch["title"] as string) ?? "Новая сделка" } as never);
+    if (error) throw new Error(error.message);
+    return "Сделка создана";
+  },
 };
 
 /** Выполняет подтверждённое действие и пишет его в журнал. */

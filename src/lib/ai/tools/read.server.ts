@@ -411,5 +411,53 @@ export function createReadTools(ctx: AssistantToolContext) {
         }));
       },
     }),
+
+    getCrmDeals: tool({
+      description:
+        "Сделки CRM: стадия канбана, клиент, объект, источник, бюджет клиента, число взрослых и детей, ответственный, комментарий и дополнительные поля.",
+      inputSchema: z.object({ query: z.string().optional(), stage: z.string().optional() }),
+      execute: async ({ query, stage }) => {
+        const [{ data: stages }, { data: fields }] = await Promise.all([
+          admin.from("deal_stages").select("id, name, kind, position").order("position"),
+          admin.from("deal_fields").select("key, label, field_type, options, archived"),
+        ]);
+        const stageMap = new Map((stages ?? []).map((s) => [s.id, s.name]));
+        let q = admin.from("deals").select("*").limit(200);
+        if (stage) {
+          const found = (stages ?? []).find((s) => s.name.toLowerCase() === stage.toLowerCase());
+          if (found) q = q.eq("stage_id", found.id);
+        }
+        if (query) q = q.or(`title.ilike.%${query}%,source.ilike.%${query}%,comment.ilike.%${query}%`);
+        const { data, error } = await q;
+        if (error) return { error: error.message };
+        const clientIds = [...new Set((data ?? []).map((d) => d.client_id).filter(Boolean))] as string[];
+        const propertyIds = [...new Set((data ?? []).map((d) => d.property_id).filter(Boolean))] as string[];
+        const [{ data: clients }, propNames] = await Promise.all([
+          clientIds.length
+            ? admin.from("clients").select("id, full_name, phone").in("id", clientIds)
+            : Promise.resolve({ data: [] as { id: string; full_name: string; phone: string }[] }),
+          nameMap(propertyIds),
+        ]);
+        const clientMap = new Map((clients ?? []).map((c) => [c.id, `${c.full_name} ${c.phone}`.trim()]));
+        return {
+          stages: (stages ?? []).map((s) => ({ name: s.name, kind: s.kind })),
+          fields: (fields ?? []).filter((f) => !f.archived),
+          deals: (data ?? []).map((d) => ({
+            id: d.id,
+            title: d.title,
+            stage: stageMap.get(d.stage_id) ?? "",
+            client: d.client_id ? clientMap.get(d.client_id) ?? "" : "",
+            property: d.property_id ? propNames.get(d.property_id) ?? "" : "",
+            source: d.source,
+            budget: d.budget,
+            adults: d.adults,
+            children: d.children,
+            comment: d.comment,
+            custom: d.custom,
+            created_at: d.created_at,
+          })),
+        };
+      },
+    }),
   };
 }
