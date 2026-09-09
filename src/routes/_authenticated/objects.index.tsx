@@ -732,20 +732,27 @@ function MobileCard({
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="relative flex aspect-[16/10] items-center justify-center bg-muted">
-        {photoUrl ? (
-          <img
-            src={photoUrl}
-            alt={property.title}
-            loading="lazy"
-            className="size-full object-cover"
-          />
-        ) : (
-          <ImageIcon className="size-6 text-muted-foreground" />
-        )}
-        <div className="absolute left-2 top-2 rounded-md bg-background/90 p-1.5">
+        <Link
+          to="/objects/$id"
+          params={{ id: property.id }}
+          aria-label={internalTitle(property)}
+          className="absolute inset-0 z-0 flex items-center justify-center"
+        >
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt={property.title}
+              loading="lazy"
+              className="size-full object-cover"
+            />
+          ) : (
+            <ImageIcon className="size-6 text-muted-foreground" />
+          )}
+        </Link>
+        <div className="absolute left-2 top-2 z-10 rounded-md bg-background/90 p-1.5">
           <Checkbox checked={selected} onCheckedChange={onToggle} aria-label="Выбрать объект" />
         </div>
-        <div className="absolute right-2 top-2">
+        <div className="pointer-events-none absolute right-2 top-2 z-10">
           <StatusBadge status={property.status} />
         </div>
       </div>
@@ -754,10 +761,11 @@ function MobileCard({
         <Link
           to="/objects/$id"
           params={{ id: property.id }}
-          className="block font-medium leading-snug"
+          className="block py-1 font-medium leading-snug active:text-primary"
         >
           {internalTitle(property)}
         </Link>
+
         <p className="mt-0.5 text-xs text-muted-foreground">
           ID: {property.ref_id}
           {property.complex_name ? ` · ${property.complex_name}` : ""}
