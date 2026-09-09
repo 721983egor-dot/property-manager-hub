@@ -227,7 +227,10 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
               <Select value={stageId} onValueChange={setStageId}>
                 <SelectTrigger><SelectValue placeholder="Стадия" /></SelectTrigger>
                 <SelectContent>
-                  {stages.map((s) => (
+                  {(openStages.some((s) => s.id === stageId)
+                    ? openStages
+                    : stages.filter((s) => s.kind === "open" || s.id === stageId)
+                  ).map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>
