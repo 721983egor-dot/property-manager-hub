@@ -15,32 +15,43 @@ import {
 } from "lucide-react";
 
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
-import { SITE_PHONE_TEL, SITE_TELEGRAM, SITE_WHATSAPP } from "@/lib/site";
+import {
+  SITE_ORIGIN,
+  SITE_PHONE_TEL,
+  SITE_TELEGRAM,
+  SITE_WHATSAPP,
+} from "@/lib/site";
 import heroImg from "@/assets/site/about_hero.jpg";
 
 export const Route = createFileRoute("/about")({
-  head: () => ({
-    meta: [
-      { title: "О компании — Резиденция&Море" },
-      {
-        name: "description",
-        content:
-          "«Резиденция & Море» — сервис управления жилой недвижимостью в Сочи. Помогаем собственникам сдавать квартиры, апартаменты, дома и виллы, а арендаторам — находить комфортное жильё.",
-      },
-      {
-        property: "og:title",
-        content: "О компании — Резиденция&Море",
-      },
-      {
-        property: "og:description",
-        content:
-          "Управляем недвижимостью в Сочи системно и прозрачно: поиск арендатора, показы, договор, контроль оплат и сопровождение.",
-      },
-      { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "/about" },
-    ],
-    links: [{ rel: "canonical", href: "/about" }],
-  }),
+  head: () => {
+    const url = `${SITE_ORIGIN}/about`;
+    const image = `${SITE_ORIGIN}/og-cover.jpg`;
+    return {
+      meta: [
+        { title: "О компании — Резиденция&Море" },
+        {
+          name: "description",
+          content:
+            "«Резиденция & Море» — сервис управления жилой недвижимостью в Сочи. Помогаем собственникам сдавать квартиры, апартаменты, дома и виллы, а арендаторам — находить комфортное жильё.",
+        },
+        {
+          property: "og:title",
+          content: "О компании — Резиденция&Море",
+        },
+        {
+          property: "og:description",
+          content:
+            "Управляем недвижимостью в Сочи системно и прозрачно: поиск арендатора, показы, договор, контроль оплат и сопровождение.",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: image },
+        { name: "twitter:image", content: image },
+      ],
+      links: [{ rel: "canonical", href: url }],
+    };
+  },
   component: AboutPage,
 });
 

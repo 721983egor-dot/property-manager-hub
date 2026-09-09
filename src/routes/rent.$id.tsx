@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { trackEvent } from "@/lib/analytics";
+import { SITE_ORIGIN } from "@/lib/site";
 
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { fetchComplex } from "@/lib/complexes";
@@ -32,6 +33,11 @@ export const Route = createFileRoute("/rent/$id")({
     const p = loaderData as Property;
     const title = propertyMetaTitle(p);
     const description = propertyMetaDescription(p);
+    const url = `${SITE_ORIGIN}/rent/${p.id}`;
+    const photoPath = p.photos?.[0]?.path;
+    const ogImage = photoPath
+      ? `${SITE_ORIGIN}/api/public/feed-photo/${encodeURIComponent(photoPath)}`
+      : `${SITE_ORIGIN}/og-cover.jpg`;
     return {
       meta: [
         { title },
@@ -39,9 +45,11 @@ export const Route = createFileRoute("/rent/$id")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { name: "twitter:card", content: "summary_large_image" },
-        { property: "og:url", content: `/rent/${p.id}` },
+        { property: "og:url", content: url },
+        { property: "og:image", content: ogImage },
+        { name: "twitter:image", content: ogImage },
       ],
-      links: [{ rel: "canonical", href: `/rent/${p.id}` }],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: RentDetailPage,

@@ -15,6 +15,7 @@ import {
   SITE_ADDRESS,
   SITE_EMAIL,
   SITE_HOURS,
+  SITE_ORIGIN,
   SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
   SITE_TELEGRAM,
@@ -27,50 +28,56 @@ import aboutImg from "@/assets/site/home_about.jpg";
 import selectionImg from "@/assets/site/home_p5.jpg";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      {
-        title:
-          "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
-      },
-      {
-        name: "description",
-        content:
-          "Резиденция&Море — сервис управления жилой недвижимостью. Сдаём в аренду апартаменты, дома и виллы бизнес и премиум-класса для жизни, отдыха и длительного проживания в Сочи.",
-      },
-      {
-        property: "og:title",
-        content:
-          "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
-      },
-      {
-        property: "og:description",
-        content:
-          "Апартаменты, дома премиум и бизнес класса в Сочи. Только реальные объекты, прозрачные условия, сервис и обслуживание.",
-      },
-      { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "/" },
-    ],
-    links: [{ rel: "canonical", href: "/" }],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "RealEstateAgent",
-          name: "Резиденция&Море",
-          telephone: "+7 938 442-08-09",
-          email: "residence.more@yandex.ru",
-          address: {
-            "@type": "PostalAddress",
-            addressLocality: "Сочи",
-            streetAddress: "ул. Московская, д. 22, офис 72",
-            addressCountry: "RU",
-          },
-        }),
-      },
-    ],
-  }),
+  head: () => {
+    const url = `${SITE_ORIGIN}/`;
+    const image = `${SITE_ORIGIN}/og-cover.jpg`;
+    return {
+      meta: [
+        {
+          title:
+            "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
+        },
+        {
+          name: "description",
+          content:
+            "Резиденция&Море — сервис управления жилой недвижимостью. Сдаём в аренду апартаменты, дома и виллы бизнес и премиум-класса для жизни, отдыха и длительного проживания в Сочи.",
+        },
+        {
+          property: "og:title",
+          content:
+            "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
+        },
+        {
+          property: "og:description",
+          content:
+            "Апартаменты, дома премиум и бизнес класса в Сочи. Только реальные объекты, прозрачные условия, сервис и обслуживание.",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: image },
+        { name: "twitter:image", content: image },
+      ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "RealEstateAgent",
+            name: "Резиденция&Море",
+            telephone: "+7 938 442-08-09",
+            email: "residence.more@yandex.ru",
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: "Сочи",
+              streetAddress: "ул. Московская, д. 22, офис 72",
+              addressCountry: "RU",
+            },
+          }),
+        },
+      ],
+    };
+  },
   component: HomePage,
 });
 

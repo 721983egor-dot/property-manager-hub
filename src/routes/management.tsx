@@ -2,34 +2,49 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MessageCircle, Phone, Send } from "lucide-react";
 
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
-import { SITE_PHONE_TEL, SITE_TELEGRAM, SITE_WHATSAPP } from "@/lib/site";
+import {
+  SITE_ORIGIN,
+  SITE_PHONE_TEL,
+  SITE_TELEGRAM,
+  SITE_WHATSAPP,
+} from "@/lib/site";
 import heroImg from "@/assets/site/mgmt_hero.jpg";
 import img3 from "@/assets/site/mgmt_p3.jpg";
 import img4 from "@/assets/site/mgmt_p4.jpg";
 
 export const Route = createFileRoute("/management")({
-  head: () => ({
-    meta: [
-      { title: "Доходное управление апартаментами и домами в Сочи — Резиденция&Море" },
-      {
-        name: "description",
-        content:
-          "Помогаем сдавать квартиры, апартаменты, дома и виллы в среднесрочную и долгосрочную аренду. Берём на себя поиск арендаторов, показы, договор, контроль оплат и сопровождение объекта.",
-      },
-      {
-        property: "og:title",
-        content: "Доходное управление апартаментами и домами в Сочи — Резиденция&Море",
-      },
-      {
-        property: "og:description",
-        content:
-          "Сервис управления жилой недвижимостью: поиск арендаторов, контроль оплат, обслуживание, страхование.",
-      },
-      { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "/management" },
-    ],
-    links: [{ rel: "canonical", href: "/management" }],
-  }),
+  head: () => {
+    const url = `${SITE_ORIGIN}/management`;
+    const image = `${SITE_ORIGIN}/og-cover.jpg`;
+    return {
+      meta: [
+        {
+          title:
+            "Доходное управление апартаментами и домами в Сочи — Резиденция&Море",
+        },
+        {
+          name: "description",
+          content:
+            "Помогаем сдавать квартиры, апартаменты, дома и виллы в среднесрочную и долгосрочную аренду. Берём на себя поиск арендаторов, показы, договор, контроль оплат и сопровождение объекта.",
+        },
+        {
+          property: "og:title",
+          content:
+            "Доходное управление апартаментами и домами в Сочи — Резиденция&Море",
+        },
+        {
+          property: "og:description",
+          content:
+            "Сервис управления жилой недвижимостью: поиск арендаторов, контроль оплат, обслуживание, страхование.",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: image },
+        { name: "twitter:image", content: image },
+      ],
+      links: [{ rel: "canonical", href: url }],
+    };
+  },
   component: ManagementPage,
 });
 

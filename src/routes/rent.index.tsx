@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { fetchComplexes } from "@/lib/complexes";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
+import { SITE_ORIGIN } from "@/lib/site";
 import {
   fetchPublishedProperties,
   PROPERTY_TYPES,
@@ -39,28 +40,36 @@ export const Route = createFileRoute("/rent/")({
   search: {
     middlewares: [stripSearchParams({ type: "", complex: "", rooms: "", sort: "price_asc" })],
   },
-  head: () => ({
-    meta: [
-      { title: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море" },
-      {
-        name: "description",
-        content:
-          "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
-      },
-      {
-        property: "og:title",
-        content: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море",
-      },
-      {
-        property: "og:description",
-        content:
-          "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
-      },
-      { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "/rent" },
-    ],
-    links: [{ rel: "canonical", href: "/rent" }],
-  }),
+  head: () => {
+    const url = `${SITE_ORIGIN}/rent`;
+    const image = `${SITE_ORIGIN}/og-cover.jpg`;
+    return {
+      meta: [
+        {
+          title: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море",
+        },
+        {
+          name: "description",
+          content:
+            "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
+        },
+        {
+          property: "og:title",
+          content: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море",
+        },
+        {
+          property: "og:description",
+          content:
+            "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: image },
+        { name: "twitter:image", content: image },
+      ],
+      links: [{ rel: "canonical", href: url }],
+    };
+  },
   component: RentPage,
 });
 

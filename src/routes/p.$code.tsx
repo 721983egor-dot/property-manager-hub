@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
+import { SITE_ORIGIN } from "@/lib/site";
 import {
   fetchPublishedProperties,
   signedUrls,
@@ -41,6 +42,11 @@ export const Route = createFileRoute("/p/$code")({
     const description = data
       ? `Персональная подборка объектов долгосрочной аренды в Сочи от Резиденция&Море. ${data.count} объектов.`
       : "Персональная подборка объектов долгосрочной аренды в Сочи.";
+    const url = data ? `${SITE_ORIGIN}/p/${data.code}` : `${SITE_ORIGIN}/p/`;
+    const firstPhotoPath = data?.properties?.[0]?.photos?.[0]?.path;
+    const ogImage = firstPhotoPath
+      ? `${SITE_ORIGIN}/api/public/feed-photo/${encodeURIComponent(firstPhotoPath)}`
+      : `${SITE_ORIGIN}/og-cover.jpg`;
     return {
       meta: [
         { title },
@@ -50,6 +56,9 @@ export const Route = createFileRoute("/p/$code")({
         { name: "robots", content: "noindex" },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: ogImage },
+        { name: "twitter:image", content: ogImage },
       ],
     };
   },

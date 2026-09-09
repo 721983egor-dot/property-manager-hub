@@ -6,6 +6,7 @@ import {
   SITE_ADDRESS,
   SITE_EMAIL,
   SITE_HOURS,
+  SITE_ORIGIN,
   SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
   SITE_TELEGRAM,
@@ -14,25 +15,31 @@ import {
 } from "@/lib/site";
 
 export const Route = createFileRoute("/contacts")({
-  head: () => ({
-    meta: [
-      { title: "Контакты — Резиденция&Море" },
-      {
-        name: "description",
-        content:
-          "Остались вопросы? Вы можете связаться с нами напрямую по номеру телефона / почте, либо оставить заявку на звонок. г. Сочи ул. Московская, д. 22, офис 72.",
-      },
-      { property: "og:title", content: "Контакты — Резиденция&Море" },
-      {
-        property: "og:description",
-        content:
-          "Телефон +7 (938)-442-08-09, residence.more@yandex.ru, г. Сочи ул. Московская, д. 22, офис 72.",
-      },
-      { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "/contacts" },
-    ],
-    links: [{ rel: "canonical", href: "/contacts" }],
-  }),
+  head: () => {
+    const url = `${SITE_ORIGIN}/contacts`;
+    const image = `${SITE_ORIGIN}/og-cover.jpg`;
+    return {
+      meta: [
+        { title: "Контакты — Резиденция&Море" },
+        {
+          name: "description",
+          content:
+            "Остались вопросы? Вы можете связаться с нами напрямую по номеру телефона / почте, либо оставить заявку на звонок. г. Сочи ул. Московская, д. 22, офис 72.",
+        },
+        { property: "og:title", content: "Контакты — Резиденция&Море" },
+        {
+          property: "og:description",
+          content:
+            "Телефон +7 (938)-442-08-09, residence.more@yandex.ru, г. Сочи ул. Московская, д. 22, офис 72.",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: image },
+        { name: "twitter:image", content: image },
+      ],
+      links: [{ rel: "canonical", href: url }],
+    };
+  },
   component: ContactsPage,
 });
 

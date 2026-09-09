@@ -375,6 +375,19 @@ function ObjectsPage() {
             </Button>
           ) : null}
         </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={toggleAll}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <Checkbox checked={allFilteredSelected} aria-label="Выбрать все" />
+            {allFilteredSelected ? "Снять выбор" : "Выбрать все"}
+            {filtered.length > 0 && <span className="text-muted-foreground/70">({filtered.length})</span>}
+          </button>
+          <p className="text-sm text-muted-foreground">Всего объектов: {filtered.length}</p>
+        </div>
       </div>
 
 
@@ -468,8 +481,6 @@ function ObjectsPage() {
           </tbody>
         </table>
       </div>
-
-      <p className="mt-4 text-sm text-muted-foreground">Всего объектов: {filtered.length}</p>
 
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 z-30 w-[calc(100%-3rem)] max-w-xl -translate-x-1/2 rounded-2xl border border-border bg-card p-4 shadow-xl">

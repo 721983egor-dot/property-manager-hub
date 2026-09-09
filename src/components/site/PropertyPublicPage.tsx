@@ -663,7 +663,13 @@ export function PropertyPublicPage({
                 <div className="flex items-baseline justify-between gap-6 py-4">
                   <span className="text-[15px] text-site-muted">Комиссия</span>
                   <span className="whitespace-nowrap text-[17px] font-semibold text-site-navy">
-                    {property.commission === 0 ? "Без комиссии" : `${property.commission}%`}
+                    {property.commission == null ? (
+                      "—"
+                    ) : property.commission === 0 ? (
+                      "Без комиссии"
+                    ) : (
+                      `${property.commission}%`
+                    )}
                   </span>
                 </div>
 
