@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
+import { SITE_ORIGIN } from "@/lib/site";
 import {
   fetchPublishedProperties,
   signedUrls,
