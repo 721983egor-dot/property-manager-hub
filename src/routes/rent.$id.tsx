@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { trackEvent } from "@/lib/analytics";
+import { SITE_ORIGIN } from "@/lib/site";
 
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { fetchComplex } from "@/lib/complexes";
