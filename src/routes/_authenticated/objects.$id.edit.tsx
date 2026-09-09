@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -18,7 +19,11 @@ export const Route = createFileRoute("/_authenticated/objects/$id/edit")({
       },
     ],
   }),
-  component: EditObjectPage,
+  component: () => (
+    <AdminOnly>
+      <EditObjectPage />
+    </AdminOnly>
+  ),
   errorComponent: ({ error }) => (
     <div className="p-10 text-sm text-muted-foreground" role="alert">
       {error.message}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CrmTabs } from "@/components/CrmTabs";
 import { ClientDialog } from "@/components/ClientDialog";
+import { useAccess } from "@/hooks/useAccess";
 import {
   fetchAllBookings,
   normalizePhone,
@@ -69,6 +70,7 @@ function ClientsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { isAdmin } = useAccess();
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["crm-clients"],
@@ -129,10 +131,12 @@ function ClientsPage() {
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">CRM</h1>
-        <Button size="lg" onClick={() => setDialogOpen(true)}>
+{isAdmin ? (
+                <Button size="lg" onClick={() => setDialogOpen(true)}>
           <Plus className="size-4" />
           Добавить клиента
         </Button>
+        ) : null}
       </header>
 
       <CrmTabs active="clients" />

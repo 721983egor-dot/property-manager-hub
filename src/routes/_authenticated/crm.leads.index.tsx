@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -37,7 +38,11 @@ export const Route = createFileRoute("/_authenticated/crm/leads/")({
   head: () => ({
     meta: [{ title: "Заявки — RM OS" }, { name: "robots", content: "noindex" }],
   }),
-  component: LeadsPage,
+  component: () => (
+    <AdminOnly>
+      <LeadsPage />
+    </AdminOnly>
+  ),
 });
 
 const STATUS_CLASS: Record<LeadStatus, string> = {

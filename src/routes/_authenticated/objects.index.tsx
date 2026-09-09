@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
+import { useAccess } from "@/hooks/useAccess";
 import { SectionTabs } from "@/components/SectionTabs";
 import {
   PROPERTY_STATUSES,
@@ -251,14 +252,18 @@ function ObjectsPage() {
     return `${typeof window !== "undefined" ? window.location.origin : ""}/p/…`;
   }, [selectedList.length]);
 
+  const { isAdmin } = useAccess();
+
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Объекты</h1>
-        <Button size="lg" onClick={() => navigate({ to: "/objects/new" })}>
-          <Plus className="size-4" />
-          Добавить объект
-        </Button>
+        {isAdmin ? (
+          <Button size="lg" onClick={() => navigate({ to: "/objects/new" })}>
+            <Plus className="size-4" />
+            Добавить объект
+          </Button>
+        ) : null}
       </header>
 
       <SectionTabs active="objects" />
@@ -617,6 +622,7 @@ function Row({
   onStatus: (next: PropertyStatus) => void;
   onDelete: () => void;
 }) {
+  const { isAdmin } = useAccess();
   return (
     <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
       <td className="px-3 py-4 text-center">
@@ -671,6 +677,7 @@ function Row({
 
       <td className="px-4 py-4">
         <div className="flex items-center justify-end">
+          {!isAdmin ? null : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -708,6 +715,7 @@ function Row({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </td>
     </tr>
@@ -729,6 +737,7 @@ function MobileCard({
   onStatus: (next: PropertyStatus) => void;
   onDelete: () => void;
 }) {
+  const { isAdmin } = useAccess();
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="relative flex aspect-[16/10] items-center justify-center bg-muted">
@@ -790,7 +799,7 @@ function MobileCard({
           ) : null}
         </dl>
 
-        <div className="mt-3 flex items-center gap-2">
+        <div className={`mt-3 flex items-center gap-2 ${isAdmin ? "" : "hidden"}`}>
           <Button asChild variant="outline" size="sm" className="flex-1">
             <Link to="/objects/$id/edit" params={{ id: property.id }}>
               <Pencil className="size-4" />

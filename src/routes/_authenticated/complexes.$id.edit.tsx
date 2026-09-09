@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -23,7 +24,11 @@ export const Route = createFileRoute("/_authenticated/complexes/$id/edit")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: EditComplexPage,
+  component: () => (
+    <AdminOnly>
+      <EditComplexPage />
+    </AdminOnly>
+  ),
 });
 
 function EditComplexPage() {
