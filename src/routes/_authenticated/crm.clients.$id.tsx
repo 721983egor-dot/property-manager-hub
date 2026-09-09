@@ -117,7 +117,13 @@ function ClientPage() {
                 </span>
               ) : null}
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">{client.phone || "Телефон не указан"}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {client.phone || "Телефон не указан"}
+              {client.phone ? <CopyPhoneButton phone={client.phone} className="ml-2 align-middle" /> : null}
+            </p>
+            {client.phone ? (
+              <ClientContactButtons phone={client.phone} className="mt-3" />
+            ) : null}
             {client.blacklisted && client.blacklist_reason ? (
               <p className="mt-2 text-sm text-red-700">Причина: {client.blacklist_reason}</p>
             ) : null}
