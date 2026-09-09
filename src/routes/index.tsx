@@ -236,10 +236,9 @@ function HomePage() {
               <div className="mt-10 flex justify-center">
                 <Link
                   to="/rent"
-                  className="inline-flex items-center gap-2 rounded-md bg-site-navy px-7 py-3.5 text-sm font-semibold text-site-navy-foreground transition-colors hover:bg-site-navy/90"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-site-navy hover:text-site-gold"
                 >
-                  Смотреть все
-                  <ArrowRight className="size-4" />
+                  Смотреть все →
                 </Link>
               </div>
             </>
