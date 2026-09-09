@@ -22,6 +22,8 @@ import { setYandexPublished } from "@/lib/yandex-realty.functions";
 
 import { PLATFORMS, fetchPropertyListings, setSitePublished } from "@/lib/listings";
 import { fetchProperty, internalTitle } from "@/lib/properties";
+import { fetchDealStages, fetchPropertyDeals, fetchPropertyShowings, formatBudget } from "@/lib/deals";
+import { fetchCrmClients } from "@/lib/clients";
 import { toISODate } from "@/lib/rentals";
 
 export const Route = createFileRoute("/_authenticated/promo/$id")({
@@ -75,6 +77,28 @@ function PromoDetailPage() {
     queryKey: ["property-listings", id],
     queryFn: () => fetchPropertyListings(id),
   });
+
+  const { data: showings = [] } = useQuery({
+    queryKey: ["property-showings", id],
+    queryFn: () => fetchPropertyShowings(id),
+  });
+  const { data: propertyDeals = [] } = useQuery({
+    queryKey: ["property-deals", id],
+    queryFn: () => fetchPropertyDeals(id),
+  });
+  const { data: dealStages = [] } = useQuery({
+    queryKey: ["deal-stages"],
+    queryFn: fetchDealStages,
+  });
+  const { data: crmClients = [] } = useQuery({
+    queryKey: ["crm-clients"],
+    queryFn: fetchCrmClients,
+  });
+  const stageById = new Map(dealStages.map((s) => [s.id, s]));
+  const clientById = new Map(crmClients.map((c) => [c.id, c]));
+  const wonCount = propertyDeals.filter(
+    (d) => stageById.get(d.stage_id)?.kind === "won",
+  ).length;
 
   const loadStats = useServerFn(getPropertyStats);
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -355,6 +379,85 @@ function PromoDetailPage() {
               {cianMessages?.error || "Сообщений пока нет"}
             </p>
           )}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold">Показы и сделки</h2>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-3">
+          <Metric label="Показов объекта" value={showings.length} />
+          <Metric label="Сделок с объектом" value={propertyDeals.length} />
+          <Metric label="Успешных сделок" value={wonCount} />
+        </dl>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-semibold">История показов</h3>
+            {showings.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">Показов пока не было.</p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {showings.map((s) => (
+                  <li key={s.id} className="rounded-lg border border-border p-3">
+                    <p className="text-sm font-medium">
+                      {new Date(s.shown_at).toLocaleDateString("ru-RU")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {s.author_name || "Сотрудник"}
+                    </p>
+                    {s.note ? <p className="mt-1 text-sm">{s.note}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold">Сделки</h3>
+            {propertyDeals.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">Сделок по объекту нет.</p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {propertyDeals.map((d) => {
+                  const stage = stageById.get(d.stage_id);
+                  const client = d.client_id ? clientById.get(d.client_id) : null;
+                  return (
+                    <li key={d.id} className="rounded-lg border border-border p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium">{d.title || "Без названия"}</p>
+                        <span
+                          className={
+                            "rounded-md px-2 py-0.5 text-xs " +
+                            (stage?.kind === "won"
+                              ? "bg-emerald-600/10 text-emerald-700"
+                              : stage?.kind === "lost"
+                                ? "bg-destructive/10 text-destructive"
+                                : "bg-muted text-muted-foreground")
+                          }
+                        >
+                          {stage?.name || "Стадия"}
+                        </span>
+                      </div>
+                      {client ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">{client.full_name}</p>
+                      ) : null}
+                      {d.start_date && d.end_date ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {new Date(d.start_date).toLocaleDateString("ru-RU")} —{" "}
+                          {new Date(d.end_date).toLocaleDateString("ru-RU")}
+                        </p>
+                      ) : null}
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {d.price_month != null
+                          ? `${d.price_month.toLocaleString("ru-RU")} ₽/мес`
+                          : `Бюджет: ${formatBudget(d.budget)}`}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
 
