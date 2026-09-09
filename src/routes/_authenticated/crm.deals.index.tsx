@@ -73,6 +73,19 @@ function DealsPage() {
   const [defaultStage, setDefaultStage] = useState<string | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [closedView, setClosedView] = useState<"won" | "lost" | null>(null);
+
+  const boardStages = useMemo(() => stages.filter((s) => s.kind === "open"), [stages]);
+  const wonStageIds = useMemo(
+    () => new Set(stages.filter((s) => s.kind === "won").map((s) => s.id)),
+    [stages],
+  );
+  const lostStageIds = useMemo(
+    () => new Set(stages.filter((s) => s.kind === "lost").map((s) => s.id)),
+    [stages],
+  );
+  const wonDeals = useMemo(() => deals.filter((d) => wonStageIds.has(d.stage_id)), [deals, wonStageIds]);
+  const lostDeals = useMemo(() => deals.filter((d) => lostStageIds.has(d.stage_id)), [deals, lostStageIds]);
 
   const clientName = useMemo(
     () => new Map(clients.map((c) => [c.id, c.full_name])),
