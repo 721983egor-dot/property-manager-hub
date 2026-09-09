@@ -482,8 +482,6 @@ function ObjectsPage() {
         </table>
       </div>
 
-      <p className="mt-4 text-sm text-muted-foreground">Всего объектов: {filtered.length}</p>
-
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 z-30 w-[calc(100%-3rem)] max-w-xl -translate-x-1/2 rounded-2xl border border-border bg-card p-4 shadow-xl">
           <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
