@@ -352,7 +352,33 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getDealComments: tool({
+      description:
+        "Комментарии сотрудников и история изменений по сделке CRM. Нужен идентификатор сделки.",
+      inputSchema: z.object({ dealId: z.string() }),
+      execute: async ({ dealId }) => {
+        const [{ data: comments, error }, { data: history }] = await Promise.all([
+          admin
+            .from("deal_comments")
+            .select("author_name, body, created_at")
+            .eq("deal_id", dealId)
+            .order("created_at", { ascending: false })
+            .limit(100),
+          admin
+            .from("activity_log")
+            .select("action, actor_email, changes, created_at")
+            .eq("table_name", "deals")
+            .eq("record_id", dealId)
+            .order("created_at", { ascending: false })
+            .limit(100),
+        ]);
+        if (error) return { error: error.message };
+        return { comments: comments ?? [], history: history ?? [] };
+      },
+    }),
+
     getActivityLog: tool({
+
       description:
         "Журнал действий в системе: кто, что и когда изменил. Можно фильтровать по таблице и объекту.",
       inputSchema: z.object({

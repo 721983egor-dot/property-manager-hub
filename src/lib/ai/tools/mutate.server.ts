@@ -205,7 +205,25 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeDealComment: tool({
+      description:
+        "Предложить добавление комментария в карточку сделки CRM. Требует подтверждения менеджера.",
+      inputSchema: z.object({ dealId: z.string(), body: z.string() }),
+      execute: async ({ dealId, body }) => {
+        const { data: deal } = await ctx.admin
+          .from("deals")
+          .select("title")
+          .eq("id", dealId)
+          .maybeSingle();
+        if (!deal) return { error: "Сделка не найдена" };
+        const summary = `Добавить комментарий к сделке «${deal.title}»: ${body}`;
+        ctx.propose({ tool: "addDealComment", summary, input: { dealId, body } });
+        return { proposed: summary };
+      },
+    }),
+
     proposeDeal: tool({
+
       description:
         "Предложить создание или изменение сделки CRM: название, стадия, клиент, объект, источник, бюджет, взрослые, дети, комментарий, дополнительные поля. Требует подтверждения менеджера.",
       inputSchema: z.object({

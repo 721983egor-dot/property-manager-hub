@@ -222,8 +222,22 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Статус заявки обновлён";
   },
 
+  addDealComment: async (input) => {
+    const dealId = must(input["dealId"] as string, "Не указана сделка");
+    const body = must(input["body"] as string, "Пустой комментарий");
+    const { error } = await supabaseAdmin.from("deal_comments").insert({
+      deal_id: dealId,
+      body,
+      author_name: "Ассистент",
+    } as never);
+    if (error) throw new Error(error.message);
+    return "Комментарий добавлен";
+  },
+
   upsertDeal: async (input) => {
     const dealId = input["dealId"] as string | null;
+
+
     const patch: Record<string, unknown> = {};
     if (input["title"] != null) patch["title"] = input["title"];
     if (input["stageId"] != null) patch["stage_id"] = input["stageId"];
