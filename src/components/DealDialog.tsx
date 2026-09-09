@@ -55,10 +55,6 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   });
 
   const activeFields = useMemo(() => fields.filter((f) => !f.archived), [fields]);
-  const selectedClient = useMemo(
-    () => clients.find((c) => c.id === (clientId === NONE ? null : clientId)) ?? null,
-    [clients, clientId],
-  );
 
   const [title, setTitle] = useState("");
   const [stageId, setStageId] = useState("");
