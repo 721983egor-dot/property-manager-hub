@@ -256,12 +256,13 @@ function ChatsPage() {
               </div>
 
 
-              <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto px-5 py-4">
+              <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4 sm:px-5">
                 {messages.map((m) => (
                   <div
                     key={m.id}
                     className={
-                      "max-w-[70%] rounded-2xl px-3.5 py-2 text-sm " +
+                      "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm sm:max-w-[70%] " +
+
                       (m.direction === "in"
                         ? "bg-muted text-foreground"
                         : "ml-auto bg-primary text-primary-foreground")
@@ -297,10 +298,15 @@ function ChatsPage() {
                   placeholder="Ответ клиенту… (Enter — отправить)"
                   className="max-h-32 flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
-                <Button type="submit" disabled={replyMutation.isPending || !text.trim()}>
+                <Button
+                  type="submit"
+                  className="shrink-0 px-3"
+                  disabled={replyMutation.isPending || !text.trim()}
+                >
                   <SendHorizonal className="size-4" />
-                  Отправить
+                  <span className="hidden sm:inline">Отправить</span>
                 </Button>
+
               </form>
 
               <SendSelectionDialog
