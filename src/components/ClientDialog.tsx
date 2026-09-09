@@ -16,7 +16,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizePhone } from "@/lib/bookings";
-import { fetchCrmClients, saveClient, type CrmClient } from "@/lib/clients";
+import {
+  fetchCrmClients,
+  formatPhone,
+  phoneDigits,
+  saveClient,
+  type CrmClient,
+} from "@/lib/clients";
 
 type Props = {
   open: boolean;
@@ -44,9 +50,9 @@ export function ClientDialog({ open, onOpenChange, client }: Props) {
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
 
   const duplicate = useMemo(() => {
-    const digits = normalizePhone(phone);
+    const digits = phoneDigits(phone);
     if (digits.length < 5) return null;
-    return clients.find((c) => c.id !== client?.id && normalizePhone(c.phone) === digits) ?? null;
+    return clients.find((c) => c.id !== client?.id && phoneDigits(c.phone) === digits) ?? null;
   }, [clients, phone, client?.id]);
 
   const save = useMutation({
@@ -54,7 +60,7 @@ export function ClientDialog({ open, onOpenChange, client }: Props) {
       if (!fullName.trim()) throw new Error("Укажите ФИО клиента");
       return saveClient(client?.id ?? null, {
         full_name: fullName.trim(),
-        phone: phone.trim(),
+        phone: formatPhone(phone),
         comment: comment.trim(),
         blacklisted,
         blacklist_reason: blacklisted ? reason.trim() : "",
@@ -96,7 +102,11 @@ export function ClientDialog({ open, onOpenChange, client }: Props) {
               <Input
                 className="mt-1.5"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const digits = phoneDigits(e.target.value);
+                  if (digits.length > 11) return;
+                  setPhone(digits.length === 11 ? formatPhone(e.target.value) : e.target.value);
+                }}
                 placeholder="+7 900 000-00-00"
               />
             </div>

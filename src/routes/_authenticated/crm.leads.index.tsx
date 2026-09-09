@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Trash2 } from "lucide-react";
+import { ClientContactButtons } from "@/components/ClientContactButtons";
 import { useState } from "react";
 
 import { toast } from "sonner";
@@ -127,9 +128,12 @@ function LeadsPage() {
                 </td>
                 <td className="px-4 py-3 font-medium">{lead.name}</td>
                 <td className="whitespace-nowrap px-4 py-3">
-                  <a href={`tel:${lead.phone}`} className="text-primary hover:underline">
-                    {lead.phone}
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <a href={`tel:${lead.phone}`} className="text-primary hover:underline">
+                      {lead.phone}
+                    </a>
+                    <ClientContactButtons phone={lead.phone} variant="row" />
+                  </div>
                 </td>
                 <td className="px-4 py-3">{leadTopicLabel(lead.topic)}</td>
                 <td className="max-w-[260px] px-4 py-3 text-muted-foreground">

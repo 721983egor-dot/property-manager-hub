@@ -25,6 +25,7 @@ import {
 import { useAccess } from "@/hooks/useAccess";
 import { listStaff } from "@/lib/staff.functions";
 import { fetchCrmClients } from "@/lib/clients";
+import { ClientContactButtons } from "@/components/ClientContactButtons";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { DEAL_SOURCES, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
 
@@ -81,6 +82,11 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     setComment(deal?.comment ?? "");
     setCustom(deal?.custom ?? {});
   }, [open, deal, defaultStageId, stages, profile?.id]);
+
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.id === (clientId === NONE ? null : clientId)) ?? null,
+    [clients, clientId],
+  );
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -144,6 +150,9 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
                   ))}
                 </SelectContent>
               </Select>
+              {selectedClient?.phone ? (
+                <ClientContactButtons phone={selectedClient.phone} variant="row" className="mt-1" />
+              ) : null}
             </div>
 
             <div className="grid gap-1.5">
