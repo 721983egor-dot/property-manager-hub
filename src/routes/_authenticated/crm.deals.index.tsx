@@ -23,7 +23,9 @@ import { useAccess } from "@/hooks/useAccess";
 import { fetchCrmClients } from "@/lib/clients";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import {
+  createDefaultStages,
   customValueLabel,
+
   deleteDeal,
   fetchDealFields,
   fetchDealStages,
