@@ -59,23 +59,24 @@ export const Route = createFileRoute("/")({
       ],
       links: [{ rel: "canonical", href: url }],
       scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "RealEstateAgent",
-          name: "Резиденция&Море",
-          telephone: "+7 938 442-08-09",
-          email: "residence.more@yandex.ru",
-          address: {
-            "@type": "PostalAddress",
-            addressLocality: "Сочи",
-            streetAddress: "ул. Московская, д. 22, офис 72",
-            addressCountry: "RU",
-          },
-        }),
-      },
-    ],
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "RealEstateAgent",
+            name: "Резиденция&Море",
+            telephone: "+7 938 442-08-09",
+            email: "residence.more@yandex.ru",
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: "Сочи",
+              streetAddress: "ул. Московская, д. 22, офис 72",
+              addressCountry: "RU",
+            },
+          }),
+        },
+      ],
+    };
   },
   component: HomePage,
 });
