@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   Building2,
   CalendarDays,
+  ChevronDown,
   Inbox,
   LogOut,
   Megaphone,
@@ -20,6 +21,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { fetchThreads } from "@/lib/chat.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { CrmNotifications } from "@/components/CrmNotifications";
+import logoNavy from "@/assets/site/logo_navy.png";
 
 import type { ReactNode } from "react";
 
@@ -27,6 +30,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteCartBar } from "@/components/site/SiteCartBar";
 import { SiteChatWidget } from "@/components/site/SiteChatWidget";
+
 
 /** Префиксы внутренних разделов RM OS — всё остальное рендерится как публичный сайт. */
 const CRM_PREFIXES = [
