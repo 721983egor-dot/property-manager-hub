@@ -412,7 +412,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
-    getDeals: tool({
+    getCrmDeals: tool({
       description:
         "Сделки CRM: стадия канбана, клиент, объект, источник, бюджет клиента, число взрослых и детей, ответственный, комментарий и дополнительные поля.",
       inputSchema: z.object({ query: z.string().optional(), stage: z.string().optional() }),
