@@ -92,7 +92,7 @@ function DealsPage() {
     [clients],
   );
   const propertyName = useMemo(
-    () => new Map(properties.map((p) => [p.id, `${p.ref_id} — ${internalTitle(p)}`])),
+    () => new Map(properties.map((p) => [p.id, `${internalTitle(p)}`])),
     [properties],
   );
 

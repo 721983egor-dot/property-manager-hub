@@ -130,7 +130,7 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
               <SelectContent>
                 {properties.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.ref_id} — {internalTitle(p)}
+                    {internalTitle(p)}
                   </SelectItem>
                 ))}
               </SelectContent>
