@@ -141,7 +141,14 @@ function LeadsPage() {
                     </SelectContent>
                   </Select>
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="whitespace-nowrap px-4 py-3 text-right">
+                  <button
+                    onClick={() => convertMutation.mutate(lead)}
+                    disabled={convertMutation.isPending}
+                    className="mr-1 rounded-md border border-border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+                  >
+                    В сделку
+                  </button>
                   <button
                     onClick={() => setDeleteId(lead.id)}
                     className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
