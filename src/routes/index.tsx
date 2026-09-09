@@ -218,20 +218,31 @@ function HomePage() {
             </Link>
           </div>
           {popular.length > 0 && (
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {popular.map(({ property, freeFromIso }) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  freeFromIso={freeFromIso}
-                  photoUrl={
-                    property.photos[0]?.path
-                      ? urls[property.photos[0].path]
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
+            <>
+              <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {popular.map(({ property, freeFromIso }) => (
+                  <PropertyCard
+                    key={property.id}
+                    property={property}
+                    freeFromIso={freeFromIso}
+                    photoUrl={
+                      property.photos[0]?.path
+                        ? urls[property.photos[0].path]
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+              <div className="mt-10 flex justify-center">
+                <Link
+                  to="/rent"
+                  className="inline-flex items-center gap-2 rounded-md bg-site-navy px-7 py-3.5 text-sm font-semibold text-site-navy-foreground transition-colors hover:bg-site-navy/90"
+                >
+                  Смотреть все
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+            </>
           )}
         </div>
       </section>
