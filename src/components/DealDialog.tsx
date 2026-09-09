@@ -26,6 +26,8 @@ import { useAccess } from "@/hooks/useAccess";
 import { listStaff } from "@/lib/staff.functions";
 import { fetchCrmClients } from "@/lib/clients";
 import { ClientContactButtons } from "@/components/ClientContactButtons";
+import { DealTimeline } from "@/components/DealTimeline";
+
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { DEAL_SOURCES, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
 
@@ -88,6 +90,28 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     [clients, clientId],
   );
 
+  /** Понятные подписи значений в истории изменений. */
+  const resolveValue = useMemo(() => {
+    return (field: string, value: unknown) => {
+      if (value == null || value === "") return "—";
+      if (field === "stage_id") return stages.find((s) => s.id === value)?.name ?? "—";
+      if (field === "client_id") return clients.find((c) => c.id === value)?.full_name ?? "—";
+      if (field === "property_id") {
+        const p = properties.find((x) => x.id === value);
+        return p ? `${p.ref_id} — ${internalTitle(p)}` : "—";
+      }
+      if (field === "responsible_id") {
+        const s = (staffData?.staff ?? []).find((x) => x.id === value);
+        return s ? s.full_name || s.email : "Сотрудник";
+      }
+      if (field === "budget") return `${Number(value).toLocaleString("ru-RU")} ₽`;
+      if (typeof value === "boolean") return value ? "Да" : "Нет";
+      if (typeof value === "object") return JSON.stringify(value);
+      return String(value);
+    };
+  }, [stages, clients, properties, staffData]);
+
+
   const mutation = useMutation({
     mutationFn: () =>
       saveDeal(deal?.id ?? null, {
@@ -113,12 +137,14 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{deal ? "Сделка" : "Новая сделка"}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
+          <div className="grid content-start gap-4">
+
           <div className="grid gap-1.5">
             <Label>Название</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Аренда, семья на сезон" />
@@ -268,10 +294,20 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           )}
 
           <div className="grid gap-1.5">
-            <Label>Комментарий</Label>
+            <Label>Описание</Label>
             <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
           </div>
+          </div>
+
+          {deal ? (
+            <DealTimeline dealId={deal.id} resolve={resolveValue} />
+          ) : (
+            <div className="hidden rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground lg:block">
+              Комментарии и история изменений появятся после сохранения сделки.
+            </div>
+          )}
         </div>
+
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>

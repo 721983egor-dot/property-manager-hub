@@ -282,3 +282,104 @@ export async function convertLeadToDeal(lead: {
   if (error) throw error;
   return (data as { id: string }).id;
 }
+
+/* ---------------- комментарии и история ---------------- */
+
+export type DealComment = {
+  id: string;
+  deal_id: string;
+  author_id: string | null;
+  author_name: string;
+  body: string;
+  created_at: string;
+};
+
+export async function fetchDealComments(dealId: string): Promise<DealComment[]> {
+  const { data, error } = await supabase
+    .from("deal_comments")
+    .select("id, deal_id, author_id, author_name, body, created_at")
+    .eq("deal_id", dealId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as DealComment[];
+}
+
+export async function addDealComment(dealId: string, body: string, author: { id: string | null; name: string }) {
+  const { error } = await supabase.from("deal_comments").insert({
+    deal_id: dealId,
+    body: body.trim(),
+    author_id: author.id,
+    author_name: author.name,
+  } as never);
+  if (error) throw error;
+}
+
+export async function deleteDealComment(id: string) {
+  const { error } = await supabase.from("deal_comments").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export type DealHistoryEntry = {
+  id: string;
+  action: string;
+  actor_email: string;
+  created_at: string;
+  changes: Record<string, unknown>;
+};
+
+export async function fetchDealHistory(dealId: string): Promise<DealHistoryEntry[]> {
+  const { data, error } = await supabase
+    .from("activity_log")
+    .select("id, action, actor_email, created_at, changes")
+    .eq("table_name", "deals")
+    .eq("record_id", dealId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []) as DealHistoryEntry[];
+}
+
+const DEAL_FIELD_LABELS: Record<string, string> = {
+  title: "Название",
+  stage_id: "Стадия",
+  client_id: "Клиент",
+  property_id: "Объект",
+  responsible_id: "Ответственный",
+  source: "Источник",
+  budget: "Бюджет",
+  adults: "Взрослых",
+  children: "Детей",
+  comment: "Описание",
+  custom: "Дополнительные поля",
+  position: "Позиция в канбане",
+};
+
+export type ChangeLine = { label: string; from: string; to: string };
+
+/** Человеко-понятное описание записи журнала по сделке. */
+export function describeDealChanges(
+  entry: DealHistoryEntry,
+  resolve: (field: string, value: unknown) => string,
+): ChangeLine[] {
+  const changes = entry.changes ?? {};
+  if (entry.action === "insert") return [];
+  const lines: ChangeLine[] = [];
+  for (const [key, value] of Object.entries(changes)) {
+    if (key === "position" || key === "old" || key === "new") continue;
+    const pair = value as { from?: unknown; to?: unknown };
+    if (!pair || typeof pair !== "object" || !("to" in pair)) continue;
+    lines.push({
+      label: DEAL_FIELD_LABELS[key] ?? key,
+      from: resolve(key, pair.from),
+      to: resolve(key, pair.to),
+    });
+  }
+  return lines;
+}
+
+export function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
