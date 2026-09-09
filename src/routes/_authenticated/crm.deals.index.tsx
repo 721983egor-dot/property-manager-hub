@@ -151,7 +151,7 @@ function DealsPage() {
               <Settings2 className="mr-1.5 size-4" /> Настройка
             </Button>
           )}
-          <Button onClick={() => openNew(stages[0]?.id)}>
+          <Button onClick={() => openNew(boardStages[0]?.id)}>
             <Plus className="mr-1.5 size-4" /> Сделка
           </Button>
         </div>
