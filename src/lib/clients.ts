@@ -26,6 +26,49 @@ export function clientStatusLabel(status: ClientStatus) {
 
 const SELECT = "id, full_name, phone, comment, blacklisted, blacklist_reason";
 
+/** Нормализация цифр телефона: Российский номер с 8 → 7, результат без '+'.
+ *  Примеры: 8 900 001 51 96 → 79000015196, +7 900 001 51 96 → 79000015196. */
+export function phoneDigits(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("8")) return "7" + digits.slice(1);
+  if (digits.length === 11 && digits.startsWith("7")) return digits;
+  return digits;
+}
+
+/** Отформатированный телефон для отображения: +7 900 001-51-96. */
+export function formatPhone(phone: string) {
+  const digits = phoneDigits(phone);
+  if (digits.length === 11 && digits.startsWith("7")) {
+    return `+7 ${digits.slice(1, 4)} ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9, 11)}`;
+  }
+  return phone.trim() || "";
+}
+
+/** Ссылки для связи с клиентом. */
+export function telLink(phone: string) {
+  const digits = phoneDigits(phone);
+  if (digits.length === 11) return `tel:+${digits}`;
+  return `tel:${phone.trim()}`;
+}
+export function waLink(phone: string) {
+  const digits = phoneDigits(phone);
+  if (digits.length === 11) return `https://wa.me/${digits}`;
+  return "#";
+}
+export function tgLink(phone: string) {
+  const digits = phoneDigits(phone);
+  if (digits.length === 11) return `https://t.me/+${digits}`;
+  return "#";
+}
+export function maxLink(phone: string) {
+  const digits = phoneDigits(phone);
+  if (digits.length === 11) return `https://max.ru/u/+${digits}`;
+  return "#";
+}
+export function hasCallablePhone(phone: string) {
+  return phoneDigits(phone).length === 11;
+}
+
 export async function fetchCrmClients(): Promise<CrmClient[]> {
   const { data, error } = await supabase
     .from("clients")
