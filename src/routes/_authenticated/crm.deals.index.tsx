@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Plus, Search, Settings2, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,9 +22,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAccess } from "@/hooks/useAccess";
 import { fetchCrmClients } from "@/lib/clients";
+import { createDefaultDealStages } from "@/lib/deals.functions";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import {
-  createDefaultStages,
   customValueLabel,
 
   deleteDeal,
@@ -61,6 +62,7 @@ export const Route = createFileRoute("/_authenticated/crm/deals/")({
 function DealsPage() {
   const queryClient = useQueryClient();
   const { isAdmin } = useAccess();
+  const initializeStages = useServerFn(createDefaultDealStages);
 
   const { data: stages = [] } = useQuery({ queryKey: ["deal-stages"], queryFn: fetchDealStages });
   const { data: fields = [] } = useQuery({ queryKey: ["deal-fields"], queryFn: fetchDealFields });
@@ -132,10 +134,10 @@ function DealsPage() {
   });
 
   const stagesInit = useMutation({
-    mutationFn: createDefaultStages,
+    mutationFn: () => initializeStages(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deal-stages"] });
-      toast.success("Стадии созданы");
+      toast.success("Стадии восстановлены");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось создать стадии"),
   });
