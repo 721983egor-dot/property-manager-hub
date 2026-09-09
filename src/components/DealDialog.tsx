@@ -128,13 +128,16 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     [properties],
   );
 
-  const isWonStage = stages.find((s) => s.id === stageId)?.kind === "won";
+  const openStages = useMemo(() => stages.filter((s) => s.kind === "open"), [stages]);
+  const wonStage = stages.find((s) => s.kind === "won") ?? null;
+  const lostStage = stages.find((s) => s.kind === "lost") ?? null;
+  const [pendingClose, setPendingClose] = useState<"won" | "lost" | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (overrideStageId?: string) =>
       saveDeal(deal?.id ?? null, {
         title: title.trim() || "Без названия",
-        stage_id: isWonStage ? (deal?.stage_id ?? stageId) : stageId,
+        stage_id: overrideStageId ?? stageId,
         client_id: clientId === NONE ? null : clientId,
         property_id: propertyId === NONE ? null : propertyId,
         responsible_id: responsibleId === NONE ? null : responsibleId,
@@ -147,9 +150,17 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
       }),
     onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
-      if (isWonStage) {
+      if (pendingClose === "won") {
+        setPendingClose(null);
         setSavedDealId(id);
         setWonOpen(true);
+        onOpenChange(false);
+        return;
+      }
+      if (pendingClose === "lost") {
+        setPendingClose(null);
+        toast.success("Сделка помечена как отказ");
+        onOpenChange(false);
         return;
       }
       toast.success(deal ? "Сделка обновлена" : "Сделка создана");
@@ -167,6 +178,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           lead_id: null,
           position: 0,
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           custom,
           closed_property_id: null,
           start_date: null,
@@ -188,8 +200,9 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
         client_id: clientId === NONE ? null : clientId,
         property_id: propertyId === NONE ? null : propertyId,
         source,
-      }
+      } as Deal
     : null;
+
 
 
   return (
