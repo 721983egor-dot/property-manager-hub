@@ -32,7 +32,7 @@ import { DealShowings } from "@/components/DealShowings";
 import { DealWonDialog } from "@/components/DealWonDialog";
 
 import { fetchProperties, internalTitle } from "@/lib/properties";
-import { DEAL_SOURCES, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
+import { DEAL_SOURCES, deleteDeal, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
 
 const NONE = "__none__";
 
@@ -76,6 +76,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [wonOpen, setWonOpen] = useState(false);
   const [savedDealId, setSavedDealId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
 
 
@@ -210,7 +211,64 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{deal ? "Сделка" : "Новая сделка"}</DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
+            <DialogTitle>{deal ? "Сделка" : "Новая сделка"}</DialogTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                disabled={!wonStage || mutation.isPending}
+                onClick={() => {
+                  setPendingClose("won");
+                  mutation.mutate(stageId);
+                }}
+              >
+                Успешно
+              </Button>
+              {lostStage ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={mutation.isPending}
+                  onClick={() => {
+                    setPendingClose("lost");
+                    mutation.mutate(lostStage.id);
+                  }}
+                >
+                  Отказ
+                </Button>
+              ) : null}
+              <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
+              <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
+                Отмена
+              </Button>
+              {deal && isAdmin ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  disabled={removing}
+                  onClick={() => {
+                    if (!window.confirm("Удалить сделку?")) return;
+                    setRemoving(true);
+                    deleteDeal(deal.id)
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ["deals"] });
+                        toast.success("Сделка удалена");
+                        onOpenChange(false);
+                      })
+                      .catch((e) =>
+                        toast.error(e instanceof Error ? e.message : "Не удалось удалить"),
+                      )
+                      .finally(() => setRemoving(false));
+                  }}
+                >
+                  Удалить
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
@@ -390,31 +448,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           )}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
-          {lostStage ? (
-            <Button
-              variant="outline"
-              className="text-destructive sm:mr-auto"
-              disabled={mutation.isPending}
-              onClick={() => {
-                setPendingClose("lost");
-                mutation.mutate(lostStage.id);
-              }}
-            >
-              Отказ
-            </Button>
-          ) : null}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-          <Button
-            variant="outline"
-            disabled={!wonStage || mutation.isPending}
-            onClick={() => {
-              setPendingClose("won");
-              mutation.mutate(stageId);
-            }}
-          >
-            Успешно
-          </Button>
+        <DialogFooter>
           <Button
             onClick={() => {
               setPendingClose(null);
