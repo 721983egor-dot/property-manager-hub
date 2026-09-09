@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { markPropertyRented, saveBooking } from "@/lib/bookings";
+
 
 export type DealStageKind = "open" | "won" | "lost";
 
@@ -47,6 +49,13 @@ export type Deal = {
   custom: Record<string, unknown>;
   position: number;
   created_at: string;
+  start_date: string | null;
+  end_date: string | null;
+  closed_property_id: string | null;
+  price_month: number | null;
+  deposit: number | null;
+  commission: number | null;
+  payment_day: number | null;
 };
 
 export const DEAL_SOURCES = [
@@ -62,7 +71,8 @@ export const DEAL_SOURCES = [
 ];
 
 const DEAL_COLUMNS =
-  "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, custom, position, created_at";
+  "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, custom, position, created_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
+
 
 /* ---------------- стадии ---------------- */
 
@@ -352,7 +362,15 @@ const DEAL_FIELD_LABELS: Record<string, string> = {
   comment: "Описание",
   custom: "Дополнительные поля",
   position: "Позиция в канбане",
+  start_date: "Дата заезда",
+  end_date: "Дата выезда",
+  closed_property_id: "Арендованный объект",
+  price_month: "Цена в месяц",
+  deposit: "Депозит",
+  commission: "Комиссия",
+  payment_day: "День оплаты",
 };
+
 
 export type ChangeLine = { label: string; from: string; to: string };
 
@@ -382,4 +400,118 @@ export function formatDateTime(iso: string) {
   return Number.isNaN(d.getTime())
     ? iso
     : d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+/* ---------------- показы объектов ---------------- */
+
+export type DealShowing = {
+  id: string;
+  deal_id: string;
+  property_id: string;
+  shown_at: string;
+  note: string;
+  author_id: string | null;
+  author_name: string;
+  created_at: string;
+};
+
+export async function fetchDealShowings(dealId: string): Promise<DealShowing[]> {
+  const { data, error } = await supabase
+    .from("deal_showings")
+    .select("id, deal_id, property_id, shown_at, note, author_id, author_name, created_at")
+    .eq("deal_id", dealId)
+    .order("shown_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as DealShowing[];
+}
+
+export async function addDealShowing(
+  dealId: string,
+  input: { property_id: string; shown_at: string; note: string },
+  author: { id: string | null; name: string },
+) {
+  const { error } = await supabase.from("deal_showings").insert({
+    deal_id: dealId,
+    property_id: input.property_id,
+    shown_at: input.shown_at,
+    note: input.note.trim(),
+    author_id: author.id,
+    author_name: author.name,
+  } as never);
+  if (error) throw error;
+}
+
+export async function deleteDealShowing(id: string) {
+  const { error } = await supabase.from("deal_showings").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ---------------- сделки клиента ---------------- */
+
+export async function fetchClientDeals(clientId: string): Promise<Deal[]> {
+  const { data, error } = await supabase
+    .from("deals")
+    .select(DEAL_COLUMNS)
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((d) => ({
+    ...(d as Deal),
+    custom: ((d as { custom: unknown }).custom ?? {}) as Record<string, unknown>,
+  }));
+}
+
+/* ---------------- успешное закрытие ---------------- */
+
+export type DealWonInput = {
+  property_id: string;
+  start_date: string;
+  end_date: string;
+  price_month: number;
+  deposit: number;
+  commission: number | null;
+  payment_day: number;
+};
+
+/** Закрывает сделку как успешную: пишет условия, ставит бронь (для управления) и статус «Сдан». */
+export async function closeDealAsWon(
+  dealId: string,
+  stageId: string,
+  input: DealWonInput,
+  context: { client_id: string | null; service_type: "management" | "commission_only"; source: string },
+) {
+  const { error } = await supabase
+    .from("deals")
+    .update({
+      stage_id: stageId,
+      property_id: input.property_id,
+      closed_property_id: input.property_id,
+      start_date: input.start_date,
+      end_date: input.end_date,
+      price_month: input.price_month,
+      deposit: input.deposit,
+      commission: input.commission,
+      payment_day: input.payment_day,
+    } as never)
+    .eq("id", dealId);
+  if (error) throw error;
+
+  if (context.service_type === "management" && context.client_id) {
+    await saveBooking(null, {
+      property_id: input.property_id,
+      client_id: context.client_id,
+      start_date: input.start_date,
+      end_date: input.end_date,
+      price_type: "fixed",
+      price_month: input.price_month,
+      payment_day: input.payment_day,
+      deposit: input.deposit,
+      source: null,
+      status: "active",
+      comment: "Создано из сделки CRM",
+      periods: [],
+    });
+  }
+
+  await markPropertyRented(input.property_id);
 }

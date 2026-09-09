@@ -28,9 +28,12 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client?: CrmClient | null;
+  /** Вызывается после сохранения — например, чтобы сразу подставить клиента в сделку. */
+  onSaved?: (clientId: string) => void;
 };
 
-export function ClientDialog({ open, onOpenChange, client }: Props) {
+export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
+
   const qc = useQueryClient();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -66,15 +69,18 @@ export function ClientDialog({ open, onOpenChange, client }: Props) {
         blacklist_reason: blacklisted ? reason.trim() : "",
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (id: string) => {
       await qc.invalidateQueries({ queryKey: ["crm-clients"] });
       await qc.invalidateQueries({ queryKey: ["crm-client"] });
       await qc.invalidateQueries({ queryKey: ["clients"] });
       toast.success(client ? "Клиент обновлён" : "Клиент добавлен");
+      onSaved?.(id);
       onOpenChange(false);
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
+
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

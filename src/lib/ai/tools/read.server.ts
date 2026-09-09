@@ -377,6 +377,38 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getDealShowings: tool({
+      description: "Показы объектов по сделке CRM: объект, дата показа, заметка, сотрудник.",
+      inputSchema: z.object({ dealId: z.string() }),
+      execute: async ({ dealId }) => {
+        const { data, error } = await admin
+          .from("deal_showings")
+          .select("id, property_id, shown_at, note, author_name, created_at")
+          .eq("deal_id", dealId)
+          .order("shown_at", { ascending: false });
+        if (error) return { error: error.message };
+        return data ?? [];
+      },
+    }),
+
+    getClientDeals: tool({
+      description:
+        "Все сделки клиента: открытые и закрытые, с условиями аренды (объект, даты, цена, депозит, комиссия, день оплаты).",
+      inputSchema: z.object({ clientId: z.string() }),
+      execute: async ({ clientId }) => {
+        const { data, error } = await admin
+          .from("deals")
+          .select(
+            "id, title, stage_id, property_id, closed_property_id, start_date, end_date, price_month, deposit, commission, payment_day, budget, source, created_at",
+          )
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false });
+        if (error) return { error: error.message };
+        return data ?? [];
+      },
+    }),
+
+
     getActivityLog: tool({
 
       description:

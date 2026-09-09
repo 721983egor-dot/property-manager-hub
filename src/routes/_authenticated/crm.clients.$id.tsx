@@ -24,9 +24,18 @@ import {
   deleteClient,
   fetchCrmClient,
 } from "@/lib/clients";
+import { DealDialog } from "@/components/DealDialog";
+import {
+  fetchClientDeals,
+  fetchDealFields,
+  fetchDealStages,
+  formatBudget,
+  type Deal,
+} from "@/lib/deals";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/_authenticated/crm/clients/$id")({
   head: () => ({
@@ -69,6 +78,16 @@ function ClientPage() {
     queryKey: ["properties"],
     queryFn: fetchProperties,
   });
+  const { data: deals = [] } = useQuery({
+    queryKey: ["client-deals", id],
+    queryFn: () => fetchClientDeals(id),
+  });
+  const { data: stages = [] } = useQuery({ queryKey: ["deal-stages"], queryFn: fetchDealStages });
+  const { data: dealFields = [] } = useQuery({ queryKey: ["deal-fields"], queryFn: fetchDealFields });
+  const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
+
+  const stageKind = (stageId: string) => stages.find((s) => s.id === stageId)?.kind ?? "open";
+
 
   const remove = useMutation({
     mutationFn: () => deleteClient(id),
@@ -159,6 +178,71 @@ function ClientPage() {
       </div>
 
       <section className="mt-8">
+        <h2 className="text-lg font-semibold tracking-tight">Сделки</h2>
+        {deals.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">У клиента пока нет сделок</p>
+        ) : (
+          <div className="mt-3 grid gap-6">
+            {(["open", "closed"] as const).map((group) => {
+              const list = deals.filter((d) =>
+                group === "open" ? stageKind(d.stage_id) === "open" : stageKind(d.stage_id) !== "open",
+              );
+              if (!list.length) return null;
+              return (
+                <div key={group}>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    {group === "open" ? "Открытые" : "Завершённые"}
+                  </h3>
+                  <div className="mt-2 space-y-2">
+                    {list.map((d) => {
+                      const stage = stages.find((s) => s.id === d.stage_id);
+                      const property = properties.find(
+                        (p) => p.id === (d.closed_property_id ?? d.property_id),
+                      );
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setActiveDeal(d)}
+                          className="w-full rounded-xl border border-border p-4 text-left transition-shadow hover:shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <span className="font-medium">{d.title}</span>
+                            <span
+                              className="rounded-md px-2 py-0.5 text-xs font-medium text-white"
+                              style={{ backgroundColor: stage?.color || "#64748b" }}
+                            >
+                              {stage?.name ?? "Стадия"}
+                            </span>
+                          </div>
+                          <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                            <Item label="Объект" value={property ? internalTitle(property) : "—"} />
+                            <Item
+                              label="Даты аренды"
+                              value={
+                                d.start_date && d.end_date
+                                  ? `${formatDateRu(d.start_date)} — ${formatDateRu(d.end_date)}`
+                                  : "—"
+                              }
+                            />
+                            <Item
+                              label={d.price_month != null ? "Цена в месяц" : "Бюджет"}
+                              value={formatBudget(d.price_month ?? d.budget)}
+                            />
+                          </dl>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+
         <h2 className="text-lg font-semibold tracking-tight">Бронирования</h2>
         {bookings.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">У клиента пока нет бронирований</p>
@@ -220,6 +304,16 @@ function ClientPage() {
         booking={activeBooking}
         defaultClientId={client.id}
       />
+      {activeDeal ? (
+        <DealDialog
+          open={Boolean(activeDeal)}
+          onOpenChange={(v) => !v && setActiveDeal(null)}
+          deal={activeDeal}
+          stages={stages}
+          fields={dealFields}
+        />
+      ) : null}
+
     </div>
   );
 }
