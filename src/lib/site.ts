@@ -1,3 +1,4 @@
+export const SITE_ORIGIN = "https://residence-more.ru";
 export const SITE_NAME = "Резиденция&Море";
 export const SITE_TAGLINE = "Аренда премиум апартаментов и домов в г. Сочи";
 
