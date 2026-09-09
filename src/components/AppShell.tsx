@@ -324,7 +324,8 @@ function CrmShell({ children }: { children: ReactNode }) {
             </Link>
           )}
         </header>
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1 pb-16 lg:pb-0">{children}</main>
+        <CrmMobileNav unread={unread} />
       </div>
     </div>
   );
