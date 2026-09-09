@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { fetchComplexes } from "@/lib/complexes";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
+import { SITE_ORIGIN } from "@/lib/site";
 import {
   fetchPublishedProperties,
   PROPERTY_TYPES,
