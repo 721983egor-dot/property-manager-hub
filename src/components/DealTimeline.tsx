@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { History, MessageSquare, Send, Trash2 } from "lucide-react";
+import { Eye, History, MessageSquare, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,22 +13,37 @@ import {
   describeDealChanges,
   fetchDealComments,
   fetchDealHistory,
+  fetchDealShowings,
   formatDateTime,
+  type ChangeLine,
 } from "@/lib/deals";
 
 type Props = {
   dealId: string;
   /** Человеко-понятное значение поля сделки в истории. */
   resolve: (field: string, value: unknown) => string;
+  /** Название объекта по идентификатору — для плиток показов. */
+  propertyLabel?: (id: string) => string;
 };
 
-type Tab = "comments" | "history";
+type Filter = "all" | "comments" | "history";
 
-/** Правая колонка карточки сделки: комментарии сотрудников и история изменений. */
-export function DealTimeline({ dealId, resolve }: Props) {
+type Item = {
+  id: string;
+  kind: "comment" | "history" | "showing";
+  at: string;
+  title: string;
+  author: string;
+  body?: string;
+  lines?: ChangeLine[];
+  removable?: boolean;
+};
+
+/** Правая колонка карточки сделки: единая лента комментариев, показов и изменений. */
+export function DealTimeline({ dealId, resolve, propertyLabel }: Props) {
   const queryClient = useQueryClient();
   const { profile, isAdmin } = useAccess();
-  const [tab, setTab] = useState<Tab>("comments");
+  const [filter, setFilter] = useState<Filter>("all");
   const [body, setBody] = useState("");
 
   const comments = useQuery({
@@ -38,6 +53,10 @@ export function DealTimeline({ dealId, resolve }: Props) {
   const history = useQuery({
     queryKey: ["deal-history", dealId],
     queryFn: () => fetchDealHistory(dealId),
+  });
+  const showings = useQuery({
+    queryKey: ["deal-showings", dealId],
+    queryFn: () => fetchDealShowings(dealId),
   });
 
   const add = useMutation({
@@ -59,112 +78,142 @@ export function DealTimeline({ dealId, resolve }: Props) {
     onError: () => toast.error("Не удалось удалить комментарий"),
   });
 
+  const items = useMemo<Item[]>(() => {
+    const list: Item[] = [];
+    for (const c of comments.data ?? []) {
+      list.push({
+        id: `c-${c.id}`,
+        kind: "comment",
+        at: c.created_at,
+        title: "Комментарий",
+        author: c.author_name || "Сотрудник",
+        body: c.body,
+        removable: isAdmin || c.author_id === profile?.id,
+      });
+    }
+    for (const s of showings.data ?? []) {
+      list.push({
+        id: `s-${s.id}`,
+        kind: "showing",
+        at: s.created_at,
+        title: `Показ: ${propertyLabel?.(s.property_id) ?? "объект"}`,
+        author: s.author_name || "Сотрудник",
+        body: [new Date(s.shown_at).toLocaleDateString("ru-RU"), s.note].filter(Boolean).join(" · "),
+      });
+    }
+    for (const entry of history.data ?? []) {
+      list.push({
+        id: `h-${entry.id}`,
+        kind: "history",
+        at: entry.created_at,
+        title:
+          entry.action === "insert"
+            ? "Сделка создана"
+            : entry.action === "delete"
+              ? "Сделка удалена"
+              : "Изменение",
+        author: entry.actor_email || "Система",
+        lines: describeDealChanges(entry, resolve),
+      });
+    }
+    return list.sort((a, b) => (a.at < b.at ? 1 : -1));
+  }, [comments.data, showings.data, history.data, resolve, propertyLabel, isAdmin, profile?.id]);
+
+  const visible = items.filter((i) =>
+    filter === "all" ? true : filter === "comments" ? i.kind === "comment" : i.kind !== "comment",
+  );
+
   return (
     <div className="flex min-h-[24rem] flex-col rounded-lg border border-border bg-muted/30">
       <div className="flex gap-1 border-b border-border p-1">
-        <TabButton active={tab === "comments"} onClick={() => setTab("comments")}>
+        <TabButton active={filter === "all"} onClick={() => setFilter("all")}>
+          Всё
+        </TabButton>
+        <TabButton active={filter === "comments"} onClick={() => setFilter("comments")}>
           <MessageSquare className="size-4" />
           Комментарии
-          {comments.data?.length ? (
-            <span className="rounded bg-background px-1.5 text-xs">{comments.data.length}</span>
-          ) : null}
         </TabButton>
-        <TabButton active={tab === "history"} onClick={() => setTab("history")}>
+        <TabButton active={filter === "history"} onClick={() => setFilter("history")}>
           <History className="size-4" />
           История
         </TabButton>
       </div>
 
-      {tab === "comments" ? (
-        <div className="flex flex-1 flex-col gap-3 p-3">
-          <div className="grid gap-2">
-            <Textarea
-              rows={3}
-              value={body}
-              placeholder="Что обсудили с клиентом?"
-              onChange={(e) => setBody(e.target.value)}
-            />
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                className="gap-1.5"
-                disabled={!body.trim() || add.isPending}
-                onClick={() => add.mutate()}
-              >
-                <Send className="size-4" />
-                Добавить
-              </Button>
-            </div>
+      <div className="flex flex-1 flex-col gap-3 p-3">
+        <div className="grid gap-2">
+          <Textarea
+            rows={3}
+            value={body}
+            placeholder="Что обсудили с клиентом?"
+            onChange={(e) => setBody(e.target.value)}
+          />
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              className="gap-1.5"
+              disabled={!body.trim() || add.isPending}
+              onClick={() => add.mutate()}
+            >
+              <Send className="size-4" />
+              Добавить
+            </Button>
           </div>
+        </div>
 
-          <div className="flex-1 space-y-2 overflow-y-auto">
-            {comments.isLoading && <p className="text-sm text-muted-foreground">Загрузка…</p>}
-            {!comments.isLoading && !(comments.data ?? []).length && (
-              <p className="text-sm text-muted-foreground">Комментариев пока нет.</p>
-            )}
-            {(comments.data ?? []).map((c) => (
-              <div key={c.id} className="rounded-md border border-border bg-background p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="text-sm font-semibold">{c.author_name || "Сотрудник"}</div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">{formatDateTime(c.created_at)}</span>
-                    {(isAdmin || c.author_id === profile?.id) && (
-                      <button
-                        type="button"
-                        title="Удалить"
-                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-                        onClick={() => remove.mutate(c.id)}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className="mt-1 whitespace-pre-wrap break-words text-sm">{c.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 space-y-2 overflow-y-auto p-3">
-          {history.isLoading && <p className="text-sm text-muted-foreground">Загрузка…</p>}
-          {!history.isLoading && !(history.data ?? []).length && (
-            <p className="text-sm text-muted-foreground">Изменений пока нет.</p>
+        <div className="flex-1 space-y-2 overflow-y-auto">
+          {(comments.isLoading || history.isLoading) && (
+            <p className="text-sm text-muted-foreground">Загрузка…</p>
           )}
-          {(history.data ?? []).map((entry) => {
-            const lines = describeDealChanges(entry, resolve);
-            return (
-              <div key={entry.id} className="rounded-md border border-border bg-background p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-semibold">
-                    {entry.action === "insert"
-                      ? "Сделка создана"
-                      : entry.action === "delete"
-                        ? "Сделка удалена"
-                        : "Изменение"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{formatDateTime(entry.created_at)}</span>
-                </div>
-                {entry.actor_email && (
-                  <p className="text-xs text-muted-foreground">{entry.actor_email}</p>
-                )}
-                {lines.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {lines.map((l) => (
-                      <li key={l.label} className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-muted-foreground">{l.label}:</span>
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{l.from}</span>
-                        <span className="text-muted-foreground">→</span>
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">{l.to}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+          {!comments.isLoading && !history.isLoading && !visible.length && (
+            <p className="text-sm text-muted-foreground">Записей пока нет.</p>
+          )}
+          {visible.map((item) => (
+            <div key={item.id} className="rounded-md border border-border bg-background p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-sm font-semibold">
+                  {item.kind === "comment" ? (
+                    <MessageSquare className="size-3.5 text-muted-foreground" />
+                  ) : item.kind === "showing" ? (
+                    <Eye className="size-3.5 text-muted-foreground" />
+                  ) : (
+                    <History className="size-3.5 text-muted-foreground" />
+                  )}
+                  {item.title}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  {formatDateTime(item.at)}
+                  {item.removable && (
+                    <button
+                      type="button"
+                      title="Удалить"
+                      className="rounded p-1 hover:bg-muted hover:text-destructive"
+                      onClick={() => remove.mutate(item.id.slice(2))}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
+                </span>
               </div>
-            );
-          })}
+              <p className="text-xs text-muted-foreground">{item.author}</p>
+              {item.body ? (
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.body}</p>
+              ) : null}
+              {item.lines && item.lines.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {item.lines.map((l) => (
+                    <li key={l.label} className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-muted-foreground">{l.label}:</span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{l.from}</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">{l.to}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }

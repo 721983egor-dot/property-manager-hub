@@ -449,6 +449,57 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_showings: {
+        Row: {
+          author_id: string | null
+          author_name: string
+          created_at: string
+          deal_id: string
+          id: string
+          note: string
+          property_id: string
+          shown_at: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          note?: string
+          property_id: string
+          shown_at?: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          note?: string
+          property_id?: string
+          shown_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_showings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_showings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_stages: {
         Row: {
           color: string
@@ -485,16 +536,23 @@ export type Database = {
           budget: number | null
           children: number
           client_id: string | null
+          closed_property_id: string | null
           comment: string
+          commission: number | null
           created_at: string
           custom: Json
+          deposit: number | null
+          end_date: string | null
           id: string
           lead_id: string | null
+          payment_day: number | null
           position: number
+          price_month: number | null
           property_id: string | null
           responsible_id: string | null
           source: string
           stage_id: string
+          start_date: string | null
           title: string
           updated_at: string
         }
@@ -503,16 +561,23 @@ export type Database = {
           budget?: number | null
           children?: number
           client_id?: string | null
+          closed_property_id?: string | null
           comment?: string
+          commission?: number | null
           created_at?: string
           custom?: Json
+          deposit?: number | null
+          end_date?: string | null
           id?: string
           lead_id?: string | null
+          payment_day?: number | null
           position?: number
+          price_month?: number | null
           property_id?: string | null
           responsible_id?: string | null
           source?: string
           stage_id: string
+          start_date?: string | null
           title?: string
           updated_at?: string
         }
@@ -521,16 +586,23 @@ export type Database = {
           budget?: number | null
           children?: number
           client_id?: string | null
+          closed_property_id?: string | null
           comment?: string
+          commission?: number | null
           created_at?: string
           custom?: Json
+          deposit?: number | null
+          end_date?: string | null
           id?: string
           lead_id?: string | null
+          payment_day?: number | null
           position?: number
+          price_month?: number | null
           property_id?: string | null
           responsible_id?: string | null
           source?: string
           stage_id?: string
+          start_date?: string | null
           title?: string
           updated_at?: string
         }
@@ -540,6 +612,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_closed_property_id_fkey"
+            columns: ["closed_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
           {

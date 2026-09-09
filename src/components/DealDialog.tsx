@@ -26,12 +26,16 @@ import { useAccess } from "@/hooks/useAccess";
 import { listStaff } from "@/lib/staff.functions";
 import { fetchCrmClients } from "@/lib/clients";
 import { ClientContactButtons } from "@/components/ClientContactButtons";
+import { ClientDialog } from "@/components/ClientDialog";
 import { DealTimeline } from "@/components/DealTimeline";
+import { DealShowings } from "@/components/DealShowings";
+import { DealWonDialog } from "@/components/DealWonDialog";
 
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { DEAL_SOURCES, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
 
 const NONE = "__none__";
+
 
 type Props = {
   open: boolean;
@@ -69,6 +73,11 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   const [children, setChildren] = useState("0");
   const [comment, setComment] = useState("");
   const [custom, setCustom] = useState<Record<string, unknown>>({});
+  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [wonOpen, setWonOpen] = useState(false);
+  const [savedDealId, setSavedDealId] = useState<string | null>(null);
+
+
 
   useEffect(() => {
     if (!open) return;
@@ -111,12 +120,21 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     };
   }, [stages, clients, properties, staffData]);
 
+  const propertyLabel = useMemo(
+    () => (id: string) => {
+      const p = properties.find((x) => x.id === id);
+      return p ? `${p.ref_id} — ${internalTitle(p)}` : "объект";
+    },
+    [properties],
+  );
+
+  const isWonStage = stages.find((s) => s.id === stageId)?.kind === "won";
 
   const mutation = useMutation({
     mutationFn: () =>
       saveDeal(deal?.id ?? null, {
         title: title.trim() || "Без названия",
-        stage_id: stageId,
+        stage_id: isWonStage ? (deal?.stage_id ?? stageId) : stageId,
         client_id: clientId === NONE ? null : clientId,
         property_id: propertyId === NONE ? null : propertyId,
         responsible_id: responsibleId === NONE ? null : responsibleId,
@@ -127,13 +145,52 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
         comment,
         custom,
       }),
-    onSuccess: () => {
+    onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
+      if (isWonStage) {
+        setSavedDealId(id);
+        setWonOpen(true);
+        return;
+      }
       toast.success(deal ? "Сделка обновлена" : "Сделка создана");
       onOpenChange(false);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось сохранить"),
   });
+
+  const wonDeal: Deal | null = savedDealId
+    ? {
+        ...(deal ?? {
+          id: savedDealId,
+          title,
+          stage_id: stageId,
+          lead_id: null,
+          position: 0,
+          created_at: new Date().toISOString(),
+          custom,
+          closed_property_id: null,
+          start_date: null,
+          end_date: null,
+          price_month: null,
+          deposit: null,
+          commission: null,
+          payment_day: null,
+          adults: 0,
+          children: 0,
+          budget: null,
+          responsible_id: null,
+          comment: "",
+          source: "",
+          client_id: null,
+          property_id: null,
+        }),
+        id: savedDealId,
+        client_id: clientId === NONE ? null : clientId,
+        property_id: propertyId === NONE ? null : propertyId,
+        source,
+      }
+    : null;
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,21 +222,27 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
 
             <div className="grid gap-1.5">
               <Label>Клиент</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger><SelectValue placeholder="Клиент" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Не выбран</SelectItem>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.full_name} {c.phone ? `· ${c.phone}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Клиент" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Не выбран</SelectItem>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.full_name} {c.phone ? `· ${c.phone}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" onClick={() => setNewClientOpen(true)}>
+                  + Новый
+                </Button>
+              </div>
               {selectedClient?.phone ? (
                 <ClientContactButtons phone={selectedClient.phone} variant="row" className="mt-1" />
               ) : null}
             </div>
+
 
             <div className="grid gap-1.5">
               <Label>Объект</Label>
@@ -297,10 +360,12 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
             <Label>Описание</Label>
             <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
           </div>
+
+          {deal ? <DealShowings dealId={deal.id} properties={properties} /> : null}
           </div>
 
           {deal ? (
-            <DealTimeline dealId={deal.id} resolve={resolveValue} />
+            <DealTimeline dealId={deal.id} resolve={resolveValue} propertyLabel={propertyLabel} />
           ) : (
             <div className="hidden rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground lg:block">
               Комментарии и история изменений появятся после сохранения сделки.
@@ -308,14 +373,40 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           )}
         </div>
 
+        {isWonStage ? (
+          <p className="text-sm text-muted-foreground">
+            Стадия «Успешно»: после кнопки «Сохранить» откроется окно закрытия сделки — объект, даты и условия аренды.
+          </p>
+        ) : null}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
           <Button onClick={() => mutation.mutate()} disabled={!stageId || mutation.isPending}>
-            Сохранить
+            {isWonStage ? "Сохранить и закрыть сделку" : "Сохранить"}
           </Button>
         </DialogFooter>
+
+        <ClientDialog
+          open={newClientOpen}
+          onOpenChange={setNewClientOpen}
+          onSaved={(id) => setClientId(id)}
+        />
+
+        {wonDeal ? (
+          <DealWonDialog
+            open={wonOpen}
+            onOpenChange={setWonOpen}
+            deal={wonDeal}
+            stageId={stageId}
+            properties={properties}
+            onClosed={() => {
+              setSavedDealId(null);
+              onOpenChange(false);
+            }}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
+
   );
 }
