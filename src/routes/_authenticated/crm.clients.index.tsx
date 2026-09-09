@@ -217,7 +217,18 @@ function ClientsPage() {
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.client.phone || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                      <span>{row.client.phone || "—"}</span>
+                      {row.client.phone ? (
+                        <ClientContactButtons
+                          phone={row.client.phone}
+                          variant="row"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={cn(
