@@ -129,6 +129,16 @@ function DealsPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось удалить"),
   });
 
+  const stagesInit = useMutation({
+    mutationFn: createDefaultStages,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deal-stages"] });
+      toast.success("Стадии созданы");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось создать стадии"),
+  });
+
+
   const openNew = (stageId?: string) => {
     setEditing(null);
     setDefaultStage(stageId);
