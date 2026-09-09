@@ -190,6 +190,75 @@ function CrmShellNotifications() {
   return isAdmin ? <CrmNotifications /> : null;
 }
 
+type NavItem = { to: string; label: string; icon: React.ElementType; adminOnly?: boolean };
+
+const MOBILE_NAV: NavItem[] = [
+  { to: "/objects", label: "Объекты", icon: Building2 },
+  { to: "/chats", label: "Чаты", icon: MessagesSquare, adminOnly: true },
+  { to: "/assistant", label: "Ассистент", icon: Sparkles, adminOnly: true },
+  { to: "/crm/deals", label: "CRM", icon: Handshake },
+  { to: "/promo", label: "Публикации", icon: Megaphone, adminOnly: true },
+];
+
+function CrmMobileNav({ unread }: { unread: number }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { isAdmin } = useAccess();
+  const items = MOBILE_NAV.filter((item) => !item.adminOnly || isAdmin);
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
+      <div className="grid h-16 grid-cols-5 items-center px-2">
+        {items.map((item) => {
+          const active = pathname.startsWith(item.to);
+          const isAssistant = item.to === "/assistant";
+          const Icon = item.icon;
+          if (isAssistant) {
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="flex flex-col items-center justify-center gap-0.5 py-1"
+              >
+                <span className="ai-glow-ring grid size-10 place-items-center rounded-full bg-primary text-primary-foreground">
+                  <Sparkles className="ai-glow size-5" />
+                </span>
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  {item.label}
+                </span>
+              </Link>
+            );
+          }
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="relative flex flex-col items-center justify-center gap-0.5 py-1"
+            >
+              <Icon
+                className={`size-5 transition-colors ${
+                  active ? "text-primary" : "text-muted-foreground"
+                }`}
+              />
+              <span
+                className={`text-[10px] font-medium transition-colors ${
+                  active ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {item.label}
+              </span>
+              {item.to === "/chats" && unread > 0 && (
+                <span className="absolute right-2 top-0 rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
+                  {unread}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 function CrmShell({ children }: { children: ReactNode }) {
   const loadThreads = useServerFn(fetchThreads);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
