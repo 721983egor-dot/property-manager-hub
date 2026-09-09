@@ -102,7 +102,11 @@ export function ClientDialog({ open, onOpenChange, client }: Props) {
               <Input
                 className="mt-1.5"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const digits = phoneDigits(e.target.value);
+                  if (digits.length > 11) return;
+                  setPhone(digits.length === 11 ? formatPhone(e.target.value) : e.target.value);
+                }}
                 placeholder="+7 900 000-00-00"
               />
             </div>
