@@ -1,18 +1,21 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, Eye, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { useAccess } from "@/hooks/useAccess";
 import { addDealShowing, deleteDealShowing, fetchDealShowings } from "@/lib/deals";
 import { internalTitle, type Property } from "@/lib/properties";
@@ -26,7 +29,8 @@ type Props = {
 export function DealShowings({ dealId, properties }: Props) {
   const qc = useQueryClient();
   const { profile, isAdmin } = useAccess();
-  const [propertyId, setPropertyId] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [shownAt, setShownAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
 
@@ -40,18 +44,23 @@ export function DealShowings({ dealId, properties }: Props) {
     qc.invalidateQueries({ queryKey: ["deal-history", dealId] });
   };
 
+  const author = {
+    id: profile?.id ?? null,
+    name: profile?.full_name || profile?.email || "Сотрудник",
+  };
+
   const add = useMutation({
-    mutationFn: () =>
-      addDealShowing(
-        dealId,
-        { property_id: propertyId, shown_at: shownAt, note },
-        { id: profile?.id ?? null, name: profile?.full_name || profile?.email || "Сотрудник" },
-      ),
+    mutationFn: async () => {
+      for (const id of selected) {
+        await addDealShowing(dealId, { property_id: id, shown_at: shownAt, note }, author);
+      }
+    },
     onSuccess: () => {
-      setPropertyId("");
+      const count = selected.length;
+      setSelected([]);
       setNote("");
       invalidate();
-      toast.success("Показ добавлен");
+      toast.success(count > 1 ? `Добавлено показов: ${count}` : "Показ добавлен");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось добавить показ"),
   });
@@ -64,8 +73,11 @@ export function DealShowings({ dealId, properties }: Props) {
 
   const title = (id: string) => {
     const p = properties.find((x) => x.id === id);
-    return p ? `${p.ref_id} — ${internalTitle(p)}` : "Объект";
+    return p ? internalTitle(p) : "Объект";
   };
+
+  const toggle = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   return (
     <div className="grid gap-3 border-t border-border pt-4">
@@ -76,23 +88,63 @@ export function DealShowings({ dealId, properties }: Props) {
 
       <div className="grid gap-2 sm:grid-cols-[1fr_10rem]">
         <div className="grid gap-1.5">
-          <Label>Объект</Label>
-          <Select value={propertyId} onValueChange={setPropertyId}>
-            <SelectTrigger><SelectValue placeholder="Выберите объект" /></SelectTrigger>
-            <SelectContent>
-              {properties.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.ref_id} — {internalTitle(p)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Объекты</Label>
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="justify-between font-normal">
+                <span className="truncate">
+                  {selected.length
+                    ? `Выбрано объектов: ${selected.length}`
+                    : "Выберите один или несколько"}
+                </span>
+                <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[min(28rem,90vw)] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Поиск объекта…" />
+                <CommandList>
+                  <CommandEmpty>Ничего не найдено.</CommandEmpty>
+                  <CommandGroup>
+                    {properties.map((p) => (
+                      <CommandItem key={p.id} value={internalTitle(p)} onSelect={() => toggle(p.id)}>
+                        <Check
+                          className={cn(
+                            "mr-2 size-4",
+                            selected.includes(p.id) ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        {internalTitle(p)}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="grid gap-1.5">
           <Label>Дата показа</Label>
           <Input type="date" value={shownAt} onChange={(e) => setShownAt(e.target.value)} />
         </div>
       </div>
+
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((id) => (
+            <span
+              key={id}
+              className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs"
+            >
+              {title(id)}
+              <button type="button" title="Убрать" onClick={() => toggle(id)}>
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
         <Input
           value={note}
@@ -101,7 +153,7 @@ export function DealShowings({ dealId, properties }: Props) {
         />
         <Button
           className="gap-1.5"
-          disabled={!propertyId || add.isPending}
+          disabled={!selected.length || add.isPending}
           onClick={() => add.mutate()}
         >
           <Plus className="size-4" />
