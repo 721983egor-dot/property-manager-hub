@@ -25,6 +25,7 @@ import {
 import { useAccess } from "@/hooks/useAccess";
 import { listStaff } from "@/lib/staff.functions";
 import { fetchCrmClients } from "@/lib/clients";
+import { ClientContactButtons } from "@/components/ClientContactButtons";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { DEAL_SOURCES, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
 
