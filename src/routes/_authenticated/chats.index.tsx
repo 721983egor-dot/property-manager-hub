@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CheckCheck, ListPlus, SendHorizonal, Trash2, UserPlus } from "lucide-react";
+import { CheckCheck, ChevronLeft, ListPlus, SendHorizonal, Trash2, UserPlus } from "lucide-react";
 
 import {
   createLeadFromThread,
