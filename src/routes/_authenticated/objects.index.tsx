@@ -283,8 +283,8 @@ function ObjectsPage() {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-full flex-1 sm:min-w-[260px]">
+      <div className="mt-6 space-y-3">
+        <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
@@ -294,74 +294,84 @@ function ObjectsPage() {
           />
         </div>
 
-        <FilterSelect
-          value={type}
-          onChange={setType}
-          placeholder="Тип объекта"
-          options={PROPERTY_TYPES.map((t) => ({ value: t.value, label: t.label }))}
-        />
-        <FilterSelect
-          value={complex}
-          onChange={setComplex}
-          placeholder="Комплекс"
-          options={complexes.map((c) => ({ value: c, label: c }))}
-        />
-        <FilterSelect
-          value={rooms}
-          onChange={setRooms}
-          placeholder="Планировка"
-          options={ROOM_OPTIONS.map((r) => ({ value: String(r), label: roomsLabel(r) }))}
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="h-10 w-[210px] shrink-0 justify-between font-normal">
-              <span className="truncate">
-                {statuses.length === 0
-                  ? "Статус: все"
-                  : statuses.length === 1
-                    ? (PROPERTY_STATUSES.find((s) => s.value === statuses[0])?.label ?? "Статус")
-                    : `Статусов: ${statuses.length}`}
-              </span>
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            {PROPERTY_STATUSES.map((s) => (
-              <DropdownMenuCheckboxItem
-                key={s.value}
-                checked={statuses.includes(s.value)}
-                onCheckedChange={() => toggleStatus(s.value)}
-                onSelect={(e) => e.preventDefault()}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+          <FilterSelect
+            value={type}
+            onChange={setType}
+            placeholder="Тип объекта"
+            options={PROPERTY_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          />
+          <FilterSelect
+            value={complex}
+            onChange={setComplex}
+            placeholder="Комплекс"
+            options={complexes.map((c) => ({ value: c, label: c }))}
+          />
+          <FilterSelect
+            value={rooms}
+            onChange={setRooms}
+            placeholder="Планировка"
+            options={ROOM_OPTIONS.map((r) => ({ value: String(r), label: roomsLabel(r) }))}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-10 w-full min-w-0 justify-between px-3 font-normal sm:w-[210px] sm:shrink-0"
               >
-                {s.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-            {statuses.length > 0 ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setStatuses([])}>
-                  Сбросить статусы
-                </DropdownMenuItem>
-              </>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <FilterSelect
-          value={sort}
-          onChange={setSort}
-          placeholder="Сортировка"
-          options={[
-            { value: "price_asc", label: "Сначала дешевле" },
-            { value: "price_desc", label: "Сначала дороже" },
-          ]}
-        />
+                <span className="truncate">
+                  {statuses.length === 0
+                    ? "Статус: все"
+                    : statuses.length === 1
+                      ? (PROPERTY_STATUSES.find((s) => s.value === statuses[0])?.label ?? "Статус")
+                      : `Статусов: ${statuses.length}`}
+                </span>
+                <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              {PROPERTY_STATUSES.map((s) => (
+                <DropdownMenuCheckboxItem
+                  key={s.value}
+                  checked={statuses.includes(s.value)}
+                  onCheckedChange={() => toggleStatus(s.value)}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {s.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              {statuses.length > 0 ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setStatuses([])}>
+                    Сбросить статусы
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <FilterSelect
+            value={sort}
+            onChange={setSort}
+            placeholder="Сортировка"
+            options={[
+              { value: "price_asc", label: "Сначала дешевле" },
+              { value: "price_desc", label: "Сначала дороже" },
+            ]}
+          />
 
-        {hasFilters ? (
-          <Button variant="ghost" onClick={resetFilters} className="h-10 text-muted-foreground">
-            Сбросить
-          </Button>
-        ) : null}
+          {hasFilters ? (
+            <Button
+              variant="ghost"
+              onClick={resetFilters}
+              className="h-10 w-full text-muted-foreground sm:w-auto"
+            >
+              Сбросить
+            </Button>
+          ) : null}
+        </div>
       </div>
+
 
       {/* Мобильная версия — карточки вместо таблицы */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:hidden">
