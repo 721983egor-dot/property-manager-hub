@@ -8,6 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { BookingDialog } from "@/components/BookingDialog";
 import { ClientDialog } from "@/components/ClientDialog";
+import { ClientContactButtons, CopyPhoneButton } from "@/components/ClientContactButtons";
 import { useAccess } from "@/hooks/useAccess";
 import {
   fetchClientBookings,
