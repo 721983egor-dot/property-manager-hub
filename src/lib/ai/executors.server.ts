@@ -234,6 +234,78 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Комментарий добавлен";
   },
 
+  addDealShowing: async (input) => {
+    const dealId = must(input["dealId"] as string, "Не указана сделка");
+    const propertyId = must(input["propertyId"] as string, "Не указан объект");
+    const shownAt = must(input["shownAt"] as string, "Не указана дата показа");
+    const { error } = await supabaseAdmin.from("deal_showings").insert({
+      deal_id: dealId,
+      property_id: propertyId,
+      shown_at: shownAt,
+      note: (input["note"] as string) ?? "",
+      author_name: "Ассистент",
+    } as never);
+    if (error) throw new Error(error.message);
+    return "Показ добавлен в сделку";
+  },
+
+  closeDealWon: async (input) => {
+    const dealId = must(input["dealId"] as string, "Не указана сделка");
+    const propertyId = must(input["propertyId"] as string, "Не указан объект");
+    const clientId = input["clientId"] as string | null;
+    const startDate = must(input["startDate"] as string, "Не указана дата заезда");
+    const endDate = must(input["endDate"] as string, "Не указана дата выезда");
+    const priceMonth = Number(input["priceMonth"]);
+    const deposit = Number(input["deposit"]);
+    const paymentDay = Number(input["paymentDay"]);
+    const commission = input["commission"] == null ? null : Number(input["commission"]);
+
+    const { data: wonStage } = await supabaseAdmin
+      .from("deal_stages")
+      .select("id")
+      .eq("kind", "won")
+      .order("position")
+      .limit(1)
+      .maybeSingle();
+
+    const patch: Record<string, unknown> = {
+      closed_property_id: propertyId,
+      start_date: startDate,
+      end_date: endDate,
+      price_month: priceMonth,
+      deposit,
+      commission,
+      payment_day: paymentDay,
+    };
+    if (wonStage) patch["stage_id"] = wonStage.id;
+    const { error } = await supabaseAdmin.from("deals").update(patch as never).eq("id", dealId);
+    if (error) throw new Error(error.message);
+
+    if (input["serviceType"] === "management" && clientId) {
+      const { error: bookingError } = await supabaseAdmin.from("bookings").insert({
+        property_id: propertyId,
+        client_id: clientId,
+        start_date: startDate,
+        end_date: endDate,
+        price_type: "fixed",
+        price_month: priceMonth,
+        payment_day: paymentDay,
+        deposit,
+        status: "active",
+        comment: "Создано при успешном закрытии сделки",
+      } as never);
+      if (bookingError) throw new Error(bookingError.message);
+    }
+
+    const { error: propError } = await supabaseAdmin
+      .from("properties")
+      .update({ status: "rented" as never })
+      .eq("id", propertyId);
+    if (propError) throw new Error(propError.message);
+    return "Сделка закрыта успешно";
+  },
+
+
   upsertDeal: async (input) => {
     const dealId = input["dealId"] as string | null;
 
