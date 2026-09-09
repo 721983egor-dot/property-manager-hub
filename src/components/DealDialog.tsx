@@ -206,6 +206,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
 
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
