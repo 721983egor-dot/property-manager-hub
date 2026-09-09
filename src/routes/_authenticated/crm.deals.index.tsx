@@ -73,6 +73,19 @@ function DealsPage() {
   const [defaultStage, setDefaultStage] = useState<string | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [closedView, setClosedView] = useState<"won" | "lost" | null>(null);
+
+  const boardStages = useMemo(() => stages.filter((s) => s.kind === "open"), [stages]);
+  const wonStageIds = useMemo(
+    () => new Set(stages.filter((s) => s.kind === "won").map((s) => s.id)),
+    [stages],
+  );
+  const lostStageIds = useMemo(
+    () => new Set(stages.filter((s) => s.kind === "lost").map((s) => s.id)),
+    [stages],
+  );
+  const wonDeals = useMemo(() => deals.filter((d) => wonStageIds.has(d.stage_id)), [deals, wonStageIds]);
+  const lostDeals = useMemo(() => deals.filter((d) => lostStageIds.has(d.stage_id)), [deals, lostStageIds]);
 
   const clientName = useMemo(
     () => new Map(clients.map((c) => [c.id, c.full_name])),
@@ -138,7 +151,7 @@ function DealsPage() {
               <Settings2 className="mr-1.5 size-4" /> Настройка
             </Button>
           )}
-          <Button onClick={() => openNew(stages[0]?.id)}>
+          <Button onClick={() => openNew(boardStages[0]?.id)}>
             <Plus className="mr-1.5 size-4" /> Сделка
           </Button>
         </div>
@@ -156,11 +169,62 @@ function DealsPage() {
         />
       </div>
 
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          variant={closedView === "won" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setClosedView(closedView === "won" ? null : "won")}
+        >
+          Успешные ({wonDeals.length})
+        </Button>
+        <Button
+          variant={closedView === "lost" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setClosedView(closedView === "lost" ? null : "lost")}
+        >
+          Отказы ({lostDeals.length})
+        </Button>
+      </div>
+
+      {closedView ? (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {(closedView === "won" ? wonDeals : lostDeals).map((deal) => (
+            <button
+              key={deal.id}
+              type="button"
+              onClick={() => openDeal(deal)}
+              className="rounded-md border border-border bg-background p-3 text-left shadow-sm hover:shadow-md"
+            >
+              <p className="text-sm font-medium">{deal.title || "Без названия"}</p>
+              {deal.client_id && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {clientName.get(deal.client_id) ?? "Клиент"}
+                </p>
+              )}
+              {deal.closed_property_id && (
+                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                  {propertyName.get(deal.closed_property_id)}
+                </p>
+              )}
+              {deal.start_date && deal.end_date && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {new Date(deal.start_date).toLocaleDateString("ru-RU")} —{" "}
+                  {new Date(deal.end_date).toLocaleDateString("ru-RU")}
+                </p>
+              )}
+            </button>
+          ))}
+          {(closedView === "won" ? wonDeals : lostDeals).length === 0 && (
+            <p className="text-sm text-muted-foreground">Пока пусто.</p>
+          )}
+        </div>
+      ) : null}
+
       {isLoading ? (
         <p className="mt-10 text-center text-muted-foreground">Загружаем сделки…</p>
       ) : (
         <div className="mt-5 flex gap-4 overflow-x-auto pb-4">
-          {stages.map((stage) => {
+          {boardStages.map((stage) => {
             const items = visible.filter((d) => d.stage_id === stage.id);
             const total = items.reduce((sum, d) => sum + (d.budget ?? 0), 0);
             return (

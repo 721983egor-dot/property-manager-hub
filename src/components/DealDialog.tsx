@@ -128,13 +128,16 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     [properties],
   );
 
-  const isWonStage = stages.find((s) => s.id === stageId)?.kind === "won";
+  const openStages = useMemo(() => stages.filter((s) => s.kind === "open"), [stages]);
+  const wonStage = stages.find((s) => s.kind === "won") ?? null;
+  const lostStage = stages.find((s) => s.kind === "lost") ?? null;
+  const [pendingClose, setPendingClose] = useState<"won" | "lost" | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (overrideStageId?: string) =>
       saveDeal(deal?.id ?? null, {
         title: title.trim() || "Без названия",
-        stage_id: isWonStage ? (deal?.stage_id ?? stageId) : stageId,
+        stage_id: overrideStageId ?? stageId,
         client_id: clientId === NONE ? null : clientId,
         property_id: propertyId === NONE ? null : propertyId,
         responsible_id: responsibleId === NONE ? null : responsibleId,
@@ -147,9 +150,17 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
       }),
     onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
-      if (isWonStage) {
+      if (pendingClose === "won") {
+        setPendingClose(null);
         setSavedDealId(id);
         setWonOpen(true);
+        onOpenChange(false);
+        return;
+      }
+      if (pendingClose === "lost") {
+        setPendingClose(null);
+        toast.success("Сделка помечена как отказ");
+        onOpenChange(false);
         return;
       }
       toast.success(deal ? "Сделка обновлена" : "Сделка создана");
@@ -167,6 +178,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           lead_id: null,
           position: 0,
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           custom,
           closed_property_id: null,
           start_date: null,
@@ -188,11 +200,13 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
         client_id: clientId === NONE ? null : clientId,
         property_id: propertyId === NONE ? null : propertyId,
         source,
-      }
+      } as Deal
     : null;
 
 
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
@@ -213,7 +227,10 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
               <Select value={stageId} onValueChange={setStageId}>
                 <SelectTrigger><SelectValue placeholder="Стадия" /></SelectTrigger>
                 <SelectContent>
-                  {stages.map((s) => (
+                  {(openStages.some((s) => s.id === stageId)
+                    ? openStages
+                    : stages.filter((s) => s.kind === "open" || s.id === stageId)
+                  ).map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -373,16 +390,39 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           )}
         </div>
 
-        {isWonStage ? (
-          <p className="text-sm text-muted-foreground">
-            Стадия «Успешно»: после кнопки «Сохранить» откроется окно закрытия сделки — объект, даты и условия аренды.
-          </p>
-        ) : null}
-
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          {lostStage ? (
+            <Button
+              variant="outline"
+              className="text-destructive sm:mr-auto"
+              disabled={mutation.isPending}
+              onClick={() => {
+                setPendingClose("lost");
+                mutation.mutate(lostStage.id);
+              }}
+            >
+              Отказ
+            </Button>
+          ) : null}
           <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!stageId || mutation.isPending}>
-            {isWonStage ? "Сохранить и закрыть сделку" : "Сохранить"}
+          <Button
+            variant="outline"
+            disabled={!wonStage || mutation.isPending}
+            onClick={() => {
+              setPendingClose("won");
+              mutation.mutate(stageId);
+            }}
+          >
+            Успешно
+          </Button>
+          <Button
+            onClick={() => {
+              setPendingClose(null);
+              mutation.mutate(undefined);
+            }}
+            disabled={!stageId || mutation.isPending}
+          >
+            Сохранить
           </Button>
         </DialogFooter>
 
@@ -391,22 +431,23 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           onOpenChange={setNewClientOpen}
           onSaved={(id) => setClientId(id)}
         />
-
-        {wonDeal ? (
-          <DealWonDialog
-            open={wonOpen}
-            onOpenChange={setWonOpen}
-            deal={wonDeal}
-            stageId={stageId}
-            properties={properties}
-            onClosed={() => {
-              setSavedDealId(null);
-              onOpenChange(false);
-            }}
-          />
-        ) : null}
       </DialogContent>
     </Dialog>
 
+    {wonDeal && wonStage ? (
+      <DealWonDialog
+        open={wonOpen}
+        onOpenChange={(v) => {
+          setWonOpen(v);
+          if (!v) setSavedDealId(null);
+        }}
+        deal={wonDeal}
+        stageId={wonStage.id}
+        properties={properties}
+        onClosed={() => setSavedDealId(null)}
+      />
+    ) : null}
+    </>
   );
 }
+
