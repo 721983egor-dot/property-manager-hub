@@ -70,6 +70,9 @@ const NAV_LINK_CLASS =
   "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary";
 
 function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => void }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith("/system"));
+
   return (
     <nav className="px-3 py-2">
       <Link to="/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
@@ -101,15 +104,6 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <Sparkles className="ai-glow size-4 shrink-0" />
         Ассистент
       </Link>
-      <Link to="/system/update" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Settings className="size-4 shrink-0" />
-        Обновление системы
-      </Link>
-      <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Send className="size-4 shrink-0" />
-        Ассистент в Telegram
-      </Link>
-
 
       <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         CRM
@@ -122,9 +116,35 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <Inbox className="size-4 shrink-0" />
         Заявки
       </Link>
+
+      <button
+        type="button"
+        onClick={() => setSettingsOpen((v) => !v)}
+        className={`${NAV_LINK_CLASS} mt-4 w-full`}
+        aria-expanded={settingsOpen}
+      >
+        <Settings className="size-4 shrink-0" />
+        Настройки
+        <ChevronDown
+          className={`ml-auto size-4 transition-transform ${settingsOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+      {settingsOpen && (
+        <div className="ml-3 border-l border-border pl-2">
+          <Link to="/system/update" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <Settings className="size-4 shrink-0" />
+            Обновление системы
+          </Link>
+          <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <Send className="size-4 shrink-0" />
+            Ассистент в Telegram
+          </Link>
+        </div>
+      )}
     </nav>
   );
 }
+
 
 function SignOutButton() {
   return (
