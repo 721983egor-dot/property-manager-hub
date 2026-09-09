@@ -210,7 +210,64 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{deal ? "Сделка" : "Новая сделка"}</DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
+            <DialogTitle>{deal ? "Сделка" : "Новая сделка"}</DialogTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                disabled={!wonStage || mutation.isPending}
+                onClick={() => {
+                  setPendingClose("won");
+                  mutation.mutate(stageId);
+                }}
+              >
+                Успешно
+              </Button>
+              {lostStage ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={mutation.isPending}
+                  onClick={() => {
+                    setPendingClose("lost");
+                    mutation.mutate(lostStage.id);
+                  }}
+                >
+                  Отказ
+                </Button>
+              ) : null}
+              <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
+              <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
+                Отмена
+              </Button>
+              {deal && isAdmin ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  disabled={removing}
+                  onClick={() => {
+                    if (!window.confirm("Удалить сделку?")) return;
+                    setRemoving(true);
+                    deleteDeal(deal.id)
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ["deals"] });
+                        toast.success("Сделка удалена");
+                        onOpenChange(false);
+                      })
+                      .catch((e) =>
+                        toast.error(e instanceof Error ? e.message : "Не удалось удалить"),
+                      )
+                      .finally(() => setRemoving(false));
+                  }}
+                >
+                  Удалить
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
