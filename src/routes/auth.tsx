@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Building2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import logoNavy from "@/assets/site/logo_navy.png";
+
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -55,12 +57,11 @@ function AuthPage() {
         onSubmit={onSubmit}
         className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-sm"
       >
-        <div className="mb-6 flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Building2 className="size-4" />
-          </span>
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <img src={logoNavy} alt="Резиденция&Море" className="h-12 w-auto" />
           <span className="text-base font-semibold tracking-tight">RM OS</span>
         </div>
+
         <h1 className="mb-1 text-xl font-semibold">Вход для сотрудников</h1>
         <p className="mb-6 text-sm text-muted-foreground">
           Раздел доступен только вам и менеджерам.

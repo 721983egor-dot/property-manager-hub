@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CheckCheck, ListPlus, SendHorizonal, Trash2, UserPlus } from "lucide-react";
+import { CheckCheck, ChevronLeft, ListPlus, SendHorizonal, Trash2, UserPlus } from "lucide-react";
 
 import {
   createLeadFromThread,
@@ -119,13 +119,18 @@ function ChatsPage() {
   });
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="flex h-16 shrink-0 items-center border-b border-border px-6">
-        <h1 className="text-lg font-semibold tracking-tight">Чаты с сайта</h1>
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col lg:h-screen">
+      <header className="flex h-14 shrink-0 items-center border-b border-border px-4 sm:h-16 sm:px-6">
+        <h1 className="text-base font-semibold tracking-tight sm:text-lg">Чаты с сайта</h1>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="w-72 shrink-0 overflow-y-auto border-r border-border">
+        <aside
+          className={
+            "w-full shrink-0 overflow-y-auto border-r border-border lg:block lg:w-72 " +
+            (activeId ? "hidden" : "block")
+          }
+        >
           {threads.length === 0 && (
             <p className="p-4 text-sm text-muted-foreground">
               Пока нет сообщений с сайта.
@@ -162,72 +167,102 @@ function ChatsPage() {
           ))}
         </aside>
 
-        <section className="flex min-w-0 flex-1 flex-col">
+        <section
+          className={
+            "min-w-0 flex-1 flex-col lg:flex " + (active ? "flex" : "hidden lg:flex")
+          }
+        >
           {!active ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
               Выберите диалог слева
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Имя клиента"
-                  className="h-9 w-40"
-                />
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Телефон"
-                  className="h-9 w-40"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => contactMutation.mutate()}
-                >
-                  Сохранить
-                </Button>
-                <div className="ml-auto flex items-center gap-2">
-                  <Button size="sm" onClick={() => setSelectionOpen(true)}>
-                    <ListPlus className="size-4" />
-                    Отправить подборку
-                  </Button>
+              <div className="flex flex-col gap-2 border-b border-border px-4 py-3 sm:px-5">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(null)}
+                    className="grid size-9 shrink-0 place-items-center rounded-md border border-border lg:hidden"
+                    aria-label="Назад к списку"
+                  >
+                    <ChevronLeft className="size-5" />
+                  </button>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium lg:hidden">
+                    {active.name.trim() || active.phone.trim() || "Посетитель сайта"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Имя клиента"
+                    className="h-9 w-full sm:w-40"
+                  />
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Телефон"
+                    className="h-9 w-full sm:w-40"
+                  />
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => leadMutation.mutate()}
+                    className="w-full sm:w-auto"
+                    onClick={() => contactMutation.mutate()}
                   >
-                    <UserPlus className="size-4" />
-                    В заявки
+                    Сохранить
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      statusMutation.mutate(active.status === "closed" ? "open" : "closed")
-                    }
-                  >
-                    <CheckCheck className="size-4" />
-                    {active.status === "closed" ? "Открыть" : "Закрыть"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteMutation.mutate()}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                  <div className="col-span-2 grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:items-center">
+                    <Button
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() => setSelectionOpen(true)}
+                    >
+                      <ListPlus className="size-4" />
+                      Подборка
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() => leadMutation.mutate()}
+                    >
+                      <UserPlus className="size-4" />
+                      В заявки
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() =>
+                        statusMutation.mutate(active.status === "closed" ? "open" : "closed")
+                      }
+                    >
+                      <CheckCheck className="size-4" />
+                      {active.status === "closed" ? "Открыть" : "Закрыть"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() => deleteMutation.mutate()}
+                    >
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto px-5 py-4">
+
+              <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4 sm:px-5">
                 {messages.map((m) => (
                   <div
                     key={m.id}
                     className={
-                      "max-w-[70%] rounded-2xl px-3.5 py-2 text-sm " +
+                      "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm sm:max-w-[70%] " +
+
                       (m.direction === "in"
                         ? "bg-muted text-foreground"
                         : "ml-auto bg-primary text-primary-foreground")
@@ -263,10 +298,15 @@ function ChatsPage() {
                   placeholder="Ответ клиенту… (Enter — отправить)"
                   className="max-h-32 flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
-                <Button type="submit" disabled={replyMutation.isPending || !text.trim()}>
+                <Button
+                  type="submit"
+                  className="shrink-0 px-3"
+                  disabled={replyMutation.isPending || !text.trim()}
+                >
                   <SendHorizonal className="size-4" />
-                  Отправить
+                  <span className="hidden sm:inline">Отправить</span>
                 </Button>
+
               </form>
 
               <SendSelectionDialog

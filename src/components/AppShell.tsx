@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   Building2,
   CalendarDays,
+  ChevronDown,
   Inbox,
   LogOut,
   Megaphone,
@@ -20,6 +21,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { fetchThreads } from "@/lib/chat.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { CrmNotifications } from "@/components/CrmNotifications";
+import logoNavy from "@/assets/site/logo_navy.png";
 
 import type { ReactNode } from "react";
 
@@ -27,6 +30,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteCartBar } from "@/components/site/SiteCartBar";
 import { SiteChatWidget } from "@/components/site/SiteChatWidget";
+
 
 /** Префиксы внутренних разделов RM OS — всё остальное рендерится как публичный сайт. */
 const CRM_PREFIXES = [
@@ -66,6 +70,9 @@ const NAV_LINK_CLASS =
   "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-primary";
 
 function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => void }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith("/system"));
+
   return (
     <nav className="px-3 py-2">
       <Link to="/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
@@ -97,15 +104,6 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <Sparkles className="ai-glow size-4 shrink-0" />
         Ассистент
       </Link>
-      <Link to="/system/update" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Settings className="size-4 shrink-0" />
-        Обновление системы
-      </Link>
-      <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Send className="size-4 shrink-0" />
-        Ассистент в Telegram
-      </Link>
-
 
       <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         CRM
@@ -118,9 +116,35 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <Inbox className="size-4 shrink-0" />
         Заявки
       </Link>
+
+      <button
+        type="button"
+        onClick={() => setSettingsOpen((v) => !v)}
+        className={`${NAV_LINK_CLASS} mt-4 w-full`}
+        aria-expanded={settingsOpen}
+      >
+        <Settings className="size-4 shrink-0" />
+        Настройки
+        <ChevronDown
+          className={`ml-auto size-4 transition-transform ${settingsOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+      {settingsOpen && (
+        <div className="ml-3 border-l border-border pl-2">
+          <Link to="/system/update" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <Settings className="size-4 shrink-0" />
+            Обновление системы
+          </Link>
+          <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <Send className="size-4 shrink-0" />
+            Ассистент в Telegram
+          </Link>
+        </div>
+      )}
     </nav>
   );
 }
+
 
 function SignOutButton() {
   return (
@@ -156,11 +180,10 @@ function CrmShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
+      <CrmNotifications />
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
-        <div className="flex h-16 items-center gap-2 px-6">
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Building2 className="size-4" />
-          </span>
+        <div className="flex h-16 items-center gap-2.5 px-5">
+          <img src={logoNavy} alt="Резиденция&Море" className="h-7 w-auto shrink-0" />
           <span className="text-[15px] font-semibold tracking-tight">RM OS</span>
         </div>
         <CrmNav unread={unread} />
@@ -171,12 +194,11 @@ function CrmShell({ children }: { children: ReactNode }) {
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="left" className="w-[17rem] bg-sidebar p-0 lg:hidden">
-          <SheetTitle className="flex h-14 items-center gap-2 px-5 text-[15px] font-semibold">
-            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Building2 className="size-4" />
-            </span>
+          <SheetTitle className="flex h-14 items-center gap-2.5 px-5 text-[15px] font-semibold">
+            <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
             RM OS
           </SheetTitle>
+
           <div className="flex h-[calc(100%-3.5rem)] flex-col overflow-y-auto">
             <CrmNav unread={unread} onNavigate={() => setMenuOpen(false)} />
             <div className="mt-auto p-3">
@@ -196,7 +218,9 @@ function CrmShell({ children }: { children: ReactNode }) {
           >
             <Menu className="size-5" />
           </button>
+          <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
           <span className="truncate text-[15px] font-semibold tracking-tight">RM OS</span>
+
           {unread > 0 && (
             <Link
               to="/chats"
