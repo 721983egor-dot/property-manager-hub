@@ -211,10 +211,10 @@ export function SiteCartBar() {
                   dismissHint();
                   setLeadOpen(true);
                 }}
-                className="h-10 min-w-0 bg-site-navy px-3 text-sm text-site-navy-foreground hover:bg-site-navy/90 sm:flex-none sm:px-4"
+                className="h-10 min-w-0 bg-site-navy px-2 text-[13px] text-site-navy-foreground hover:bg-site-navy/90 sm:flex-none sm:px-4 sm:text-sm"
               >
                 <Send className="size-4 shrink-0" />
-                <span className="sm:hidden">Записаться</span>
+                <span className="sm:hidden">На просмотр</span>
                 <span className="hidden sm:inline">Записаться на просмотр</span>
               </Button>
               <Button
