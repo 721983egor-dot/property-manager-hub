@@ -50,9 +50,9 @@ export function ClientDialog({ open, onOpenChange, client }: Props) {
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
 
   const duplicate = useMemo(() => {
-    const digits = normalizePhone(phone);
+    const digits = phoneDigits(phone);
     if (digits.length < 5) return null;
-    return clients.find((c) => c.id !== client?.id && normalizePhone(c.phone) === digits) ?? null;
+    return clients.find((c) => c.id !== client?.id && phoneDigits(c.phone) === digits) ?? null;
   }, [clients, phone, client?.id]);
 
   const save = useMutation({
