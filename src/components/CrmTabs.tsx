@@ -1,16 +1,20 @@
 import { Link } from "@tanstack/react-router";
 
+import { useAccess } from "@/hooks/useAccess";
+
 const ITEMS = [
-  { to: "/crm/clients", label: "Клиенты", key: "clients" },
-  { to: "/crm/leads", label: "Заявки", key: "leads" },
+  { to: "/crm/deals", label: "Сделки", key: "deals", adminOnly: false },
+  { to: "/crm/clients", label: "Клиенты", key: "clients", adminOnly: false },
+  { to: "/crm/leads", label: "Заявки", key: "leads", adminOnly: true },
 ] as const;
 
 /** Вкладки верхнего уровня раздела «CRM». */
-export function CrmTabs({ active }: { active: "clients" | "leads" }) {
+export function CrmTabs({ active }: { active: "clients" | "leads" | "deals" }) {
+  const { isAdmin } = useAccess();
   return (
     <div className="mt-6 border-b border-border">
       <div className="flex gap-5 overflow-x-auto whitespace-nowrap sm:gap-6">
-        {ITEMS.map((item) => {
+        {ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => {
           const isActive = item.key === active;
           return (
             <Link
