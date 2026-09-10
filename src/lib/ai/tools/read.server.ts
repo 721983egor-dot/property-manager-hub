@@ -8,6 +8,36 @@ import type { AssistantToolContext } from "@/lib/ai/context.server";
 const daysAgoISO = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
 const dateOnly = (iso: string) => iso.slice(0, 10);
 
+export const STATUS_LABEL: Record<string, string> = {
+  free: "Свободен",
+  soon_free: "Скоро освободится",
+  booked: "Забронирован",
+  rented: "В аренде",
+  archived: "Архив",
+};
+
+/** Экранирует спецсимволы PostgREST-фильтра и режет запрос на слова. */
+function terms(query: string): string[] {
+  return query
+    .split(/[\s,;]+/)
+    .map((t) => t.trim().replace(/[%,()*]/g, ""))
+    .filter((t) => t.length >= 2)
+    .slice(0, 5);
+}
+
+function propertyOr(term: string) {
+  const like = `%${term}%`;
+  return [
+    `title.ilike.${like}`,
+    `internal_name.ilike.${like}`,
+    `address.ilike.${like}`,
+    `complex_name.ilike.${like}`,
+    `description.ilike.${like}`,
+    `location_description.ilike.${like}`,
+  ].join(",");
+}
+
+
 /** Инструменты чтения: покрывают все данные RM OS. */
 export function createReadTools(ctx: AssistantToolContext) {
   const { admin } = ctx;
