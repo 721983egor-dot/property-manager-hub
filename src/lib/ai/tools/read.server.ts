@@ -518,7 +518,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getActivityLog: tool({
       description:
-        "Журнал действий системы: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, bookings, selections, property_listings, leads, assistant), объект, действие (insert/update/delete).",
+        "Журнал действий системы и сотрудников: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, deal_comments, deal_showings, bookings, selections, selection_items, property_listings, leads, profiles — карточки сотрудников, user_roles — доступы сотрудников, assistant), объект, действие (insert/update/delete).",
       inputSchema: z.object({
         days: z.number().optional(),
         tableName: z.string().optional(),
