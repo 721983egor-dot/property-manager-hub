@@ -39,6 +39,14 @@ services:
       - YANDEX_MAPS_JS_API_KEY=${YANDEX_MAPS_JS_API_KEY}
       - YANDEX_SUGGEST_API_KEY=${YANDEX_SUGGEST_API_KEY}
       - LOVABLE_CRON_SECRET=${LOVABLE_CRON_SECRET}
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+      - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - PUBLIC_SITE_URL=https://${DOMAIN}
+      - PUBLIC_BASE_URL=https://${DOMAIN}
+      - RM_OS_URL=https://rm-os.${DOMAIN}
       - DEPLOY_AGENT_URL=http://deploy-agent:8080
       - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
     depends_on:

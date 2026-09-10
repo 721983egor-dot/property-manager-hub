@@ -95,10 +95,14 @@ export const unlinkTelegramAccount = createServerFn({ method: "POST" })
 /** Зарегистрировать адрес вебхука в Telegram. */
 export const registerTelegramWebhook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => input as { baseUrl: string })
-  .handler(async ({ data }): Promise<{ ok: boolean; url: string }> => {
+  .handler(async (): Promise<{ ok: boolean; url: string }> => {
     const { telegramCall, webhookSecret } = await import("@/lib/telegram/api.server");
-    const base = data.baseUrl.replace(/\/+$/, "");
+    // У бота может быть только один webhook. Всегда направляем его в рабочую
+    // RM OS, чтобы Preview не забирал сообщения и не писал их в тестовую базу.
+    const base = (process.env["RM_OS_URL"] || "https://rm-os.residence-more.ru").replace(
+      /\/+$/,
+      "",
+    );
     const url = `${base}/api/public/telegram/webhook`;
     await telegramCall("setWebhook", {
       url,
