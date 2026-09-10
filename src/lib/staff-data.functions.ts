@@ -82,6 +82,20 @@ export const listStaffComplexes = createServerFn({ method: "POST" })
     return data ?? [];
   });
 
+export const getStaffComplex = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: unknown) => input as { id: string })
+  .handler(async ({ context, data: input }) => {
+    const admin = await requireStaff(context.userId);
+    const { data, error } = await admin
+      .from("complexes")
+      .select("*")
+      .eq("id", input.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data;
+  });
+
 /** Объекты для вошедших сотрудников. Изменения по-прежнему контролируются RLS. */
 export const listStaffProperties = createServerFn({ method: "POST" })
   .middleware([requireUser])
