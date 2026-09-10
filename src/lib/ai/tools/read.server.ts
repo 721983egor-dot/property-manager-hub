@@ -601,7 +601,10 @@ export function createReadTools(ctx: AssistantToolContext) {
           })),
           newDeals: deals.data ?? [],
           newLeads: leads.data ?? [],
-          newSelections: (selections.data ?? []).map((s) => ({ ...s, link: `/p/${s.code}` })),
+          newSelections: (selections.data ?? []).map((s) => ({
+            ...s,
+            link: selectionUrl(s.code),
+          })),
           log: log.data ?? [],
         };
       },
