@@ -8,6 +8,35 @@ import type { AssistantToolContext } from "@/lib/ai/context.server";
 const daysAgoISO = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
 const dateOnly = (iso: string) => iso.slice(0, 10);
 
+export const STATUS_LABEL: Record<string, string> = {
+  free: "Свободен",
+  soon_free: "Скоро освободится",
+  booked: "Забронирован",
+  rented: "В аренде",
+  archived: "Архив",
+};
+
+/** Экранирует спецсимволы PostgREST-фильтра и режет запрос на слова. */
+function terms(query: string): string[] {
+  return query
+    .split(/[\s,;]+/)
+    .map((t) => t.trim().replace(/[%,()*]/g, ""))
+    .filter((t) => t.length >= 2)
+    .slice(0, 5);
+}
+
+function propertyOr(term: string) {
+  const like = `%${term}%`;
+  return [
+    `title.ilike.${like}`,
+    `internal_name.ilike.${like}`,
+    `address.ilike.${like}`,
+    `complex_name.ilike.${like}`,
+    `description.ilike.${like}`,
+    `location_description.ilike.${like}`,
+  ].join(",");
+}
+
 /** Инструменты чтения: покрывают все данные RM OS. */
 export function createReadTools(ctx: AssistantToolContext) {
   const { admin } = ctx;
@@ -21,45 +50,80 @@ export function createReadTools(ctx: AssistantToolContext) {
   return {
     searchProperties: tool({
       description:
-        "Поиск объектов по тексту (название, внутреннее имя, адрес, комплекс), статусу, типу и цене.",
+        "Поиск объектов по любому тексту: номер (ref_id), название, ВНУТРЕННЕЕ НАЗВАНИЕ, адрес, комплекс, описание. Ищет по всем объектам со всеми статусами, включая архив. Если ничего не нашлось по фразе целиком — ищет по отдельным словам.",
       inputSchema: z.object({
         query: z.string().optional(),
-        status: z.string().optional(),
+        status: z.string().optional().describe("free | soon_free | booked | rented | archived"),
         type: z.string().optional(),
         publishedOnly: z.boolean().optional(),
         maxPrice: z.number().optional(),
         minRooms: z.number().optional(),
       }),
       execute: async (input) => {
-        let q = admin.from("properties").select(PROPERTY_COLUMNS).limit(60);
-        if (input.status) q = q.eq("status", input.status as never);
-        if (input.type) q = q.eq("type", input.type as never);
-        if (input.publishedOnly) q = q.eq("published", true);
-        if (input.maxPrice) q = q.lte("price_month", input.maxPrice);
-        if (input.minRooms) q = q.gte("rooms", input.minRooms);
-        if (input.query) {
-          const term = `%${input.query}%`;
-          q = q.or(
-            `title.ilike.${term},internal_name.ilike.${term},address.ilike.${term},complex_name.ilike.${term}`,
-          );
+        const base = () => {
+          let q = admin.from("properties").select(PROPERTY_COLUMNS).limit(200);
+          if (input.status) q = q.eq("status", input.status as never);
+          if (input.type) q = q.eq("type", input.type as never);
+          if (input.publishedOnly) q = q.eq("published", true);
+          if (input.maxPrice) q = q.lte("price_month", input.maxPrice);
+          if (input.minRooms) q = q.gte("rooms", input.minRooms);
+          return q;
+        };
+
+        const rows: Record<string, unknown>[] = [];
+        const seen = new Set<string>();
+        const push = (list: unknown[] | null) => {
+          for (const r of (list ?? []) as Record<string, unknown>[]) {
+            const id = r["id"] as string;
+            if (!seen.has(id)) {
+              seen.add(id);
+              rows.push(r);
+            }
+          }
+        };
+
+        if (!input.query || !input.query.trim()) {
+          const { data, error } = await base();
+          if (error) return { error: error.message };
+          push(data);
+        } else {
+          const raw = input.query.trim();
+          const asNumber = Number(raw);
+          if (Number.isFinite(asNumber) && raw !== "") {
+            const { data } = await admin
+              .from("properties")
+              .select(PROPERTY_COLUMNS)
+              .eq("ref_id", asNumber);
+            push(data);
+          }
+          const whole = await base().or(propertyOr(raw));
+          push(whole.data);
+          if (!rows.length) {
+            for (const t of terms(raw)) {
+              const part = await base().or(propertyOr(t));
+              push(part.data);
+            }
+          }
         }
-        const { data, error } = await q;
-        if (error) return { error: error.message };
+
         return {
-          count: (data ?? []).length,
-          properties: (data ?? []).map((r) => ({
-            id: r.id,
-            refId: r.ref_id,
-            title: r.title,
-            type: r.type,
-            status: r.status,
-            address: r.address,
-            complex: r.complex_name,
-            rooms: r.rooms,
-            area: r.area,
-            priceMonth: r.price_month,
-            commission: r.commission,
-            published: r.published,
+          count: rows.length,
+          properties: rows.map((r) => ({
+            id: r["id"],
+            refId: r["ref_id"],
+            title: r["title"],
+            internalName: r["internal_name"],
+            type: r["type"],
+            status: r["status"],
+            statusLabel: STATUS_LABEL[r["status"] as string] ?? r["status"],
+            address: r["address"],
+            complex: r["complex_name"],
+            rooms: r["rooms"],
+            area: r["area"],
+            priceMonth: r["price_month"],
+            commission: r["commission"],
+            published: r["published"],
+            createdAt: r["created_at"],
           })),
         };
       },
@@ -105,7 +169,9 @@ export function createReadTools(ctx: AssistantToolContext) {
       execute: async ({ query }) => {
         let q = admin
           .from("complexes")
-          .select("id, name, description, infrastructure, location_description, show_in_site_filter")
+          .select(
+            "id, name, description, infrastructure, location_description, show_in_site_filter",
+          )
           .limit(100);
         if (query) q = q.ilike("name", `%${query}%`);
         const { data, error } = await q;
@@ -121,16 +187,31 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getClients: tool({
       description:
-        "Клиенты: ФИО, телефон, комментарий, чёрный список. Поиск по имени или телефону.",
-      inputSchema: z.object({ query: z.string().optional(), blacklistedOnly: z.boolean().optional() }),
+        "Клиенты: ФИО, телефон, комментарий, чёрный список. Поиск по имени, телефону или комментарию; ищет по всем клиентам, включая чёрный список.",
+      inputSchema: z.object({
+        query: z.string().optional(),
+        blacklistedOnly: z.boolean().optional(),
+      }),
       execute: async ({ query, blacklistedOnly }) => {
-        let q = admin.from("clients").select("*").limit(80).order("created_at", { ascending: false });
+        let q = admin
+          .from("clients")
+          .select("*")
+          .limit(300)
+          .order("created_at", { ascending: false });
         if (blacklistedOnly) q = q.eq("blacklisted", true);
         if (query) {
-          const term = `%${query}%`;
-          q = q.or(`full_name.ilike.${term},phone.ilike.${term}`);
+          const clean = query.replace(/[%,()*]/g, "").trim();
+          const digits = clean.replace(/\D/g, "");
+          const parts = [
+            `full_name.ilike.%${clean}%`,
+            `phone.ilike.%${clean}%`,
+            `comment.ilike.%${clean}%`,
+          ];
+          if (digits.length >= 4) parts.push(`phone.ilike.%${digits.slice(-10)}%`);
+          q = q.or(parts.join(","));
         }
         const { data, error } = await q;
+
         if (error) return { error: error.message };
         return data ?? [];
       },
@@ -167,7 +248,11 @@ export function createReadTools(ctx: AssistantToolContext) {
         toDate: z.string().optional(),
       }),
       execute: async ({ status, fromDate, toDate }) => {
-        let q = admin.from("bookings").select("*").limit(200).order("start_date", { ascending: false });
+        let q = admin
+          .from("bookings")
+          .select("*")
+          .limit(200)
+          .order("start_date", { ascending: false });
         if (status) q = q.eq("status", status as never);
         if (fromDate) q = q.gte("end_date", fromDate);
         if (toDate) q = q.lte("start_date", toDate);
@@ -185,8 +270,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getCalendar: tool({
-      description:
-        "Занятость объектов: что занято и свободно в период, ближайшие заезды и выезды.",
+      description: "Занятость объектов: что занято и свободно в период, ближайшие заезды и выезды.",
       inputSchema: z.object({ days: z.number().optional() }),
       execute: async ({ days }) => {
         const period = days && days > 0 ? days : 60;
@@ -245,7 +329,13 @@ export function createReadTools(ctx: AssistantToolContext) {
           byStatus[r.status] = (byStatus[r.status] ?? 0) + 1;
           bySource[r.source || "site"] = (bySource[r.source || "site"] ?? 0) + 1;
         }
-        return { periodDays: period, total: (data ?? []).length, byStatus, bySource, leads: data ?? [] };
+        return {
+          periodDays: period,
+          total: (data ?? []).length,
+          byStatus,
+          bySource,
+          leads: data ?? [],
+        };
       },
     }),
 
@@ -408,26 +498,28 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
-
     getActivityLog: tool({
-
       description:
-        "Журнал действий в системе: кто, что и когда изменил. Можно фильтровать по таблице и объекту.",
+        "Журнал действий системы: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, bookings, selections, property_listings, leads, assistant), объект, действие (insert/update/delete).",
       inputSchema: z.object({
         days: z.number().optional(),
         tableName: z.string().optional(),
+        action: z.string().optional(),
         ref: z.string().optional(),
         limit: z.number().optional(),
       }),
-      execute: async ({ days, tableName, ref, limit }) => {
-        const period = days && days > 0 ? days : 14;
+      execute: async ({ days, tableName, action, ref, limit }) => {
+        const period = days && days > 0 ? days : 30;
         let q = admin
           .from("activity_log")
-          .select("table_name, record_id, action, actor_email, source, summary, changes, created_at")
+          .select(
+            "table_name, record_id, action, actor_email, source, summary, changes, created_at",
+          )
           .gte("created_at", daysAgoISO(period))
           .order("created_at", { ascending: false })
-          .limit(limit && limit > 0 ? Math.min(limit, 200) : 80);
+          .limit(limit && limit > 0 ? Math.min(limit, 300) : 150);
         if (tableName) q = q.eq("table_name", tableName);
+        if (action) q = q.eq("action", action);
         if (ref) {
           const p = await ctx.findProperty(ref);
           if (!p) return { error: "Объект не найден" };
@@ -435,7 +527,65 @@ export function createReadTools(ctx: AssistantToolContext) {
         }
         const { data, error } = await q;
         if (error) return { error: error.message };
-        return { periodDays: period, entries: data ?? [] };
+        return { periodDays: period, count: (data ?? []).length, entries: data ?? [] };
+      },
+    }),
+
+    getRecentChanges: tool({
+      description:
+        "Что нового и что менялось в системе за последние N дней: созданные объекты, клиенты, брони, сделки, заявки и подборки плюс записи журнала. Используй для вопросов «что добавили сегодня/утром/за неделю».",
+      inputSchema: z.object({ days: z.number().optional() }),
+      execute: async ({ days }) => {
+        const period = days && days > 0 ? days : 3;
+        const since = daysAgoISO(period);
+        const [props, clients, bookings, deals, leads, selections, log] = await Promise.all([
+          admin
+            .from("properties")
+            .select("id, ref_id, title, internal_name, status, price_month, created_at, updated_at")
+            .gte("created_at", since)
+            .order("created_at", { ascending: false }),
+          admin.from("clients").select("id, full_name, phone, created_at").gte("created_at", since),
+          admin
+            .from("bookings")
+            .select("id, property_id, client_id, start_date, end_date, status, created_at")
+            .gte("created_at", since),
+          admin.from("deals").select("id, title, created_at").gte("created_at", since),
+          admin
+            .from("leads")
+            .select("id, name, phone, topic, status, created_at")
+            .gte("created_at", since),
+          admin.from("selections").select("id, code, name, created_at").gte("created_at", since),
+          admin
+            .from("activity_log")
+            .select("table_name, action, actor_email, summary, created_at")
+            .gte("created_at", since)
+            .order("created_at", { ascending: false })
+            .limit(150),
+        ]);
+        const bookingNames = await nameMap([
+          ...new Set((bookings.data ?? []).map((b) => b.property_id)),
+        ]);
+        return {
+          periodDays: period,
+          newProperties: (props.data ?? []).map((p) => ({
+            refId: p.ref_id,
+            title: p.title,
+            internalName: p.internal_name,
+            status: p.status,
+            statusLabel: STATUS_LABEL[p.status] ?? p.status,
+            priceMonth: p.price_month,
+            createdAt: p.created_at,
+          })),
+          newClients: clients.data ?? [],
+          newBookings: (bookings.data ?? []).map((b) => ({
+            ...b,
+            property: bookingNames.get(b.property_id) ?? b.property_id,
+          })),
+          newDeals: deals.data ?? [],
+          newLeads: leads.data ?? [],
+          newSelections: (selections.data ?? []).map((s) => ({ ...s, link: `/p/${s.code}` })),
+          log: log.data ?? [],
+        };
       },
     }),
 
@@ -485,18 +635,25 @@ export function createReadTools(ctx: AssistantToolContext) {
           const found = (stages ?? []).find((s) => s.name.toLowerCase() === stage.toLowerCase());
           if (found) q = q.eq("stage_id", found.id);
         }
-        if (query) q = q.or(`title.ilike.%${query}%,source.ilike.%${query}%,comment.ilike.%${query}%`);
+        if (query)
+          q = q.or(`title.ilike.%${query}%,source.ilike.%${query}%,comment.ilike.%${query}%`);
         const { data, error } = await q;
         if (error) return { error: error.message };
-        const clientIds = [...new Set((data ?? []).map((d) => d.client_id).filter(Boolean))] as string[];
-        const propertyIds = [...new Set((data ?? []).map((d) => d.property_id).filter(Boolean))] as string[];
+        const clientIds = [
+          ...new Set((data ?? []).map((d) => d.client_id).filter(Boolean)),
+        ] as string[];
+        const propertyIds = [
+          ...new Set((data ?? []).map((d) => d.property_id).filter(Boolean)),
+        ] as string[];
         const [{ data: clients }, propNames] = await Promise.all([
           clientIds.length
             ? admin.from("clients").select("id, full_name, phone").in("id", clientIds)
             : Promise.resolve({ data: [] as { id: string; full_name: string; phone: string }[] }),
           nameMap(propertyIds),
         ]);
-        const clientMap = new Map((clients ?? []).map((c) => [c.id, `${c.full_name} ${c.phone}`.trim()]));
+        const clientMap = new Map(
+          (clients ?? []).map((c) => [c.id, `${c.full_name} ${c.phone}`.trim()]),
+        );
         return {
           stages: (stages ?? []).map((s) => ({ name: s.name, kind: s.kind })),
           fields: (fields ?? []).filter((f) => !f.archived),
@@ -504,8 +661,8 @@ export function createReadTools(ctx: AssistantToolContext) {
             id: d.id,
             title: d.title,
             stage: stageMap.get(d.stage_id) ?? "",
-            client: d.client_id ? clientMap.get(d.client_id) ?? "" : "",
-            property: d.property_id ? propNames.get(d.property_id) ?? "" : "",
+            client: d.client_id ? (clientMap.get(d.client_id) ?? "") : "",
+            property: d.property_id ? (propNames.get(d.property_id) ?? "") : "",
             source: d.source,
             budget: d.budget,
             adults: d.adults,

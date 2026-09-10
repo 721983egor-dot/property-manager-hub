@@ -19,7 +19,11 @@ export type AssistantToolContext = {
   /** Найти клиента по имени или телефону. */
   findClient: (ref: string) => Promise<Record<string, unknown> | null>;
   /** Зарегистрировать предложенное действие (подтверждает менеджер). */
-  propose: (action: { tool: string; summary: string; input: Record<string, unknown> }) => AssistantAction;
+  propose: (action: {
+    tool: string;
+    summary: string;
+    input: Record<string, unknown>;
+  }) => AssistantAction;
 };
 
 export function createToolContext(actions: AssistantAction[]): AssistantToolContext {
@@ -35,14 +39,27 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
           .limit(1);
         if ((data ?? []).length) return (data ?? [])[0] as Record<string, unknown>;
       }
-      const term = `%${ref}%`;
-      const { data } = await supabaseAdmin
-        .from("properties")
-        .select(PROPERTY_COLUMNS)
-        .or(`title.ilike.${term},internal_name.ilike.${term},address.ilike.${term}`)
-        .limit(1);
-      return ((data ?? [])[0] ?? null) as Record<string, unknown> | null;
+      const clean = (t: string) => t.replace(/[%,()*]/g, "");
+      const attempt = async (term: string) => {
+        const like = `%${clean(term)}%`;
+        const { data } = await supabaseAdmin
+          .from("properties")
+          .select(PROPERTY_COLUMNS)
+          .or(
+            `title.ilike.${like},internal_name.ilike.${like},address.ilike.${like},complex_name.ilike.${like}`,
+          )
+          .limit(1);
+        return ((data ?? [])[0] ?? null) as Record<string, unknown> | null;
+      };
+      const whole = await attempt(ref);
+      if (whole) return whole;
+      for (const word of ref.split(/[\s,;]+/).filter((w) => w.length >= 3)) {
+        const found = await attempt(word);
+        if (found) return found;
+      }
+      return null;
     },
+
     findClient: async (ref: string) => {
       const term = `%${ref}%`;
       const { data } = await supabaseAdmin

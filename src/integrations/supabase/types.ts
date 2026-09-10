@@ -119,6 +119,33 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_skills: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string
+          id: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string
+          id?: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string
+          id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       booking_price_periods: {
         Row: {
           booking_id: string
