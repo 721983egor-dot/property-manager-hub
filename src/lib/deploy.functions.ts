@@ -12,6 +12,8 @@ const deployErrorSchema = z.object({
   detail: z.string(),
 });
 
+const PRODUCTION_URL = "https://rm-os.residence-more.ru";
+
 async function callDeployAgent(path: string, body?: unknown) {
   const agentUrl = process.env["DEPLOY_AGENT_URL"];
   const token = process.env["DEPLOY_AGENT_TOKEN"];
@@ -56,6 +58,42 @@ async function callDeployAgent(path: string, body?: unknown) {
   return parsed.data;
 }
 
+async function configureProductionTelegram() {
+  const telegramApiKey = process.env["TELEGRAM_API_KEY"];
+  const lovableApiKey = process.env["LOVABLE_API_KEY"];
+  const deployToken = process.env["DEPLOY_AGENT_TOKEN"];
+  if (!telegramApiKey || !lovableApiKey || !deployToken) {
+    throw new Error("Не удалось передать подключение Telegram рабочему RM OS");
+  }
+  const response = await fetch(`${PRODUCTION_URL}/api/public/system/telegram-bootstrap`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${deployToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ telegramApiKey, lovableApiKey }),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Telegram не переключён: ${text.slice(0, 200)}`);
+}
+
+async function waitForProductionTelegramEndpoint(timeoutMs = 5 * 60 * 1000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      await configureProductionTelegram();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Рабочий RM OS не ответил при подключении Telegram");
+}
+
 /** Информация о текущей и последней доступной версии приложения. */
 export const getDeployStatus = createServerFn({ method: "GET" })
   .middleware([requireUser])
@@ -76,12 +114,11 @@ export const getDeployStatus = createServerFn({ method: "GET" })
 export const triggerDeploy = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .handler(async () => {
-    return callDeployAgent("/deploy", {
+    const result = await callDeployAgent("/deploy", {
       source: "rm-os-ui",
-      telegram_api_key: process.env["TELEGRAM_API_KEY"] || null,
-      lovable_api_key: process.env["LOVABLE_API_KEY"] || null,
-      openai_api_key: process.env["OPENAI_API_KEY"] || null,
     });
+    await waitForProductionTelegramEndpoint();
+    return result;
   });
 
 /** Откатывает сайт на предыдущую версию. */
