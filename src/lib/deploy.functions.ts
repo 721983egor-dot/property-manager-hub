@@ -8,6 +8,10 @@ const deployResponseSchema = z.object({
   message: z.string(),
 });
 
+const deployErrorSchema = z.object({
+  detail: z.string(),
+});
+
 async function callDeployAgent(path: string, body?: unknown) {
   const agentUrl = process.env["DEPLOY_AGENT_URL"];
   const token = process.env["DEPLOY_AGENT_TOKEN"];
@@ -38,7 +42,11 @@ async function callDeployAgent(path: string, body?: unknown) {
 
   const parsed = deployResponseSchema.safeParse(json);
   if (!parsed.success) {
-    throw new Error(`Некорректный ответ от deploy-агента: ${text.slice(0, 200)}`);
+    const parsedError = deployErrorSchema.safeParse(json);
+    if (parsedError.success) {
+      throw new Error(parsedError.data.detail);
+    }
+    throw new Error(`Некорректный ответ от deploy-агента: ${text.slice(0, 500)}`);
   }
 
   if (!res.ok || !parsed.data.ok) {
