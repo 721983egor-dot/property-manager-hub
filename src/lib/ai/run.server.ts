@@ -20,28 +20,30 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентс
 export async function askAssistantCore(
   messages: AssistantChatMessage[],
 ): Promise<AssistantReply> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) return { text: "", actions: [], error: "ИИ не настроен: нет ключа доступа." };
-
   const { streamText, stepCountIs } = await import("ai");
-  const { createLovableAiGatewayProvider, ASSISTANT_MODEL, ASSISTANT_PROVIDER_OPTIONS } =
-    await import("@/lib/ai-gateway.server");
+  const { resolveAssistantModel, ASSISTANT_PROVIDER_OPTIONS } = await import(
+    "@/lib/ai-gateway.server"
+  );
   const { createToolContext } = await import("@/lib/ai/context.server");
   const { buildAssistantTools } = await import("@/lib/ai/tools/index.server");
+
+  const setup = resolveAssistantModel();
+  if ("error" in setup) return { text: "", actions: [], error: setup.error };
 
   const actions: AssistantAction[] = [];
   const ctx = createToolContext(actions);
   const tools = buildAssistantTools(ctx);
 
   try {
-    const gateway = createLovableAiGatewayProvider(apiKey);
     const result = streamText({
-      model: gateway(ASSISTANT_MODEL),
+      model: setup.model,
       system: ASSISTANT_SYSTEM_PROMPT,
       messages: messages.slice(-30),
       tools,
       stopWhen: stepCountIs(50),
-      providerOptions: ASSISTANT_PROVIDER_OPTIONS,
+      ...(setup.source === "lovable"
+        ? { providerOptions: ASSISTANT_PROVIDER_OPTIONS }
+        : {}),
     });
     const text = await result.text;
     return { text, actions, error: "" };
@@ -50,3 +52,4 @@ export async function askAssistantCore(
     return { text: "", actions: [], error: message };
   }
 }
+
