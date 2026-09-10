@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import json
 import os
+import base64
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -87,6 +88,34 @@ def get_git_version() -> str:
         return "unknown"
 
 
+def register_telegram_webhook() -> None:
+    """После обновления закрепляет единственного бота за рабочим RM OS."""
+    lovable_key = os.environ.get("LOVABLE_API_KEY", "")
+    telegram_key = os.environ.get("TELEGRAM_API_KEY", "")
+    if not lovable_key or not telegram_key:
+        return
+    digest = hashlib.sha256(f"telegram-webhook:{telegram_key}".encode()).digest()
+    secret = base64.urlsafe_b64encode(digest).decode().rstrip("=")
+    response = requests.post(
+        "https://connector-gateway.lovable.dev/telegram/setWebhook",
+        headers={
+            "Authorization": f"Bearer {lovable_key}",
+            "X-Connection-Api-Key": telegram_key,
+            "Content-Type": "application/json",
+        },
+        json={
+            "url": f"https://rm-os.{DOMAIN}/api/public/telegram/webhook",
+            "secret_token": secret,
+            "allowed_updates": ["message", "edited_message", "callback_query"],
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not payload.get("ok"):
+        raise RuntimeError(f"Telegram webhook registration failed: {payload.get('description', 'unknown error')}")
+
+
 class DeployRequest(BaseModel):
     source: str = "rm-os-ui"
 
@@ -146,6 +175,10 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "app"],
             timeout=120,
         )
+
+        # Один Telegram-бот может иметь только один адрес. После каждого
+        # обновления возвращаем его на рабочий сервер и рабочую базу.
+        register_telegram_webhook()
 
         # 5. Проверка здоровья
         time.sleep(5)

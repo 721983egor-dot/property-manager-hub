@@ -167,6 +167,8 @@ services:
       - DOMAIN=${DOMAIN}
       - APP_IMAGE=rm-os-app
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+      - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - deploy_data:/data
