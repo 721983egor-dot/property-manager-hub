@@ -119,6 +119,27 @@ def register_telegram_webhook() -> None:
 
 class DeployRequest(BaseModel):
     source: str = "rm-os-ui"
+    telegram_api_key: str | None = None
+    lovable_api_key: str | None = None
+    openai_api_key: str | None = None
+
+
+def update_env_values(values: dict[str, str | None]) -> None:
+    """Сохраняет переданные сервером секреты без вывода их в журналы."""
+    existing = ENV_FILE.read_text().splitlines() if ENV_FILE.exists() else []
+    pending = {key: value for key, value in values.items() if value}
+    if not pending:
+        return
+    output: list[str] = []
+    for line in existing:
+        key = line.split("=", 1)[0] if "=" in line and not line.lstrip().startswith("#") else ""
+        if key in pending:
+            output.append(f"{key}={pending.pop(key)}")
+        else:
+            output.append(line)
+    for key, value in pending.items():
+        output.append(f"{key}={value}")
+    ENV_FILE.write_text("\n".join(output) + "\n")
 
 
 @APP.get("/status")
@@ -140,6 +161,12 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
     state = load_state()
 
     try:
+        update_env_values({
+            "TELEGRAM_API_KEY": req.telegram_api_key,
+            "LOVABLE_API_KEY": req.lovable_api_key,
+            "OPENAI_API_KEY": req.openai_api_key,
+        })
+
         # 1. Резервная копия
         backup_path = backup_database()
 
