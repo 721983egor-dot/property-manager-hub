@@ -11,6 +11,7 @@ import {
   sendMessage,
   type InlineKeyboard,
 } from "@/lib/telegram/api.server";
+import { loadTelegramRuntimeCredentials } from "@/lib/telegram/runtime-credentials.server";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 const HISTORY_LIMIT = 20;
@@ -39,10 +40,10 @@ export type TgUpdate = {
   };
 };
 
-function apiKey() {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("LOVABLE_API_KEY is not configured");
-  return key;
+async function apiKey() {
+  const credentials = await loadTelegramRuntimeCredentials();
+  if (!credentials) throw new Error("LOVABLE_API_KEY is not configured");
+  return credentials.lovableApiKey;
 }
 
 /* ---------------------------------- доступ --------------------------------- */
@@ -119,7 +120,7 @@ async function transcribe(bytes: ArrayBuffer, fileName: string): Promise<string>
   form.append("file", new Blob([bytes]), fileName);
   const response = await fetch(`${GATEWAY}/audio/transcriptions`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}` },
+    headers: { Authorization: `Bearer ${await apiKey()}` },
     body: form,
   });
   const text = await response.text();
@@ -135,7 +136,7 @@ async function briefOf(transcript: string): Promise<string> {
   try {
     const response = await fetch(`${GATEWAY}/chat/completions`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${await apiKey()}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-3.8-flash",
         messages: [

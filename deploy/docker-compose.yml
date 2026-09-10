@@ -49,6 +49,8 @@ services:
       - RM_OS_URL=https://rm-os.${DOMAIN}
       - DEPLOY_AGENT_URL=http://deploy-agent:8080
       - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
+    volumes:
+      - runtime_secrets:/data/runtime-secrets
     depends_on:
       supabase-db:
         condition: service_healthy
@@ -183,6 +185,7 @@ volumes:
   postgres_data:
   storage_data:
   deploy_data:
+  runtime_secrets:
 
 networks:
   rm-os:

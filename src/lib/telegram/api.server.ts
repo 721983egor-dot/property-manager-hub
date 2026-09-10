@@ -1,20 +1,23 @@
 /** Вызовы Telegram Bot API через шлюз коннекторов Lovable. Только сервер. */
 
+import { loadTelegramRuntimeCredentials } from "@/lib/telegram/runtime-credentials.server";
+
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
 
-function keys() {
-  const lovable = process.env["LOVABLE_API_KEY"];
-  const telegram = process.env["TELEGRAM_API_KEY"];
-  if (!lovable) throw new Error("LOVABLE_API_KEY is not configured");
-  if (!telegram) throw new Error("TELEGRAM_API_KEY is not configured");
-  return { lovable, telegram };
+async function keys() {
+  const credentials = await loadTelegramRuntimeCredentials();
+  if (!credentials) throw new Error("Telegram credentials are not configured");
+  return {
+    lovable: credentials.lovableApiKey,
+    telegram: credentials.telegramApiKey,
+  };
 }
 
 export async function telegramCall<T = unknown>(
   method: string,
   body: Record<string, unknown>,
 ): Promise<T> {
-  const { lovable, telegram } = keys();
+  const { lovable, telegram } = await keys();
   const response = await fetch(`${GATEWAY_URL}/${method}`, {
     method: "POST",
     headers: {
@@ -82,7 +85,7 @@ export async function sendChatAction(chatId: number, action = "typing") {
 
 /** Скачивает файл Telegram (голосовое сообщение и т.п.) через шлюз. */
 export async function downloadFile(fileId: string): Promise<{ bytes: ArrayBuffer; path: string }> {
-  const { lovable, telegram } = keys();
+  const { lovable, telegram } = await keys();
   const file = await telegramCall<{ file_path: string }>("getFile", { file_id: fileId });
   const response = await fetch(`${GATEWAY_URL}/file/${file.file_path}`, {
     headers: {
@@ -99,7 +102,7 @@ export async function downloadFile(fileId: string): Promise<{ bytes: ArrayBuffer
 
 /** Секрет заголовка вебхука, выведенный из ключа подключения. */
 export async function webhookSecret(): Promise<string> {
-  const { telegram } = keys();
+  const { telegram } = await keys();
   const data = new TextEncoder().encode(`telegram-webhook:${telegram}`);
   const digest = await crypto.subtle.digest("SHA-256", data);
   const bytes = new Uint8Array(digest);
