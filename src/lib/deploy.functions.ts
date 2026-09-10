@@ -76,7 +76,12 @@ export const getDeployStatus = createServerFn({ method: "GET" })
 export const triggerDeploy = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .handler(async () => {
-    return callDeployAgent("/deploy", { source: "rm-os-ui" });
+    return callDeployAgent("/deploy", {
+      source: "rm-os-ui",
+      telegram_api_key: process.env["TELEGRAM_API_KEY"] || null,
+      lovable_api_key: process.env["LOVABLE_API_KEY"] || null,
+      openai_api_key: process.env["OPENAI_API_KEY"] || null,
+    });
   });
 
 /** Откатывает сайт на предыдущую версию. */

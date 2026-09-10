@@ -26,6 +26,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           await handleTelegramUpdate(update as never);
         } catch (e) {
           console.error("telegram update failed", e);
+          // Не помечаем неудачную доставку обработанной: Telegram повторит её.
+          await supabaseAdmin.from("telegram_updates").delete().eq("update_id", update.update_id);
+          return Response.json({ ok: false }, { status: 500 });
         }
         return Response.json({ ok: true });
       },

@@ -112,8 +112,20 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   },
 
   createSelection: async (input) => {
-    const propertyIds = (input["propertyIds"] as string[]) ?? [];
+    const propertyIds = [...new Set((input["propertyIds"] as string[]) ?? [])].filter(Boolean);
     if (!propertyIds.length) throw new Error("Нет объектов");
+    const { data: existingProperties, error: propertiesError } = await supabaseAdmin
+      .from("properties")
+      .select("id")
+      .in("id", propertyIds);
+    if (propertiesError) throw new Error(propertiesError.message);
+    const existingIds = new Set((existingProperties ?? []).map((property) => property.id));
+    const missingIds = propertyIds.filter((id) => !existingIds.has(id));
+    if (missingIds.length) {
+      throw new Error(
+        `Не удалось создать подборку: ${missingIds.length} объект(а) отсутствуют в текущей базе RM OS`,
+      );
+    }
     const code = generateCode();
     const { data: selection, error } = await supabaseAdmin
       .from("selections")
@@ -134,9 +146,20 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
         position: index,
       })),
     );
-    if (itemsError) throw new Error(itemsError.message);
+    if (itemsError) {
+      await supabaseAdmin.from("selections").delete().eq("id", selection.id);
+      throw new Error(itemsError.message);
+    }
+    const { count, error: countError } = await supabaseAdmin
+      .from("selection_items")
+      .select("id", { count: "exact", head: true })
+      .eq("selection_id", selection.id);
+    if (countError || count !== propertyIds.length) {
+      await supabaseAdmin.from("selections").delete().eq("id", selection.id);
+      throw new Error("Не удалось сохранить все объекты подборки");
+    }
     const { selectionUrl } = await import("@/lib/telegram/links.server");
-    return `Подборка создана в RM OS (раздел «Подборки»), код ${selection.code}. Ссылка для клиента: ${selectionUrl(selection.code)}`;
+    return `Подборка создана в RM OS: ${propertyIds.length} объект(а). Ссылка для клиента: ${selectionUrl(selection.code)}`;
   },
 
   createBooking: async (input) => {

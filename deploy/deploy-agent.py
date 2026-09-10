@@ -14,11 +14,13 @@ import hashlib
 import hmac
 import json
 import os
+import base64
 import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -87,8 +89,57 @@ def get_git_version() -> str:
         return "unknown"
 
 
+def register_telegram_webhook() -> None:
+    """После обновления закрепляет единственного бота за рабочим RM OS."""
+    lovable_key = os.environ.get("LOVABLE_API_KEY", "")
+    telegram_key = os.environ.get("TELEGRAM_API_KEY", "")
+    if not lovable_key or not telegram_key:
+        return
+    digest = hashlib.sha256(f"telegram-webhook:{telegram_key}".encode()).digest()
+    secret = base64.urlsafe_b64encode(digest).decode().rstrip("=")
+    response = requests.post(
+        "https://connector-gateway.lovable.dev/telegram/setWebhook",
+        headers={
+            "Authorization": f"Bearer {lovable_key}",
+            "X-Connection-Api-Key": telegram_key,
+            "Content-Type": "application/json",
+        },
+        json={
+            "url": f"https://rm-os.{DOMAIN}/api/public/telegram/webhook",
+            "secret_token": secret,
+            "allowed_updates": ["message", "edited_message", "callback_query"],
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not payload.get("ok"):
+        raise RuntimeError(f"Telegram webhook registration failed: {payload.get('description', 'unknown error')}")
+
+
 class DeployRequest(BaseModel):
     source: str = "rm-os-ui"
+    telegram_api_key: str | None = None
+    lovable_api_key: str | None = None
+    openai_api_key: str | None = None
+
+
+def update_env_values(values: dict[str, str | None]) -> None:
+    """Сохраняет переданные сервером секреты без вывода их в журналы."""
+    existing = ENV_FILE.read_text().splitlines() if ENV_FILE.exists() else []
+    pending = {key: value for key, value in values.items() if value}
+    if not pending:
+        return
+    output: list[str] = []
+    for line in existing:
+        key = line.split("=", 1)[0] if "=" in line and not line.lstrip().startswith("#") else ""
+        if key in pending:
+            output.append(f"{key}={pending.pop(key)}")
+        else:
+            output.append(line)
+    for key, value in pending.items():
+        output.append(f"{key}={value}")
+    ENV_FILE.write_text("\n".join(output) + "\n")
 
 
 @APP.get("/status")
@@ -110,6 +161,12 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
     state = load_state()
 
     try:
+        update_env_values({
+            "TELEGRAM_API_KEY": req.telegram_api_key,
+            "LOVABLE_API_KEY": req.lovable_api_key,
+            "OPENAI_API_KEY": req.openai_api_key,
+        })
+
         # 1. Резервная копия
         backup_path = backup_database()
 
@@ -146,6 +203,10 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "app"],
             timeout=120,
         )
+
+        # Один Telegram-бот может иметь только один адрес. После каждого
+        # обновления возвращаем его на рабочий сервер и рабочую базу.
+        register_telegram_webhook()
 
         # 5. Проверка здоровья
         time.sleep(5)

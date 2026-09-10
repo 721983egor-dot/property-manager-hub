@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+deploy/.env
+node_modules
+.output
+.git
+.lovable
+*.log

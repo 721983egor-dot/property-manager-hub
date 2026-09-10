@@ -41,10 +41,6 @@ function TelegramSettingsPage() {
   const register = useServerFn(registerTelegramWebhook);
 
   const [code, setCode] = useState<string>("");
-  const [baseUrl, setBaseUrl] = useState<string>(
-    typeof window === "undefined" ? "" : window.location.origin,
-  );
-
   const query = useQuery({ queryKey: ["telegram-status"], queryFn: () => status(undefined as never) });
 
   const codeMutation = useMutation({
@@ -63,7 +59,7 @@ function TelegramSettingsPage() {
   });
 
   const webhookMutation = useMutation({
-    mutationFn: () => register({ data: { baseUrl } }),
+    mutationFn: () => register(undefined as never),
     onSuccess: (r) => {
       toast.success(`Бот подключён к ${r.url}`);
       void queryClient.invalidateQueries({ queryKey: ["telegram-status"] });
@@ -103,14 +99,10 @@ function TelegramSettingsPage() {
             <p className="text-sm text-destructive">Последняя ошибка Telegram: {data.error}</p>
           )}
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="https://rm-os.residence-more.ru"
-            />
+            <Input value="https://rm-os.residence-more.ru" readOnly />
             <Button
               onClick={() => webhookMutation.mutate()}
-              disabled={webhookMutation.isPending || !baseUrl}
+              disabled={webhookMutation.isPending}
             >
               {webhookMutation.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
