@@ -3,10 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { useAccess } from "@/hooks/useAccess";
 
 const ITEMS = [
-  { to: "/crm/deals", label: "Сделки", key: "deals", adminOnly: false },
+  { to: "/crm/deals", label: "Сделки", key: "deals", adminOnly: true },
   { to: "/crm/clients", label: "Клиенты", key: "clients", adminOnly: false },
   { to: "/crm/leads", label: "Заявки", key: "leads", adminOnly: true },
 ] as const;
+
 
 /** Вкладки верхнего уровня раздела «CRM». */
 export function CrmTabs({ active }: { active: "clients" | "leads" | "deals" }) {
