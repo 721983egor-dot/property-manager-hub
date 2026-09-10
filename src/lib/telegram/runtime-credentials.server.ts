@@ -2,6 +2,8 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 const CREDENTIALS_PATH = "/data/runtime-secrets/telegram.json";
+const CREDENTIALS_RELAY_URL =
+  "https://project--759489f7-e642-4293-83bd-48dbce5c55ee-dev.lovable.app/api/public/system/telegram-credentials";
 
 export type TelegramRuntimeCredentials = {
   lovableApiKey: string;
@@ -55,6 +57,23 @@ export async function loadTelegramRuntimeCredentials(): Promise<TelegramRuntimeC
     if (!credentials.lovableApiKey || !credentials.telegramApiKey) return null;
     return credentials;
   } catch {
-    return null;
+    const token = process.env["DEPLOY_AGENT_TOKEN"];
+    if (!token) return null;
+    try {
+      const response = await fetch(CREDENTIALS_RELAY_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return null;
+      const parsed = (await response.json()) as Partial<TelegramRuntimeCredentials>;
+      if (!parsed.lovableApiKey || !parsed.telegramApiKey) return null;
+      const credentials = {
+        lovableApiKey: parsed.lovableApiKey,
+        telegramApiKey: parsed.telegramApiKey,
+      };
+      await saveTelegramRuntimeCredentials(credentials);
+      return credentials;
+    } catch {
+      return null;
+    }
   }
 }

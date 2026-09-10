@@ -49,6 +49,7 @@ import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/c
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
 import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/public/feeds/yandex[.]xml'
+import { Route as ApiPublicSystemTelegramBootstrapRouteImport } from './routes/api/public/system/telegram-bootstrap'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -269,6 +270,12 @@ const ApiPublicFeedsYandexDotxmlRoute =
     path: '/api/public/feeds/yandex.xml',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicSystemTelegramBootstrapRoute =
+  ApiPublicSystemTelegramBootstrapRouteImport.update({
+    id: '/api/public/system/telegram-bootstrap',
+    path: '/api/public/system/telegram-bootstrap',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -312,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
@@ -353,6 +361,7 @@ export interface FileRoutesByTo {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/deals': typeof AuthenticatedCrmDealsIndexRoute
@@ -397,6 +406,7 @@ export interface FileRoutesById {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
+  '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/_authenticated/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
@@ -441,6 +451,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/api/public/system/telegram-bootstrap'
     | '/api/public/telegram/webhook'
     | '/crm/clients/'
     | '/crm/deals/'
@@ -482,6 +493,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/api/public/system/telegram-bootstrap'
     | '/api/public/telegram/webhook'
     | '/crm/clients'
     | '/crm/deals'
@@ -525,6 +537,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
+    | '/api/public/system/telegram-bootstrap'
     | '/api/public/telegram/webhook'
     | '/_authenticated/crm/clients/'
     | '/_authenticated/crm/deals/'
@@ -549,6 +562,7 @@ export interface RootRouteChildren {
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
   ApiPublicFeedsYandexDotxmlRoute: typeof ApiPublicFeedsYandexDotxmlRoute
+  ApiPublicSystemTelegramBootstrapRoute: typeof ApiPublicSystemTelegramBootstrapRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -834,6 +848,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFeedsYandexDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/system/telegram-bootstrap': {
+      id: '/api/public/system/telegram-bootstrap'
+      path: '/api/public/system/telegram-bootstrap'
+      fullPath: '/api/public/system/telegram-bootstrap'
+      preLoaderRoute: typeof ApiPublicSystemTelegramBootstrapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
       path: '/api/public/telegram/webhook'
@@ -926,6 +947,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
   ApiPublicFeedsYandexDotxmlRoute: ApiPublicFeedsYandexDotxmlRoute,
+  ApiPublicSystemTelegramBootstrapRoute: ApiPublicSystemTelegramBootstrapRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
