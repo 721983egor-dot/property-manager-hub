@@ -9,6 +9,9 @@ DB_URL="postgres://supabase_admin:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
 DIR="/migrations"
 # Все миграции до этой включительно уже были применены на сервере вручную.
 BASELINE="20260909175932"
+# Первая версия миграции доступа обращалась к необязательным таблицам.
+# Её полностью заменяет следующая безопасная миграция 20260910054021.
+SUPERSEDED="20260910053310_d2331599-825d-4b8c-9212-485f12aa4530.sql"
 
 echo "== Миграции RM OS =="
 
@@ -24,7 +27,7 @@ psql "$DB_URL" -v ON_ERROR_STOP=1 -c \
 # Первый запуск: помечаем всё до baseline как применённое.
 for f in "$DIR"/*.sql; do
   name=$(basename "$f")
-  if [[ "${name%%_*}" < "$BASELINE" || "${name%%_*}" == "$BASELINE" ]]; then
+  if [[ "${name%%_*}" < "$BASELINE" || "${name%%_*}" == "$BASELINE" || "$name" == "$SUPERSEDED" ]]; then
     psql "$DB_URL" -q -c "INSERT INTO public.schema_migrations_rmos(name) VALUES ('$name') ON CONFLICT DO NOTHING" >/dev/null
   fi
 done
