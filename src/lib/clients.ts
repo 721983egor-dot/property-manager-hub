@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Booking } from "@/lib/bookings";
 import { toISODate } from "@/lib/rentals";
+import { getStaffClient, listStaffClients } from "@/lib/staff-data.functions";
 
 export type CrmClient = {
   id: string;
@@ -70,18 +71,13 @@ export function hasCallablePhone(phone: string) {
 }
 
 export async function fetchCrmClients(): Promise<CrmClient[]> {
-  const { data, error } = await supabase
-    .from("clients")
-    .select(SELECT)
-    .order("full_name", { ascending: true });
-  if (error) throw error;
+  const data = await listStaffClients();
   return (data ?? []) as CrmClient[];
 }
 
 export async function fetchCrmClient(id: string): Promise<CrmClient | null> {
-  const { data, error } = await supabase.from("clients").select(SELECT).eq("id", id).limit(1);
-  if (error) throw error;
-  return ((data ?? [])[0] as CrmClient) ?? null;
+  const data = await getStaffClient({ data: { id } });
+  return (data as CrmClient | null) ?? null;
 }
 
 export type ClientInput = {
