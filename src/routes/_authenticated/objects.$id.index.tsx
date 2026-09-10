@@ -8,9 +8,9 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useAccess } from "@/hooks/useAccess";
 import { BookingDialog } from "@/components/BookingDialog";
 import { YandexMap } from "@/components/YandexMap";
-import { fetchCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
+import { fetchStaffCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
 import { formatDateRu, toISODate } from "@/lib/rentals";
-import { fetchComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
+import { fetchStaffComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
 import {
   APPLIANCE_OPTIONS,
   BATHROOM_FEATURE_OPTIONS,
@@ -54,7 +54,7 @@ function ObjectViewPage() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const { data: currentBooking = null } = useQuery({
     queryKey: ["current-booking", id, todayIso],
-    queryFn: () => fetchCurrentBooking(id, todayIso),
+    queryFn: () => fetchStaffCurrentBooking(id, todayIso),
   });
   const { data, isLoading, error } = useQuery({
     queryKey: ["properties", id],
@@ -64,7 +64,10 @@ function ObjectViewPage() {
   const complexId = data?.complex_id ?? null;
   const { data: complex } = useQuery({
     queryKey: ["complexes", complexId],
-    queryFn: () => fetchComplex(complexId!),
+    queryFn: () => {
+      if (!complexId) throw new Error("Комплекс не выбран");
+      return fetchStaffComplex(complexId);
+    },
     enabled: Boolean(complexId),
   });
 

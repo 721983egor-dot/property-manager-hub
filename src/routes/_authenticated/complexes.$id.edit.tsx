@@ -5,7 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { ComplexForm } from "@/components/ComplexForm";
-import { fetchComplex, updateComplex, type ComplexInput } from "@/lib/complexes";
+import { fetchStaffComplex, updateComplex, type ComplexInput } from "@/lib/complexes";
 
 export const Route = createFileRoute("/_authenticated/complexes/$id/edit")({
   head: () => ({
@@ -38,7 +38,7 @@ function EditComplexPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["complexes", id],
-    queryFn: () => fetchComplex(id),
+    queryFn: () => fetchStaffComplex(id),
   });
 
   const mutation = useMutation({

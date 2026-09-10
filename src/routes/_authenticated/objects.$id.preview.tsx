@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
-import { fetchComplex } from "@/lib/complexes";
+import { fetchStaffComplex } from "@/lib/complexes";
 import { fetchProperty, signedUrls } from "@/lib/properties";
 
 export const Route = createFileRoute("/_authenticated/objects/$id/preview")({
@@ -36,7 +36,10 @@ function PreviewPage() {
   const complexId = data?.complex_id ?? null;
   const { data: complex } = useQuery({
     queryKey: ["complexes", complexId],
-    queryFn: () => fetchComplex(complexId!),
+    queryFn: () => {
+      if (!complexId) throw new Error("Комплекс не выбран");
+      return fetchStaffComplex(complexId);
+    },
     enabled: Boolean(complexId),
   });
 
