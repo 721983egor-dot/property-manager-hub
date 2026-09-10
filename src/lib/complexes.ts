@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PropertyPhoto } from "@/lib/properties";
+import { listStaffComplexes } from "@/lib/staff-data.functions";
 
 export type Complex = {
   id: string;
@@ -51,11 +52,7 @@ function normalize(row: Record<string, unknown>): Complex {
 }
 
 export async function fetchComplexes(): Promise<Complex[]> {
-  const { data, error } = await supabase
-    .from("complexes")
-    .select("*")
-    .order("name", { ascending: true });
-  if (error) throw error;
+  const data = await listStaffComplexes();
   return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
 }
 

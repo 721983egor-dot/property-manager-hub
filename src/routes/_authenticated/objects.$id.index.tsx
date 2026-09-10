@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useAccess } from "@/hooks/useAccess";
 import { BookingDialog } from "@/components/BookingDialog";
 import { YandexMap } from "@/components/YandexMap";
-import { fetchCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
+import { fetchStaffCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
 import {
@@ -54,7 +54,7 @@ function ObjectViewPage() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const { data: currentBooking = null } = useQuery({
     queryKey: ["current-booking", id, todayIso],
-    queryFn: () => fetchCurrentBooking(id, todayIso),
+    queryFn: () => fetchStaffCurrentBooking(id, todayIso),
   });
   const { data, isLoading, error } = useQuery({
     queryKey: ["properties", id],

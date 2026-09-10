@@ -43,6 +43,7 @@ import {
 } from "@/lib/bookings";
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
+import { useAccess } from "@/hooks/useAccess";
 
 type Props = {
   open: boolean;
@@ -111,6 +112,7 @@ export function BookingDialog({
   defaultClientId,
 }: Props) {
   const qc = useQueryClient();
+  const { isAdmin } = useAccess();
   const [mode, setMode] = useState<"view" | "edit">(booking ? "view" : "edit");
   const [form, setForm] = useState<FormState>(() =>
     booking ? fromBooking(booking) : emptyForm(defaultPropertyId, defaultClientId),
@@ -272,22 +274,24 @@ export function BookingDialog({
             ) : null}
 
             <DialogFooter className="gap-2 sm:justify-between">
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  if (window.confirm("Удалить бронирование? Данные клиента сохранятся.")) {
-                    remove.mutate();
-                  }
-                }}
-                disabled={remove.isPending}
-              >
-                {remove.isPending ? "Удаление..." : "Удалить"}
-              </Button>
+              {isAdmin ? (
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (window.confirm("Удалить бронирование? Данные клиента сохранятся.")) {
+                      remove.mutate();
+                    }
+                  }}
+                  disabled={remove.isPending}
+                >
+                  {remove.isPending ? "Удаление..." : "Удалить"}
+                </Button>
+              ) : <span />}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
                   Закрыть
                 </Button>
-                <Button onClick={() => setMode("edit")}>Редактировать</Button>
+                {isAdmin ? <Button onClick={() => setMode("edit")}>Редактировать</Button> : null}
               </div>
             </DialogFooter>
           </div>

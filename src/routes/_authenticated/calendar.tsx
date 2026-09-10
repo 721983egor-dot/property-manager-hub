@@ -89,6 +89,7 @@ function CalendarPage() {
   const { data: bookings = [] } = useQuery({
     queryKey: ["bookings", from, to],
     queryFn: () => fetchBookings(from, to),
+    refetchInterval: 30_000,
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -107,7 +108,9 @@ function CalendarPage() {
   }, [isMobile]);
 
   const baseRows = useMemo(() => {
-    const list = properties.filter((p) => p.service_type !== "commission_only");
+    const list = properties.filter(
+      (p) => p.service_type !== "commission_only" && p.status !== "archived",
+    );
     return [...list].sort((a, b) => {
       const ao = a.sort_order ?? Number.MAX_SAFE_INTEGER;
       const bo = b.sort_order ?? Number.MAX_SAFE_INTEGER;

@@ -1,4 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getStaffCurrentBooking,
+  listStaffBookings,
+  listStaffClientBookings,
+  listStaffClients,
+} from "@/lib/staff-data.functions";
 
 export type BookingStatus = "active" | "cancelled" | "completed";
 export type BookingSource = "avito" | "cian" | "website" | "social" | "referral";
@@ -99,14 +105,16 @@ function normalize(row: Record<string, unknown>): Booking {
 }
 
 export async function fetchBookings(from: string, to: string): Promise<Booking[]> {
-  const { data, error } = await supabase
-    .from("bookings")
-    .select(SELECT)
-    .lte("start_date", to)
-    .gte("end_date", from)
-    .order("start_date", { ascending: true });
-  if (error) throw error;
+  const data = await listStaffBookings({ data: { from, to } });
   return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
+}
+
+export async function fetchStaffCurrentBooking(
+  propertyId: string,
+  todayIso: string,
+): Promise<Booking | null> {
+  const row = await getStaffCurrentBooking({ data: { propertyId, todayIso } });
+  return row ? normalize(row as Record<string, unknown>) : null;
 }
 
 export async function fetchCurrentBooking(
@@ -149,12 +157,12 @@ export async function fetchCurrentBookingsForProperties(
 }
 
 export async function fetchClients(): Promise<Client[]> {
-  const { data, error } = await supabase
-    .from("clients")
-    .select("id, full_name, phone")
-    .order("full_name", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as Client[];
+  const data = await listStaffClients();
+  return (data ?? []).map((client) => ({
+    id: client.id,
+    full_name: client.full_name,
+    phone: client.phone,
+  }));
 }
 
 export async function createClient(input: { full_name: string; phone: string }) {
@@ -198,11 +206,12 @@ export async function saveBooking(id: string | null, input: BookingInput) {
     bookingId = (data as { id: string }).id;
   }
 
-  await supabase.from("booking_price_periods").delete().eq("booking_id", bookingId!);
+  if (!bookingId) throw new Error("Не удалось сохранить бронирование");
+  await supabase.from("booking_price_periods").delete().eq("booking_id", bookingId);
   if (input.price_type === "periodic" && periods.length > 0) {
     const { error } = await supabase.from("booking_price_periods").insert(
       periods.map((p) => ({
-        booking_id: bookingId!,
+        booking_id: bookingId,
         start_date: p.start_date,
         end_date: p.end_date,
         price_month: p.price_month,
@@ -210,7 +219,7 @@ export async function saveBooking(id: string | null, input: BookingInput) {
     );
     if (error) throw error;
   }
-  return bookingId!;
+  return bookingId;
 }
 
 /** Отмечает объект как «Сдан», когда появляется активное бронирование. */
@@ -245,11 +254,6 @@ export async function fetchAllBookings(): Promise<Booking[]> {
 
 /** Бронирования конкретного клиента, от новых к старым. */
 export async function fetchClientBookings(clientId: string): Promise<Booking[]> {
-  const { data, error } = await supabase
-    .from("bookings")
-    .select(SELECT)
-    .eq("client_id", clientId)
-    .order("start_date", { ascending: false });
-  if (error) throw error;
+  const data = await listStaffClientBookings({ data: { clientId } });
   return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
 }
