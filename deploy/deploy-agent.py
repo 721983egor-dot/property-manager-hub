@@ -122,21 +122,28 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
 
         version = get_git_version()
 
-        # 3. Сборка и запуск
+        # 3. Сначала применяем миграции отдельным одноразовым контейнером.
+        # При ошибке текущая версия приложения остаётся запущенной.
+        run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "run", "--rm", "migrator"],
+            timeout=600,
+        )
+
+        # 4. Только после успешных миграций собираем и переключаем приложение.
         run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "build", "app"],
             timeout=600,
         )
         run(
-            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "app"],
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "app"],
             timeout=120,
         )
 
-        # 4. Проверка здоровья
+        # 5. Проверка здоровья
         time.sleep(5)
         health = run(["docker", "compose", "-f", str(COMPOSE_FILE), "ps", "--format", "json"])
 
-        # 5. Сохраняем состояние
+        # 6. Сохраняем состояние
         state["deployments"].append({
             "version": version,
             "at": datetime.now(timezone.utc).isoformat(),
@@ -194,7 +201,7 @@ def rollback(authorization: str | None = Header(None)):
             timeout=600,
         )
         run(
-            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "app"],
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "app"],
             timeout=120,
         )
 
