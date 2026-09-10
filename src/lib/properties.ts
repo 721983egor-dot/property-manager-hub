@@ -513,15 +513,57 @@ export async function deleteProperty(id: string) {
 }
 
 
+/** Сетевой сбой (нет ответа сервера), а не отказ хранилища. */
+function isNetworkFailure(error: unknown): boolean {
+  const message = String((error as { message?: unknown } | null)?.message ?? error ?? "");
+  return /failed to fetch|load failed|network|fetch failed|aborted/i.test(message);
+}
+
+/** Запасная загрузка через наш сервер — когда прямой запрос в хранилище не проходит. */
+async function uploadPhotoViaServer(file: File): Promise<PropertyPhoto> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Требуется вход в систему");
+  const form = new FormData();
+  form.append("file", file, file.name);
+  const response = await fetch("/api/photo-upload", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { path?: string; error?: string }
+    | null;
+  if (!response.ok || !payload?.path) {
+    throw new Error(payload?.error || "Не удалось загрузить файл");
+  }
+  return { path: payload.path };
+}
+
 export async function uploadPhoto(file: File): Promise<PropertyPhoto> {
   const ext = file.name.split(".").pop() ?? "jpg";
   const path = `uploads/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, {
-    cacheControl: "3600",
-    upsert: false,
-  });
-  if (error) throw error;
-  return { path };
+  try {
+    const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+    if (error) throw error;
+    return { path };
+  } catch (error) {
+    // Сетевой сбой — пробуем ещё раз, затем через наш сервер.
+    if (!isNetworkFailure(error)) throw error;
+    try {
+      const retry = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (!retry.error) return { path };
+    } catch {
+      // игнорируем — уходим на запасной путь
+    }
+    return uploadPhotoViaServer(file);
+  }
 }
 
 export async function signedUrls(paths: string[]): Promise<Record<string, string>> {

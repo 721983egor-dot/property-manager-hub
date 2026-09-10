@@ -19,6 +19,7 @@ import { Route as ManagementRouteImport } from './routes/management'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RentRouteImport } from './routes/rent'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as ApiPhotoUploadRouteImport } from './routes/api/photo-upload'
 import { Route as PCodeRouteImport } from './routes/p.$code'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
@@ -98,6 +99,11 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPhotoUploadRoute = ApiPhotoUploadRouteImport.update({
+  id: '/api/photo-upload',
+  path: '/api/photo-upload',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PCodeRoute = PCodeRouteImport.update({
   id: '/p/$code',
@@ -280,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/': typeof RentIndexRoute
@@ -320,6 +327,7 @@ export interface FileRoutesByTo {
   '/management': typeof ManagementRoute
   '/privacy': typeof PrivacyRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent': typeof RentIndexRoute
@@ -363,6 +371,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/': typeof RentIndexRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rent'
     | '/calendar'
+    | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent/'
@@ -446,6 +456,7 @@ export interface FileRouteTypes {
     | '/management'
     | '/privacy'
     | '/calendar'
+    | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent'
@@ -488,6 +499,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rent'
     | '/_authenticated/calendar'
+    | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent/'
@@ -530,6 +542,7 @@ export interface RootRouteChildren {
   ManagementRoute: typeof ManagementRoute
   PrivacyRoute: typeof PrivacyRoute
   RentRoute: typeof RentRouteWithChildren
+  ApiPhotoUploadRoute: typeof ApiPhotoUploadRoute
   PCodeRoute: typeof PCodeRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
@@ -610,6 +623,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/calendar'
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/photo-upload': {
+      id: '/api/photo-upload'
+      path: '/api/photo-upload'
+      fullPath: '/api/photo-upload'
+      preLoaderRoute: typeof ApiPhotoUploadRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/p/$code': {
       id: '/p/$code'
@@ -899,6 +919,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManagementRoute: ManagementRoute,
   PrivacyRoute: PrivacyRoute,
   RentRoute: RentRouteWithChildren,
+  ApiPhotoUploadRoute: ApiPhotoUploadRoute,
   PCodeRoute: PCodeRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
