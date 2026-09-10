@@ -177,7 +177,8 @@ function ClientPage() {
         </div>
       </div>
 
-      <section className="mt-8">
+      <section className={cn("mt-8", isAdmin ? "" : "hidden")}>
+
         <h2 className="text-lg font-semibold tracking-tight">Сделки</h2>
         {deals.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">У клиента пока нет сделок</p>
