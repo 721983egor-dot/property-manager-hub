@@ -476,24 +476,25 @@ export function createReadTools(ctx: AssistantToolContext) {
 
 
     getActivityLog: tool({
-
       description:
-        "Журнал действий в системе: кто, что и когда изменил. Можно фильтровать по таблице и объекту.",
+        "Журнал действий системы: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, bookings, selections, property_listings, leads, assistant), объект, действие (insert/update/delete).",
       inputSchema: z.object({
         days: z.number().optional(),
         tableName: z.string().optional(),
+        action: z.string().optional(),
         ref: z.string().optional(),
         limit: z.number().optional(),
       }),
-      execute: async ({ days, tableName, ref, limit }) => {
-        const period = days && days > 0 ? days : 14;
+      execute: async ({ days, tableName, action, ref, limit }) => {
+        const period = days && days > 0 ? days : 30;
         let q = admin
           .from("activity_log")
           .select("table_name, record_id, action, actor_email, source, summary, changes, created_at")
           .gte("created_at", daysAgoISO(period))
           .order("created_at", { ascending: false })
-          .limit(limit && limit > 0 ? Math.min(limit, 200) : 80);
+          .limit(limit && limit > 0 ? Math.min(limit, 300) : 150);
         if (tableName) q = q.eq("table_name", tableName);
+        if (action) q = q.eq("action", action);
         if (ref) {
           const p = await ctx.findProperty(ref);
           if (!p) return { error: "Объект не найден" };
@@ -501,9 +502,65 @@ export function createReadTools(ctx: AssistantToolContext) {
         }
         const { data, error } = await q;
         if (error) return { error: error.message };
-        return { periodDays: period, entries: data ?? [] };
+        return { periodDays: period, count: (data ?? []).length, entries: data ?? [] };
       },
     }),
+
+    getRecentChanges: tool({
+      description:
+        "Что нового и что менялось в системе за последние N дней: созданные объекты, клиенты, брони, сделки, заявки и подборки плюс записи журнала. Используй для вопросов «что добавили сегодня/утром/за неделю».",
+      inputSchema: z.object({ days: z.number().optional() }),
+      execute: async ({ days }) => {
+        const period = days && days > 0 ? days : 3;
+        const since = daysAgoISO(period);
+        const [props, clients, bookings, deals, leads, selections, log] = await Promise.all([
+          admin
+            .from("properties")
+            .select("id, ref_id, title, internal_name, status, price_month, created_at, updated_at")
+            .gte("created_at", since)
+            .order("created_at", { ascending: false }),
+          admin.from("clients").select("id, full_name, phone, created_at").gte("created_at", since),
+          admin
+            .from("bookings")
+            .select("id, property_id, client_id, start_date, end_date, status, created_at")
+            .gte("created_at", since),
+          admin.from("deals").select("id, title, created_at").gte("created_at", since),
+          admin.from("leads").select("id, name, phone, topic, status, created_at").gte("created_at", since),
+          admin.from("selections").select("id, code, name, created_at").gte("created_at", since),
+          admin
+            .from("activity_log")
+            .select("table_name, action, actor_email, summary, created_at")
+            .gte("created_at", since)
+            .order("created_at", { ascending: false })
+            .limit(150),
+        ]);
+        const bookingNames = await nameMap([
+          ...new Set((bookings.data ?? []).map((b) => b.property_id)),
+        ]);
+        return {
+          periodDays: period,
+          newProperties: (props.data ?? []).map((p) => ({
+            refId: p.ref_id,
+            title: p.title,
+            internalName: p.internal_name,
+            status: p.status,
+            statusLabel: STATUS_LABEL[p.status] ?? p.status,
+            priceMonth: p.price_month,
+            createdAt: p.created_at,
+          })),
+          newClients: clients.data ?? [],
+          newBookings: (bookings.data ?? []).map((b) => ({
+            ...b,
+            property: bookingNames.get(b.property_id) ?? b.property_id,
+          })),
+          newDeals: deals.data ?? [],
+          newLeads: leads.data ?? [],
+          newSelections: (selections.data ?? []).map((s) => ({ ...s, link: `/p/${s.code}` })),
+          log: log.data ?? [],
+        };
+      },
+    }),
+
 
     getStaff: tool({
       description:
