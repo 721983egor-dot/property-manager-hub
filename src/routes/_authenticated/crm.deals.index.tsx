@@ -7,7 +7,9 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AdminOnly } from "@/components/AdminOnly";
 import { CrmTabs } from "@/components/CrmTabs";
+
 import { DealDialog } from "@/components/DealDialog";
 import { DealSettingsDialog } from "@/components/DealSettingsDialog";
 import {
@@ -56,8 +58,17 @@ export const Route = createFileRoute("/_authenticated/crm/deals/")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: DealsPage,
+  component: DealsRoute,
 });
+
+function DealsRoute() {
+  return (
+    <AdminOnly>
+      <DealsPage />
+    </AdminOnly>
+  );
+}
+
 
 function DealsPage() {
   const queryClient = useQueryClient();

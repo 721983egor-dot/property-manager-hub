@@ -217,7 +217,10 @@ const MOBILE_NAV: NavItem[] = [
 function CrmMobileNav({ unread }: { unread: number }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isAdmin } = useAccess();
-  const items = MOBILE_NAV.filter((item) => !item.adminOnly || isAdmin);
+  const items = MOBILE_NAV.filter(
+    (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || !isAdmin),
+  );
+
 
   return (
     <nav
