@@ -10,6 +10,8 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентс
 - Объект можно искать по номеру, названию, ВНУТРЕННЕМУ названию, адресу, комплексу и описанию. Если фраза не нашлась, ищи по отдельным словам и по части слова.
 - Вопросы «что нового», «что добавили сегодня/утром/за неделю», «кто что менял» — сначала вызывай getRecentChanges, при необходимости getActivityLog (можно задать days, таблицу и действие).
 - Не ограничивайся одним вызовом инструмента: делай несколько запросов, пока не соберёшь полный ответ.
+- Если спрашивают об объекте, ОБЯЗАТЕЛЬНО вызывай searchProperties, даже если похожее название было в истории диалога. Если нужен один объект — затем вызывай getPropertyDetails.
+- Если спрашивают о новых объектах или изменениях — ОБЯЗАТЕЛЬНО вызывай getRecentChanges. Если спрашивают о сотрудниках — ОБЯЗАТЕЛЬНО вызывай getStaff.
 
 Правила:
 - Все цифры и факты бери только из инструментов. Никогда не выдумывай данные, объекты, цены и статистику.
@@ -19,7 +21,7 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентс
 - Ты НИКОГДА не меняешь данные сам. Любое изменение оформляй вызовом соответствующего инструмента propose* — менеджер подтвердит его кнопкой.
 - После propose* кратко объясни в тексте, что предлагаешь подтвердить.
 - Подборки делаются ТОЛЬКО как в RM OS: вызывай proposeSelection с номерами объектов. Никогда не собирай ссылку на сайт со списком объектов вручную (никаких /rent?ids=..., фильтров сайта и т.п.) — это не подборка.
-- Ссылку на подборку давай только ту, что вернул инструмент после подтверждения (вид https://.../p/КОД). До подтверждения менеджером ссылки ещё нет — так и скажи.
+- Ссылку на подборку давай только ту, что вернул инструмент после подтверждения (вид https://rm-os.residence-more.ru/p/КОД). До подтверждения менеджером ссылки ещё нет — так и скажи.
 - Сотрудники: вызывай getStaff (кто работает, доступ администратора или менеджера, телефон, дата рождения). Действия сотрудников видны в журнале — getActivityLog, в том числе по таблицам profiles (карточки сотрудников) и user_roles (уровни доступа).
 - Если у результата есть ссылка (подборка /p/КОД, объект /rent/ID), обязательно дай её отдельной строкой в ответе.
 - Если пользователь просит запомнить правило работы («всегда делай так», «больше так не делай»), вызывай rememberSkill и подтверждай, что запомнил. Отменить правило — forgetSkill, показать список — listSkills.
@@ -42,12 +44,36 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
   const actions: AssistantAction[] = [];
   const ctx = createToolContext(actions);
   const tools = buildAssistantTools(ctx);
-  const skills = await loadAssistantSkills();
+  const [skills, propertyIndex, profileRows, roleRows] = await Promise.all([
+    loadAssistantSkills(),
+    ctx.admin
+      .from("properties")
+      .select("ref_id, title, internal_name, status, created_at, updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(500),
+    ctx.admin.from("profiles").select("id, email, full_name, phone, birth_date").limit(200),
+    ctx.admin.from("user_roles").select("user_id, role").limit(200),
+  ]);
+
+  const roleMap = new Map((roleRows.data ?? []).map((row) => [row.user_id, row.role]));
+  const liveContext = `\n\nАктуальный индекс RM OS на момент запроса (используй для ориентира, а детали проверяй инструментами):\nОбъекты:\n${(
+    propertyIndex.data ?? []
+  )
+    .map(
+      (property) =>
+        `- ${property.ref_id} | ${property.title} | внутреннее: ${property.internal_name || "—"} | статус: ${property.status} | создан: ${property.created_at}`,
+    )
+    .join("\n")}\nСотрудники:\n${(profileRows.data ?? [])
+    .map(
+      (profile) =>
+        `- ${profile.full_name || profile.email || "Карточка не заполнена"} | ${profile.email} | ${profile.phone || "телефон не указан"} | роль: ${roleMap.get(profile.id) === "admin" ? "Администратор" : "Менеджер"}`,
+    )
+    .join("\n")}`;
 
   try {
     const result = streamText({
       model: setup.model,
-      system: ASSISTANT_SYSTEM_PROMPT + skillsPromptBlock(skills),
+      system: ASSISTANT_SYSTEM_PROMPT + liveContext + skillsPromptBlock(skills),
       messages: messages.slice(-30),
       tools,
       stopWhen: stepCountIs(50),

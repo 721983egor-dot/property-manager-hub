@@ -8,6 +8,12 @@ export function siteBaseUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
+/** Адрес RM OS, где открываются сохранённые подборки сотрудников. */
+export function rmOsBaseUrl(): string {
+  const raw = process.env["RM_OS_URL"] || "https://rm-os.residence-more.ru";
+  return raw.replace(/\/+$/, "");
+}
+
 /** Превращает относительные ссылки вида /p/CODE и /rent/ID в абсолютные. */
 export function absolutizeLinks(text: string): string {
   const base = siteBaseUrl();
@@ -17,7 +23,7 @@ export function absolutizeLinks(text: string): string {
 }
 
 export function selectionUrl(code: string) {
-  return `${siteBaseUrl()}/p/${code}`;
+  return `${rmOsBaseUrl()}/p/${code}`;
 }
 
 export function propertyUrl(id: string) {
