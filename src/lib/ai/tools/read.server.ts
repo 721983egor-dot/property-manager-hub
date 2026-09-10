@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { PROPERTY_COLUMNS, propertyLabel } from "@/lib/ai/context.server";
+import { selectionUrl } from "@/lib/telegram/links.server";
 
 import type { AssistantToolContext } from "@/lib/ai/context.server";
 
@@ -424,7 +425,8 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getSelections: tool({
-      description: "Подборки объектов для клиентов: код, ссылка, состав.",
+      description:
+        "Подборки объектов RM OS (раздел «Подборки»): код, готовая ссылка для клиента, состав.",
       inputSchema: z.object({ query: z.string().optional() }),
       execute: async ({ query }) => {
         let q = admin
@@ -438,7 +440,23 @@ export function createReadTools(ctx: AssistantToolContext) {
         }
         const { data, error } = await q;
         if (error) return { error: error.message };
-        return (data ?? []).map((s) => ({ ...s, link: `/p/${s.code}` }));
+        const rows = data ?? [];
+        const ids = rows.map((s) => s.id);
+        const { data: items } = ids.length
+          ? await admin
+              .from("selection_items")
+              .select("selection_id, property_id, position")
+              .in("selection_id", ids)
+              .order("position")
+          : { data: [] as { selection_id: string; property_id: string; position: number }[] };
+        const names = await nameMap([...new Set((items ?? []).map((i) => i.property_id))]);
+        return rows.map((s) => ({
+          ...s,
+          link: selectionUrl(s.code),
+          properties: (items ?? [])
+            .filter((i) => i.selection_id === s.id)
+            .map((i) => names.get(i.property_id) ?? i.property_id),
+        }));
       },
     }),
 
