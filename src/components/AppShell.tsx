@@ -117,10 +117,13 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         CRM
       </p>
-      <Link to="/crm/deals" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Handshake className="size-4 shrink-0" />
-        Сделки
-      </Link>
+      {isAdmin && (
+        <Link to="/crm/deals" onClick={onNavigate} className={NAV_LINK_CLASS}>
+          <Handshake className="size-4 shrink-0" />
+          Сделки
+        </Link>
+      )}
+
       <Link to="/crm/clients" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Users className="size-4 shrink-0" />
         Клиенты
@@ -191,20 +194,33 @@ function CrmShellNotifications() {
   return isAdmin ? <CrmNotifications /> : null;
 }
 
-type NavItem = { to: string; label: string; icon: React.ElementType; adminOnly?: boolean };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  adminOnly?: boolean;
+  managerOnly?: boolean;
+};
+
 
 const MOBILE_NAV: NavItem[] = [
   { to: "/objects", label: "Объекты", icon: Building2 },
+  { to: "/calendar", label: "Календарь", icon: CalendarDays, managerOnly: true },
   { to: "/chats", label: "Чаты", icon: MessagesSquare, adminOnly: true },
   { to: "/assistant", label: "Ассистент", icon: Sparkles, adminOnly: true },
-  { to: "/crm/deals", label: "CRM", icon: Handshake },
+  { to: "/crm/deals", label: "CRM", icon: Handshake, adminOnly: true },
+  { to: "/crm/clients", label: "Клиенты", icon: Users, managerOnly: true },
   { to: "/promo", label: "Публикации", icon: Megaphone, adminOnly: true },
 ];
+
 
 function CrmMobileNav({ unread }: { unread: number }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isAdmin } = useAccess();
-  const items = MOBILE_NAV.filter((item) => !item.adminOnly || isAdmin);
+  const items = MOBILE_NAV.filter(
+    (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || !isAdmin),
+  );
+
 
   return (
     <nav
