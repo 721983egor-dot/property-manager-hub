@@ -77,6 +77,23 @@ async function configureProductionTelegram() {
   if (!response.ok) throw new Error(`Telegram не переключён: ${text.slice(0, 200)}`);
 }
 
+async function waitForProductionTelegramEndpoint(timeoutMs = 5 * 60 * 1000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      await configureProductionTelegram();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Рабочий RM OS не ответил при подключении Telegram");
+}
+
 /** Информация о текущей и последней доступной версии приложения. */
 export const getDeployStatus = createServerFn({ method: "GET" })
   .middleware([requireUser])
@@ -100,7 +117,7 @@ export const triggerDeploy = createServerFn({ method: "POST" })
     const result = await callDeployAgent("/deploy", {
       source: "rm-os-ui",
     });
-    await configureProductionTelegram();
+    await waitForProductionTelegramEndpoint();
     return result;
   });
 
