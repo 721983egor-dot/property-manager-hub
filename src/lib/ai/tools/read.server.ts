@@ -187,16 +187,24 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getClients: tool({
       description:
-        "Клиенты: ФИО, телефон, комментарий, чёрный список. Поиск по имени или телефону.",
+        "Клиенты: ФИО, телефон, комментарий, чёрный список. Поиск по имени, телефону или комментарию; ищет по всем клиентам, включая чёрный список.",
       inputSchema: z.object({ query: z.string().optional(), blacklistedOnly: z.boolean().optional() }),
       execute: async ({ query, blacklistedOnly }) => {
-        let q = admin.from("clients").select("*").limit(80).order("created_at", { ascending: false });
+        let q = admin.from("clients").select("*").limit(300).order("created_at", { ascending: false });
         if (blacklistedOnly) q = q.eq("blacklisted", true);
         if (query) {
-          const term = `%${query}%`;
-          q = q.or(`full_name.ilike.${term},phone.ilike.${term}`);
+          const clean = query.replace(/[%,()*]/g, "").trim();
+          const digits = clean.replace(/\D/g, "");
+          const parts = [
+            `full_name.ilike.%${clean}%`,
+            `phone.ilike.%${clean}%`,
+            `comment.ilike.%${clean}%`,
+          ];
+          if (digits.length >= 4) parts.push(`phone.ilike.%${digits.slice(-10)}%`);
+          q = q.or(parts.join(","));
         }
         const { data, error } = await q;
+
         if (error) return { error: error.message };
         return data ?? [];
       },
