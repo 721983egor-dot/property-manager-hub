@@ -55,7 +55,8 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = 600) -> str:
         timeout=timeout,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{result.stderr}")
+        output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+        raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{output or 'Команда завершилась без сообщения'}")
     return result.stdout
 
 
