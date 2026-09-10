@@ -129,6 +129,13 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             timeout=600,
         )
 
+        # API базы кеширует структуру и права. После миграций обновляем этот кеш,
+        # не останавливая текущую рабочую версию приложения.
+        run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "restart", "supabase-rest"],
+            timeout=120,
+        )
+
         # 4. Только после успешных миграций собираем и переключаем приложение.
         run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "build", "app"],
