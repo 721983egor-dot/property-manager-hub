@@ -51,49 +51,85 @@ export function createReadTools(ctx: AssistantToolContext) {
   return {
     searchProperties: tool({
       description:
-        "Поиск объектов по тексту (название, внутреннее имя, адрес, комплекс), статусу, типу и цене.",
+        "Поиск объектов по любому тексту: номер (ref_id), название, ВНУТРЕННЕЕ НАЗВАНИЕ, адрес, комплекс, описание. Ищет по всем объектам со всеми статусами, включая архив. Если ничего не нашлось по фразе целиком — ищет по отдельным словам.",
       inputSchema: z.object({
         query: z.string().optional(),
-        status: z.string().optional(),
+        status: z.string().optional().describe("free | soon_free | booked | rented | archived"),
         type: z.string().optional(),
         publishedOnly: z.boolean().optional(),
         maxPrice: z.number().optional(),
         minRooms: z.number().optional(),
       }),
       execute: async (input) => {
-        let q = admin.from("properties").select(PROPERTY_COLUMNS).limit(60);
-        if (input.status) q = q.eq("status", input.status as never);
-        if (input.type) q = q.eq("type", input.type as never);
-        if (input.publishedOnly) q = q.eq("published", true);
-        if (input.maxPrice) q = q.lte("price_month", input.maxPrice);
-        if (input.minRooms) q = q.gte("rooms", input.minRooms);
-        if (input.query) {
-          const term = `%${input.query}%`;
-          q = q.or(
-            `title.ilike.${term},internal_name.ilike.${term},address.ilike.${term},complex_name.ilike.${term}`,
-          );
+        const base = () => {
+          let q = admin.from("properties").select(PROPERTY_COLUMNS).limit(200);
+          if (input.status) q = q.eq("status", input.status as never);
+          if (input.type) q = q.eq("type", input.type as never);
+          if (input.publishedOnly) q = q.eq("published", true);
+          if (input.maxPrice) q = q.lte("price_month", input.maxPrice);
+          if (input.minRooms) q = q.gte("rooms", input.minRooms);
+          return q;
+        };
+
+        const rows: Record<string, unknown>[] = [];
+        const seen = new Set<string>();
+        const push = (list: unknown[] | null) => {
+          for (const r of (list ?? []) as Record<string, unknown>[]) {
+            const id = r["id"] as string;
+            if (!seen.has(id)) {
+              seen.add(id);
+              rows.push(r);
+            }
+          }
+        };
+
+        if (!input.query || !input.query.trim()) {
+          const { data, error } = await base();
+          if (error) return { error: error.message };
+          push(data);
+        } else {
+          const raw = input.query.trim();
+          const asNumber = Number(raw);
+          if (Number.isFinite(asNumber) && raw !== "") {
+            const { data } = await admin
+              .from("properties")
+              .select(PROPERTY_COLUMNS)
+              .eq("ref_id", asNumber);
+            push(data);
+          }
+          const whole = await base().or(propertyOr(raw));
+          push(whole.data);
+          if (!rows.length) {
+            for (const t of terms(raw)) {
+              const part = await base().or(propertyOr(t));
+              push(part.data);
+            }
+          }
         }
-        const { data, error } = await q;
-        if (error) return { error: error.message };
+
         return {
-          count: (data ?? []).length,
-          properties: (data ?? []).map((r) => ({
-            id: r.id,
-            refId: r.ref_id,
-            title: r.title,
-            type: r.type,
-            status: r.status,
-            address: r.address,
-            complex: r.complex_name,
-            rooms: r.rooms,
-            area: r.area,
-            priceMonth: r.price_month,
-            commission: r.commission,
-            published: r.published,
+          count: rows.length,
+          properties: rows.map((r) => ({
+            id: r["id"],
+            refId: r["ref_id"],
+            title: r["title"],
+            internalName: r["internal_name"],
+            type: r["type"],
+            status: r["status"],
+            statusLabel: STATUS_LABEL[r["status"] as string] ?? r["status"],
+            address: r["address"],
+            complex: r["complex_name"],
+            rooms: r["rooms"],
+            area: r["area"],
+            priceMonth: r["price_month"],
+            commission: r["commission"],
+            published: r["published"],
+            createdAt: r["created_at"],
           })),
         };
       },
     }),
+
 
     getPropertyDetails: tool({
       description:
