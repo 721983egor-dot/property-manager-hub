@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getStaffProperty, listStaffProperties } from "@/lib/staff-data.functions";
 
 export type PropertyType = "apartment" | "aparts" | "house" | "villa" | "townhouse";
 
@@ -398,11 +399,7 @@ export async function savePropertyOrder(ids: string[]) {
 
 
 export async function fetchProperties(): Promise<Property[]> {
-  const { data, error } = await supabase
-    .from("properties")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
+  const data = await listStaffProperties();
   return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
 }
 
@@ -417,8 +414,7 @@ export async function fetchPublishedProperties(): Promise<Property[]> {
 }
 
 export async function fetchProperty(id: string): Promise<Property> {
-  const { data, error } = await supabase.from("properties").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
+  const data = await getStaffProperty({ data: { id } });
   if (!data) throw new Error("Объект не найден");
   return normalize(data as Record<string, unknown>);
 }
