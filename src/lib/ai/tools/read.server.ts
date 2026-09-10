@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { PROPERTY_COLUMNS, propertyLabel } from "@/lib/ai/context.server";
+import { selectionUrl } from "@/lib/telegram/links.server";
 
 import type { AssistantToolContext } from "@/lib/ai/context.server";
 
@@ -424,7 +425,8 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getSelections: tool({
-      description: "Подборки объектов для клиентов: код, ссылка, состав.",
+      description:
+        "Подборки объектов RM OS (раздел «Подборки»): код, готовая ссылка для клиента, состав.",
       inputSchema: z.object({ query: z.string().optional() }),
       execute: async ({ query }) => {
         let q = admin
@@ -438,7 +440,23 @@ export function createReadTools(ctx: AssistantToolContext) {
         }
         const { data, error } = await q;
         if (error) return { error: error.message };
-        return (data ?? []).map((s) => ({ ...s, link: `/p/${s.code}` }));
+        const rows = data ?? [];
+        const ids = rows.map((s) => s.id);
+        const { data: items } = ids.length
+          ? await admin
+              .from("selection_items")
+              .select("selection_id, property_id, position")
+              .in("selection_id", ids)
+              .order("position")
+          : { data: [] as { selection_id: string; property_id: string; position: number }[] };
+        const names = await nameMap([...new Set((items ?? []).map((i) => i.property_id))]);
+        return rows.map((s) => ({
+          ...s,
+          link: selectionUrl(s.code),
+          properties: (items ?? [])
+            .filter((i) => i.selection_id === s.id)
+            .map((i) => names.get(i.property_id) ?? i.property_id),
+        }));
       },
     }),
 
@@ -500,7 +518,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getActivityLog: tool({
       description:
-        "Журнал действий системы: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, bookings, selections, property_listings, leads, assistant), объект, действие (insert/update/delete).",
+        "Журнал действий системы и сотрудников: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, deal_comments, deal_showings, bookings, selections, selection_items, property_listings, leads, profiles — карточки сотрудников, user_roles — доступы сотрудников, assistant), объект, действие (insert/update/delete).",
       inputSchema: z.object({
         days: z.number().optional(),
         tableName: z.string().optional(),
@@ -583,7 +601,10 @@ export function createReadTools(ctx: AssistantToolContext) {
           })),
           newDeals: deals.data ?? [],
           newLeads: leads.data ?? [],
-          newSelections: (selections.data ?? []).map((s) => ({ ...s, link: `/p/${s.code}` })),
+          newSelections: (selections.data ?? []).map((s) => ({
+            ...s,
+            link: selectionUrl(s.code),
+          })),
           log: log.data ?? [],
         };
       },
@@ -591,32 +612,69 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getStaff: tool({
       description:
-        "Сотрудники RM OS: ФИО, телефон, дата рождения, почта для входа и уровень доступа (администратор или менеджер).",
+        "Сотрудники RM OS (раздел Настройки → Сотрудники): ФИО, телефон, дата рождения, почта для входа и уровень доступа (администратор или менеджер). Показывает всех, включая тех, кто ещё не заполнил карточку.",
       inputSchema: z.object({ query: z.string().optional() }),
       execute: async ({ query }) => {
-        let q = admin
-          .from("profiles")
-          .select("id, email, full_name, phone, birth_date, created_at")
-          .order("created_at", { ascending: true })
-          .limit(100);
-        if (query) {
-          const term = `%${query}%`;
-          q = q.or(`full_name.ilike.${term},email.ilike.${term},phone.ilike.${term}`);
-        }
-        const [{ data, error }, { data: roles }] = await Promise.all([
-          q,
+        const [{ data: profiles, error }, { data: roles }] = await Promise.all([
+          admin
+            .from("profiles")
+            .select("id, email, full_name, phone, birth_date, created_at")
+            .order("created_at", { ascending: true })
+            .limit(200),
           admin.from("user_roles").select("user_id, role"),
         ]);
         if (error) return { error: error.message };
+
         const roleMap = new Map<string, string>();
         for (const r of roles ?? []) {
           if (r.role === "admin") roleMap.set(r.user_id, "admin");
           else if (!roleMap.has(r.user_id)) roleMap.set(r.user_id, "manager");
         }
-        return (data ?? []).map((p) => ({
-          ...p,
-          role: roleMap.get(p.id) === "admin" ? "Администратор" : "Менеджер",
-        }));
+
+        type Row = {
+          id: string;
+          email: string;
+          full_name: string;
+          phone: string;
+          birth_date: string | null;
+          created_at: string;
+        };
+        const byId = new Map<string, Row>();
+        for (const p of profiles ?? []) byId.set(p.id, p as Row);
+
+        // Сотрудники без заполненной карточки — берём из списка пользователей.
+        try {
+          const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+          for (const u of users?.users ?? []) {
+            if (byId.has(u.id)) continue;
+            byId.set(u.id, {
+              id: u.id,
+              email: u.email ?? "",
+              full_name: "",
+              phone: "",
+              birth_date: null,
+              created_at: u.created_at,
+            });
+          }
+        } catch {
+          /* список пользователей недоступен — показываем только карточки */
+        }
+
+        let rows = [...byId.values()];
+        if (query) {
+          const term = query.toLowerCase();
+          rows = rows.filter((r) =>
+            `${r.full_name} ${r.email} ${r.phone}`.toLowerCase().includes(term),
+          );
+        }
+        return {
+          count: rows.length,
+          staff: rows.map((p) => ({
+            ...p,
+            profileFilled: Boolean(p.full_name),
+            role: roleMap.get(p.id) === "admin" ? "Администратор" : "Менеджер",
+          })),
+        };
       },
     }),
 

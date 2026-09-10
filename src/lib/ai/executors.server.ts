@@ -135,7 +135,8 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       })),
     );
     if (itemsError) throw new Error(itemsError.message);
-    return `Подборка создана: /p/${selection.code}`;
+    const { selectionUrl } = await import("@/lib/telegram/links.server");
+    return `Подборка создана в RM OS (раздел «Подборки»), код ${selection.code}. Ссылка для клиента: ${selectionUrl(selection.code)}`;
   },
 
   createBooking: async (input) => {
