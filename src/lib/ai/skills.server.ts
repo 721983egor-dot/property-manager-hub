@@ -3,7 +3,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export type AssistantSkill = { id: string; text: string; created_at: string };
 
 /* Таблица навыков может отсутствовать в сгенерированных типах — работаем через нетипизированный клиент. */
-const skills = () => (supabaseAdmin as unknown as { from: (t: string) => any }).from("assistant_skills");
+const skills = () =>
+  (supabaseAdmin as unknown as { from: (t: string) => any }).from("assistant_skills");
 
 /** Правила, которым Ассистента научил менеджер. */
 export async function loadAssistantSkills(): Promise<AssistantSkill[]> {

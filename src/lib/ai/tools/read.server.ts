@@ -37,7 +37,6 @@ function propertyOr(term: string) {
   ].join(",");
 }
 
-
 /** Инструменты чтения: покрывают все данные RM OS. */
 export function createReadTools(ctx: AssistantToolContext) {
   const { admin } = ctx;
@@ -130,7 +129,6 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
-
     getPropertyDetails: tool({
       description:
         "Полная карточка объекта по номеру (ref_id) или названию: все поля, публикации, брони и незаполненные поля площадок.",
@@ -171,7 +169,9 @@ export function createReadTools(ctx: AssistantToolContext) {
       execute: async ({ query }) => {
         let q = admin
           .from("complexes")
-          .select("id, name, description, infrastructure, location_description, show_in_site_filter")
+          .select(
+            "id, name, description, infrastructure, location_description, show_in_site_filter",
+          )
           .limit(100);
         if (query) q = q.ilike("name", `%${query}%`);
         const { data, error } = await q;
@@ -188,9 +188,16 @@ export function createReadTools(ctx: AssistantToolContext) {
     getClients: tool({
       description:
         "Клиенты: ФИО, телефон, комментарий, чёрный список. Поиск по имени, телефону или комментарию; ищет по всем клиентам, включая чёрный список.",
-      inputSchema: z.object({ query: z.string().optional(), blacklistedOnly: z.boolean().optional() }),
+      inputSchema: z.object({
+        query: z.string().optional(),
+        blacklistedOnly: z.boolean().optional(),
+      }),
       execute: async ({ query, blacklistedOnly }) => {
-        let q = admin.from("clients").select("*").limit(300).order("created_at", { ascending: false });
+        let q = admin
+          .from("clients")
+          .select("*")
+          .limit(300)
+          .order("created_at", { ascending: false });
         if (blacklistedOnly) q = q.eq("blacklisted", true);
         if (query) {
           const clean = query.replace(/[%,()*]/g, "").trim();
@@ -241,7 +248,11 @@ export function createReadTools(ctx: AssistantToolContext) {
         toDate: z.string().optional(),
       }),
       execute: async ({ status, fromDate, toDate }) => {
-        let q = admin.from("bookings").select("*").limit(200).order("start_date", { ascending: false });
+        let q = admin
+          .from("bookings")
+          .select("*")
+          .limit(200)
+          .order("start_date", { ascending: false });
         if (status) q = q.eq("status", status as never);
         if (fromDate) q = q.gte("end_date", fromDate);
         if (toDate) q = q.lte("start_date", toDate);
@@ -259,8 +270,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getCalendar: tool({
-      description:
-        "Занятость объектов: что занято и свободно в период, ближайшие заезды и выезды.",
+      description: "Занятость объектов: что занято и свободно в период, ближайшие заезды и выезды.",
       inputSchema: z.object({ days: z.number().optional() }),
       execute: async ({ days }) => {
         const period = days && days > 0 ? days : 60;
@@ -319,7 +329,13 @@ export function createReadTools(ctx: AssistantToolContext) {
           byStatus[r.status] = (byStatus[r.status] ?? 0) + 1;
           bySource[r.source || "site"] = (bySource[r.source || "site"] ?? 0) + 1;
         }
-        return { periodDays: period, total: (data ?? []).length, byStatus, bySource, leads: data ?? [] };
+        return {
+          periodDays: period,
+          total: (data ?? []).length,
+          byStatus,
+          bySource,
+          leads: data ?? [],
+        };
       },
     }),
 
@@ -482,7 +498,6 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
-
     getActivityLog: tool({
       description:
         "Журнал действий системы: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, bookings, selections, property_listings, leads, assistant), объект, действие (insert/update/delete).",
@@ -497,7 +512,9 @@ export function createReadTools(ctx: AssistantToolContext) {
         const period = days && days > 0 ? days : 30;
         let q = admin
           .from("activity_log")
-          .select("table_name, record_id, action, actor_email, source, summary, changes, created_at")
+          .select(
+            "table_name, record_id, action, actor_email, source, summary, changes, created_at",
+          )
           .gte("created_at", daysAgoISO(period))
           .order("created_at", { ascending: false })
           .limit(limit && limit > 0 ? Math.min(limit, 300) : 150);
@@ -533,7 +550,10 @@ export function createReadTools(ctx: AssistantToolContext) {
             .select("id, property_id, client_id, start_date, end_date, status, created_at")
             .gte("created_at", since),
           admin.from("deals").select("id, title, created_at").gte("created_at", since),
-          admin.from("leads").select("id, name, phone, topic, status, created_at").gte("created_at", since),
+          admin
+            .from("leads")
+            .select("id, name, phone, topic, status, created_at")
+            .gte("created_at", since),
           admin.from("selections").select("id, code, name, created_at").gte("created_at", since),
           admin
             .from("activity_log")
@@ -568,7 +588,6 @@ export function createReadTools(ctx: AssistantToolContext) {
         };
       },
     }),
-
 
     getStaff: tool({
       description:
@@ -616,18 +635,25 @@ export function createReadTools(ctx: AssistantToolContext) {
           const found = (stages ?? []).find((s) => s.name.toLowerCase() === stage.toLowerCase());
           if (found) q = q.eq("stage_id", found.id);
         }
-        if (query) q = q.or(`title.ilike.%${query}%,source.ilike.%${query}%,comment.ilike.%${query}%`);
+        if (query)
+          q = q.or(`title.ilike.%${query}%,source.ilike.%${query}%,comment.ilike.%${query}%`);
         const { data, error } = await q;
         if (error) return { error: error.message };
-        const clientIds = [...new Set((data ?? []).map((d) => d.client_id).filter(Boolean))] as string[];
-        const propertyIds = [...new Set((data ?? []).map((d) => d.property_id).filter(Boolean))] as string[];
+        const clientIds = [
+          ...new Set((data ?? []).map((d) => d.client_id).filter(Boolean)),
+        ] as string[];
+        const propertyIds = [
+          ...new Set((data ?? []).map((d) => d.property_id).filter(Boolean)),
+        ] as string[];
         const [{ data: clients }, propNames] = await Promise.all([
           clientIds.length
             ? admin.from("clients").select("id, full_name, phone").in("id", clientIds)
             : Promise.resolve({ data: [] as { id: string; full_name: string; phone: string }[] }),
           nameMap(propertyIds),
         ]);
-        const clientMap = new Map((clients ?? []).map((c) => [c.id, `${c.full_name} ${c.phone}`.trim()]));
+        const clientMap = new Map(
+          (clients ?? []).map((c) => [c.id, `${c.full_name} ${c.phone}`.trim()]),
+        );
         return {
           stages: (stages ?? []).map((s) => ({ name: s.name, kind: s.kind })),
           fields: (fields ?? []).filter((f) => !f.archived),
@@ -635,8 +661,8 @@ export function createReadTools(ctx: AssistantToolContext) {
             id: d.id,
             title: d.title,
             stage: stageMap.get(d.stage_id) ?? "",
-            client: d.client_id ? clientMap.get(d.client_id) ?? "" : "",
-            property: d.property_id ? propNames.get(d.property_id) ?? "" : "",
+            client: d.client_id ? (clientMap.get(d.client_id) ?? "") : "",
+            property: d.property_id ? (propNames.get(d.property_id) ?? "") : "",
             source: d.source,
             budget: d.budget,
             adults: d.adults,

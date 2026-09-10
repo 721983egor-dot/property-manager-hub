@@ -19,4 +19,3 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
     ...createSkillTools(),
   };
 }
-

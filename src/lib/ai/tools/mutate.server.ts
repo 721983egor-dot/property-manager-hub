@@ -38,7 +38,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
         const summary = `${publish ? "Опубликовать" : "Снять с публикации"} «${p.text}» — ${PLATFORM_NAME[platform]}`;
-        ctx.propose({ tool: "setPublished", summary, input: { propertyId: p.id, platform, publish } });
+        ctx.propose({
+          tool: "setPublished",
+          summary,
+          input: { propertyId: p.id, platform, publish },
+        });
         return { proposed: true, summary };
       },
     }),
@@ -65,7 +69,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (fields.status) parts.push(`статус «${fields.status}»`);
         if (fields.deposit != null) parts.push(`депозит ${money(fields.deposit)}`);
         if (fields.commission != null) parts.push(`комиссия ${fields.commission}%`);
-        if (fields.utilitiesMonth != null) parts.push(`коммунальные ${money(fields.utilitiesMonth)}`);
+        if (fields.utilitiesMonth != null)
+          parts.push(`коммунальные ${money(fields.utilitiesMonth)}`);
         if (fields.description) parts.push("новое описание");
         if (fields.rentTerms) parts.push("новые условия аренды");
         if (fields.availabilityNote) parts.push("заметка о доступности");
@@ -272,7 +277,16 @@ export function createMutateTools(ctx: AssistantToolContext) {
         commission: z.number().optional(),
         paymentDay: z.number(),
       }),
-      execute: async ({ dealId, propertyRef, startDate, endDate, priceMonth, deposit, commission, paymentDay }) => {
+      execute: async ({
+        dealId,
+        propertyRef,
+        startDate,
+        endDate,
+        priceMonth,
+        deposit,
+        commission,
+        paymentDay,
+      }) => {
         const { data: deal } = await ctx.admin
           .from("deals")
           .select("title, client_id")
@@ -311,9 +325,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
-
     proposeDeal: tool({
-
       description:
         "Предложить создание или изменение сделки CRM: название, стадия, клиент, объект, источник, бюджет, взрослые, дети, комментарий, дополнительные поля. Требует подтверждения менеджера.",
       inputSchema: z.object({

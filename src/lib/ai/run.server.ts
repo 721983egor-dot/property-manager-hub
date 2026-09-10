@@ -25,13 +25,10 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентс
 - Статусы объектов: free — свободен, soon_free — скоро освободится, booked — забронирован, rented — в аренде, archived — архив.`;
 
 /** Один ход Ассистента: вызывает модель с полным набором инструментов. */
-export async function askAssistantCore(
-  messages: AssistantChatMessage[],
-): Promise<AssistantReply> {
+export async function askAssistantCore(messages: AssistantChatMessage[]): Promise<AssistantReply> {
   const { streamText, stepCountIs } = await import("ai");
-  const { resolveAssistantModel, ASSISTANT_PROVIDER_OPTIONS } = await import(
-    "@/lib/ai-gateway.server"
-  );
+  const { resolveAssistantModel, ASSISTANT_PROVIDER_OPTIONS } =
+    await import("@/lib/ai-gateway.server");
   const { createToolContext } = await import("@/lib/ai/context.server");
   const { buildAssistantTools } = await import("@/lib/ai/tools/index.server");
   const { loadAssistantSkills, skillsPromptBlock } = await import("@/lib/ai/skills.server");
@@ -51,9 +48,7 @@ export async function askAssistantCore(
       messages: messages.slice(-30),
       tools,
       stopWhen: stepCountIs(50),
-      ...(setup.source === "lovable"
-        ? { providerOptions: ASSISTANT_PROVIDER_OPTIONS }
-        : {}),
+      ...(setup.source === "lovable" ? { providerOptions: ASSISTANT_PROVIDER_OPTIONS } : {}),
     });
     const text = await result.text;
     return { text, actions, error: "" };
@@ -62,5 +57,3 @@ export async function askAssistantCore(
     return { text: "", actions: [], error: message };
   }
 }
-
-

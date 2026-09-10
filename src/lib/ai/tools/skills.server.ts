@@ -1,7 +1,11 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { addAssistantSkill, loadAssistantSkills, removeAssistantSkill } from "@/lib/ai/skills.server";
+import {
+  addAssistantSkill,
+  loadAssistantSkills,
+  removeAssistantSkill,
+} from "@/lib/ai/skills.server";
 
 /**
  * Навыки Ассистента: менеджер может научить его правилу словами,

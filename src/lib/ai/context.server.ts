@@ -19,7 +19,11 @@ export type AssistantToolContext = {
   /** Найти клиента по имени или телефону. */
   findClient: (ref: string) => Promise<Record<string, unknown> | null>;
   /** Зарегистрировать предложенное действие (подтверждает менеджер). */
-  propose: (action: { tool: string; summary: string; input: Record<string, unknown> }) => AssistantAction;
+  propose: (action: {
+    tool: string;
+    summary: string;
+    input: Record<string, unknown>;
+  }) => AssistantAction;
 };
 
 export function createToolContext(actions: AssistantAction[]): AssistantToolContext {
