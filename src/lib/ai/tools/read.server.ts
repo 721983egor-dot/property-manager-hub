@@ -612,32 +612,69 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getStaff: tool({
       description:
-        "Сотрудники RM OS: ФИО, телефон, дата рождения, почта для входа и уровень доступа (администратор или менеджер).",
+        "Сотрудники RM OS (раздел Настройки → Сотрудники): ФИО, телефон, дата рождения, почта для входа и уровень доступа (администратор или менеджер). Показывает всех, включая тех, кто ещё не заполнил карточку.",
       inputSchema: z.object({ query: z.string().optional() }),
       execute: async ({ query }) => {
-        let q = admin
-          .from("profiles")
-          .select("id, email, full_name, phone, birth_date, created_at")
-          .order("created_at", { ascending: true })
-          .limit(100);
-        if (query) {
-          const term = `%${query}%`;
-          q = q.or(`full_name.ilike.${term},email.ilike.${term},phone.ilike.${term}`);
-        }
-        const [{ data, error }, { data: roles }] = await Promise.all([
-          q,
+        const [{ data: profiles, error }, { data: roles }] = await Promise.all([
+          admin
+            .from("profiles")
+            .select("id, email, full_name, phone, birth_date, created_at")
+            .order("created_at", { ascending: true })
+            .limit(200),
           admin.from("user_roles").select("user_id, role"),
         ]);
         if (error) return { error: error.message };
+
         const roleMap = new Map<string, string>();
         for (const r of roles ?? []) {
           if (r.role === "admin") roleMap.set(r.user_id, "admin");
           else if (!roleMap.has(r.user_id)) roleMap.set(r.user_id, "manager");
         }
-        return (data ?? []).map((p) => ({
-          ...p,
-          role: roleMap.get(p.id) === "admin" ? "Администратор" : "Менеджер",
-        }));
+
+        type Row = {
+          id: string;
+          email: string;
+          full_name: string;
+          phone: string;
+          birth_date: string | null;
+          created_at: string;
+        };
+        const byId = new Map<string, Row>();
+        for (const p of profiles ?? []) byId.set(p.id, p as Row);
+
+        // Сотрудники без заполненной карточки — берём из списка пользователей.
+        try {
+          const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+          for (const u of users?.users ?? []) {
+            if (byId.has(u.id)) continue;
+            byId.set(u.id, {
+              id: u.id,
+              email: u.email ?? "",
+              full_name: "",
+              phone: "",
+              birth_date: null,
+              created_at: u.created_at,
+            });
+          }
+        } catch {
+          /* список пользователей недоступен — показываем только карточки */
+        }
+
+        let rows = [...byId.values()];
+        if (query) {
+          const term = query.toLowerCase();
+          rows = rows.filter((r) =>
+            `${r.full_name} ${r.email} ${r.phone}`.toLowerCase().includes(term),
+          );
+        }
+        return {
+          count: rows.length,
+          staff: rows.map((p) => ({
+            ...p,
+            profileFilled: Boolean(p.full_name),
+            role: roleMap.get(p.id) === "admin" ? "Администратор" : "Менеджер",
+          })),
+        };
       },
     }),
 
