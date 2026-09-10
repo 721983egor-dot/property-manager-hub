@@ -58,7 +58,7 @@ services:
     restart: "no"
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    entrypoint: ["/bin/bash", "/apply-migrations.sh"]
+    entrypoint: ["/bin/sh", "/apply-migrations.sh"]
     volumes:
       - ./apply-migrations.sh:/apply-migrations.sh:ro
       - ../supabase/migrations:/migrations:ro
