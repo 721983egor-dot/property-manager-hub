@@ -42,10 +42,31 @@ services:
       - DEPLOY_AGENT_URL=http://deploy-agent:8080
       - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
     depends_on:
-      - supabase-db
-      - supabase-auth
-      - supabase-rest
-      - supabase-storage
+      supabase-db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      supabase-auth:
+        condition: service_started
+      supabase-rest:
+        condition: service_started
+      supabase-storage:
+        condition: service_started
+    networks:
+      - rm-os
+
+  migrator:
+    image: postgres:15-alpine
+    restart: "no"
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    entrypoint: ["/bin/bash", "/apply-migrations.sh"]
+    volumes:
+      - ./apply-migrations.sh:/apply-migrations.sh:ro
+      - ../supabase/migrations:/migrations:ro
+    depends_on:
+      supabase-db:
+        condition: service_healthy
     networks:
       - rm-os
 
