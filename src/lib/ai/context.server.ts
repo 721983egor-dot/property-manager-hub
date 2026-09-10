@@ -11,6 +11,14 @@ export function propertyLabel(p: { ref_id: number; title: string }) {
   return `${p.ref_id} — ${p.title}`;
 }
 
+function normalizeSearch(value: unknown): string {
+  return String(value ?? "")
+    .toLocaleLowerCase("ru-RU")
+    .replace(/ё/g, "е")
+    .replace(/[^a-zа-я0-9]+/gi, " ")
+    .trim();
+}
+
 /** Общий контекст для всех инструментов Ассистента. */
 export type AssistantToolContext = {
   admin: typeof supabaseAdmin;
@@ -30,6 +38,7 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
   return {
     admin: supabaseAdmin,
     findProperty: async (ref: string) => {
+      const normalizedRef = normalizeSearch(ref);
       const asNumber = Number(ref);
       if (Number.isFinite(asNumber) && ref.trim() !== "") {
         const { data } = await supabaseAdmin
@@ -57,6 +66,32 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
         const found = await attempt(word);
         if (found) return found;
       }
+
+      // Надёжный запасной поиск без синтаксиса PostgREST: нужен для внутренних
+      // названий с кавычками, дефисами и другими спецсимволами.
+      const { data: all } = await supabaseAdmin
+        .from("properties")
+        .select(PROPERTY_COLUMNS)
+        .order("updated_at", { ascending: false })
+        .limit(500);
+      const words = normalizedRef.split(" ").filter((word) => word.length >= 2);
+      const scored = ((all ?? []) as Record<string, unknown>[])
+        .map((property) => {
+          const fields = [
+            property["title"],
+            property["internal_name"],
+            property["address"],
+            property["complex_name"],
+            property["description"],
+          ].map(normalizeSearch);
+          const exact = fields.some((field) => field === normalizedRef);
+          const phrase = fields.some((field) => field.includes(normalizedRef));
+          const allWords = words.length > 0 && words.every((word) => fields.some((field) => field.includes(word)));
+          const score = exact ? 3 : phrase ? 2 : allWords ? 1 : 0;
+          return { property, score };
+        })
+        .sort((a, b) => b.score - a.score);
+      if (scored[0]?.score) return scored[0].property;
       return null;
     },
 

@@ -122,7 +122,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
           if (p) found.push({ id: p.id, text: p.text });
         }
         if (!found.length) return { error: "Объекты не найдены" };
-        const summary = `Создать подборку${name ? ` «${name}»` : ""}${clientName ? ` для ${clientName}` : ""}: ${found.map((f) => f.text).join("; ")}`;
+        const summary = `Создать подборку${name ? ` «${name}»` : ""}${clientName ? ` для ${clientName}` : ""}`;
         ctx.propose({
           tool: "createSelection",
           summary,
@@ -133,7 +133,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
             comment: comment ?? "",
           },
         });
-        return { proposed: true, summary };
+        return { proposed: true, summary, objectsCount: found.length };
       },
     }),
 
