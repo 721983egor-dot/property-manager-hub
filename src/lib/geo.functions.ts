@@ -117,8 +117,11 @@ export const geocodeAddress = createServerFn({ method: "POST" })
     const address = data.address.trim();
     if (!address) return null;
     // Ключ HTTP-геокодера отдельный; если его нет — пробуем ключ JS API.
+    const { getPlatformSecret } = await import("@/lib/platform-secrets.server");
     const apikey =
-      process.env["YANDEX_GEOCODER_API_KEY"] || process.env["YANDEX_MAPS_JS_API_KEY"];
+      (await getPlatformSecret("YANDEX_GEOCODER_API_KEY")) ||
+      (await getPlatformSecret("YANDEX_MAPS_JS_API_KEY"));
+
     if (!apikey) return osmGeocode(address);
 
     const url = new URL("https://geocode-maps.yandex.ru/1.x/");
