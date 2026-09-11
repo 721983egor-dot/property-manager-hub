@@ -5,18 +5,20 @@
  */
 
 import type { CianOffer } from "@/lib/cian";
+import { getPlatformSecret } from "@/lib/platform-secrets.server";
 
 const BASE_URL = "https://public-api.cian.ru";
 
-export function cianKey(): string {
-  const key = process.env["CIAN_API_KEY"];
+export async function cianKey(): Promise<string> {
+  const key = await getPlatformSecret("CIAN_API_KEY");
   if (!key) {
     throw new Error(
-      "Кабинет ЦИАН не подключён: не задан ключ доступа. Добавьте его в настройках проекта.",
+      "Кабинет ЦИАН не подключён: не задан ключ доступа. Добавьте его в настройках площадок.",
     );
   }
   return key;
 }
+
 
 type QueryValue = string | number | boolean | (string | number)[];
 
@@ -34,12 +36,14 @@ export async function cianGet<T>(
   const qs = search.toString();
   const url = `${BASE_URL}${path}${qs ? `?${qs}` : ""}`;
 
+  const token = await cianKey();
   const response = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${cianKey()}`,
+      Authorization: `Bearer ${token}`,
       Accept: "application/json",
     },
   });
+
 
   const text = await response.text();
   if (!response.ok) {
