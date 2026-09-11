@@ -61,7 +61,8 @@ async function osmGeocode(address: string): Promise<GeoPoint | null> {
 
 /** Ключ JavaScript API Яндекс.Карт для загрузки скрипта в браузере. */
 export const getMapsApiKey = createServerFn({ method: "GET" }).handler(async () => {
-  return { key: process.env["YANDEX_MAPS_JS_API_KEY"] ?? "" };
+  const { getPlatformSecret } = await import("@/lib/platform-secrets.server");
+  return { key: await getPlatformSecret("YANDEX_MAPS_JS_API_KEY") };
 });
 
 /** Подсказки адресов (API Геосаджеста). Ключ остаётся на сервере. */
@@ -70,8 +71,10 @@ export const suggestAddress = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AddressSuggestion[]> => {
     const text = data.text.trim();
     if (text.length < 3) return [];
-    const apikey = process.env["YANDEX_SUGGEST_API_KEY"];
+    const { getPlatformSecret } = await import("@/lib/platform-secrets.server");
+    const apikey = await getPlatformSecret("YANDEX_SUGGEST_API_KEY");
     if (!apikey) return osmSuggest(text);
+
 
     const url = new URL("https://suggest-maps.yandex.ru/v1/suggest");
     url.searchParams.set("apikey", apikey);
@@ -114,8 +117,11 @@ export const geocodeAddress = createServerFn({ method: "POST" })
     const address = data.address.trim();
     if (!address) return null;
     // Ключ HTTP-геокодера отдельный; если его нет — пробуем ключ JS API.
+    const { getPlatformSecret } = await import("@/lib/platform-secrets.server");
     const apikey =
-      process.env["YANDEX_GEOCODER_API_KEY"] || process.env["YANDEX_MAPS_JS_API_KEY"];
+      (await getPlatformSecret("YANDEX_GEOCODER_API_KEY")) ||
+      (await getPlatformSecret("YANDEX_MAPS_JS_API_KEY"));
+
     if (!apikey) return osmGeocode(address);
 
     const url = new URL("https://geocode-maps.yandex.ru/1.x/");
