@@ -14,14 +14,16 @@ const API_BASE = "https://api.realty.yandex.net/2.0";
 
 type YandexConfig = { token: string; clientId: string; vertisKey: string };
 
-/** Читает ключи из окружения (только внутри обработчика). */
-function readConfig(): YandexConfig | null {
-  const token = process.env["YANDEX_REALTY_TOKEN"];
-  const clientId = process.env["YANDEX_REALTY_CLIENT_ID"];
-  const vertisKey = process.env["YANDEX_REALTY_VERTIS_KEY"];
+/** Читает ключи из окружения сервера, а при их отсутствии — из настроек площадок. */
+async function readConfig(): Promise<YandexConfig | null> {
+  const { getPlatformSecret } = await import("@/lib/platform-secrets.server");
+  const token = await getPlatformSecret("YANDEX_REALTY_TOKEN");
+  const clientId = await getPlatformSecret("YANDEX_REALTY_CLIENT_ID");
+  const vertisKey = await getPlatformSecret("YANDEX_REALTY_VERTIS_KEY");
   if (!token || !clientId || !vertisKey) return null;
   return { token, clientId, vertisKey };
 }
+
 
 /** Запрос к API Яндекса с нужными заголовками. */
 async function yandexGet(cfg: YandexConfig, path: string): Promise<unknown> {
