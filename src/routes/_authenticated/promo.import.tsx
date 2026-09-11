@@ -206,6 +206,9 @@ function CianImportPage() {
 
       <YandexApiPanel />
 
+      <PlatformKeysPanel />
+
+
 
       {connection && !connection.connected ? (
         <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
