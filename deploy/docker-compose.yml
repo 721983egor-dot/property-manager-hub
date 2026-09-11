@@ -192,9 +192,9 @@ services:
       - |
         apk add --no-cache curl >/dev/null
         while true; do
-          SECRET="${CRON_SECRET:-$DEPLOY_AGENT_TOKEN}"
+          SECRET="$${CRON_SECRET:-$$DEPLOY_AGENT_TOKEN}"
           curl -s -o /dev/null -X POST http://app:3000/api/public/cron/cian-sync \
-            -H "x-cron-secret: $SECRET" || true
+            -H "x-cron-secret: $$SECRET" || true
           sleep 86400
         done
     depends_on:
