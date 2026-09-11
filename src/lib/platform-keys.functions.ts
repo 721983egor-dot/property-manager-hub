@@ -31,5 +31,23 @@ export const savePlatformKey = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { setPlatformSecret } = await import("@/lib/platform-secrets.server");
     await setPlatformSecret(data.name, data.value);
-    return { ok: true };
+    const production = await pushKeyToProduction(data.name, data.value);
+    return { ok: true, production };
   });
+
+/** Дублирует ключ в базу рабочего сервера, чтобы статистика работала и там. */
+async function pushKeyToProduction(name: string, value: string): Promise<string> {
+  const token = process.env["DEPLOY_AGENT_TOKEN"];
+  if (!token) return "Ключ сохранён здесь; рабочий сервер обновится при следующем обновлении системы.";
+  try {
+    const res = await fetch("https://rm-os.residence-more.ru/api/public/system/platform-keys", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ keys: { [name]: value } }),
+    });
+    if (!res.ok) return `Рабочий сервер пока не принял ключ (${res.status}). Нажмите «Обновить систему» и сохраните ключ ещё раз.`;
+    return "Ключ сохранён и на рабочем сервере.";
+  } catch {
+    return "Рабочий сервер сейчас недоступен — сохраните ключ ещё раз после обновления системы.";
+  }
+}
