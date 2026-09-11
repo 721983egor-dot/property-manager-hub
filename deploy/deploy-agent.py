@@ -251,8 +251,9 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             "status": "success",
         })
         state["current_version"] = version
-        threading.Thread(target=update_deploy_agent, daemon=True).start()
         save_state(state)
+
+        threading.Thread(target=update_deploy_agent, daemon=True).start()
 
         return {
             "ok": True,
