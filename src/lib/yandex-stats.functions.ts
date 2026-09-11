@@ -64,7 +64,8 @@ export type YandexFeedStatus =
 /** Статус обработки фида: сколько объявлений принято, сколько отклонено и почему. */
 export const getYandexFeedStatus = createServerFn({ method: "POST" }).handler(
   async (): Promise<YandexFeedStatus> => {
-    const cfg = readConfig();
+    const cfg = await readConfig();
+
     if (!cfg) return { configured: false };
 
     const raw = (await yandexGet(
@@ -127,7 +128,7 @@ export type YandexStatsResult =
 export const syncYandexStats = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => (input as { days?: number } | undefined) ?? {})
   .handler(async ({ data }): Promise<YandexStatsResult> => {
-    const cfg = readConfig();
+    const cfg = await readConfig();
     if (!cfg) return { configured: false };
 
     const days = data.days && [7, 30, 90].includes(data.days) ? data.days : 30;
