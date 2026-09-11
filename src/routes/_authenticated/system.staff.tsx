@@ -298,7 +298,7 @@ function StaffDialog({
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!member) return;
+      if (!member) return { passwordChanged: false };
       await save({
         data: {
           id: member.id,
@@ -309,16 +309,24 @@ function StaffDialog({
         },
       });
       if (canManage && role !== member.role) await changeRole({ data: { id: member.id, role } });
-      if (canManage && password) await changePassword({ data: { id: member.id, password } });
+      const newPassword = password.trim();
+      if (canManage && newPassword) {
+        await changePassword({ data: { id: member.id, password: newPassword } });
+        return { passwordChanged: true };
+      }
+      return { passwordChanged: false };
     },
-    onSuccess: () => {
-      toast.success("Карточка сохранена");
+    onSuccess: (result) => {
+      toast.success(
+        result?.passwordChanged ? "Карточка сохранена, пароль изменён" : "Карточка сохранена",
+      );
       void queryClient.invalidateQueries({ queryKey: ["staff"] });
       void queryClient.invalidateQueries({ queryKey: ["my-access"] });
       onOpenChange(false);
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -378,10 +386,15 @@ function StaffDialog({
                 <Input
                   className="mt-1.5"
                   type="text"
+                  name="staff-new-password"
+                  autoComplete="off"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Оставьте пустым"
                 />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Минимум 8 символов. Пароль меняется сразу после сохранения.
+                </p>
               </div>
             </div>
           ) : null}

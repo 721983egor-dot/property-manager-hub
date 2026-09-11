@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchComplexes } from "@/lib/complexes";
+import { fetchPublicComplexes } from "@/lib/complexes";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import { SITE_ORIGIN } from "@/lib/site";
 import {
@@ -94,8 +94,8 @@ function RentPage() {
   });
 
   const { data: complexes = [], isLoading: isLoadingComplexes } = useQuery({
-    queryKey: ["complexes"],
-    queryFn: fetchComplexes,
+    queryKey: ["public-complexes"],
+    queryFn: fetchPublicComplexes,
   });
 
   const todayIso = useMemo(() => toISODate(new Date()), []);

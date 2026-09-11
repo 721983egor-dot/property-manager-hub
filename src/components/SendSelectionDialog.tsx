@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { Check, Search } from "lucide-react";
 import { toast } from "sonner";
 
+import { SITE_ORIGIN } from "@/lib/site";
+
 import { sendOperatorMessage } from "@/lib/chat.functions";
 import { createSelection } from "@/lib/selections";
 import { fetchPublishedProperties, formatMoney, internalTitle } from "@/lib/properties";
@@ -60,7 +62,7 @@ export function SendSelectionDialog({ open, onOpenChange, threadId, onSent }: Pr
         saved: false,
         trackEvents: false,
       });
-      const url = `${window.location.origin}/p/${selection.code}`;
+      const url = `${SITE_ORIGIN}/p/${selection.code}`;
       const list = picked
         .map((id, i) => {
           const p = properties.find((x) => x.id === id);

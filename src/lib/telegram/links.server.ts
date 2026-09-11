@@ -22,8 +22,9 @@ export function absolutizeLinks(text: string): string {
   );
 }
 
+/** Ссылка на подборку для клиента — всегда на публичном сайте. */
 export function selectionUrl(code: string) {
-  return `${rmOsBaseUrl()}/p/${code}`;
+  return `${siteBaseUrl()}/p/${code}`;
 }
 
 export function propertyUrl(id: string) {

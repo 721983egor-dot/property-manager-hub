@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { SITE_ORIGIN } from "@/lib/site";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SectionTabs } from "@/components/SectionTabs";
@@ -44,7 +46,7 @@ function SelectionsPage() {
   });
 
   const copyLink = (code: string) => {
-    const link = `${window.location.origin}/p/${code}`;
+    const link = `${SITE_ORIGIN}/p/${code}`;
     navigator.clipboard.writeText(link).then(() => toast.success("Ссылка скопирована"));
   };
 
@@ -88,7 +90,7 @@ function SelectionsPage() {
       ) : (
         <div className="mt-6 grid gap-4">
           {selections.map((s) => {
-            const link = `${window.location.origin}/p/${s.code}`;
+            const link = `${SITE_ORIGIN}/p/${s.code}`;
             return (
               <Card key={s.id} className="overflow-hidden">
                 <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
