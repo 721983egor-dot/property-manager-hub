@@ -305,7 +305,7 @@ export const createLeadFromThread = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: thread } = await db
       .from("chat_threads")
-      .select("name, phone, first_page")
+      .select("name, phone, first_page, source")
       .eq("id", data.threadId)
       .maybeSingle();
     if (!thread) throw new Error("Диалог не найден");
@@ -330,7 +330,7 @@ export const createLeadFromThread = createServerFn({ method: "POST" })
       phone: thread.phone,
       topic: "other",
       message: text,
-      source: "site_chat",
+      source: thread.source === "cian" ? "cian" : "site_chat",
     });
     if (error) throw new Error("Не удалось создать заявку");
     return { ok: true as const };

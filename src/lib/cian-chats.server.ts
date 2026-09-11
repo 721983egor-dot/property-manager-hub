@@ -44,7 +44,11 @@ export async function syncCianChats(): Promise<{ chats: number; messages: number
 
     const messages = await fetchChatMessages(chat.chatId, 100);
     const incoming = messages.filter((message) => message.direction === "in");
-    const latestIncoming = incoming.at(-1)?.createdAt ?? null;
+    const latestIncoming = incoming
+      .map((message) => message.createdAt)
+      .filter(Boolean)
+      .sort()
+      .at(-1) ?? null;
     const rows = messages
       .filter((message) => message.messageId && message.text.trim())
       .map((message) => ({
