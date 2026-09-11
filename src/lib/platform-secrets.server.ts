@@ -10,24 +10,25 @@ const CACHE_TTL_MS = 60_000;
 const cache = new Map<string, { value: string; at: number }>();
 
 export async function getPlatformSecret(name: string): Promise<string> {
-  const fromEnv = process.env[name];
-  if (fromEnv) return fromEnv;
-
   const cached = cache.get(name);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.value;
 
+  const fromEnv = process.env[name]?.trim() ?? "";
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("platform_secrets")
       .select("value")
       .eq("name", name)
       .maybeSingle();
-    const value = ((data as { value?: string } | null)?.value ?? "").trim();
+    if (error) throw new Error(error.message);
+    const value = ((data as { value?: string } | null)?.value ?? "").trim() || fromEnv;
     cache.set(name, { value, at: Date.now() });
     return value;
-  } catch {
-    return "";
+  } catch (error) {
+    console.error(`Не удалось прочитать ключ площадки ${name}:`, error);
+    if (fromEnv) return fromEnv;
+    throw new Error("Хранилище ключей на этом сервере не готово. Сначала обновите систему.");
   }
 }
 

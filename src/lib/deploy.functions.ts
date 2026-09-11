@@ -155,8 +155,15 @@ export const getDeployStatus = createServerFn({ method: "GET" })
 export const triggerDeploy = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .handler(async () => {
+    const { getPlatformSecret } = await import("@/lib/platform-secrets.server");
+    const [cianApiKey, yandexRealtyToken] = await Promise.all([
+      getPlatformSecret("CIAN_API_KEY").catch(() => ""),
+      getPlatformSecret("YANDEX_REALTY_TOKEN").catch(() => ""),
+    ]);
     const result = await callDeployAgent("/deploy", {
       source: "rm-os-ui",
+      cian_api_key: cianApiKey || undefined,
+      yandex_realty_token: yandexRealtyToken || undefined,
     });
     await Promise.all([
       waitForProductionTelegramEndpoint(),

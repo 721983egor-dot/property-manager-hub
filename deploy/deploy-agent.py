@@ -16,6 +16,7 @@ import json
 import os
 import base64
 import subprocess
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -122,6 +123,8 @@ class DeployRequest(BaseModel):
     telegram_api_key: str | None = None
     lovable_api_key: str | None = None
     openai_api_key: str | None = None
+    cian_api_key: str | None = None
+    yandex_realty_token: str | None = None
 
 
 def update_env_values(values: dict[str, str | None]) -> None:
@@ -140,6 +143,24 @@ def update_env_values(values: dict[str, str | None]) -> None:
     for key, value in pending.items():
         output.append(f"{key}={value}")
     ENV_FILE.write_text("\n".join(output) + "\n")
+
+
+def update_deploy_agent() -> None:
+    """Пересобирает агент после ответа, чтобы следующий запуск использовал новый код."""
+    time.sleep(2)
+    try:
+        subprocess.Popen(
+            [
+                "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
+                "up", "-d", "--build", "--no-deps", "deploy-agent",
+            ],
+            cwd=REPO_DIR,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception:
+        pass
 
 
 @APP.get("/status")
@@ -165,6 +186,8 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             "TELEGRAM_API_KEY": req.telegram_api_key,
             "LOVABLE_API_KEY": req.lovable_api_key,
             "OPENAI_API_KEY": req.openai_api_key,
+            "CIAN_API_KEY": req.cian_api_key,
+            "YANDEX_REALTY_TOKEN": req.yandex_realty_token,
         })
 
         # 1. Резервная копия
@@ -229,6 +252,8 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
         })
         state["current_version"] = version
         save_state(state)
+
+        threading.Thread(target=update_deploy_agent, daemon=True).start()
 
         return {
             "ok": True,

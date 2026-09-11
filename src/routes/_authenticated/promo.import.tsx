@@ -580,11 +580,15 @@ function PlatformKeysPanel() {
     const value = values[name] ?? "";
     setBusy(name);
     try {
-      await saveKey({ data: { name, value } });
+      const result = await saveKey({ data: { name, value } });
       setValues((prev) => ({ ...prev, [name]: "" }));
       await qc.invalidateQueries({ queryKey: ["platform-keys"] });
       await qc.invalidateQueries({ queryKey: ["cian-connection"] });
-      toast.success("Ключ сохранён");
+      if (result.productionSynced) {
+        toast.success(result.message);
+      } else {
+        toast.warning(result.message, { duration: 8000 });
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось сохранить ключ");
     } finally {
