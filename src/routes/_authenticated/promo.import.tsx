@@ -550,3 +550,76 @@ function YandexApiPanel() {
     </section>
   );
 }
+
+/** Ключи доступа к кабинетам площадок: хранятся в системе и переживают переезд сервера. */
+function PlatformKeysPanel() {
+  const qc = useQueryClient();
+  const loadStatus = useServerFn(getPlatformKeyStatus);
+  const saveKey = useServerFn(savePlatformKey);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const { data: statuses = [] } = useQuery({
+    queryKey: ["platform-keys"],
+    queryFn: () => loadStatus({}),
+  });
+
+  const labels: Record<string, string> = {
+    CIAN_API_KEY: "Ключ доступа ЦИАН",
+    YANDEX_REALTY_TOKEN: "Токен Яндекс Недвижимости",
+  };
+
+  async function save(name: PlatformKeyName) {
+    const value = values[name] ?? "";
+    setBusy(name);
+    try {
+      await saveKey({ data: { name, value } });
+      setValues((prev) => ({ ...prev, [name]: "" }));
+      await qc.invalidateQueries({ queryKey: ["platform-keys"] });
+      await qc.invalidateQueries({ queryKey: ["cian-connection"] });
+      toast.success("Ключ сохранён");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось сохранить ключ");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="mt-6 rounded-xl border p-5">
+      <h2 className="text-sm font-semibold">Ключи доступа к площадкам</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Ключи хранятся в самой системе, поэтому статистика и импорт работают на любом сервере.
+      </p>
+      <div className="mt-4 grid gap-4">
+        {statuses.map((s) => (
+          <div key={s.name} className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div>
+              <div className="text-sm font-medium">
+                {labels[s.name] ?? s.name}{" "}
+                <span className={s.filled ? "text-emerald-600" : "text-destructive"}>
+                  {s.filled ? "— задан" : "— не задан"}
+                </span>
+              </div>
+              <Input
+                type="password"
+                autoComplete="off"
+                placeholder={s.filled ? "Введите новый ключ, чтобы заменить" : "Вставьте ключ"}
+                value={values[s.name] ?? ""}
+                onChange={(e) => setValues((prev) => ({ ...prev, [s.name]: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <Button
+              variant="outline"
+              disabled={busy === s.name || (values[s.name] ?? "").trim().length < 8}
+              onClick={() => save(s.name)}
+            >
+              Сохранить
+            </Button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
