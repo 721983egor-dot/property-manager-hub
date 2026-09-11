@@ -204,6 +204,13 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             timeout=120,
         )
 
+        # Новые фоновые сервисы тоже должны создаваться при обновлении. Раньше
+        # запускался только app, поэтому сборщик статистики не появлялся.
+        run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "stats-cron"],
+            timeout=180,
+        )
+
         # Один Telegram-бот может иметь только один адрес. После каждого
         # обновления возвращаем его на рабочий сервер и рабочую базу.
         register_telegram_webhook()

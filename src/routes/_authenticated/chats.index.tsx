@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CheckCheck, ChevronLeft, ListPlus, SendHorizonal, Trash2, UserPlus } from "lucide-react";
+import { CheckCheck, ChevronLeft, ListPlus, RefreshCw, SendHorizonal, Trash2, UserPlus } from "lucide-react";
 
 import {
   createLeadFromThread,
@@ -15,6 +15,7 @@ import {
   markThreadRead,
   sendOperatorMessage,
   setThreadStatus,
+  syncCianChatThreads,
   updateThreadContact,
 } from "@/lib/chat.functions";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ function ChatsPage() {
   const removeThread = useServerFn(deleteThread);
   const saveContact = useServerFn(updateThreadContact);
   const makeLead = useServerFn(createLeadFromThread);
+  const syncCian = useServerFn(syncCianChatThreads);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [text, setText] = useState("");
@@ -123,10 +125,24 @@ function ChatsPage() {
     },
   });
 
+  const syncMutation = useMutation({
+    mutationFn: () => syncCian({ data: undefined }),
+    onSuccess: (result) => {
+      toast.success(`ЦИАН обновлён: ${result.chats} чатов`);
+      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+      if (activeId) queryClient.invalidateQueries({ queryKey: ["chat-messages", activeId] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Не удалось обновить ЦИАН"),
+  });
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col lg:h-screen">
-      <header className="flex h-14 shrink-0 items-center border-b border-border px-4 sm:h-16 sm:px-6">
-        <h1 className="text-base font-semibold tracking-tight sm:text-lg">Чаты с сайта</h1>
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4 sm:h-16 sm:px-6">
+        <h1 className="text-base font-semibold tracking-tight sm:text-lg">Чаты</h1>
+        <Button variant="outline" size="sm" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending}>
+          <RefreshCw className={`size-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />
+          Обновить ЦИАН
+        </Button>
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -138,7 +154,7 @@ function ChatsPage() {
         >
           {threads.length === 0 && (
             <p className="p-4 text-sm text-muted-foreground">
-              Пока нет сообщений с сайта.
+              Пока нет сообщений.
             </p>
           )}
           {threads.map((t) => (
@@ -152,7 +168,7 @@ function ChatsPage() {
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate text-sm font-medium">
-                  {t.name.trim() || t.phone.trim() || "Посетитель сайта"}
+                  {t.name.trim() || t.phone.trim() || (t.source === "cian" ? "Клиент ЦИАН" : "Посетитель сайта")}
                 </span>
                 {t.unread_count > 0 && (
                   <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
@@ -165,6 +181,7 @@ function ChatsPage() {
                 {t.last_body || "—"}
               </span>
               <span className="text-[11px] text-muted-foreground">
+                {t.source === "cian" ? `ЦИАН${t.external_offer_id ? ` · №${t.external_offer_id}` : ""} · ` : "Сайт · "}
                 {format(new Date(t.last_message_at), "d MMM, HH:mm", { locale: ru })}
                 {t.status === "closed" ? " · закрыт" : ""}
               </span>
@@ -194,7 +211,7 @@ function ChatsPage() {
                     <ChevronLeft className="size-5" />
                   </button>
                   <span className="min-w-0 flex-1 truncate text-sm font-medium lg:hidden">
-                    {active.name.trim() || active.phone.trim() || "Посетитель сайта"}
+                    {active.name.trim() || active.phone.trim() || (active.source === "cian" ? "Клиент ЦИАН" : "Посетитель сайта")}
                   </span>
                 </div>
 

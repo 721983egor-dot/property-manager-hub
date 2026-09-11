@@ -30,6 +30,33 @@ async function logAction(summary: string, tool: string, input: Input) {
 
 /** Исполнители подтверждённых действий Ассистента. Ключ = поле `tool` предложения. */
 export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
+  sendCianMessage: async (input) => {
+    const threadId = must(input["threadId"] as string, "Не указан чат");
+    const body = must(input["body"] as string, "Пустое сообщение");
+    const { data: thread } = await supabaseAdmin
+      .from("chat_threads")
+      .select("external_id, source")
+      .eq("id", threadId)
+      .maybeSingle();
+    if (!thread || thread.source !== "cian" || !thread.external_id) {
+      throw new Error("Чат ЦИАН не найден");
+    }
+    const { sendChatMessage } = await import("@/lib/cian.server");
+    const externalId = await sendChatMessage(Number(thread.external_id), body);
+    const { error } = await supabaseAdmin.from("chat_messages").insert({
+      thread_id: threadId,
+      direction: "out",
+      body,
+      external_id: externalId || null,
+    });
+    if (error) throw new Error(error.message);
+    await supabaseAdmin
+      .from("chat_threads")
+      .update({ last_message_at: new Date().toISOString(), unread_count: 0 })
+      .eq("id", threadId);
+    return "Сообщение отправлено в ЦИАН";
+  },
+
   setPublished: async (input) => {
     const propertyId = must(input["propertyId"] as string, "Не указан объект");
     const platform = (input["platform"] as string) || "site";

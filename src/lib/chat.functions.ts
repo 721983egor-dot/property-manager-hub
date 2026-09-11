@@ -20,6 +20,10 @@ export type ChatThread = {
   created_at: string;
   last_body: string;
   last_direction: "in" | "out" | null;
+  source: "site" | "cian";
+  external_id: string | null;
+  external_offer_id: string | null;
+  property_id: string | null;
 };
 
 const visitorKeySchema = z.string().trim().min(8).max(64);
@@ -134,7 +138,7 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
   const { data: threads } = await db
     .from("chat_threads")
     .select(
-      "id, visitor_key, name, phone, first_page, status, unread_count, last_message_at, created_at",
+      "id, visitor_key, name, phone, first_page, status, unread_count, last_message_at, created_at, source, external_id, external_offer_id, property_id",
     )
     .order("last_message_at", { ascending: false })
     .limit(200);
@@ -168,6 +172,12 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
   };
 });
 
+/** Оператор: вручную обновить входящие чаты ЦИАН. */
+export const syncCianChatThreads = createServerFn({ method: "POST" }).handler(async () => {
+  const { syncCianChats } = await import("@/lib/cian-chats.server");
+  return syncCianChats();
+});
+
 /** Оператор: сообщения одного диалога. */
 export const fetchThreadMessages = createServerFn({ method: "POST" })
   .inputValidator((input: { threadId: string }) =>
@@ -191,9 +201,28 @@ export const sendOperatorMessage = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const db = await admin();
+    const { data: thread } = await db
+      .from("chat_threads")
+      .select("source, external_id")
+      .eq("id", data.threadId)
+      .maybeSingle();
+    if (!thread) throw new Error("Диалог не найден");
+
+    let externalMessageId: string | null = null;
+    if (thread.source === "cian") {
+      const chatId = Number(thread.external_id);
+      if (!Number.isFinite(chatId)) throw new Error("Некорректный номер чата ЦИАН");
+      const { sendChatMessage } = await import("@/lib/cian.server");
+      externalMessageId = (await sendChatMessage(chatId, data.body)) || null;
+    }
     const { data: row, error } = await db
       .from("chat_messages")
-      .insert({ thread_id: data.threadId, direction: "out", body: data.body })
+      .insert({
+        thread_id: data.threadId,
+        direction: "out",
+        body: data.body,
+        external_id: externalMessageId,
+      })
       .select("id, direction, body, created_at")
       .single();
     if (error) throw new Error("Не удалось отправить сообщение");
@@ -276,7 +305,7 @@ export const createLeadFromThread = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: thread } = await db
       .from("chat_threads")
-      .select("name, phone, first_page")
+      .select("name, phone, first_page, source")
       .eq("id", data.threadId)
       .maybeSingle();
     if (!thread) throw new Error("Диалог не найден");
@@ -301,7 +330,7 @@ export const createLeadFromThread = createServerFn({ method: "POST" })
       phone: thread.phone,
       topic: "other",
       message: text,
-      source: "site_chat",
+      source: thread.source === "cian" ? "cian" : "site_chat",
     });
     if (error) throw new Error("Не удалось создать заявку");
     return { ok: true as const };

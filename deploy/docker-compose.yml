@@ -179,7 +179,7 @@ services:
     networks:
       - rm-os
 
-  # Ежедневное обновление статистики площадок на рабочем сервере.
+  # Регулярное обновление статистики и чатов площадок на рабочем сервере.
   stats-cron:
     image: alpine:3.20
     restart: unless-stopped
@@ -193,9 +193,9 @@ services:
         apk add --no-cache curl >/dev/null
         while true; do
           SECRET="$${CRON_SECRET:-$$DEPLOY_AGENT_TOKEN}"
-          curl -s -o /dev/null -X POST http://app:3000/api/public/cron/cian-sync \
+          curl -fsS -X POST http://app:3000/api/public/cron/cian-sync \
             -H "x-cron-secret: $$SECRET" || true
-          sleep 86400
+          sleep 900
         done
     depends_on:
       - app

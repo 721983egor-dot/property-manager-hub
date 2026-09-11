@@ -7,7 +7,10 @@ import { z } from "zod";
  * Вызывается из среды разработки с токеном deploy-агента.
  */
 const bodySchema = z.object({
-  keys: z.record(z.string(), z.string().min(4)),
+  keys: z.record(
+    z.enum(["CIAN_API_KEY", "YANDEX_REALTY_TOKEN"]),
+    z.string().min(8).max(4096),
+  ),
 });
 
 function validToken(actual: string, expected: string) {
@@ -33,7 +36,6 @@ export const Route = createFileRoute("/api/public/system/platform-keys")({
         const { setPlatformSecret } = await import("@/lib/platform-secrets.server");
         const saved: string[] = [];
         for (const [name, value] of Object.entries(parsed.data.keys)) {
-          if (!/^[A-Z0-9_]+$/.test(name)) continue;
           await setPlatformSecret(name, value);
           saved.push(name);
         }
