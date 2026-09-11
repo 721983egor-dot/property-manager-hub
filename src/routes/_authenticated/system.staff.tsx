@@ -386,10 +386,15 @@ function StaffDialog({
                 <Input
                   className="mt-1.5"
                   type="text"
+                  name="staff-new-password"
+                  autoComplete="off"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Оставьте пустым"
                 />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Минимум 8 символов. Пароль меняется сразу после сохранения.
+                </p>
               </div>
             </div>
           ) : null}
