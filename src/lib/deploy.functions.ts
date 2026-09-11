@@ -94,6 +94,47 @@ async function waitForProductionTelegramEndpoint(timeoutMs = 5 * 60 * 1000) {
     : new Error("Рабочий RM OS не ответил при подключении Telegram");
 }
 
+async function configureProductionPlatformKeys() {
+  const deployToken = process.env["DEPLOY_AGENT_TOKEN"];
+  if (!deployToken) throw new Error("Не удалось передать ключи площадок рабочему RM OS");
+
+  const { getPlatformSecret } = await import("@/lib/platform-secrets.server");
+  const keys: Record<string, string> = {};
+  for (const name of ["CIAN_API_KEY", "YANDEX_REALTY_TOKEN"] as const) {
+    const value = await getPlatformSecret(name);
+    if (value) keys[name] = value;
+  }
+  if (Object.keys(keys).length === 0) return;
+
+  const response = await fetch(`${PRODUCTION_URL}/api/public/system/platform-keys`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${deployToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ keys }),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Ключи площадок не переданы: ${text.slice(0, 200)}`);
+}
+
+async function waitForProductionPlatformKeysEndpoint(timeoutMs = 5 * 60 * 1000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      await configureProductionPlatformKeys();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Рабочий RM OS не ответил при передаче ключей площадок");
+}
+
 /** Информация о текущей и последней доступной версии приложения. */
 export const getDeployStatus = createServerFn({ method: "GET" })
   .middleware([requireUser])
@@ -117,7 +158,10 @@ export const triggerDeploy = createServerFn({ method: "POST" })
     const result = await callDeployAgent("/deploy", {
       source: "rm-os-ui",
     });
-    await waitForProductionTelegramEndpoint();
+    await Promise.all([
+      waitForProductionTelegramEndpoint(),
+      waitForProductionPlatformKeysEndpoint(),
+    ]);
     return result;
   });
 

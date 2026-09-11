@@ -255,6 +255,7 @@ export type Database = {
           body: string
           created_at: string
           direction: string
+          external_id: string | null
           id: string
           read_at: string | null
           thread_id: string
@@ -263,6 +264,7 @@ export type Database = {
           body: string
           created_at?: string
           direction: string
+          external_id?: string | null
           id?: string
           read_at?: string | null
           thread_id: string
@@ -271,6 +273,7 @@ export type Database = {
           body?: string
           created_at?: string
           direction?: string
+          external_id?: string | null
           id?: string
           read_at?: string | null
           thread_id?: string
@@ -288,12 +291,16 @@ export type Database = {
       chat_threads: {
         Row: {
           created_at: string
+          external_id: string | null
+          external_offer_id: string | null
           first_page: string
           id: string
           last_message_at: string
           last_visitor_message_at: string | null
           name: string
           phone: string
+          property_id: string | null
+          source: string
           status: string
           unread_count: number
           updated_at: string
@@ -301,12 +308,16 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          external_id?: string | null
+          external_offer_id?: string | null
           first_page?: string
           id?: string
           last_message_at?: string
           last_visitor_message_at?: string | null
           name?: string
           phone?: string
+          property_id?: string | null
+          source?: string
           status?: string
           unread_count?: number
           updated_at?: string
@@ -314,18 +325,30 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          external_id?: string | null
+          external_offer_id?: string | null
           first_page?: string
           id?: string
           last_message_at?: string
           last_visitor_message_at?: string | null
           name?: string
           phone?: string
+          property_id?: string | null
+          source?: string
           status?: string
           unread_count?: number
           updated_at?: string
           visitor_key?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_threads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clients: {
         Row: {

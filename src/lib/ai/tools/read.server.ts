@@ -341,7 +341,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getChats: tool({
-      description: "Чаты с сайта: обращения и переписка с клиентами.",
+      description: "Все чаты RM OS: обращения с сайта и переписка ЦИАН.",
       inputSchema: z.object({ threadId: z.string().optional(), days: z.number().optional() }),
       execute: async ({ threadId, days }) => {
         if (threadId) {

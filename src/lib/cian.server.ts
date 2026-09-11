@@ -58,6 +58,30 @@ export async function cianGet<T>(
   }
 }
 
+/** POST-запрос к API ЦИАН. */
+export async function cianPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const token = await cianKey();
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    console.error(`CIAN ${path} failed [${response.status}]: ${text}`);
+    throw new Error(`ЦИАН ответил ошибкой ${response.status}: ${text.slice(0, 300)}`);
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("ЦИАН вернул неожиданный ответ");
+  }
+}
+
 /** Количество объявлений в кабинете (для проверки подключения). */
 export async function countMyOffers(): Promise<number> {
   const payload = await cianGet<{
@@ -374,4 +398,13 @@ export async function fetchChatMessages(chatId: number, pageSize = 50): Promise<
       createdAt: String(m["createdAt"] ?? ""),
     };
   });
+}
+
+/** Отправляет текстовый ответ в существующий чат ЦИАН. */
+export async function sendChatMessage(chatId: number, text: string): Promise<string> {
+  const payload = await cianPost<{ result?: { messageId?: string | number } }>(
+    "/v1/add-message",
+    { chatId, text },
+  );
+  return String(payload.result?.messageId ?? "");
 }

@@ -382,5 +382,23 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+
+    proposeCianReply: tool({
+      description: "Предложить ответ клиенту в чате ЦИАН. Сообщение отправится только после подтверждения.",
+      inputSchema: z.object({ threadId: z.string().uuid(), body: z.string().trim().min(1).max(2000) }),
+      execute: async ({ threadId, body }) => {
+        const { data: thread } = await ctx.admin
+          .from("chat_threads")
+          .select("id, source, name, external_id")
+          .eq("id", threadId)
+          .maybeSingle();
+        if (!thread || thread.source !== "cian" || !thread.external_id) {
+          return { error: "Чат ЦИАН не найден" };
+        }
+        const summary = `Отправить ответ в ЦИАН${thread.name ? ` клиенту ${thread.name}` : ""}: «${body.slice(0, 120)}${body.length > 120 ? "…" : ""}»`;
+        ctx.propose({ tool: "sendCianMessage", summary, input: { threadId, body } });
+        return { proposed: true, summary };
+      },
+    }),
   };
 }

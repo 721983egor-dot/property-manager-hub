@@ -58,7 +58,18 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
           }
         }
 
-        return Response.json({ ok: true, synced, errors: errors.slice(0, 5) });
+        let chats = 0;
+        let messages = 0;
+        try {
+          const { syncCianChats } = await import("@/lib/cian-chats.server");
+          const result = await syncCianChats();
+          chats = result.chats;
+          messages = result.messages;
+        } catch (e) {
+          errors.push(e instanceof Error ? e.message : "Не удалось синхронизировать чаты");
+        }
+
+        return Response.json({ ok: true, synced, chats, messages, errors: errors.slice(0, 5) });
       },
     },
   },
