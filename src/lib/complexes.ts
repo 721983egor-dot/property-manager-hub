@@ -56,6 +56,17 @@ export async function fetchComplexes(): Promise<Complex[]> {
   return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
 }
 
+/** Комплексы для публичного сайта: доступны без входа в RM OS. */
+export async function fetchPublicComplexes(): Promise<Complex[]> {
+  const { data, error } = await supabase
+    .from("complexes")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => normalize(r as Record<string, unknown>));
+}
+
+
 export async function fetchComplex(id: string): Promise<Complex> {
   const { data, error } = await supabase.from("complexes").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
