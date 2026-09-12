@@ -5,6 +5,11 @@
 
 import type { Property } from "@/lib/properties";
 
+export const YANDEX_OAUTH_URL =
+  "https://oauth.yandex.ru/authorize?response_type=token&client_id=aa4eae0f50244d9aae9c864b349e1859";
+export const YANDEX_FEED_PATH = "/api/public/feeds/yandex.xml";
+export const YANDEX_FEED_URL = `https://residence-more.ru${YANDEX_FEED_PATH}`;
+
 /** Поля, обязательные для публикации в фиде Яндекс Недвижимости. */
 export function missingYandexFields(p: Property): string[] {
   const missing: string[] = [];

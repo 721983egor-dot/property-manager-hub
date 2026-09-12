@@ -20,11 +20,31 @@ export type ChatThread = {
   created_at: string;
   last_body: string;
   last_direction: "in" | "out" | null;
-  source: "site" | "cian";
+  source: "site" | "cian" | "avito";
   external_id: string | null;
   external_offer_id: string | null;
   property_id: string | null;
+  property_title: string | null;
 };
+
+export type ChatQuickReply = {
+  id: string;
+  title: string;
+  body: string;
+  position: number;
+};
+
+export function chatSourceLabel(source: ChatThread["source"]) {
+  if (source === "cian") return "ЦИАН";
+  if (source === "avito") return "Авито";
+  return "Сайт";
+}
+
+export function chatSourceToDealSource(source: ChatThread["source"]) {
+  if (source === "cian") return "ЦИАН";
+  if (source === "avito") return "Авито";
+  return "Сайт";
+}
 
 const visitorKeySchema = z.string().trim().min(8).max(64);
 const bodySchema = z.string().trim().min(1, "Введите сообщение").max(2000);
@@ -146,6 +166,21 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
   const list = threads ?? [];
   if (list.length === 0) return { threads: [] as ChatThread[] };
 
+  const propertyIds = [
+    ...new Set(list.map((t) => t.property_id).filter((id): id is string => Boolean(id))),
+  ];
+  const propertyTitle = new Map<string, string>();
+  if (propertyIds.length > 0) {
+    const { data: properties } = await db
+      .from("properties")
+      .select("id, title, internal_name")
+      .in("id", propertyIds);
+    for (const p of properties ?? []) {
+      const title = String(p.internal_name ?? "").trim() || String(p.title ?? "").trim();
+      if (title) propertyTitle.set(p.id, title);
+    }
+  }
+
   const { data: msgs } = await db
     .from("chat_messages")
     .select("thread_id, direction, body, created_at")
@@ -168,6 +203,7 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
       ...t,
       last_body: last.get(t.id)?.body ?? "",
       last_direction: last.get(t.id)?.direction ?? null,
+      property_title: t.property_id ? propertyTitle.get(t.property_id) ?? null : null,
     })) as ChatThread[],
   };
 });
@@ -176,6 +212,21 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
 export const syncCianChatThreads = createServerFn({ method: "POST" }).handler(async () => {
   const { syncCianChats } = await import("@/lib/cian-chats.server");
   return syncCianChats();
+});
+
+/** Оператор: вручную обновить чаты и статистику Авито. */
+export const syncAvitoChatThreads = createServerFn({ method: "POST" }).handler(async () => {
+  const { syncAvitoChats, syncAvitoListingIds, syncAvitoStats } = await import(
+    "@/lib/avito-chats.server"
+  );
+  try {
+    await syncAvitoListingIds();
+  } catch {
+    // Номера объявлений подтянутся, когда Авито обработает фид.
+  }
+  const chats = await syncAvitoChats();
+  const stats = await syncAvitoStats();
+  return { ...chats, synced: stats.synced };
 });
 
 /** Оператор: сообщения одного диалога. */
@@ -209,12 +260,18 @@ export const sendOperatorMessage = createServerFn({ method: "POST" })
     if (!thread) throw new Error("Диалог не найден");
 
     let externalMessageId: string | null = null;
-    if (thread.source === "cian") {
-      const chatId = Number(thread.external_id);
-      if (!Number.isFinite(chatId)) throw new Error("Некорректный номер чата ЦИАН");
-      const { sendChatMessage } = await import("@/lib/cian.server");
-      externalMessageId = (await sendChatMessage(chatId, data.body)) || null;
-    }
+  if (thread.source === "cian") {
+    const chatId = Number(thread.external_id);
+    if (!Number.isFinite(chatId)) throw new Error("Некорректный номер чата ЦИАН");
+    const { sendChatMessage } = await import("@/lib/cian.server");
+    externalMessageId = (await sendChatMessage(chatId, data.body)) || null;
+  }
+  if (thread.source === "avito") {
+    const chatId = String(thread.external_id ?? "");
+    if (!chatId) throw new Error("Некорректный чат Авито");
+    const { sendAvitoMessage } = await import("@/lib/avito.server");
+    externalMessageId = (await sendAvitoMessage(chatId, data.body)) || null;
+  }
     const { data: row, error } = await db
       .from("chat_messages")
       .insert({
@@ -251,6 +308,18 @@ export const markThreadRead = createServerFn({ method: "POST" })
       .is("read_at", null);
     return { ok: true as const };
   });
+
+/** Оператор: прочитать все непрочитанные сообщения во всех диалогах. */
+export const markAllThreadsRead = createServerFn({ method: "POST" }).handler(async () => {
+  const db = await admin();
+  await db.from("chat_threads").update({ unread_count: 0 }).gt("unread_count", 0);
+  await db
+    .from("chat_messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("direction", "in")
+    .is("read_at", null);
+  return { ok: true as const };
+});
 
 /** Оператор: закрыть или снова открыть диалог. */
 export const setThreadStatus = createServerFn({ method: "POST" })
@@ -296,42 +365,174 @@ export const updateThreadContact = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** Оператор: создать заявку из переписки. */
-export const createLeadFromThread = createServerFn({ method: "POST" })
-  .inputValidator((input: { threadId: string }) =>
-    z.object({ threadId: z.string().uuid() }).parse(input),
+/** Оператор: создать сделку из переписки. */
+export const createDealFromThread = createServerFn({ method: "POST" })
+  .inputValidator(
+    (input: {
+      threadId: string;
+      name: string;
+      phone: string;
+      comment?: string;
+      budget?: number | null;
+      propertyId?: string | null;
+    }) =>
+      z
+        .object({
+          threadId: z.string().uuid(),
+          name: z.string().trim().min(1, "Укажите имя").max(120),
+          phone: z.string().trim().min(5, "Укажите телефон").max(32),
+          comment: z.string().trim().max(4000).optional().default(""),
+          budget: z.number().nonnegative().nullable().optional(),
+          propertyId: z.string().uuid().nullable().optional(),
+        })
+        .parse(input),
   )
   .handler(async ({ data }) => {
     const db = await admin();
     const { data: thread } = await db
       .from("chat_threads")
-      .select("name, phone, first_page, source")
+      .select("source, property_id, name, phone")
       .eq("id", data.threadId)
       .maybeSingle();
     if (!thread) throw new Error("Диалог не найден");
-    if (!thread.phone.trim()) {
-      throw new Error("Сначала укажите телефон клиента в карточке диалога");
+
+    await db
+      .from("chat_threads")
+      .update({ name: data.name, phone: data.phone })
+      .eq("id", data.threadId);
+
+    const { data: stages } = await db
+      .from("deal_stages")
+      .select("id, kind, position")
+      .order("position", { ascending: true });
+    const stage =
+      (stages ?? []).find((s) => s.kind === "open") ?? (stages ?? [])[0] ?? null;
+    if (!stage) throw new Error("Сначала настройте стадии сделок в CRM");
+
+    const phoneTail = data.phone.replace(/\D/g, "").slice(-10);
+    let clientId: string | null = null;
+    if (phoneTail) {
+      const { data: clients } = await db
+        .from("clients")
+        .select("id, phone")
+        .ilike("phone", `%${phoneTail}%`)
+        .limit(5);
+      clientId = (clients ?? [])[0]?.id ?? null;
+    }
+    if (!clientId) {
+      const { data: client, error: clientError } = await db
+        .from("clients")
+        .insert({ full_name: data.name, phone: data.phone })
+        .select("id")
+        .single();
+      if (clientError) throw new Error("Не удалось создать клиента");
+      clientId = client.id;
     }
 
-    const { data: rows } = await db
+    const propertyId = data.propertyId === undefined ? thread.property_id : data.propertyId;
+    const source = chatSourceToDealSource(
+      (thread.source as ChatThread["source"]) || "site",
+    );
+
+    const { data: msgs } = await db
       .from("chat_messages")
-      .select("direction, body, created_at")
+      .select("direction, body")
       .eq("thread_id", data.threadId)
       .order("created_at", { ascending: true })
-      .limit(50);
-
-    const text = (rows ?? [])
+      .limit(40);
+    const transcript = (msgs ?? [])
       .map((m) => `${m.direction === "in" ? "Клиент" : "Мы"}: ${m.body}`)
-      .join("\n")
+      .join("\n");
+    const commentParts = [data.comment.trim(), transcript ? `Переписка:\n${transcript}` : ""]
+      .filter(Boolean)
+      .join("\n\n")
       .slice(0, 3900);
 
-    const { error } = await db.from("leads").insert({
-      name: thread.name.trim() || "Клиент из чата",
-      phone: thread.phone,
-      topic: "other",
-      message: text,
-      source: thread.source === "cian" ? "cian" : "site_chat",
-    });
-    if (error) throw new Error("Не удалось создать заявку");
+    const { data: deal, error } = await db
+      .from("deals")
+      .insert({
+        title: `Чат — ${data.name}`,
+        stage_id: stage.id,
+        client_id: clientId,
+        property_id: propertyId,
+        source,
+        budget: data.budget ?? null,
+        comment: commentParts,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error("Не удалось создать сделку");
+    return { ok: true as const, dealId: deal.id as string };
+  });
+
+/** Быстрые ответы для чата. */
+export const fetchQuickReplies = createServerFn({ method: "POST" }).handler(async () => {
+  const db = await admin();
+  const { data, error } = await db
+    .from("chat_quick_replies")
+    .select("id, title, body, position")
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw new Error("Не удалось загрузить быстрые ответы");
+  return { replies: (data ?? []) as ChatQuickReply[] };
+});
+
+export const saveQuickReply = createServerFn({ method: "POST" })
+  .inputValidator(
+    (input: { id?: string | null; title: string; body: string; position?: number }) =>
+      z
+        .object({
+          id: z.string().uuid().nullable().optional(),
+          title: z.string().trim().min(1, "Укажите название").max(120),
+          body: z.string().trim().min(1, "Укажите текст").max(2000),
+          position: z.number().int().min(0).max(9999).optional().default(0),
+        })
+        .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const db = await admin();
+    if (data.id) {
+      const { error } = await db
+        .from("chat_quick_replies")
+        .update({ title: data.title, body: data.body, position: data.position })
+        .eq("id", data.id);
+      if (error) throw new Error("Не удалось сохранить быстрый ответ");
+      return { id: data.id };
+    }
+    const { data: row, error } = await db
+      .from("chat_quick_replies")
+      .insert({ title: data.title, body: data.body, position: data.position })
+      .select("id")
+      .single();
+    if (error) throw new Error("Не удалось добавить быстрый ответ");
+    return { id: row.id as string };
+  });
+
+export const deleteQuickReply = createServerFn({ method: "POST" })
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const db = await admin();
+    const { error } = await db.from("chat_quick_replies").delete().eq("id", data.id);
+    if (error) throw new Error("Не удалось удалить быстрый ответ");
     return { ok: true as const };
   });
+
+/** Тихая синхронизация площадок — для частого опроса, пока открыт раздел чатов. */
+export const syncPlatformChats = createServerFn({ method: "POST" }).handler(async () => {
+  const errors: string[] = [];
+  let cian = { chats: 0, messages: 0 };
+  let avito = { chats: 0, messages: 0 };
+  try {
+    const { syncCianChats } = await import("@/lib/cian-chats.server");
+    cian = await syncCianChats();
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "ЦИАН");
+  }
+  try {
+    const { syncAvitoChats } = await import("@/lib/avito-chats.server");
+    avito = await syncAvitoChats();
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Авито");
+  }
+  return { cian, avito, errors };
+});

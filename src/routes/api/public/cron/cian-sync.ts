@@ -8,7 +8,7 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env["LOVABLE_CRON_SECRET"] ?? "";
+        const secret = process.env["CRON_SECRET"] ?? process.env["LOVABLE_CRON_SECRET"] ?? "";
         const deployToken = process.env["DEPLOY_AGENT_TOKEN"] ?? "";
         const provided = request.headers.get("x-cron-secret") ?? "";
         const allowed = [secret, deployToken].filter((s) => s.length > 0);
@@ -58,18 +58,64 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
           }
         }
 
-        let chats = 0;
-        let messages = 0;
-        try {
-          const { syncCianChats } = await import("@/lib/cian-chats.server");
-          const result = await syncCianChats();
-          chats = result.chats;
-          messages = result.messages;
-        } catch (e) {
-          errors.push(e instanceof Error ? e.message : "Не удалось синхронизировать чаты");
-        }
+  let chats = 0;
+  let messages = 0;
+  try {
+    const { syncCianChats } = await import("@/lib/cian-chats.server");
+    const result = await syncCianChats();
+    chats = result.chats;
+    messages = result.messages;
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Не удалось синхронизировать чаты");
+  }
 
-        return Response.json({ ok: true, synced, chats, messages, errors: errors.slice(0, 5) });
+  let avitoChats = 0;
+  let avitoSynced = 0;
+  try {
+    const { syncAvitoChats, syncAvitoListingIds, syncAvitoStats } = await import(
+      "@/lib/avito-chats.server"
+    );
+    try {
+      await syncAvitoListingIds();
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : "Не удалось получить номера объявлений Авито");
+    }
+    const result = await syncAvitoChats();
+    const stats = await syncAvitoStats();
+    avitoChats = result.chats;
+    avitoSynced = stats.synced;
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Не удалось синхронизировать Авито");
+  }
+
+  let yandexSynced = 0;
+  try {
+    const { syncYandexListingStats } = await import("@/lib/yandex.server");
+    const yandex = await syncYandexListingStats(7);
+    yandexSynced = yandex.configured ? yandex.synced : 0;
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Не удалось синхронизировать Яндекс Недвижимость");
+  }
+
+  let social = { posts: 0, stats: 0 };
+  try {
+    const { syncSocialStats } = await import("@/lib/social.server");
+    social = await syncSocialStats();
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Не удалось синхронизировать соцсети");
+  }
+
+  return Response.json({
+    ok: true,
+    synced,
+    chats,
+    messages,
+    avitoChats,
+    avitoSynced,
+    yandexSynced,
+    social,
+    errors: errors.slice(0, 5),
+  });
       },
     },
   },

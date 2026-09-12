@@ -1,16 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { addDays } from "date-fns";
 import { ArrowRight, MessageCircle, Phone, Send } from "lucide-react";
 
-import {
-  fetchPublishedProperties,
-  publicStatusView,
-  signedUrls,
-} from "@/lib/properties";
+import { publicStatusView } from "@/lib/properties";
+import { publishedPropertiesQueryOptions, publicComplexesQueryOptions } from "@/lib/public-catalog.functions";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import { parseISODate, toISODate } from "@/lib/rentals";
+import { complexSlug, publicPhotoUrl } from "@/lib/seo";
 import {
   SITE_ADDRESS,
   SITE_EMAIL,
@@ -28,6 +26,12 @@ import aboutImg from "@/assets/site/home_about.jpg";
 import selectionImg from "@/assets/site/home_p5.jpg";
 
 export const Route = createFileRoute("/")({
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(publishedPropertiesQueryOptions()),
+      context.queryClient.ensureQueryData(publicComplexesQueryOptions()),
+    ]);
+  },
   head: () => {
     const url = `${SITE_ORIGIN}/`;
     const image = `${SITE_ORIGIN}/og-cover.jpg`;
@@ -65,6 +69,7 @@ export const Route = createFileRoute("/")({
             "@context": "https://schema.org",
             "@type": "RealEstateAgent",
             name: "Резиденция&Море",
+            url: "https://residence-more.ru/",
             telephone: "+7 938 442-08-09",
             email: "residence.more@yandex.ru",
             address: {
@@ -133,10 +138,9 @@ const ABOUT_TEXT = [
 ];
 
 function HomePage() {
-  const { data: allProperties = [] } = useQuery({
-    queryKey: ["published-properties"],
-    queryFn: fetchPublishedProperties,
-  });
+  const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
+  const { data: complexes = [] } = useSuspenseQuery(publicComplexesQueryOptions());
+  const complexLinks = complexes.filter((c) => c.show_in_site_filter);
 
   const todayIso = useMemo(() => toISODate(new Date()), []);
   const propertyIds = useMemo(() => allProperties.map((p) => p.id), [allProperties]);
@@ -160,16 +164,6 @@ function HomePage() {
       .slice(0, 6)
       .map((p) => ({ property: p, freeFromIso: freeFrom[p.id] ?? null }));
   }, [allProperties, bookingsMap]);
-
-  const photoPaths = popular
-    .map((p) => p.property.photos[0]?.path)
-    .filter((path): path is string => Boolean(path));
-
-  const { data: urls = {} } = useQuery({
-    queryKey: ["photo-urls", photoPaths.slice().sort().join("|")],
-    queryFn: () => signedUrls(photoPaths),
-    enabled: photoPaths.length > 0,
-  });
 
   return (
     <div className="font-site">
@@ -224,6 +218,20 @@ function HomePage() {
               Смотреть все →
             </Link>
           </div>
+          {complexLinks.length > 0 ? (
+            <nav aria-label="Жилые комплексы" className="mt-8 flex flex-wrap gap-2">
+              {complexLinks.map((item) => (
+                <Link
+                  key={item.id}
+                  to="/rent/jk/$slug"
+                  params={{ slug: complexSlug(item, complexes) }}
+                  className="rounded-full border border-site-line bg-white px-3.5 py-1.5 text-sm font-medium text-site-navy transition-colors hover:border-site-gold hover:text-site-gold"
+                >
+                  ЖК {item.name}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
           {popular.length > 0 && (
             <>
               <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -234,7 +242,7 @@ function HomePage() {
                     freeFromIso={freeFromIso}
                     photoUrl={
                       property.photos[0]?.path
-                        ? urls[property.photos[0].path]
+                        ? publicPhotoUrl(property.photos[0].path)
                         : undefined
                     }
                   />

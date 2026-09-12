@@ -1,5 +1,5 @@
-import { createFileRoute, stripSearchParams, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, stripSearchParams, useNavigate } from "@tanstack/react-router";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Heart } from "lucide-react";
 
@@ -11,20 +11,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchPublicComplexes } from "@/lib/complexes";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
+import {
+  publicComplexesQueryOptions,
+  publishedPropertiesQueryOptions,
+} from "@/lib/public-catalog.functions";
 import { SITE_ORIGIN } from "@/lib/site";
 import {
-  fetchPublishedProperties,
   PROPERTY_TYPES,
   publicStatusView,
   roomsLabel,
   ROOM_OPTIONS,
-  signedUrls,
-  type Property,
   type PropertyType,
 } from "@/lib/properties";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
+import { complexSlug, publicPhotoUrl } from "@/lib/seo";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -40,27 +41,33 @@ export const Route = createFileRoute("/rent/")({
   search: {
     middlewares: [stripSearchParams({ type: "", complex: "", rooms: "", sort: "price_asc" })],
   },
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(publishedPropertiesQueryOptions()),
+      context.queryClient.ensureQueryData(publicComplexesQueryOptions()),
+    ]);
+  },
   head: () => {
     const url = `${SITE_ORIGIN}/rent`;
     const image = `${SITE_ORIGIN}/og-cover.jpg`;
     return {
       meta: [
         {
-          title: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море",
+          title: "Снять квартиру долгосрочно в Сочи — Резиденция&Море",
         },
         {
           name: "description",
           content:
-            "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
+            "Снять квартиру, апартаменты или дом в Сочи на долгий срок. Актуальные объекты в ЖК Лазурный берег, Бревис, Гранд Карат и других комплексах — Резиденция&Море.",
         },
         {
           property: "og:title",
-          content: "Долгосрочная аренда недвижимости в Сочи — Резиденция&Море",
+          content: "Снять квартиру долгосрочно в Сочи — Резиденция&Море",
         },
         {
           property: "og:description",
           content:
-            "Актуальные объекты долгосрочной аренды в Сочи от Резиденция&Море: квартиры, апартаменты, дома и виллы.",
+            "Снять квартиру, апартаменты или дом в Сочи на долгий срок. Актуальные объекты в жилых комплексах Сочи от Резиденция&Море.",
         },
         { name: "twitter:card", content: "summary_large_image" },
         { property: "og:url", content: url },
@@ -88,15 +95,9 @@ function RentPage() {
   const navigate = useNavigate({ from: "/rent/" });
   const { type, complex, rooms, sort } = Route.useSearch();
 
-  const { data: allProperties = [], isLoading: isLoadingProperties } = useQuery({
-    queryKey: ["published-properties"],
-    queryFn: fetchPublishedProperties,
-  });
-
-  const { data: complexes = [], isLoading: isLoadingComplexes } = useQuery({
-    queryKey: ["public-complexes"],
-    queryFn: fetchPublicComplexes,
-  });
+  const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
+  const { data: complexes = [] } = useSuspenseQuery(publicComplexesQueryOptions());
+  const complexLinks = complexes.filter((c) => c.show_in_site_filter);
 
   const todayIso = useMemo(() => toISODate(new Date()), []);
   const propertyIds = useMemo(
@@ -104,7 +105,7 @@ function RentPage() {
     [allProperties],
   );
 
-  const { data: bookingsMap = {}, isLoading: isLoadingBookings } = useQuery({
+  const { data: bookingsMap = {} } = useQuery({
     queryKey: ["current-bookings", propertyIds.join("|"), todayIso],
     queryFn: () => fetchCurrentBookingsForProperties(propertyIds, todayIso),
     enabled: propertyIds.length > 0,
@@ -151,18 +152,6 @@ function RentPage() {
     return sorted;
   }, [allProperties, freeFromMap, type, complex, rooms, sort]);
 
-  const photoPaths = visible
-    .map((p) => p.photos[0]?.path)
-    .filter((path): path is string => Boolean(path));
-
-  const { data: urls = {} } = useQuery({
-    queryKey: ["photo-urls", photoPaths.slice().sort().join("|")],
-    queryFn: () => signedUrls(photoPaths),
-    enabled: photoPaths.length > 0,
-  });
-
-  const isLoading = isLoadingProperties || isLoadingComplexes || isLoadingBookings;
-
   const updateSearch = (key: keyof z.infer<typeof rentSearchSchema>, value: string) => {
     navigate({
       search: (prev) => ({ ...prev, [key]: value || undefined }),
@@ -180,6 +169,29 @@ function RentPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-[1280px] px-5 py-10 md:px-6 lg:px-8 lg:py-14">
+        <header className="mb-8 max-w-3xl">
+          <h1 className="text-3xl font-bold text-site-navy md:text-4xl">
+            Снять квартиру долгосрочно в Сочи
+          </h1>
+          <p className="mt-3 text-base leading-relaxed text-site-muted">
+            Актуальные квартиры, апартаменты, дома и виллы в долгосрочную аренду. Подберём объект в нужном
+            комплексе и районе, покажем и сопровождим на весь срок.
+          </p>
+        </header>
+        {complexLinks.length > 0 ? (
+          <nav aria-label="Жилые комплексы" className="mb-8 flex flex-wrap gap-2">
+            {complexLinks.map((item) => (
+              <Link
+                key={item.id}
+                to="/rent/jk/$slug"
+                params={{ slug: complexSlug(item, complexes) }}
+                className="rounded-full border border-site-line px-3.5 py-1.5 text-sm font-medium text-site-navy transition-colors hover:border-site-gold hover:text-site-gold"
+              >
+                ЖК {item.name}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
         <p className="mb-6 flex items-center gap-2 text-sm text-site-muted">
           <Heart className="size-4 shrink-0 fill-site-gold text-site-gold" />
           Нажимайте на сердечко у понравившихся объектов — соберём их в вашу подборку, чтобы записаться на просмотр всех сразу или поделиться с близкими.
@@ -225,16 +237,7 @@ function RentPage() {
           </div>
         </header>
 
-        {isLoading ? (
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-[4/3] animate-pulse rounded-xl bg-site-navy-soft"
-              />
-            ))}
-          </div>
-        ) : visible.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="mt-16 text-center">
             <p className="text-lg text-site-navy">Нет подходящих объектов</p>
             <p className="mt-2 text-sm text-site-muted">
@@ -248,7 +251,7 @@ function RentPage() {
                 key={property.id}
                 property={property}
                 photoUrl={
-                  property.photos[0]?.path ? urls[property.photos[0].path] : undefined
+                  property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
                 }
                 freeFromIso={freeFromMap[property.id] ?? null}
               />

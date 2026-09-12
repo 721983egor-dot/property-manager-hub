@@ -1,32 +1,30 @@
-/** Абсолютные ссылки на публичный сайт для сообщений Telegram. */
+/** Публичные ссылки сайта для клиентов. Только сервер. */
 
-export function siteBaseUrl(): string {
+const DEFAULT_ORIGIN = "https://residence-more.ru";
+
+export function siteOrigin(): string {
   const raw =
     process.env["PUBLIC_SITE_URL"] ||
-    process.env["PUBLIC_BASE_URL"] ||
-    "https://residence-more.ru";
-  return raw.replace(/\/+$/, "");
+    process.env["SITE_ORIGIN"] ||
+    process.env["PUBLIC_SITE_ORIGIN"] ||
+    process.env["PUBLIC_ORIGIN"] ||
+    DEFAULT_ORIGIN;
+  return raw.replace(/^http:\/\//i, "https://").replace(/\/$/, "");
 }
 
-/** Адрес RM OS, где открываются сохранённые подборки сотрудников. */
-export function rmOsBaseUrl(): string {
-  const raw = process.env["RM_OS_URL"] || "https://rm-os.residence-more.ru";
-  return raw.replace(/\/+$/, "");
+export function selectionUrl(code: string): string {
+  return `${siteOrigin()}/p/${String(code).trim()}`;
 }
 
-/** Превращает относительные ссылки вида /p/CODE и /rent/ID в абсолютные. */
+/** Превращает `/p/КОД` в полную https-ссылку — иначе Telegram показывает её текстом. */
 export function absolutizeLinks(text: string): string {
-  const base = siteBaseUrl();
-  return text.replace(/(^|[\s(])\/(p|rent)\/([A-Za-z0-9-]+)/g, (_m, pre: string, kind: string, id: string) =>
-    `${pre}${base}/${kind}/${id}`,
-  );
+  const origin = siteOrigin();
+  return String(text ?? "")
+    .replace(/(^|[\s(])\/p\/([A-Z0-9]+)\b/gi, `$1${origin}/p/$2`)
+    .replace(/\]\(\/p\/([A-Z0-9]+)\)/gi, `](${origin}/p/$1)`);
 }
 
-/** Ссылка на подборку для клиента — всегда на публичном сайте. */
-export function selectionUrl(code: string) {
-  return `${siteBaseUrl()}/p/${code}`;
-}
-
-export function propertyUrl(id: string) {
-  return `${siteBaseUrl()}/rent/${id}`;
+export function firstSelectionUrl(text: string): string | null {
+  const match = String(text ?? "").match(/https?:\/\/[^\s)]+\/p\/[A-Z0-9]+/i);
+  return match?.[0] ?? null;
 }

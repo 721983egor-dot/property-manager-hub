@@ -1,8 +1,9 @@
 /** Обработка сообщений Telegram Ассистентом RM OS. Только сервер. */
 
+import { Buffer } from "node:buffer";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { AssistantAction, AssistantChatMessage } from "@/lib/ai/types";
-import { absolutizeLinks } from "@/lib/telegram/links.server";
+import { absolutizeLinks, firstSelectionUrl } from "@/lib/telegram/links.server";
 import {
   answerCallbackQuery,
   downloadFile,
@@ -11,9 +12,7 @@ import {
   sendMessage,
   type InlineKeyboard,
 } from "@/lib/telegram/api.server";
-import { loadTelegramRuntimeCredentials } from "@/lib/telegram/runtime-credentials.server";
 
-const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 const HISTORY_LIMIT = 20;
 
 type TgUser = { id: number; first_name?: string; last_name?: string; username?: string };
@@ -28,6 +27,14 @@ type TgMessage = {
   audio?: TgFile;
   video_note?: TgFile;
 };
+/** Медиа, заранее скачанное telegram-poller (обход нестабильного fetch к api.telegram.org из Node). */
+export type RmOsMedia = {
+  file_id: string;
+  path: string;
+  base64: string;
+  bytes?: number;
+};
+
 export type TgUpdate = {
   update_id: number;
   message?: TgMessage;
@@ -38,12 +45,19 @@ export type TgUpdate = {
     data?: string;
     message?: { message_id: number; chat: { id: number }; text?: string };
   };
+  _rm_os_media?: RmOsMedia;
 };
 
-async function apiKey() {
-  const credentials = await loadTelegramRuntimeCredentials();
-  if (!credentials) throw new Error("LOVABLE_API_KEY is not configured");
-  return credentials.lovableApiKey;
+async function openAiKey(): Promise<string> {
+  const key = (process.env["OPENAI_API_KEY"] ?? "").trim();
+  if (!key) {
+    throw new Error("Нет OPENAI_API_KEY на сервере Бегета — распознавание голоса недоступно");
+  }
+  return key;
+}
+
+function openAiBase(): string {
+  return (process.env["OPENAI_BASE_URL"] || "https://api.openai.com/v1").replace(/\/$/, "");
 }
 
 /* ---------------------------------- доступ --------------------------------- */
@@ -114,31 +128,52 @@ async function saveMessage(chatId: number, role: string, content: string, transc
 
 /* ------------------------------ распознавание ------------------------------ */
 
-async function transcribe(bytes: ArrayBuffer, fileName: string): Promise<string> {
-  const form = new FormData();
-  form.append("model", "google/gemini-3.5-transcribe");
-  form.append("file", new Blob([bytes]), fileName);
-  const response = await fetch(`${GATEWAY}/audio/transcriptions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${await apiKey()}` },
-    body: form,
-  });
-  const text = await response.text();
-  if (!response.ok) {
-    console.error(`Transcription failed [${response.status}]: ${text}`);
-    throw new Error(`Не удалось расшифровать аудио [${response.status}]`);
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function transcribe(bytes: ArrayBuffer | Uint8Array, fileName: string): Promise<string> {
+  const key = await openAiKey();
+  const payload = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let lastErr = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const form = new FormData();
+      form.append("file", new File([payload], fileName, { type: "audio/ogg" }));
+      form.append("model", "whisper-1");
+      form.append("language", "ru");
+      const response = await fetch(`${openAiBase()}/audio/transcriptions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}` },
+        body: form,
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        console.error(`Transcription failed [${response.status}]: ${text}`);
+        lastErr = `Не удалось расшифровать аудио [${response.status}]`;
+        await sleep(1000 * (attempt + 1));
+        continue;
+      }
+      return (JSON.parse(text) as { text?: string }).text?.trim() ?? "";
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : "ошибка Whisper";
+      console.error(`Transcription attempt ${attempt + 1} failed:`, lastErr);
+      await sleep(1000 * (attempt + 1));
+    }
   }
-  return (JSON.parse(text) as { text?: string }).text?.trim() ?? "";
+  throw new Error(lastErr || "Не удалось расшифровать аудио");
 }
 
 /** Короткие тезисы задачи по расшифровке (1–3 пункта). */
 async function briefOf(transcript: string): Promise<string> {
   try {
-    const response = await fetch(`${GATEWAY}/chat/completions`, {
+    const key = await openAiKey();
+    const model = process.env["OPENAI_MODEL"] || "gpt-4.1";
+    const response = await fetch(`${openAiBase()}/chat/completions`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${await apiKey()}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3.8-flash",
+        model,
         messages: [
           {
             role: "system",
@@ -189,17 +224,30 @@ async function sendAssistantReply(chatId: number, messages: AssistantChatMessage
   }
   const text = absolutizeLinks(reply.text || "Готово.");
   await saveMessage(chatId, "assistant", text);
-  await sendMessage(chatId, text);
+  const selectionUrl = firstSelectionUrl(text);
+  await sendMessage(
+    chatId,
+    text,
+    selectionUrl ? [[{ text: "Открыть подборку", url: selectionUrl }]] : undefined,
+  );
 
   for (const action of reply.actions) {
-    const id = await storeProposal(action);
-    const keyboard: InlineKeyboard = [
-      [
-        { text: "✅ Подтвердить", callback_data: `do:${id}` },
-        { text: "✖️ Отмена", callback_data: `no:${id}` },
-      ],
-    ];
-    await sendMessage(chatId, `Подтвердить действие?\n${action.summary}`, keyboard);
+    try {
+      const id = await storeProposal(action);
+      const keyboard: InlineKeyboard = [
+        [
+          { text: "✅ Подтвердить", callback_data: `do:${id}` },
+          { text: "✖️ Отмена", callback_data: `no:${id}` },
+        ],
+      ];
+      await sendMessage(chatId, `Подтвердить действие?\n${action.summary}`, keyboard);
+    } catch (e) {
+      console.error("storeProposal failed", e);
+      await sendMessage(
+        chatId,
+        `Не удалось сохранить предложение «${action.summary}»: ${e instanceof Error ? e.message : "ошибка"}`,
+      );
+    }
   }
 }
 
@@ -210,7 +258,7 @@ const HELP =
   "Любое изменение я только предлагаю: подтвердите кнопкой.\n" +
   "Команда /reset — начать диалог заново.";
 
-async function handleMessage(message: TgMessage) {
+async function handleMessage(message: TgMessage, preloaded?: RmOsMedia) {
   const chatId = message.chat.id;
   const from = message.from;
   if (!from) return;
@@ -256,10 +304,20 @@ async function handleMessage(message: TgMessage) {
     }
     let transcript = "";
     try {
-      const { bytes, path } = await downloadFile(audio.file_id);
+      let bytes: ArrayBuffer | Uint8Array;
+      let path: string;
+      if (preloaded?.base64 && (!preloaded.file_id || preloaded.file_id === audio.file_id)) {
+        bytes = Buffer.from(preloaded.base64, "base64");
+        path = preloaded.path || "voice.ogg";
+      } else {
+        const downloaded = await downloadFile(audio.file_id);
+        bytes = downloaded.bytes;
+        path = downloaded.path;
+      }
       const ext = path.split(".").pop() || "ogg";
       transcript = await transcribe(bytes, `voice.${ext}`);
     } catch (e) {
+      console.error("voice transcribe failed", e);
       await sendMessage(
         chatId,
         `Не удалось разобрать голосовое: ${e instanceof Error ? e.message : "ошибка"}. Попробуйте записать ещё раз или напишите текстом.`,
@@ -360,7 +418,13 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
         .eq("id", id);
       if (query.message)
         await editMessageText(chatId, query.message.message_id, `✅ ${proposal.summary}`);
-      await sendMessage(chatId, absolutizeLinks(message));
+      const resultText = absolutizeLinks(message);
+      const selectionUrl = firstSelectionUrl(resultText);
+      await sendMessage(
+        chatId,
+        resultText,
+        selectionUrl ? [[{ text: "Открыть подборку", url: selectionUrl }]] : undefined,
+      );
     } catch (e) {
       const message = e instanceof Error ? e.message : "Не удалось выполнить";
       await supabaseAdmin
@@ -379,5 +443,5 @@ export async function handleTelegramUpdate(update: TgUpdate) {
     return;
   }
   const message = update.message ?? update.edited_message;
-  if (message) await handleMessage(message);
+  if (message) await handleMessage(message, update._rm_os_media);
 }

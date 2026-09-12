@@ -1,5 +1,6 @@
 /**
  * Сборка XML-фида ЦИАН (feed version 2, долгосрочная аренда).
+ * По схеме: https://www.cian.ru/xml_import/doc/#common_cat
  * Только сервер: читает объекты и публикации через сервисный клиент.
  */
 
@@ -8,8 +9,9 @@ import type { Property } from "@/lib/properties";
 
 type Row = Record<string, unknown>;
 
-const PHONE_COUNTRY_CODE = "7";
+const PHONE_COUNTRY_CODE = "+7";
 const PHONE_NUMBER = "9384420809";
+const PUBLIC_ORIGIN = "https://rm-os.residence-more.ru";
 
 function esc(value: string): string {
   return value
@@ -20,15 +22,18 @@ function esc(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function tag(name: string, value: string | number | null | undefined): string {
+function tag(name: string, value: string | number | boolean | null | undefined): string {
   if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "boolean") return `<${name}>${value ? "true" : "false"}</${name}>`;
   return `<${name}>${esc(String(value))}</${name}>`;
 }
 
-function cianCategory(type: string): string {
+/** Категория ЦИАН по типу объекта RM OS. */
+export function cianCategory(type: string): string {
   switch (type) {
-    case "house":
     case "villa":
+      return "cottageRent";
+    case "house":
       return "houseRent";
     case "townhouse":
       return "townhouseRent";
@@ -63,7 +68,7 @@ export async function computeFeedSelection(): Promise<FeedSelection> {
   ]);
 
   const listingByProperty = new Map(
-    ((listings ?? []) as Row[]).map((l) => [String(l["property_id"]), l]),
+    ((listings ?? []) as Row[]).map((listing) => [String(listing["property_id"]), listing]),
   );
 
   const included: FeedSelection["included"] = [];
@@ -73,30 +78,32 @@ export async function computeFeedSelection(): Promise<FeedSelection> {
     const property = row as unknown as Property;
     const listing = listingByProperty.get(property.id);
 
-    // Явно снят с публикации — в фид не берём при любой настройке.
     const explicitlyOff = listing && listing["published"] === false;
     const explicitlyOn = listing && listing["published"] === true;
     const inFeed = !explicitlyOff && (explicitlyOn || autoPublish);
     if (!inFeed) continue;
 
-    // Фид должен отдавать фото в исходном порядке, как в карточке.
     const missing = missingCianFields(property);
     if (missing.length > 0) {
       skipped.push({ property, missing });
       continue;
     }
 
-    // У связанных сверкой объявлений оставляем их ID ЦИАН, остальным — UUID объекта.
-    const externalId = String(listing?.["external_id"] || property.id);
-    included.push({ property, externalId, gaps: cianSchemaGaps(property) });
+    // ExternalId — стабильный ID из CRM, не номер объявления ЦИАН.
+    included.push({
+      property,
+      externalId: property.id,
+      gaps: cianSchemaGaps(property),
+    });
   }
 
   return { included, skipped, autoPublish };
 }
 
-/** URL фото для фида: постоянный адрес на нашем сайте. */
+/** URL фото для фида: всегда HTTPS, постоянный адрес на нашем сайте. */
 export function feedPhotoUrl(origin: string, path: string): string {
-  return `${origin}/api/public/feed-photo/${path.split("/").map(encodeURIComponent).join("/")}`;
+  const base = (origin || PUBLIC_ORIGIN).replace(/^http:\/\//i, "https://").replace(/\/$/, "");
+  return `${base}/api/public/feed-photo/${path.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 /** Комнатность по правилам ЦИАН: 9 — студия, 6 — многокомнатная, 7 — свободная планировка. */
@@ -106,44 +113,122 @@ function flatRoomsCount(rooms: number): number {
   return rooms;
 }
 
-/** Комиссия клиента в процентах от месячной цены (в базе хранится как процент). */
-function clientFeePercent(property: Property): number | null {
-  if (property.commission == null) return null;
-  return Math.round(property.commission);
+function bedsCount(property: Property): number {
+  if (property.beds_count != null && property.beds_count > 0) return Math.round(property.beds_count);
+  if (property.rooms <= 0) return 1;
+  return Math.max(1, property.rooms);
 }
 
-/** Условия сделки — порядок элементов по схеме ЦИАН. */
+function repairType(property: Property): string {
+  const value = property.repair_type;
+  if (value === "cosmetic" || value === "euro" || value === "design" || value === "no") return value;
+  return "euro";
+}
+
+function isApartments(property: Property): boolean {
+  if (property.is_apartments != null) return property.is_apartments;
+  return property.type === "aparts";
+}
+
+function clientFeePercent(property: Property): number {
+  if (property.commission == null || !Number.isFinite(property.commission)) return 0;
+  return Math.max(0, Math.min(100, Math.round(property.commission)));
+}
+
+/** Описание по правилам ЦИАН: 15–3000 символов, без «&», «№», «/», «\». */
+function cleanDescription(raw: string): string {
+  let text = raw
+    .replace(/&/g, " и ")
+    .replace(/[№/\\]/g, " ")
+    .replace(/[«»]/g, '"')
+    .replace(/[–—]/g, "-")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+  if (text.length > 3000) text = text.slice(0, 3000).trim();
+  return text;
+}
+
 function bargainTermsXml(property: Property): string {
-  const utilities = `<UtilitiesTerms><IncludedInPrice>${property.utilities_month == null ? "true" : "false"}</IncludedInPrice>${property.utilities_month != null ? tag("Price", Math.round(property.utilities_month)) : ""}</UtilitiesTerms>`;
-  const fee = clientFeePercent(property);
+  const utilitiesIncluded = property.utilities_month == null;
+  const utilities = [
+    "<UtilitiesTerms>",
+    tag("IncludedInPrice", utilitiesIncluded),
+    !utilitiesIncluded ? tag("Price", Math.round(property.utilities_month ?? 0)) : "",
+    tag("FlowMetersNotIncludedInPrice", true),
+    "</UtilitiesTerms>",
+  ].join("");
+
   return [
     "<BargainTerms>",
     tag("Price", property.price_month),
     utilities,
     "<Currency>rur</Currency>",
     "<LeaseTermType>longTerm</LeaseTermType>",
-    property.deposit != null ? tag("Deposit", Math.round(property.deposit)) : "",
-    fee != null ? tag("ClientFee", fee) : "",
+    tag("Deposit", Math.round(property.deposit ?? 0)),
+    tag("ClientFee", clientFeePercent(property)),
     "</BargainTerms>",
   ].join("");
 }
 
 function photosXml(property: Property, origin: string): string {
   const items = (property.photos ?? [])
-    .map((p) => p.path)
+    .map((photo) => photo.path)
     .filter(Boolean)
+    .slice(0, 50)
     .map(
-      (path, i) =>
-        `<PhotoSchema><FullUrl>${esc(feedPhotoUrl(origin, path))}</FullUrl><IsDefault>${i === 0 ? "true" : "false"}</IsDefault></PhotoSchema>`,
+      (path, index) =>
+        `<PhotoSchema>${tag("FullUrl", feedPhotoUrl(origin, path))}${tag("IsDefault", index === 0)}</PhotoSchema>`,
     )
     .join("");
   return items ? `<Photos>${items}</Photos>` : "";
 }
 
-/** Один объект фида: элементы идут в порядке, заданном схемой категории. */
+function applianceFlags(property: Property): string {
+  const appliances = property.appliances ?? [];
+  const bath = property.bathroom_features ?? [];
+  const extras = property.extra_features ?? [];
+  return [
+    tag("HasFurniture", true),
+    tag("HasKitchenFurniture", true),
+    appliances.includes("washer") ? tag("HasWasher", true) : "",
+    appliances.includes("air_conditioner") || extras.includes("air_conditioner")
+      ? tag("HasConditioner", true)
+      : "",
+    appliances.includes("dishwasher") || extras.includes("dishwasher") ? tag("HasDishwasher", true) : "",
+    bath.includes("bath") ? tag("HasBathtub", true) : "",
+    bath.includes("shower") ? tag("HasShower", true) : "",
+    extras.includes("concierge") ? "" : "",
+  ].join("");
+}
+
+function balconyTags(property: Property): string {
+  const outdoor = property.outdoor_spaces ?? [];
+  const balconies = outdoor.filter((item) => item === "balcony" || item === "terrace").length;
+  const loggias = outdoor.filter((item) => item === "loggia").length;
+  return [
+    balconies > 0 ? tag("BalconiesCount", Math.min(4, balconies)) : "",
+    loggias > 0 ? tag("LoggiasCount", Math.min(4, loggias)) : "",
+  ].join("");
+}
+
+function buildingXml(property: Property, isLand: boolean): string {
+  const floors = property.total_floors ?? (isLand ? property.floor : null) ?? 1;
+  return `<Building>${tag("FloorsCount", Math.max(1, Math.round(floors)))}</Building>`;
+}
+
+function yardFeatures(property: Property): string {
+  const extras = property.extra_features ?? [];
+  if (!extras.includes("concierge")) return "";
+  return `<YardAndEntranceFeatures>${tag("HasConcierge", true)}</YardAndEntranceFeatures>`;
+}
+
+/** Один объект фида: порядок элементов ближе к официальному примеру ЦИАН. */
 function offerXml(property: Property, externalId: string, origin: string): string {
   const category = cianCategory(property.type);
   const isLand = category !== "flatRent";
+  const description = cleanDescription(property.description);
 
   const coordinates =
     property.latitude != null && property.longitude != null
@@ -151,60 +236,61 @@ function offerXml(property: Property, externalId: string, origin: string): strin
       : "";
   const phones = `<Phones><PhoneSchema>${tag("CountryCode", PHONE_COUNTRY_CODE)}${tag("Number", PHONE_NUMBER)}</PhoneSchema></Phones>`;
   const photos = photosXml(property, origin);
-  const repair = tag("RepairType", property.repair_type);
-  const beds = property.beds_count != null ? tag("BedsCount", property.beds_count) : "";
-  const building =
-    property.total_floors != null ? `<Building>${tag("FloorsCount", property.total_floors)}</Building>` : "";
+  const jk =
+    !isLand && property.cian_jk_id != null
+      ? `<JKSchema>${tag("Id", property.cian_jk_id)}${property.complex_name ? tag("Name", property.complex_name) : ""}</JKSchema>`
+      : "";
 
   if (isLand) {
     const land =
       property.land_area != null
-        ? `<Land>${tag("Area", property.land_area)}<AreaUnitType>sotka</AreaUnitType>${tag("Status", property.land_status)}</Land>`
+        ? `<Land>${tag("Area", property.land_area)}<AreaUnitType>sotka</AreaUnitType>${
+            property.land_status ? tag("Status", property.land_status) : ""
+          }</Land>`
         : "";
     return [
       "<object>",
       tag("Category", category),
       tag("ExternalId", externalId),
-      tag("Description", property.description),
-      beds,
+      tag("Description", description),
+      tag("BedsCount", bedsCount(property)),
       tag("Address", property.address),
       coordinates,
       phones,
       tag("TotalArea", property.area),
-      tag("WcLocationType", property.wc_location_type),
+      property.wc_location_type ? tag("WcLocationType", property.wc_location_type) : tag("WcLocationType", "indoors"),
       photos,
-      repair,
-      building,
+      tag("RepairType", repairType(property)),
+      applianceFlags(property),
+      buildingXml(property, true),
       land,
+      yardFeatures(property),
       bargainTermsXml(property),
       "</object>",
     ].join("");
   }
 
-  const jk =
-    property.cian_jk_id != null ? `<JKSchema>${tag("Id", property.cian_jk_id)}</JKSchema>` : "";
-
   return [
     "<object>",
     tag("Category", category),
     tag("ExternalId", externalId),
-    tag("Description", property.description),
-    beds,
+    property.rooms > 1 ? tag("RoomType", "separate") : "",
+    tag("Description", description),
+    tag("BedsCount", bedsCount(property)),
     tag("Address", property.address),
     coordinates,
     tag("FlatRoomsCount", flatRoomsCount(property.rooms)),
     phones,
-    // Юридический статус берём из карточки. Если он не заполнен — элемент не выводим,
-    // чтобы не выдавать неизвестное значение за «не апартаменты».
-    property.is_apartments == null
-      ? ""
-      : `<IsApartments>${property.is_apartments ? "true" : "false"}</IsApartments>`,
+    tag("IsApartments", isApartments(property)),
     tag("TotalArea", property.area),
     tag("FloorNumber", property.floor),
     jk,
+    balconyTags(property),
     photos,
-    repair,
-    building,
+    tag("RepairType", repairType(property)),
+    applianceFlags(property),
+    buildingXml(property, false),
+    yardFeatures(property),
     bargainTermsXml(property),
     "</object>",
   ].join("");
@@ -212,9 +298,9 @@ function offerXml(property: Property, externalId: string, origin: string): strin
 
 /** Полный XML фида. */
 export function buildFeedXml(selection: FeedSelection, origin: string): string {
+  const safeOrigin = (origin || PUBLIC_ORIGIN).replace(/^http:\/\//i, "https://");
   const objects = selection.included
-    .map(({ property, externalId }) => offerXml(property, externalId, origin))
+    .map(({ property, externalId }) => offerXml(property, externalId, safeOrigin))
     .join("");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<feed><feed_version>2</feed_version>${objects}</feed>`;
 }
-

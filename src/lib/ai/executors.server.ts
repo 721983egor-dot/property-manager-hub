@@ -3,16 +3,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 type Input = Record<string, unknown>;
 type Executor = (input: Input) => Promise<string>;
 
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function generateCode() {
-  const bytes = new Uint8Array(7);
-  crypto.getRandomValues(bytes);
-  let code = "";
-  for (let i = 0; i < bytes.length; i++) code += CODE_ALPHABET[bytes[i]! % CODE_ALPHABET.length];
-  return code;
-}
-
 function must<T>(value: T | null | undefined, message: string): T {
   if (value == null) throw new Error(message);
   return value;
@@ -57,6 +47,49 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Сообщение отправлено в ЦИАН";
   },
 
+  sendChatMessage: async (input) => {
+    const threadId = must(input["threadId"] as string, "Не указан чат");
+    const body = must(input["body"] as string, "Пустое сообщение");
+    const { data: thread } = await supabaseAdmin
+      .from("chat_threads")
+      .select("source, external_id")
+      .eq("id", threadId)
+      .maybeSingle();
+    if (!thread) throw new Error("Диалог не найден");
+
+    let externalMessageId: string | null = null;
+    if (thread.source === "cian") {
+      const chatId = Number(thread.external_id);
+      if (!Number.isFinite(chatId)) throw new Error("Некорректный номер чата ЦИАН");
+      const { sendChatMessage } = await import("@/lib/cian.server");
+      externalMessageId = (await sendChatMessage(chatId, body)) || null;
+    }
+    if (thread.source === "avito") {
+      const chatId = String(thread.external_id ?? "");
+      if (!chatId) throw new Error("Некорректный чат Авито");
+      const { sendAvitoMessage } = await import("@/lib/avito.server");
+      externalMessageId = (await sendAvitoMessage(chatId, body)) || null;
+    }
+
+    const { data: row, error } = await supabaseAdmin
+      .from("chat_messages")
+      .insert({
+        thread_id: threadId,
+        direction: "out",
+        body,
+        external_id: externalMessageId,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    await supabaseAdmin
+      .from("chat_threads")
+      .update({ last_message_at: new Date().toISOString(), unread_count: 0 })
+      .eq("id", threadId);
+    void row;
+    return "Сообщение отправлено в чат";
+  },
+
   setPublished: async (input) => {
     const propertyId = must(input["propertyId"] as string, "Не указан объект");
     const platform = (input["platform"] as string) || "site";
@@ -67,15 +100,16 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     } else if (platform === "yandex") {
       const { setYandexPublished } = await import("@/lib/yandex-realty.functions");
       await setYandexPublished({ data: { propertyId, published } });
+    } else if (platform === "avito") {
+      const { setAvitoPublished } = await import("@/lib/avito.functions");
+      await setAvitoPublished({ data: { propertyId, published } });
     } else {
       const now = new Date().toISOString();
-      if (platform === "site") {
-        await supabaseAdmin.from("properties").update({ published }).eq("id", propertyId);
-      }
+      await supabaseAdmin.from("properties").update({ published }).eq("id", propertyId);
       const { error } = await supabaseAdmin.from("property_listings").upsert(
         {
           property_id: propertyId,
-          platform: platform as never,
+          platform: "site" as never,
           published,
           published_at: published ? now : null,
           unpublished_at: published ? null : now,
@@ -92,14 +126,24 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const propertyId = must(input["propertyId"] as string, "Не указан объект");
     const f = (input["fields"] ?? {}) as Input;
     const patch: Record<string, unknown> = {};
+    if (f["title"] != null) patch["title"] = f["title"];
+    if (f["internalName"] != null) patch["internal_name"] = f["internalName"];
+    if (f["address"] != null) patch["address"] = f["address"];
+    if (f["complexName"] != null) patch["complex_name"] = f["complexName"];
+    if (f["type"] != null) patch["type"] = f["type"];
+    if (f["rooms"] != null) patch["rooms"] = f["rooms"];
+    if (f["bathrooms"] != null) patch["bathrooms"] = f["bathrooms"];
+    if (f["area"] != null) patch["area"] = f["area"];
+    if (f["floor"] != null) patch["floor"] = f["floor"];
+    if (f["totalFloors"] != null) patch["total_floors"] = f["totalFloors"];
     if (f["priceMonth"] != null) patch["price_month"] = f["priceMonth"];
     if (f["status"]) patch["status"] = f["status"];
     if (f["deposit"] != null) patch["deposit"] = f["deposit"];
     if (f["commission"] != null) patch["commission"] = f["commission"];
     if (f["utilitiesMonth"] != null) patch["utilities_month"] = f["utilitiesMonth"];
-    if (f["description"]) patch["description"] = f["description"];
-    if (f["rentTerms"]) patch["rent_terms"] = f["rentTerms"];
-    if (f["availabilityNote"]) patch["availability_note"] = f["availabilityNote"];
+    if (f["description"] != null) patch["description"] = f["description"];
+    if (f["rentTerms"] != null) patch["rent_terms"] = f["rentTerms"];
+    if (f["availabilityNote"] != null) patch["availability_note"] = f["availabilityNote"];
     if (!Object.keys(patch).length) throw new Error("Нет изменений");
     const { error } = await supabaseAdmin
       .from("properties")
@@ -119,6 +163,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const { error } = await supabaseAdmin.from("properties").insert({
       ref_id: nextRef,
       title: (input["title"] as string) ?? "Новый объект",
+      internal_name: (input["internalName"] as string) ?? "",
       type: (input["type"] as never) ?? ("apartment" as never),
       rooms: (input["rooms"] as number) ?? 1,
       bathrooms: (input["bathrooms"] as number) ?? 1,
@@ -139,54 +184,16 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   },
 
   createSelection: async (input) => {
-    const propertyIds = [...new Set((input["propertyIds"] as string[]) ?? [])].filter(Boolean);
-    if (!propertyIds.length) throw new Error("Нет объектов");
-    const { data: existingProperties, error: propertiesError } = await supabaseAdmin
-      .from("properties")
-      .select("id")
-      .in("id", propertyIds);
-    if (propertiesError) throw new Error(propertiesError.message);
-    const existingIds = new Set((existingProperties ?? []).map((property) => property.id));
-    const missingIds = propertyIds.filter((id) => !existingIds.has(id));
-    if (missingIds.length) {
-      throw new Error(
-        `Не удалось создать подборку: ${missingIds.length} объект(а) отсутствуют в текущей базе RM OS`,
-      );
-    }
-    const code = generateCode();
-    const { data: selection, error } = await supabaseAdmin
-      .from("selections")
-      .insert({
-        code,
-        name: (input["name"] as string) ?? "",
-        client_name: (input["clientName"] as string) ?? "",
-        comment: (input["comment"] as string) ?? "",
-        saved: true,
-      })
-      .select("id, code")
-      .single();
-    if (error || !selection) throw new Error(error?.message ?? "Не удалось создать подборку");
-    const { error: itemsError } = await supabaseAdmin.from("selection_items").insert(
-      propertyIds.map((property_id, index) => ({
-        selection_id: selection.id,
-        property_id,
-        position: index,
-      })),
-    );
-    if (itemsError) {
-      await supabaseAdmin.from("selections").delete().eq("id", selection.id);
-      throw new Error(itemsError.message);
-    }
-    const { count, error: countError } = await supabaseAdmin
-      .from("selection_items")
-      .select("id", { count: "exact", head: true })
-      .eq("selection_id", selection.id);
-    if (countError || count !== propertyIds.length) {
-      await supabaseAdmin.from("selections").delete().eq("id", selection.id);
-      throw new Error("Не удалось сохранить все объекты подборки");
-    }
+    const { insertSelection } = await import("@/lib/selections.functions");
+    const selection = await insertSelection({
+      propertyIds: (input["propertyIds"] as string[]) ?? [],
+      name: (input["name"] as string) ?? "",
+      clientName: (input["clientName"] as string) ?? "",
+      comment: (input["comment"] as string) ?? "",
+      saved: true,
+    });
     const { selectionUrl } = await import("@/lib/telegram/links.server");
-    return `Подборка создана в RM OS: ${propertyIds.length} объект(а). Ссылка для клиента: ${selectionUrl(selection.code)}`;
+    return `Подборка создана в RM OS: ${selection.items.length} объект(а).\n${selectionUrl(selection.code)}`;
   },
 
   createBooking: async (input) => {
@@ -389,6 +396,48 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     } as never);
     if (error) throw new Error(error.message);
     return "Сделка создана";
+  },
+
+  createSocialPost: async (input) => {
+    const { saveSocialPost } = await import("@/lib/social.server");
+    const platforms = Array.isArray(input["platforms"])
+      ? (input["platforms"] as string[])
+      : [];
+    const post = await saveSocialPost({
+      topic: String(input["topic"] ?? ""),
+      body: String(input["body"] ?? ""),
+      platforms: platforms as ("instagram" | "vk" | "telegram" | "max")[],
+      propertyId: (input["propertyId"] as string | null) ?? null,
+      scheduledAt: (input["scheduledAt"] as string | null) ?? null,
+      publish: Boolean(input["publish"]),
+      source: "assistant",
+    });
+    return post.status === "draft" ? "Черновик поста сохранён" : "Пост отправлен в очередь публикации";
+  },
+
+  publishSocialPost: async (input) => {
+    const { publishSocialPost } = await import("@/lib/social.server");
+    return publishSocialPost(must(input["postId"] as string, "Не указан пост"), {
+      immediate: Boolean(input["immediate"]),
+    });
+  },
+
+  cancelSocialPost: async (input) => {
+    const { cancelSocialPost } = await import("@/lib/social.server");
+    return cancelSocialPost(must(input["postId"] as string, "Не указан пост"));
+  },
+
+  saveSocialBrand: async (input) => {
+    const { saveSocialBrand } = await import("@/lib/social.server");
+    await saveSocialBrand({
+      voice: String(input["voice"] ?? ""),
+      audience: String(input["audience"] ?? ""),
+      hashtags: String(input["hashtags"] ?? ""),
+      forbidden: String(input["forbidden"] ?? ""),
+      cta: String(input["cta"] ?? ""),
+      examples: String(input["examples"] ?? ""),
+    });
+    return "Голос бренда для соцсетей обновлён";
   },
 };
 

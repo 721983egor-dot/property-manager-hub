@@ -1,34 +1,12 @@
 import { createOpenAI } from "@ai-sdk/openai";
 
-/**
- * Провайдер AI SDK, подключённый к шлюзу Lovable AI (Responses API).
- * Только сервер. Модель Astra поддерживает вызов инструментов только через /v1/responses.
- */
-export function createLovableAiGatewayProvider(apiKey: string) {
-  return createOpenAI({
-    name: "lovable",
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey,
-    headers: {
-      "Lovable-API-Key": apiKey,
-      "X-Lovable-AIG-SDK": "vercel-ai-sdk",
-    },
-  });
-}
-
-/** Модель по умолчанию для Ассистента RM OS (шлюз Lovable AI). */
-export const ASSISTANT_MODEL = "openai/gpt-6-astra";
-
-/** Модель по умолчанию при прямом подключении к OpenAI по ключу клиента. */
+/** Модель по умолчанию для Ассистента RM OS (прямой OpenAI). */
 export const OPENAI_DEFAULT_MODEL = "gpt-4.1";
 
-/** Параметры провайдера для модели Ассистента. */
-export const ASSISTANT_PROVIDER_OPTIONS = {};
-
 /**
- * Прямое подключение к OpenAI по ключу клиента (OPENAI_API_KEY).
- * OPENAI_BASE_URL позволяет направить запросы через зарубежный прокси,
- * если сервер находится в России и api.openai.com недоступен.
+ * Прямое подключение к OpenAI по ключу на сервере Бегета (OPENAI_API_KEY).
+ * OPENAI_BASE_URL — зарубежный прокси, если api.openai.com недоступен из РФ.
+ * Серверы Lovable не используются.
  */
 export function createDirectOpenAiProvider(apiKey: string) {
   return createOpenAI({
@@ -39,27 +17,22 @@ export function createDirectOpenAiProvider(apiKey: string) {
 }
 
 export type AssistantModelSetup = {
-  /** Готовая модель AI SDK. */
   model: ReturnType<ReturnType<typeof createOpenAI>>;
-  /** Какой канал используется: прямой OpenAI или шлюз Lovable. */
-  source: "openai" | "lovable";
+  source: "openai";
 };
 
 /**
- * Выбирает канал для Ассистента: если задан OPENAI_API_KEY — идём напрямую
- * в OpenAI, иначе используем шлюз Lovable AI.
+ * Только прямой OpenAI. Без шлюза Lovable.
  */
 export function resolveAssistantModel(): AssistantModelSetup | { error: string } {
-  const openAiKey = process.env["OPENAI_API_KEY"];
-  if (openAiKey) {
-    const provider = createDirectOpenAiProvider(openAiKey);
-    const modelId = process.env["OPENAI_MODEL"] || OPENAI_DEFAULT_MODEL;
-    return { model: provider(modelId), source: "openai" };
+  const openAiKey = (process.env["OPENAI_API_KEY"] ?? "").trim();
+  if (!openAiKey) {
+    return {
+      error:
+        "ИИ не настроен: задайте OPENAI_API_KEY на сервере Бегета (и при необходимости OPENAI_BASE_URL).",
+    };
   }
-
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  if (!lovableKey) return { error: "ИИ не настроен: нет ключа доступа." };
-
-  const gateway = createLovableAiGatewayProvider(lovableKey);
-  return { model: gateway(ASSISTANT_MODEL), source: "lovable" };
+  const provider = createDirectOpenAiProvider(openAiKey);
+  const modelId = process.env["OPENAI_MODEL"] || OPENAI_DEFAULT_MODEL;
+  return { model: provider(modelId), source: "openai" };
 }

@@ -26,6 +26,7 @@ import {
   type Property,
 } from "@/lib/properties";
 import { infrastructureLabel, type Complex } from "@/lib/complexes";
+import { slugifyName } from "@/lib/seo";
 
 /**
  * Публичная страница объекта — точный макет сайта Residence More.
@@ -290,12 +291,11 @@ export function PropertyPublicPage({
     <button
       type="button"
       onClick={copyLink}
-      aria-label="Поделиться"
+      aria-label={copied ? "Ссылка скопирована" : "Поделиться"}
       title={copied ? "Ссылка скопирована" : "Поделиться"}
-      className="inline-flex size-10 shrink-0 items-center justify-center gap-2 rounded-full border border-site-line bg-background text-[14px] font-medium text-site-navy transition-colors hover:border-site-navy/20 hover:bg-site-navy-soft sm:h-11 sm:w-auto sm:px-4"
+      className="absolute right-4 top-4 z-10 grid size-11 place-items-center rounded-full bg-background/85 text-site-navy shadow-sm backdrop-blur-sm transition-colors hover:bg-background"
     >
-      {copied ? <Check className="size-4 text-site-green" /> : <Share2 className="size-4" />}
-      <span className="hidden sm:inline">{copied ? "Скопировано" : "Поделиться"}</span>
+      {copied ? <Check className="size-5 text-site-green" /> : <Share2 className="size-5" />}
     </button>
   );
 
@@ -347,6 +347,7 @@ export function PropertyPublicPage({
                   Фотографии не загружены
                 </div>
               )}
+              {shareButton}
               {photos.length > 1 ? (
                 <>
                   {arrowButton(prev, "left", "Предыдущее фото")}
@@ -381,12 +382,9 @@ export function PropertyPublicPage({
               </p>
             ) : null}
 
-            <div className="mt-2 flex items-start justify-between gap-3 sm:gap-4">
-              <h1 className="min-w-0 font-body text-[24px] font-bold leading-[1.15] tracking-tight sm:text-[32px] lg:text-[36px]">
-                {property.title}
-              </h1>
-              {shareButton}
-            </div>
+            <h1 className="mt-2 font-body text-[24px] font-bold leading-[1.15] tracking-tight sm:text-[32px] lg:text-[36px]">
+              {property.title}
+            </h1>
 
 
 
@@ -600,6 +598,13 @@ export function PropertyPublicPage({
                     {complex.description}
                   </p>
                 ) : null}
+                <Link
+                  to="/rent/jk/$slug"
+                  params={{ slug: slugifyName(complex.name) }}
+                  className="mt-5 inline-flex text-[15px] font-semibold text-site-gold hover:text-site-navy"
+                >
+                  Все квартиры в ЖК «{complex.name}»
+                </Link>
               </div>
             </div>
 

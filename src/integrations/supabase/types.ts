@@ -1291,6 +1291,252 @@ export type Database = {
         }
         Relationships: []
       }
+      social_brand: {
+        Row: {
+          audience: string
+          cta: string
+          examples: string
+          forbidden: string
+          hashtags: string
+          id: boolean
+          updated_at: string
+          voice: string
+        }
+        Insert: {
+          audience?: string
+          cta?: string
+          examples?: string
+          forbidden?: string
+          hashtags?: string
+          id?: boolean
+          updated_at?: string
+          voice?: string
+        }
+        Update: {
+          audience?: string
+          cta?: string
+          examples?: string
+          forbidden?: string
+          hashtags?: string
+          id?: boolean
+          updated_at?: string
+          voice?: string
+        }
+        Relationships: []
+      }
+      social_channels: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          external_url: string
+          id: string
+          last_error: string
+          last_synced_at: string | null
+          name: string
+          platform: string
+          postmypost_account_id: number | null
+          postmypost_channel: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          external_url?: string
+          id?: string
+          last_error?: string
+          last_synced_at?: string | null
+          name?: string
+          platform: string
+          postmypost_account_id?: number | null
+          postmypost_channel?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          external_url?: string
+          id?: string
+          last_error?: string
+          last_synced_at?: string | null
+          name?: string
+          platform?: string
+          postmypost_account_id?: number | null
+          postmypost_channel?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_post_stats: {
+        Row: {
+          channel_id: string | null
+          comments: number
+          date: string
+          id: string
+          likes: number
+          platform: string
+          post_id: string
+          reach: number
+          shares: number
+          views: number
+        }
+        Insert: {
+          channel_id?: string | null
+          comments?: number
+          date: string
+          id?: string
+          likes?: number
+          platform: string
+          post_id: string
+          reach?: number
+          shares?: number
+          views?: number
+        }
+        Update: {
+          channel_id?: string | null
+          comments?: number
+          date?: string
+          id?: string
+          likes?: number
+          platform?: string
+          post_id?: string
+          reach?: number
+          shares?: number
+          views?: number
+        }
+        Relationships: []
+      }
+      social_post_targets: {
+        Row: {
+          body: string
+          channel_id: string
+          external_url: string
+          id: string
+          last_error: string
+          platform: string
+          post_id: string
+          postmypost_account_id: number | null
+          status: string
+        }
+        Insert: {
+          body?: string
+          channel_id: string
+          external_url?: string
+          id?: string
+          last_error?: string
+          platform: string
+          post_id: string
+          postmypost_account_id?: number | null
+          status?: string
+        }
+        Update: {
+          body?: string
+          channel_id?: string
+          external_url?: string
+          id?: string
+          last_error?: string
+          platform?: string
+          post_id?: string
+          postmypost_account_id?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
+      social_posts: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string
+          id: string
+          last_error: string
+          postmypost_publication_id: number | null
+          property_id: string | null
+          published_at: string | null
+          scheduled_at: string | null
+          source: string
+          status: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          last_error?: string
+          postmypost_publication_id?: number | null
+          property_id?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          source?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          last_error?: string
+          postmypost_publication_id?: number | null
+          property_id?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          source?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_settings: {
+        Row: {
+          id: boolean
+          postmypost_project_id: number | null
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          postmypost_project_id?: number | null
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          postmypost_project_id?: number | null
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_skills: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string
+          id: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string
+          id?: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string
+          id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       telegram_accounts: {
         Row: {
           active: boolean

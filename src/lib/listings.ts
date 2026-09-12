@@ -27,7 +27,7 @@ export const PLATFORMS: {
   { value: "site", label: "Сайт РМ", available: true },
   { value: "cian", label: "ЦИАН", available: true },
   { value: "yandex", label: "Яндекс Недвижимость", available: true },
-  { value: "avito", label: "Авито", available: false },
+  { value: "avito", label: "Авито", available: true },
 ];
 
 export function platformLabel(value: ListingPlatform) {

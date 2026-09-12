@@ -155,6 +155,7 @@ type OfferCard = {
   address: string;
   price: number | null;
   photo: string | null;
+  complexName?: string;
 };
 
 function priceNumber(value: unknown): number | null {
@@ -164,14 +165,82 @@ function priceNumber(value: unknown): number | null {
 }
 
 function roomsFromTitle(title: string): number | null {
-  const m = title.match(/(\d+)\s*-\s*комн/i);
-  if (m) return Number(m[1]);
-  return /студи/i.test(title) ? 0 : null;
+  if (/студи/i.test(title)) return 0;
+  if (/однокомнат/i.test(title)) return 1;
+  if (/двухкомнат/i.test(title)) return 2;
+  if (/трёхкомнат|трехкомнат/i.test(title)) return 3;
+  if (/четырёхкомнат|четырехкомнат/i.test(title)) return 4;
+  const m = title.match(/(\d+)\s*-?\s*комн/i);
+  return m ? Number(m[1]) : null;
 }
 
 function areaFromTitle(title: string): number | null {
-  const m = title.match(/([\d]+[.,]?\d*)\s*м²/i);
+  const m = title.match(/([\d]+[.,]?\d*)\s*м\s*²/i) ?? title.match(/([\d]+[.,]?\d*)\s*м²/i);
   return m?.[1] ? Number(m[1].replace(",", ".")) : null;
+}
+
+function decodeHtml(value: string): string {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function complexFromHtml(html: string): string {
+  const named = html.match(/ЖК\s*[«"]([^»"]{2,80})[»"]/i);
+  if (named?.[1]) return decodeHtml(named[1]);
+  const heading = html.match(/Аренда в\s+([^!<]{2,80}?)(?:!|<)/i);
+  return heading?.[1] ? decodeHtml(heading[1]).replace(/!+$/, "").trim() : "";
+}
+
+function cardFromPublicPage(html: string): OfferCard {
+  const rawTitle = decodeHtml(html.match(/<title>([^<]+)<\/title>/i)?.[1] ?? "");
+  const title = rawTitle.replace(/\s*[-–—]\s*база ЦИАН.*$/i, "").trim();
+  const afterArea = title.match(/м\s*²\s+(.+)$/i) ?? title.match(/м²\s+(.+)$/i);
+  const address = (afterArea?.[1] ?? "")
+    .replace(/\s*,\s*объявление\s*\d+$/i, "")
+    .trim();
+  const photo =
+    html.match(/property="og:image"\s+content="([^"]+)"/i)?.[1] ??
+    html.match(/content="([^"]+)"\s+property="og:image"/i)?.[1] ??
+    "";
+  const priceMeta =
+    html.match(/itemprop="price"\s+content="(\d+)"/i)?.[1] ??
+    html.match(/"price":\s*(\d{4,})/)?.[1];
+  return {
+    title: title.slice(0, 200),
+    address,
+    price: priceMeta ? Number(priceMeta) : null,
+    photo: photo || null,
+    complexName: complexFromHtml(html),
+  };
+}
+
+async function fetchPublicListingCard(url: string): Promise<OfferCard | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    if (!/<title>/i.test(html)) return null;
+    const card = cardFromPublicPage(html);
+    if (!card.title && !card.address) return null;
+    return card;
+  } catch {
+    return null;
+  }
 }
 
 /** Карточки объявлений из последних сообщений чатов: offerId → адрес/цена/фото. */
@@ -205,6 +274,30 @@ export async function fetchOfferCardsFromChats(): Promise<Map<number, OfferCard>
   return cards;
 }
 
+async function enrichMissingCardsFromPages(
+  offers: (Announcement & OfferInfo)[],
+  cards: Map<number, OfferCard>,
+): Promise<void> {
+  const missing = offers.filter((o) => {
+    const card = cards.get(o.id);
+    return !card?.title && !card?.address;
+  });
+  const batchSize = 6;
+  for (let i = 0; i < missing.length; i += batchSize) {
+    const chunk = missing.slice(i, i + batchSize);
+    const fetched = await Promise.all(
+      chunk.map(async (o) => {
+        const url = o.url || `https://www.cian.ru/rent/flat/${o.id}/`;
+        const card = await fetchPublicListingCard(url);
+        return { id: o.id, card };
+      }),
+    );
+    for (const row of fetched) {
+      if (row.card) cards.set(row.id, row.card);
+    }
+  }
+}
+
 /** Полный список объявлений кабинета с тем, что удалось узнать об адресе и цене. */
 export async function fetchCianOffersFull(): Promise<CianOffer[]> {
   const offers = await listMyOffers();
@@ -214,6 +307,11 @@ export async function fetchCianOffersFull(): Promise<CianOffer[]> {
   } catch (e) {
     console.error("CIAN chats enrich failed:", e);
   }
+  try {
+    await enrichMissingCardsFromPages(offers, cards);
+  } catch (e) {
+    console.error("CIAN public page enrich failed:", e);
+  }
   return offers.map((o) => {
     const card = cards.get(o.id);
     const title = card?.title ?? "";
@@ -222,7 +320,7 @@ export async function fetchCianOffersFull(): Promise<CianOffer[]> {
       url: o.url || `https://www.cian.ru/rent/flat/${o.id}/`,
       title,
       address: card?.address ?? "",
-      complexName: "",
+      complexName: card?.complexName ?? "",
       rooms: roomsFromTitle(title),
       area: areaFromTitle(title),
       floor: null,
@@ -231,6 +329,36 @@ export async function fetchCianOffersFull(): Promise<CianOffer[]> {
       status: o.status,
     } satisfies CianOffer;
   });
+}
+
+export type CianOrderInfo = {
+  feedUrl: string;
+  lastProcessDate: string;
+  lastFeedCheckDate: string;
+};
+
+/** URL XML-фида, который сейчас стоит в автозагрузке ЦИАН. */
+export async function fetchCianOrderInfo(): Promise<CianOrderInfo | null> {
+  try {
+    const payload = await cianGet<{
+      result?: {
+        activeFeedUrls?: string[];
+        lastProcessDate?: string | null;
+        lastFeedCheckDate?: string | null;
+      };
+    }>("/v1/get-last-order-info");
+    const result = payload.result ?? {};
+    const feedUrl = String(result.activeFeedUrls?.[0] ?? "").trim();
+    if (!feedUrl) return null;
+    return {
+      feedUrl,
+      lastProcessDate: String(result.lastProcessDate ?? ""),
+      lastFeedCheckDate: String(result.lastFeedCheckDate ?? ""),
+    };
+  } catch (e) {
+    console.error("CIAN order info failed:", e);
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------

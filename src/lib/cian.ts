@@ -38,9 +38,23 @@ export function normalizeText(value: string | null | undefined): string {
   return (value ?? "")
     .toLowerCase()
     .replace(/ё/g, "е")
+    .replace(/\bпросп\.?\b/g, "проспект")
+    .replace(/\bпр-т\b/g, "проспект")
+    .replace(/\bул\.?\b/g, "улица")
+    .replace(/\bмкр\.?\b/g, "микрорайон")
     .replace(NOISE, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Номер дома из адреса: «92/5», «16/2к10», «17». */
+export function houseNumber(address: string): string {
+  const text = normalizeText(address);
+  const dotted = text.match(/\b(\d+\/\d+(?:[кk]\d+)?)\b/);
+  if (dotted) return dotted[1].replace("k", "к");
+  const parts = text.split(" ").filter(Boolean);
+  const last = parts[parts.length - 1] ?? "";
+  return /^\d+[а-я]?$/.test(last) ? last : "";
 }
 
 /** Ключевые части адреса: улица и номер дома без города, края и индексов. */
@@ -49,13 +63,13 @@ export function addressKey(address: string): string {
     /^(россия|краснодарский край|сочи|г сочи|город сочи|адлерский район|центральный район|хостинский район|лазаревский район)$|^\d{6}$/;
   return normalizeText(address)
     .split(",")
-    .map((p) => p.trim())
-    .filter((p) => p && !noise.test(p))
+    .map((part) => part.trim())
+    .filter((part) => part && !noise.test(part))
     .join(" ");
 }
 
 function tokens(value: string): Set<string> {
-  return new Set(value.split(" ").filter((t) => t.length > 1));
+  return new Set(value.split(" ").filter((token) => token.length > 1));
 }
 
 /** Доля общих слов, 0..1. */
@@ -64,7 +78,7 @@ function overlap(a: string, b: string): number {
   const tb = tokens(b);
   if (ta.size === 0 || tb.size === 0) return 0;
   let common = 0;
-  for (const t of ta) if (tb.has(t)) common += 1;
+  for (const token of ta) if (tb.has(token)) common += 1;
   return common / Math.max(ta.size, tb.size);
 }
 
@@ -85,6 +99,14 @@ export function matchScore(offer: CianOffer, property: Property): number {
 
   const complex = overlap(normalizeText(offer.complexName), normalizeText(property.complex_name));
   score += complex * 20;
+  const complexInTitle =
+    property.complex_name &&
+    normalizeText(offer.title).includes(normalizeText(property.complex_name));
+  if (complexInTitle) score += 15;
+
+  const offerHouse = houseNumber(offer.address);
+  const propertyHouse = houseNumber(property.address);
+  if (offerHouse && propertyHouse && offerHouse === propertyHouse) score += 20;
 
   if (offer.area != null && property.area != null) {
     if (near(offer.area, property.area, 0.6)) score += 15;
@@ -126,8 +148,8 @@ export function matchOffers(
     }
 
     const scored = properties
-      .map((p) => ({ propertyId: p.id, score: matchScore(offer, p) }))
-      .filter((c) => c.score >= LIKELY_THRESHOLD && !takenExact.has(c.propertyId))
+      .map((property) => ({ propertyId: property.id, score: matchScore(offer, property) }))
+      .filter((candidate) => candidate.score >= LIKELY_THRESHOLD && !takenExact.has(candidate.propertyId))
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
 
@@ -152,7 +174,8 @@ export function matchOffers(
 
 /** Категория ЦИАН по типу объекта. */
 export function cianCategoryOf(type: Property["type"]): string {
-  if (type === "house" || type === "villa") return "houseRent";
+  if (type === "villa") return "cottageRent";
+  if (type === "house") return "houseRent";
   if (type === "townhouse") return "townhouseRent";
   return "flatRent";
 }
@@ -162,19 +185,22 @@ export function missingCianFields(p: Property): string[] {
   const missing: string[] = [];
   const isLand = cianCategoryOf(p.type) !== "flatRent";
   if (!p.address.trim()) missing.push("адрес");
+  if (p.latitude == null || p.longitude == null) missing.push("координаты");
   if (p.area == null) missing.push("площадь");
   if (p.price_month == null) missing.push("цена за месяц");
   if (!isLand && p.floor == null) missing.push("этаж");
+  // Для домов/вилл этажность в фиде по умолчанию 1; без этого дом Бали и др. выпадали из ЦИАН.
   if (!isLand && p.total_floors == null) missing.push("этажность дома");
   if (isLand && p.land_area == null) missing.push("площадь участка");
   if ((p.photos ?? []).length === 0) missing.push("фотографии");
-  if (!p.description.trim()) missing.push("описание");
+  const description = p.description.trim();
+  if (description.length < 15) missing.push("описание (от 15 символов)");
   return missing;
 }
 
 /**
- * Поля, которые требует официальная схема ЦИАН, но которых пока нет в карточке.
- * Объект всё равно попадает в фид — эти пропуски показываем в отчёте проверки.
+ * Поля, которые желательны по схеме ЦИАН.
+ * Объект всё равно попадает в фид — пропуски показываем в отчёте проверки.
  */
 export function cianSchemaGaps(p: Property): string[] {
   const gaps: string[] = [];
@@ -183,12 +209,11 @@ export function cianSchemaGaps(p: Property): string[] {
   if (!p.repair_type) gaps.push("состояние ремонта");
   if (p.commission == null) gaps.push("комиссия");
   if (isLand) {
-    if (p.total_floors == null) gaps.push("этажность дома");
     if (!p.land_status) gaps.push("назначение участка");
+    if (!p.wc_location_type) gaps.push("расположение санузла");
   } else {
     if (p.cian_jk_id == null) gaps.push("ID жилого комплекса на ЦИАН");
     if (p.is_apartments == null) gaps.push("юридический статус (апартаменты или квартира)");
   }
   return gaps;
 }
-

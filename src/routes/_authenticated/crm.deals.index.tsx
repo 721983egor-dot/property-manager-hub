@@ -75,7 +75,11 @@ function DealsPage() {
   const { isAdmin } = useAccess();
   const initializeStages = useServerFn(createDefaultDealStages);
 
-  const { data: stages = [] } = useQuery({ queryKey: ["deal-stages"], queryFn: fetchDealStages });
+  const {
+    data: stages = [],
+    error: stagesError,
+    isLoading: stagesLoading,
+  } = useQuery({ queryKey: ["deal-stages"], queryFn: fetchDealStages });
   const { data: fields = [] } = useQuery({ queryKey: ["deal-fields"], queryFn: fetchDealFields });
   const { data: deals = [], isLoading } = useQuery({ queryKey: ["deals"], queryFn: fetchDeals });
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
@@ -145,10 +149,10 @@ function DealsPage() {
   });
 
   const stagesInit = useMutation({
-    mutationFn: () => initializeStages(),
-    onSuccess: () => {
+    mutationFn: () => initializeStages({} as never),
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["deal-stages"] });
-      toast.success("Стадии восстановлены");
+      toast.success(result.count > 0 ? "Стадии восстановлены" : "Стадии уже есть в базе");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось создать стадии"),
   });
@@ -253,12 +257,14 @@ function DealsPage() {
         </div>
       ) : null}
 
-      {isLoading ? (
+      {stagesLoading || isLoading ? (
         <p className="mt-10 text-center text-muted-foreground">Загружаем сделки…</p>
       ) : boardStages.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed border-border p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            Стадии сделок не найдены. Создайте стандартный набор — потом их можно переименовать.
+            {stagesError
+              ? `Не удалось загрузить стадии: ${stagesError.message}`
+              : "Стадии сделок не найдены. Создайте стандартный набор — потом их можно переименовать."}
           </p>
           {isAdmin && (
             <Button className="mt-4" disabled={stagesInit.isPending} onClick={() => stagesInit.mutate()}>

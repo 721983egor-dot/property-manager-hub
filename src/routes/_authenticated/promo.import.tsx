@@ -14,6 +14,7 @@ import {
   type PlatformKeyName,
 } from "@/lib/platform-keys.functions";
 
+import { getAvitoFeedInfo, setAvitoAutoPublish } from "@/lib/avito.functions";
 import {
   fetchCianOffers,
   getCianFeedInfo,
@@ -29,8 +30,10 @@ import {
   type YandexFeedStatus,
   type YandexStatsResult,
 } from "@/lib/yandex-stats.functions";
+import { YANDEX_OAUTH_URL } from "@/lib/yandex";
 import { fetchListings } from "@/lib/listings";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
+import { SITE_ORIGIN } from "@/lib/site";
 
 export const Route = createFileRoute("/_authenticated/promo/import")({
   head: () => ({
@@ -73,6 +76,8 @@ function CianImportPage() {
   const setAutoPublish = useServerFn(setCianAutoPublish);
   const loadYandexFeedInfo = useServerFn(getYandexFeedInfo);
   const setYandexAuto = useServerFn(setYandexAutoPublish);
+  const loadAvitoFeedInfo = useServerFn(getAvitoFeedInfo);
+  const setAvitoAuto = useServerFn(setAvitoAutoPublish);
 
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -90,6 +95,11 @@ function CianImportPage() {
   const { data: yandexFeedInfo } = useQuery({
     queryKey: ["yandex-feed-info"],
     queryFn: () => loadYandexFeedInfo({}),
+  });
+
+  const { data: avitoFeedInfo } = useQuery({
+    queryKey: ["avito-feed-info"],
+    queryFn: () => loadAvitoFeedInfo({}),
   });
 
   const {
@@ -127,7 +137,12 @@ function CianImportPage() {
   const matches = useMemo(
     () =>
       matchOffers(offersResult?.offers ?? [], activeProperties, linkedByExternalId).sort(
-        (a, b) => Number(a.alreadyLinked) - Number(b.alreadyLinked),
+        (a, b) => {
+          const aLive = a.offer.status === "published" ? 0 : 1;
+          const bLive = b.offer.status === "published" ? 0 : 1;
+          if (aLive !== bLive) return aLive - bLive;
+          return Number(a.alreadyLinked) - Number(b.alreadyLinked);
+        },
       ),
     [offersResult, activeProperties, linkedByExternalId],
   );
@@ -179,9 +194,13 @@ function CianImportPage() {
     }
   }
 
-  const unmatchedProperties = activeProperties.filter(
-    (p) => !Object.values(choices).includes(p.id) && !linkedByExternalId.has(p.id),
-  );
+  const unmatchedProperties = activeProperties.filter((p) => {
+    const linkedIds = new Set<string>([
+      ...linkedByExternalId.values(),
+      ...Object.values(choices).filter(Boolean),
+    ]);
+    return !linkedIds.has(p.id);
+  });
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
@@ -207,9 +226,19 @@ function CianImportPage() {
         </Button>
       </header>
 
+      {avitoFeedInfo ? <FeedSettings label="Авито" cabinetHint="Вставьте ссылку на фид в кабинете Авито Pro (раздел «Автозагрузка»). Уже сопоставленные объявления уйдут с их номером Авито, поэтому дубли не создадутся. В настройках загрузки включите обновление существующих объявлений и снятие тех, которых нет в файле." info={avitoFeedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["avito-feed-info"] })} toggleAuto={(enabled) => setAvitoAuto({ data: { enabled } })} /> : null}
+
       {feedInfo ? <FeedSettings label="ЦИАН" cabinetHint="Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). Площадка будет забирать файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без лишних действий." info={feedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["cian-feed-info"] })} toggleAuto={(enabled) => setAutoPublish({ data: { enabled } })} /> : null}
 
-      {yandexFeedInfo ? <FeedSettings label="Яндекс Недвижимость" cabinetHint="Вставьте ссылку на фид в кабинете Яндекс Недвижимости (раздел загрузки объявлений агентства). Площадка будет забирать файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без лишних действий." info={yandexFeedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["yandex-feed-info"] })} toggleAuto={(enabled) => setYandexAuto({ data: { enabled } })} /> : null}
+      {yandexFeedInfo ? (
+        <FeedSettings
+          label="Яндекс Недвижимость"
+          cabinetHint="Скопируйте ссылку на фид и вставьте её в кабинете Яндекс Недвижимости (загрузка объявлений агентства). Площадка сама забирает файл: новые объекты, цены, описания и фото обновляются без ручной выгрузки. Включите автопубликацию, чтобы новые карточки попадали в фид сразу."
+          info={yandexFeedInfo}
+          onChanged={() => qc.invalidateQueries({ queryKey: ["yandex-feed-info"] })}
+          toggleAuto={(enabled) => setYandexAuto({ data: { enabled } })}
+        />
+      ) : null}
 
       <YandexApiPanel />
 
@@ -284,6 +313,9 @@ function CianImportPage() {
                         </p>
                         <p className="mt-2 text-[15px] font-semibold leading-snug">
                           {m.offer.title || m.offer.address || `Объявление ${m.offer.externalId}`}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {m.offer.status === "published" ? "На сайте" : "Снято"} · №{m.offer.externalId}
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">{m.offer.address}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
@@ -384,13 +416,15 @@ function FeedSettings({
     inFeed: number;
     withErrors: number;
     feedPath: string;
+    cabinetFeedUrl?: string;
+    cabinetFeedProcessed?: boolean;
     issues?: { label: string; fields: string[]; blocking: boolean }[];
   };
   onChanged: () => void;
   toggleAuto: (enabled: boolean) => Promise<unknown>;
 }) {
   const [saving, setSaving] = useState(false);
-  const feedUrl = typeof window === "undefined" ? info.feedPath : window.location.origin + info.feedPath;
+  const feedUrl = `${SITE_ORIGIN}${info.feedPath}`;
 
   async function copy() {
     try {
@@ -427,6 +461,20 @@ function FeedSettings({
           Скопировать
         </Button>
       </div>
+      {info.cabinetFeedUrl && !info.cabinetFeedUrl.includes("residence-more.ru") ? (
+        <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          <p className="font-medium text-amber-800 dark:text-amber-200">
+            В кабинете ЦИАН стоит другой адрес фида
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            Сейчас автозагрузка смотрит на{" "}
+            <span className="break-all">{info.cabinetFeedUrl}</span>
+            {info.cabinetFeedProcessed === false ? " и ни разу не обрабатывала файл." : "."}{" "}
+            Замените URL в разделе «Автозагрузка» ЦИАН на ссылку выше, иначе новые объекты из RM OS
+            на площадку не попадут.
+          </p>
+        </div>
+      ) : null}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           В фиде сейчас: {info.inFeed}
@@ -516,16 +564,25 @@ function YandexApiPanel() {
 
       {notConfigured ? (
         <p className="mt-3 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-          Пока не хватает данных от Яндекса: нужен clientID и ключ доступа. Как их пришлют —
-          сохраним, и обе кнопки заработают сразу.
+          Нужен OAuth-токен кабинета. Откройте{" "}
+          <a
+            href={status && "oauthUrl" in status ? status.oauthUrl : YANDEX_OAUTH_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary hover:underline"
+          >
+            выдачу токена Яндекса
+          </a>
+          , разрешите доступ и вставьте токен в блок «Ключи доступа» ниже.
         </p>
       ) : null}
 
       {status?.configured ? (
         <div className="mt-4 text-sm">
           <p className="text-muted-foreground">
-            Всего объявлений: {status.total} · принято: {status.accepted} · отклонено:{" "}
-            {status.rejected}
+            Фид {status.feedStatus || "—"}
+            {status.feedId ? ` · id ${status.feedId}` : ""} · всего: {status.total} · принято:{" "}
+            {status.accepted} · отклонено: {status.rejected}
           </p>
           {status.problems.length > 0 ? (
             <ul className="mt-2 grid gap-1">
@@ -573,7 +630,7 @@ function PlatformKeysPanel() {
 
   const labels: Record<string, string> = {
     CIAN_API_KEY: "Ключ доступа ЦИАН",
-    YANDEX_REALTY_TOKEN: "Токен Яндекс Недвижимости",
+    YANDEX_REALTY_TOKEN: "OAuth-токен Яндекс Недвижимости",
   };
 
   async function save(name: PlatformKeyName) {
@@ -584,6 +641,7 @@ function PlatformKeysPanel() {
       setValues((prev) => ({ ...prev, [name]: "" }));
       await qc.invalidateQueries({ queryKey: ["platform-keys"] });
       await qc.invalidateQueries({ queryKey: ["cian-connection"] });
+      await qc.invalidateQueries({ queryKey: ["yandex-feed-info"] });
       if (result.productionSynced) {
         toast.success(result.message);
       } else {
@@ -600,7 +658,16 @@ function PlatformKeysPanel() {
     <section className="mt-6 rounded-xl border p-5">
       <h2 className="text-sm font-semibold">Ключи доступа к площадкам</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Ключи хранятся в самой системе, поэтому статистика и импорт работают на любом сервере.
+        Ключи хранятся в системе. Токен Яндекса выдаётся по{" "}
+        <a
+          href="https://oauth.yandex.ru/authorize?response_type=token&client_id=aa4eae0f50244d9aae9c864b349e1859"
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary hover:underline"
+        >
+          этой ссылке
+        </a>{" "}
+        под логином кабинета Яндекс Недвижимости.
       </p>
       <div className="mt-4 grid gap-4">
         {statuses.map((s) => (

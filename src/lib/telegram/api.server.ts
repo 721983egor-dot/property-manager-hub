@@ -1,30 +1,63 @@
-/** Вызовы Telegram Bot API через шлюз коннекторов Lovable. Только сервер. */
+/** Вызовы Telegram Bot API напрямую (без шлюза Lovable). Только сервер. */
 
-import { loadTelegramRuntimeCredentials } from "@/lib/telegram/runtime-credentials.server";
+import dns from "node:dns";
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
+// На Beget IPv6 до api.telegram.org часто ENETUNREACH → Node отдаёт fetch failed.
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {
+  /* старые Node — игнор */
+}
 
-async function keys() {
-  const credentials = await loadTelegramRuntimeCredentials();
-  if (!credentials) throw new Error("Telegram credentials are not configured");
-  return {
-    lovable: credentials.lovableApiKey,
-    telegram: credentials.telegramApiKey,
-  };
+const TELEGRAM_API_URL = "https://api.telegram.org";
+
+function botToken(): string {
+  const token = (process.env["TELEGRAM_BOT_TOKEN"] ?? "").trim();
+  if (!token.includes(":")) {
+    throw new Error(
+      "Telegram не настроен: задайте TELEGRAM_BOT_TOKEN на сервере Бегета (токен от @BotFather).",
+    );
+  }
+  return token;
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function errorDetail(e: unknown): string {
+  if (!(e instanceof Error)) return String(e);
+  const cause = (e as Error & { cause?: unknown }).cause;
+  if (cause && typeof cause === "object") {
+    const c = cause as { code?: string; message?: string; errors?: { code?: string }[] };
+    const nested = c.errors?.map((x) => x.code).filter(Boolean).join(",") || "";
+    return [e.message, c.code, c.message, nested].filter(Boolean).join(" | ");
+  }
+  return e.message;
+}
+
+async function telegramFetch(url: string, init?: RequestInit, retries = 4): Promise<Response> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (e) {
+      lastErr = e;
+      console.error(`telegram fetch attempt ${attempt + 1}/${retries}:`, errorDetail(e));
+      await sleep(Math.min(1000 * 2 ** attempt, 8000));
+    }
+  }
+  throw new Error(`Telegram недоступен: ${errorDetail(lastErr)}`);
 }
 
 export async function telegramCall<T = unknown>(
   method: string,
   body: Record<string, unknown>,
 ): Promise<T> {
-  const { lovable, telegram } = await keys();
-  const response = await fetch(`${GATEWAY_URL}/${method}`, {
+  const token = botToken();
+  const response = await telegramFetch(`${TELEGRAM_API_URL}/bot${token}/${method}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${lovable}`,
-      "X-Connection-Api-Key": telegram,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const text = await response.text();
@@ -40,7 +73,12 @@ export async function telegramCall<T = unknown>(
   return json.result as T;
 }
 
-export type InlineKeyboard = { text: string; callback_data: string }[][];
+export type InlineKeyboardButton = {
+  text: string;
+  callback_data?: string;
+  url?: string;
+};
+export type InlineKeyboard = InlineKeyboardButton[][];
 
 export async function sendMessage(
   chatId: number,
@@ -83,16 +121,11 @@ export async function sendChatAction(chatId: number, action = "typing") {
   }
 }
 
-/** Скачивает файл Telegram (голосовое сообщение и т.п.) через шлюз. */
+/** Скачивает файл Telegram (голосовое сообщение и т.п.) с ретраями. */
 export async function downloadFile(fileId: string): Promise<{ bytes: ArrayBuffer; path: string }> {
-  const { lovable, telegram } = await keys();
+  const token = botToken();
   const file = await telegramCall<{ file_path: string }>("getFile", { file_id: fileId });
-  const response = await fetch(`${GATEWAY_URL}/file/${file.file_path}`, {
-    headers: {
-      Authorization: `Bearer ${lovable}`,
-      "X-Connection-Api-Key": telegram,
-    },
-  });
+  const response = await telegramFetch(`${TELEGRAM_API_URL}/file/bot${token}/${file.file_path}`);
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw new Error(`Не удалось скачать файл [${response.status}]: ${body}`);
@@ -100,10 +133,11 @@ export async function downloadFile(fileId: string): Promise<{ bytes: ArrayBuffer
   return { bytes: await response.arrayBuffer(), path: file.file_path };
 }
 
-/** Секрет заголовка вебхука, выведенный из ключа подключения. */
+/** Секрет заголовка вебхука. */
 export async function webhookSecret(): Promise<string> {
-  const { telegram } = await keys();
-  const data = new TextEncoder().encode(`telegram-webhook:${telegram}`);
+  const token = botToken();
+  const seed = `telegram-webhook:${token}`;
+  const data = new TextEncoder().encode(seed);
   const digest = await crypto.subtle.digest("SHA-256", data);
   const bytes = new Uint8Array(digest);
   let binary = "";

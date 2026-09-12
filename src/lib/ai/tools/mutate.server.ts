@@ -49,9 +49,19 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposePropertyUpdate: tool({
       description:
-        "Предложить изменение полей объекта: цена, статус, депозит, комиссия (в %), коммунальные, описание, условия аренды, заметка о доступности.",
+        "Предложить изменение полей объекта: публичное название, ВНУТРЕННЕЕ название, адрес, тип, комнаты, площадь, этаж, цена, статус, депозит, комиссия (%), коммунальные, описание, условия аренды, заметка о доступности, комплекс.",
       inputSchema: z.object({
         ref: z.string(),
+        title: z.string().optional(),
+        internalName: z.string().optional(),
+        address: z.string().optional(),
+        complexName: z.string().optional(),
+        type: z.enum(["apartment", "aparts", "house", "villa", "townhouse"]).optional(),
+        rooms: z.number().optional(),
+        bathrooms: z.number().optional(),
+        area: z.number().optional(),
+        floor: z.number().optional(),
+        totalFloors: z.number().optional(),
         priceMonth: z.number().optional(),
         status: z.enum(["free", "soon_free", "rented", "booked", "archived"]).optional(),
         deposit: z.number().optional(),
@@ -65,6 +75,16 @@ export function createMutateTools(ctx: AssistantToolContext) {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
         const parts: string[] = [];
+        if (fields.title) parts.push(`название «${fields.title}»`);
+        if (fields.internalName != null) parts.push(`внутреннее «${fields.internalName}»`);
+        if (fields.address) parts.push("адрес");
+        if (fields.complexName != null) parts.push(`комплекс «${fields.complexName}»`);
+        if (fields.type) parts.push(`тип «${fields.type}»`);
+        if (fields.rooms != null) parts.push(`${fields.rooms} комн.`);
+        if (fields.bathrooms != null) parts.push(`${fields.bathrooms} с/у`);
+        if (fields.area != null) parts.push(`площадь ${fields.area}`);
+        if (fields.floor != null) parts.push(`этаж ${fields.floor}`);
+        if (fields.totalFloors != null) parts.push(`этажей ${fields.totalFloors}`);
         if (fields.priceMonth != null) parts.push(`цена ${money(fields.priceMonth)}/мес`);
         if (fields.status) parts.push(`статус «${fields.status}»`);
         if (fields.deposit != null) parts.push(`депозит ${money(fields.deposit)}`);
@@ -83,9 +103,10 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeCreateProperty: tool({
       description:
-        "Предложить создание нового объекта с заполненной карточкой. Объект создаётся неопубликованным.",
+        "Предложить создание нового объекта с заполненной карточкой (включая внутреннее название). Объект создаётся неопубликованным.",
       inputSchema: z.object({
         title: z.string(),
+        internalName: z.string().optional(),
         type: z.enum(["apartment", "aparts", "house", "villa", "townhouse"]),
         rooms: z.number(),
         bathrooms: z.number().optional(),
@@ -100,15 +121,41 @@ export function createMutateTools(ctx: AssistantToolContext) {
         description: z.string().optional(),
       }),
       execute: async (input) => {
-        const summary = `Создать объект «${input.title}» (${input.rooms} комн.${input.priceMonth ? `, ${money(input.priceMonth)}/мес` : ""})`;
+        const summary = `Создать объект «${input.title}»${input.internalName ? ` / ${input.internalName}` : ""} (${input.rooms} комн.${input.priceMonth ? `, ${money(input.priceMonth)}/мес` : ""})`;
         ctx.propose({ tool: "createProperty", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeChatReply: tool({
+      description:
+        "Предложить ответ в чат RM OS (сайт, ЦИАН или Авито) по id диалога. Требует подтверждения.",
+      inputSchema: z.object({
+        threadId: z.string(),
+        body: z.string().min(1).max(2000),
+      }),
+      execute: async ({ threadId, body }) => {
+        const { data: thread } = await ctx.admin
+          .from("chat_threads")
+          .select("id, source, name")
+          .eq("id", threadId)
+          .maybeSingle();
+        if (!thread) return { error: "Диалог не найден" };
+        const source =
+          thread.source === "cian" ? "ЦИАН" : thread.source === "avito" ? "Авито" : "Сайт";
+        const summary = `Ответить в чат ${source}${thread.name ? ` («${thread.name}»)` : ""}: «${body.slice(0, 80)}${body.length > 80 ? "…" : ""}»`;
+        ctx.propose({
+          tool: "sendChatMessage",
+          summary,
+          input: { threadId, body },
+        });
         return { proposed: true, summary };
       },
     }),
 
     proposeSelection: tool({
       description:
-        "Предложить создание подборки объектов для клиента. Указывать номера объектов (ref_id) списком.",
+        "Предложить создание подборки объектов для клиента. В refs указывай внутренние названия (Карат 1802, ЛБ2 35к16 кв 12) или номера объектов.",
       inputSchema: z.object({
         refs: z.array(z.string()),
         name: z.string().optional(),
@@ -117,12 +164,16 @@ export function createMutateTools(ctx: AssistantToolContext) {
       }),
       execute: async ({ refs, name, clientName, comment }) => {
         const found: { id: string; text: string }[] = [];
+        const missing: string[] = [];
         for (const r of refs) {
           const p = await label(r);
           if (p) found.push({ id: p.id, text: p.text });
+          else missing.push(r);
         }
-        if (!found.length) return { error: "Объекты не найдены" };
-        const summary = `Создать подборку${name ? ` «${name}»` : ""}${clientName ? ` для ${clientName}` : ""}`;
+        if (!found.length) {
+          return { error: `Объекты не найдены: ${missing.join(", ")}` };
+        }
+        const summary = `Создать подборку${name ? ` «${name}»` : ""}${clientName ? ` для ${clientName}` : ""}: ${found.map((f) => f.text).join(", ")}`;
         ctx.propose({
           tool: "createSelection",
           summary,
@@ -133,7 +184,13 @@ export function createMutateTools(ctx: AssistantToolContext) {
             comment: comment ?? "",
           },
         });
-        return { proposed: true, summary, objectsCount: found.length };
+        return {
+          proposed: true,
+          summary,
+          objectsCount: found.length,
+          objects: found.map((f) => f.text),
+          missing: missing.length ? missing : undefined,
+        };
       },
     }),
 

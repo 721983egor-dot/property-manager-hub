@@ -1,24 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
-import { BarChart3, Download, ExternalLink, Globe, Link2, Search } from "lucide-react";
+import { BarChart3, Download, Link2, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PLATFORMS, fetchListings, setSitePublished } from "@/lib/listings";
-import { setCianPublished } from "@/lib/cian.functions";
-import { setYandexPublished } from "@/lib/yandex-realty.functions";
+import { PLATFORMS, fetchListings, type ListingPlatform } from "@/lib/listings";
+import { getPromoBoard, type PlatformTotals } from "@/lib/promo-stats.functions";
 import {
   fetchProperties,
   formatMoney,
   internalTitle,
   signedUrls,
-  type Property,
 } from "@/lib/properties";
-
+import { toISODate } from "@/lib/rentals";
 
 export const Route = createFileRoute("/_authenticated/promo/")({
   head: () => ({
@@ -27,15 +24,8 @@ export const Route = createFileRoute("/_authenticated/promo/")({
       {
         name: "description",
         content:
-          "Управление публикацией объектов на сайте Residence More, Авито и ЦИАН, статистика просмотров и обращений.",
+          "Где опубликован каждый объект и сколько его смотрят на сайте, Авито, ЦИАН и Яндексе.",
       },
-      { property: "og:title", content: "Публикация и реклама — RM OS" },
-      {
-        property: "og:description",
-        content: "Где опубликован каждый объект и сколько его смотрят.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (
@@ -46,14 +36,32 @@ export const Route = createFileRoute("/_authenticated/promo/")({
 });
 
 type Filter = "all" | "published" | "unpublished";
+type Period = "7" | "30";
+
+const PERIODS: { key: Period; label: string; days: number }[] = [
+  { key: "7", label: "7 дней", days: 7 },
+  { key: "30", label: "30 дней", days: 30 },
+];
+
+const EMPTY: PlatformTotals = { views: 0, contacts: 0, favorites: 0, leads: 0, hasData: false };
+
+function periodRange(days: number) {
+  const to = toISODate(new Date());
+  const from = toISODate(new Date(Date.now() - (days - 1) * 86_400_000));
+  return { from, to };
+}
+
+function formatCount(value: number) {
+  return value.toLocaleString("ru-RU");
+}
 
 function PromoListPage() {
-  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const [busy, setBusy] = useState<string | null>(null);
-
-
+  const [period, setPeriod] = useState<Period>("7");
+  const loadBoard = useServerFn(getPromoBoard);
+  const range = PERIODS.find((item) => item.key === period)!;
+  const dates = periodRange(range.days);
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ["properties"],
@@ -63,9 +71,12 @@ function PromoListPage() {
     queryKey: ["property-listings"],
     queryFn: fetchListings,
   });
+  const { data: board = {} } = useQuery({
+    queryKey: ["promo-board", dates.from, dates.to],
+    queryFn: () => loadBoard({ data: dates }),
+  });
 
   const active = properties.filter((p) => p.status !== "archived");
-
   const paths = active.map((p) => p.photos?.[0]?.path).filter(Boolean) as string[];
   const { data: urls = {} } = useQuery({
     queryKey: ["photo-urls", paths.slice().sort().join("|")],
@@ -74,118 +85,76 @@ function PromoListPage() {
   });
 
   const listingMap = useMemo(() => {
-    const map = new Map<
-      string,
-      Record<string, { published: boolean; at: string | null; externalUrl: string }>
-    >();
-    for (const l of listings) {
-      const entry = map.get(l.property_id) ?? {};
-      entry[l.platform] = {
-        published: l.published,
-        at: l.published_at,
-        externalUrl: l.external_url,
-      };
-      map.set(l.property_id, entry);
+    const map = new Map<string, Partial<Record<ListingPlatform, { published: boolean }>>>();
+    for (const listing of listings) {
+      const entry = map.get(listing.property_id) ?? {};
+      entry[listing.platform] = { published: listing.published };
+      map.set(listing.property_id, entry);
     }
     return map;
   }, [listings]);
 
-  const filtered = active.filter((p) => {
-    if (filter === "published" && !p.published) return false;
-    if (filter === "unpublished" && p.published) return false;
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
+  const filtered = active.filter((property) => {
+    if (filter === "published" && !property.published) return false;
+    if (filter === "unpublished" && property.published) return false;
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
     return (
-      internalTitle(p).toLowerCase().includes(q) ||
-      p.title.toLowerCase().includes(q) ||
-      p.complex_name.toLowerCase().includes(q)
+      internalTitle(property).toLowerCase().includes(query) ||
+      property.title.toLowerCase().includes(query) ||
+      property.complex_name.toLowerCase().includes(query)
     );
   });
 
-  const setCian = useServerFn(setCianPublished);
-  const setYandex = useServerFn(setYandexPublished);
-
-  async function togglePublish(p: Property) {
-    setBusy(p.id + "site");
-    try {
-      await setSitePublished(p.id, !p.published);
-      await qc.invalidateQueries({ queryKey: ["properties"] });
-      await qc.invalidateQueries({ queryKey: ["property-listings"] });
-      toast.success(p.published ? "Снято с публикации" : "Опубликовано на сайте");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось изменить публикацию");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  /** Включает или убирает объект из фида ЦИАН / Яндекс Недвижимости. */
-  async function toggleFeed(p: Property, platform: "cian" | "yandex", published: boolean) {
-    setBusy(p.id + platform);
-    const label = platform === "cian" ? "ЦИАН" : "Яндекс Недвижимость";
-    try {
-      const fn = platform === "cian" ? setCian : setYandex;
-      await fn({ data: { propertyId: p.id, published: !published } });
-      await qc.invalidateQueries({ queryKey: ["property-listings"] });
-      toast.success(published ? `Убран из фида ${label}` : `Добавлен в фид ${label}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : `Не удалось изменить публикацию на ${label}`);
-    } finally {
-      setBusy(null);
-    }
-  }
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Публикация и реклама</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Где опубликован каждый объект и сколько его смотрят.
+            Статистика по каждой площадке за выбранный период.
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link to="/promo/import">
-            <Download className="size-4" />
-            Загрузить объявления с ЦИАН
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="h-9">
+            <Link to="/promo/avito">
+              <Link2 className="size-4" />
+              Сопоставить Авито
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-9">
+            <Link to="/promo/import">
+              <Download className="size-4" />
+              Фиды и сверка
+            </Link>
+          </Button>
+        </div>
       </header>
 
-
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-full flex-1 sm:min-w-[240px]">
+      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по названию или ЖК"
-            className="pl-9"
+            className="h-9 pl-9"
           />
         </div>
-        <div className="flex gap-1 rounded-lg border border-border p-1">
-          {(
-            [
-              { key: "all", label: "Все" },
-              { key: "published", label: "На сайте" },
-              { key: "unpublished", label: "Не опубликованы" },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setFilter(t.key)}
-              className={
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors " +
-                (filter === t.key
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground")
-              }
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <ChipRow
+          value={period}
+          onChange={setPeriod}
+          items={PERIODS.map((item) => ({ key: item.key, label: item.label }))}
+        />
+        <ChipRow
+          value={filter}
+          onChange={setFilter}
+          items={[
+            { key: "all", label: "Все" },
+            { key: "published", label: "На сайте" },
+            { key: "unpublished", label: "Не на сайте" },
+          ]}
+        />
       </div>
 
       {isLoading ? (
@@ -193,20 +162,21 @@ function PromoListPage() {
       ) : filtered.length === 0 ? (
         <p className="mt-8 text-sm text-muted-foreground">Объекты не найдены</p>
       ) : (
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((p) => {
-            const photo = p.photos?.[0]?.path;
-            const entry = listingMap.get(p.id) ?? {};
+        <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((property) => {
+            const photo = property.photos?.[0]?.path;
+            const entry = listingMap.get(property.id) ?? {};
+            const stats = board[property.id];
             return (
               <article
-                key={p.id}
-                className="flex flex-col overflow-hidden rounded-xl border border-border bg-card"
+                key={property.id}
+                className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card"
               >
-                <div className="aspect-[4/3] bg-muted">
+                <div className="aspect-[16/10] bg-muted">
                   {photo && urls[photo] ? (
                     <img
                       src={urls[photo]}
-                      alt={p.title}
+                      alt={property.title}
                       loading="lazy"
                       className="size-full object-cover"
                     />
@@ -217,114 +187,49 @@ function PromoListPage() {
                   )}
                 </div>
                 <div className="flex flex-1 flex-col p-4">
-                  <h2 className="text-[15px] font-semibold leading-snug">{internalTitle(p)}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {p.complex_name || "Без комплекса"}
-                  </p>
-                  <p className="mt-1 text-sm font-medium">{formatMoney(p.price_month)}</p>
+                  <div className="min-h-[4.75rem]">
+                    <h2 className="line-clamp-2 text-[15px] font-semibold leading-snug">
+                      {internalTitle(property)}
+                    </h2>
+                    <p className="mt-1 truncate text-sm text-muted-foreground">
+                      {property.complex_name || "Без комплекса"}
+                    </p>
+                    <p className="mt-1 text-sm font-medium">{formatMoney(property.price_month)}</p>
+                  </div>
 
-                  <ul className="mt-4 space-y-2">
+                  <div className="mt-4 grid grid-cols-2 gap-2">
                     {PLATFORMS.map((platform) => {
-                      const state =
+                      const published =
                         platform.value === "site"
-                          ? {
-                              published: p.published,
-                              at: entry["site"]?.at ?? null,
-                              externalUrl: entry["site"]?.externalUrl ?? "",
-                            }
-                          : (entry[platform.value] ?? {
-                              published: false,
-                              at: null,
-                              externalUrl: "",
-                            });
-                      const isFeed = platform.value === "cian" || platform.value === "yandex";
+                          ? property.published
+                          : Boolean(entry[platform.value]?.published);
+                      const totals = stats?.[platform.value] ?? EMPTY;
                       return (
-                        <li
-                          key={platform.value}
-                          className="flex items-center justify-between gap-3 text-sm"
-                        >
-                          <span className="flex items-center gap-2">
+                        <div key={platform.value} className="rounded-lg border border-border p-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-xs font-medium">{platform.label}</p>
                             <span
                               className={
-                                "size-2 rounded-full " +
-                                (state.published ? "bg-emerald-500" : "bg-muted-foreground/40")
+                                "size-2 shrink-0 rounded-full " +
+                                (published ? "bg-emerald-500" : "bg-muted-foreground/30")
                               }
                             />
-                            {platform.label}
-                            {state.published && state.at ? (
-                              <span className="text-xs text-muted-foreground">
-                                с {new Date(state.at).toLocaleDateString("ru-RU")}
-                              </span>
-                            ) : null}
-                          </span>
-                          {isFeed ? (
-                            state.published ? (
-                              <span className="flex items-center gap-2">
-                                {state.externalUrl ? (
-                                  <Button asChild size="sm" variant="outline">
-                                    <a href={state.externalUrl} target="_blank" rel="noreferrer">
-                                      <ExternalLink className="size-3.5" />
-                                      Открыть
-                                    </a>
-                                  </Button>
-                                ) : null}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={busy === p.id + platform.value}
-                                  onClick={() =>
-                                    toggleFeed(p, platform.value as "cian" | "yandex", true)
-                                  }
-                                >
-                                  Снять
-                                </Button>
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  disabled={busy === p.id + platform.value}
-                                  onClick={() =>
-                                    toggleFeed(p, platform.value as "cian" | "yandex", false)
-                                  }
-                                >
-                                  <Globe className="size-3.5" />
-                                  Опубликовать
-                                </Button>
-                                {platform.value === "cian" ? (
-                                  <Button asChild size="sm" variant="ghost">
-                                    <Link to="/promo/import" title="Связать с объявлением на ЦИАН">
-                                      <Link2 className="size-3.5" />
-                                      Связать
-                                    </Link>
-                                  </Button>
-                                ) : null}
-                              </span>
-                            )
-                          ) : platform.available ? (
-                            <Button
-                              size="sm"
-                              variant={state.published ? "outline" : "default"}
-                              disabled={busy === p.id + platform.value}
-                              onClick={() => togglePublish(p)}
-                            >
-                              <Globe className="size-3.5" />
-                              {state.published ? "Снять" : "Опубликовать"}
-                            </Button>
-                          ) : (
-                            <span className="rounded-md border border-dashed border-border px-2 py-1 text-xs text-muted-foreground">
-                              Скоро
-                            </span>
-                          )}
-                        </li>
+                          </div>
+                          <p className="mt-2 text-lg font-semibold tabular-nums leading-none">
+                            {totals.hasData || published ? formatCount(totals.views) : "—"}
+                          </p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {totals.hasData || published
+                              ? `${formatCount(totals.contacts)} обр.`
+                              : "нет данных"}
+                          </p>
+                        </div>
                       );
                     })}
-                  </ul>
+                  </div>
 
-
-                  <Button asChild variant="outline" className="mt-4 w-full">
-                    <Link to="/promo/$id" params={{ id: p.id }}>
+                  <Button asChild variant="outline" className="mt-4 h-9 w-full">
+                    <Link to="/promo/$id" params={{ id: property.id }}>
                       <BarChart3 className="size-4" />
                       Статистика
                     </Link>
@@ -335,6 +240,36 @@ function PromoListPage() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function ChipRow<T extends string>({
+  value,
+  onChange,
+  items,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  items: { key: T; label: string }[];
+}) {
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-border p-1">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => onChange(item.key)}
+          className={
+            "h-7 rounded-md px-3 text-sm font-medium transition-colors " +
+            (value === item.key
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground")
+          }
+        >
+          {item.label}
+        </button>
+      ))}
     </div>
   );
 }

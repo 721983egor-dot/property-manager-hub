@@ -23,6 +23,9 @@ import { Route as ApiPhotoUploadRouteImport } from './routes/api/photo-upload'
 import { Route as PCodeRouteImport } from './routes/p.$code'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
+import { Route as RentJkSlugRouteImport } from './routes/rent.jk.$slug'
+import { Route as RobotsTxtRouteImport } from './routes/robots[.]txt'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAssistantIndexRouteImport } from './routes/_authenticated/assistant.index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats.index'
 import { Route as AuthenticatedComplexesIndexRouteImport } from './routes/_authenticated/complexes.index'
@@ -33,6 +36,7 @@ import { Route as AuthenticatedPromoIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPromoIdRouteImport } from './routes/_authenticated/promo.$id'
 import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
+import { Route as AuthenticatedSocialIndexRouteImport } from './routes/_authenticated/social.index'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
 import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authenticated/system.telegram'
 import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
@@ -123,6 +127,21 @@ const RentIdRoute = RentIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => RentRoute,
 } as any)
+const RentJkSlugRoute = RentJkSlugRouteImport.update({
+  id: '/jk/$slug',
+  path: '/jk/$slug',
+  getParentRoute: () => RentRoute,
+} as any)
+const RobotsTxtRoute = RobotsTxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAssistantIndexRoute =
   AuthenticatedAssistantIndexRouteImport.update({
     id: '/assistant/',
@@ -179,6 +198,13 @@ const AuthenticatedSelectionsIndexRoute =
     path: '/selections/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSocialIndexRoute = AuthenticatedSocialIndexRouteImport.update(
+  {
+    id: '/social/',
+    path: '/social/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any,
+)
 const AuthenticatedSystemStaffRoute =
   AuthenticatedSystemStaffRouteImport.update({
     id: '/system/staff',
@@ -310,7 +336,10 @@ export interface FileRoutesByFullPath {
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
+  '/rent/jk/$slug': typeof RentJkSlugRoute
   '/rent/': typeof RentIndexRoute
+  '/robots.txt': typeof RobotsTxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
@@ -325,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/objects/': typeof AuthenticatedObjectsIndexRoute
   '/promo/': typeof AuthenticatedPromoIndexRoute
   '/selections/': typeof AuthenticatedSelectionsIndexRoute
+  '/social/': typeof AuthenticatedSocialIndexRoute
   '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
@@ -354,7 +384,10 @@ export interface FileRoutesByTo {
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
+  '/rent/jk/$slug': typeof RentJkSlugRoute
   '/rent': typeof RentIndexRoute
+  '/robots.txt': typeof RobotsTxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
@@ -369,6 +402,7 @@ export interface FileRoutesByTo {
   '/objects': typeof AuthenticatedObjectsIndexRoute
   '/promo': typeof AuthenticatedPromoIndexRoute
   '/selections': typeof AuthenticatedSelectionsIndexRoute
+  '/social': typeof AuthenticatedSocialIndexRoute
   '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
@@ -401,7 +435,10 @@ export interface FileRoutesById {
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
+  '/rent/jk/$slug': typeof RentJkSlugRoute
   '/rent/': typeof RentIndexRoute
+  '/robots.txt': typeof RobotsTxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/_authenticated/objects/new': typeof AuthenticatedObjectsNewRoute
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
@@ -416,6 +453,7 @@ export interface FileRoutesById {
   '/_authenticated/objects/': typeof AuthenticatedObjectsIndexRoute
   '/_authenticated/promo/': typeof AuthenticatedPromoIndexRoute
   '/_authenticated/selections/': typeof AuthenticatedSelectionsIndexRoute
+  '/_authenticated/social/': typeof AuthenticatedSocialIndexRoute
   '/_authenticated/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/_authenticated/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
   '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
@@ -448,7 +486,10 @@ export interface FileRouteTypes {
     | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
+    | '/rent/jk/$slug'
     | '/rent/'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/complexes/new'
     | '/objects/new'
     | '/promo/$id'
@@ -463,6 +504,7 @@ export interface FileRouteTypes {
     | '/objects/'
     | '/promo/'
     | '/selections/'
+    | '/social/'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/objects/$id/edit'
@@ -492,7 +534,10 @@ export interface FileRouteTypes {
     | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
+    | '/rent/jk/$slug'
     | '/rent'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/complexes/new'
     | '/objects/new'
     | '/promo/$id'
@@ -507,6 +552,7 @@ export interface FileRouteTypes {
     | '/objects'
     | '/promo'
     | '/selections'
+    | '/social'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/objects/$id/edit'
@@ -538,7 +584,10 @@ export interface FileRouteTypes {
     | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
+    | '/rent/jk/$slug'
     | '/rent/'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/_authenticated/complexes/new'
     | '/_authenticated/objects/new'
     | '/_authenticated/promo/$id'
@@ -553,6 +602,7 @@ export interface FileRouteTypes {
     | '/_authenticated/objects/'
     | '/_authenticated/promo/'
     | '/_authenticated/selections/'
+    | '/_authenticated/social/'
     | '/_authenticated/complexes/$id/edit'
     | '/_authenticated/crm/clients/$id'
     | '/_authenticated/objects/$id/edit'
@@ -592,6 +642,8 @@ export interface RootRouteChildren {
   ApiPublicSystemTelegramBootstrapRoute: typeof ApiPublicSystemTelegramBootstrapRoute
   ApiPublicSystemTelegramCredentialsRoute: typeof ApiPublicSystemTelegramCredentialsRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  RobotsTxtRoute: typeof RobotsTxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -694,6 +746,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RentIdRouteImport
       parentRoute: typeof RentRoute
     }
+    '/rent/jk/$slug': {
+      id: '/rent/jk/$slug'
+      path: '/jk/$slug'
+      fullPath: '/rent/jk/$slug'
+      preLoaderRoute: typeof RentJkSlugRouteImport
+      parentRoute: typeof RentRoute
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsTxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/assistant/': {
       id: '/_authenticated/assistant/'
       path: '/assistant'
@@ -762,6 +835,13 @@ declare module '@tanstack/react-router' {
       path: '/selections'
       fullPath: '/selections/'
       preLoaderRoute: typeof AuthenticatedSelectionsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/social/': {
+      id: '/_authenticated/social/'
+      path: '/social'
+      fullPath: '/social/'
+      preLoaderRoute: typeof AuthenticatedSocialIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/system/staff': {
@@ -922,6 +1002,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedObjectsIndexRoute: typeof AuthenticatedObjectsIndexRoute
   AuthenticatedPromoIndexRoute: typeof AuthenticatedPromoIndexRoute
   AuthenticatedSelectionsIndexRoute: typeof AuthenticatedSelectionsIndexRoute
+  AuthenticatedSocialIndexRoute: typeof AuthenticatedSocialIndexRoute
   AuthenticatedComplexesIdEditRoute: typeof AuthenticatedComplexesIdEditRoute
   AuthenticatedCrmClientsIdRoute: typeof AuthenticatedCrmClientsIdRoute
   AuthenticatedObjectsIdEditRoute: typeof AuthenticatedObjectsIdEditRoute
@@ -947,6 +1028,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedObjectsIndexRoute: AuthenticatedObjectsIndexRoute,
   AuthenticatedPromoIndexRoute: AuthenticatedPromoIndexRoute,
   AuthenticatedSelectionsIndexRoute: AuthenticatedSelectionsIndexRoute,
+  AuthenticatedSocialIndexRoute: AuthenticatedSocialIndexRoute,
   AuthenticatedComplexesIdEditRoute: AuthenticatedComplexesIdEditRoute,
   AuthenticatedCrmClientsIdRoute: AuthenticatedCrmClientsIdRoute,
   AuthenticatedObjectsIdEditRoute: AuthenticatedObjectsIdEditRoute,
@@ -962,11 +1044,13 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface RentRouteChildren {
   RentIdRoute: typeof RentIdRoute
+  RentJkSlugRoute: typeof RentJkSlugRoute
   RentIndexRoute: typeof RentIndexRoute
 }
 
 const RentRouteChildren: RentRouteChildren = {
   RentIdRoute: RentIdRoute,
+  RentJkSlugRoute: RentJkSlugRoute,
   RentIndexRoute: RentIndexRoute,
 }
 
@@ -994,6 +1078,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSystemTelegramCredentialsRoute:
     ApiPublicSystemTelegramCredentialsRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  RobotsTxtRoute: RobotsTxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

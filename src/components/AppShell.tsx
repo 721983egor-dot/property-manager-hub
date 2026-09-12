@@ -12,10 +12,12 @@ import {
   Menu,
   Send,
   Settings,
+  Share2,
 
   Sparkles,
   UserRound,
   Users,
+  Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -44,6 +46,7 @@ const CRM_PREFIXES = [
   "/complexes",
   "/selections",
   "/promo",
+  "/social",
   "/chats",
   "/assistant",
   "/system",
@@ -93,6 +96,10 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
           <Link to="/promo" onClick={onNavigate} className={NAV_LINK_CLASS}>
             <Megaphone className="size-4 shrink-0" />
             Публикация
+          </Link>
+          <Link to="/social" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <Share2 className="size-4 shrink-0" />
+            Соцсети
           </Link>
           <Link to="/chats" onClick={onNavigate} className={NAV_LINK_CLASS}>
             <MessagesSquare className="size-4 shrink-0" />
@@ -162,6 +169,10 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
               <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
                 <Send className="size-4 shrink-0" />
                 Ассистент в Telegram
+              </Link>
+              <Link to="/system/quick-replies" onClick={onNavigate} className={NAV_LINK_CLASS}>
+                <Zap className="size-4 shrink-0" />
+                Быстрые ответы
               </Link>
             </>
           )}

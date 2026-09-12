@@ -30,7 +30,13 @@ export const createDefaultDealStages = createServerFn({ method: "POST" })
       .from("deal_stages")
       .select("id")
       .limit(1);
-    if (readError) throw new Error(`Не удалось проверить стадии: ${readError.message}`);
+    if (readError) {
+      throw new Error(
+        readError.message.includes("does not exist") || readError.code === "42P01"
+          ? "Таблицы стадий нет в базе. Нужно применить миграцию CRM сделок."
+          : `Не удалось проверить стадии: ${readError.message}`,
+      );
+    }
     if ((existing ?? []).length > 0) return { count: 0 };
 
     const { error: insertError } = await supabaseAdmin.from("deal_stages").insert(DEFAULT_STAGES);

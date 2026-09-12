@@ -1,17 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import { trackEvent } from "@/lib/analytics";
+import {
+  createSelectionRecord,
+  deleteSavedSelection,
+  listSavedSelections,
+  type Selection,
+  type SelectionItemRef,
+  type SelectionWithItems,
+} from "@/lib/selections.functions";
 
-export type Selection = {
-  id: string;
-  code: string;
-  name: string;
-  client_name: string;
-  comment: string;
-  saved: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
+export type { Selection, SelectionWithItems };
 export type SelectionItem = {
   id: string;
   selection_id: string;
@@ -19,23 +17,6 @@ export type SelectionItem = {
   position: number;
   created_at: string;
 };
-
-export type SelectionWithItems = Selection & {
-  items: Pick<SelectionItem, "property_id" | "position">[];
-};
-
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const CODE_LENGTH = 7;
-
-function generateCode(): string {
-  const bytes = new Uint8Array(CODE_LENGTH);
-  crypto.getRandomValues(bytes);
-  let code = "";
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    code += CODE_ALPHABET[bytes[i]! % CODE_ALPHABET.length];
-  }
-  return code;
-}
 
 export async function createSelection(input: {
   propertyIds: string[];
@@ -51,54 +32,25 @@ export async function createSelection(input: {
     throw new Error("Выберите хотя бы один объект");
   }
 
-  const code = generateCode();
-  const { data: selection, error: selectionError } = await supabase
-    .from("selections")
-    .insert({
-      code,
-      name: input.name?.trim() ?? "",
-      client_name: input.clientName?.trim() ?? "",
-      comment: input.comment?.trim() ?? "",
-      saved: input.saved ?? false,
-    })
-    .select("*")
-    .single();
-
-  if (selectionError) throw selectionError;
-  if (!selection) throw new Error("Не удалось создать подборку");
-
-  const items = propertyIds.map((property_id, index) => ({
-    selection_id: selection.id,
-    property_id,
-    position: index,
-  }));
-
-  const { error: itemsError } = await supabase.from("selection_items").insert(items);
-  if (itemsError) throw itemsError;
+  const selection = await createSelectionRecord({
+    data: {
+      propertyIds,
+      name: input.name,
+      clientName: input.clientName,
+      comment: input.comment,
+      saved: input.saved,
+    },
+  });
 
   if (input.trackEvents ?? true) {
     for (const propertyId of propertyIds) trackEvent(propertyId, "selection_add");
   }
 
-  return {
-    ...selection,
-    items: propertyIds.map((property_id, index) => ({ property_id, position: index })),
-  };
+  return selection;
 }
 
 export async function fetchSelections(): Promise<SelectionWithItems[]> {
-  const { data, error } = await supabase
-    .from("selections")
-    .select("*, selection_items(property_id, position)")
-    .eq("saved", true)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((row) => ({
-    ...row,
-    items: (row['selection_items'] as { property_id: string; position: number }[]).sort(
-      (a, b) => a.position - b.position,
-    ),
-  }));
+  return listSavedSelections();
 }
 
 export async function fetchSelectionByCode(code: string): Promise<SelectionWithItems | null> {
@@ -110,14 +62,13 @@ export async function fetchSelectionByCode(code: string): Promise<SelectionWithI
   if (error) throw error;
   if (!data) return null;
   return {
-    ...data,
-    items: (data['selection_items'] as { property_id: string; position: number }[]).sort(
+    ...(data as Selection),
+    items: ((data["selection_items"] as SelectionItemRef[] | null) ?? []).sort(
       (a, b) => a.position - b.position,
     ),
   };
 }
 
 export async function deleteSelection(id: string): Promise<void> {
-  const { error } = await supabase.from("selections").delete().eq("id", id);
-  if (error) throw error;
+  await deleteSavedSelection({ data: { id } });
 }

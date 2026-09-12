@@ -24,3 +24,7 @@ export const LEAD_TOPICS = [
 export function leadTopicLabel(value: string) {
   return LEAD_TOPICS.find((t) => t.value === value)?.label ?? value;
 }
+
+export function selectionPublicUrl(code: string): string {
+  return `${SITE_ORIGIN}/p/${String(code).trim()}`;
+}

@@ -300,12 +300,16 @@ export const setCianAutoPublish = createServerFn({ method: "POST" })
 /** Состояние фида ЦИАН: ссылка, флаг автопубликации и счётчики. */
 export const getCianFeedInfo = createServerFn({ method: "GET" }).handler(async () => {
   const { computeFeedSelection } = await import("@/lib/cian-feed.server");
+  const { fetchCianOrderInfo } = await import("@/lib/cian.server");
   const selection = await computeFeedSelection();
+  const order = await fetchCianOrderInfo();
   return {
     autoPublish: selection.autoPublish,
     inFeed: selection.included.length,
     withErrors: selection.skipped.length,
     feedPath: "/api/public/feeds/cian.xml",
+    cabinetFeedUrl: order?.feedUrl ?? "",
+    cabinetFeedProcessed: Boolean(order?.lastProcessDate),
     issues: [
       ...selection.skipped.map((s) => ({
         label: `${s.property.ref_id} — ${s.property.title}`,

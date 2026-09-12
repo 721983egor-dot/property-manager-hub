@@ -1,6 +1,7 @@
 import { createReadTools } from "@/lib/ai/tools/read.server";
 import { createMutateTools } from "@/lib/ai/tools/mutate.server";
 import { createSkillTools } from "@/lib/ai/tools/skills.server";
+import { createSocialTools } from "@/lib/ai/tools/social.server";
 
 import type { AssistantToolContext } from "@/lib/ai/context.server";
 
@@ -17,5 +18,6 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
     ...createReadTools(ctx),
     ...createMutateTools(ctx),
     ...createSkillTools(),
+    ...createSocialTools(ctx),
   };
 }

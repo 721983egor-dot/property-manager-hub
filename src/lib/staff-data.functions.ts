@@ -109,6 +109,7 @@ export const listStaffProperties = createServerFn({ method: "POST" })
     return data ?? [];
   });
 
+/** Карточка объекта для сотрудников RM OS. Без входа недоступна. */
 export const getStaffProperty = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .inputValidator((input: unknown) => input as { id: string })

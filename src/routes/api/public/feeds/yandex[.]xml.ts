@@ -8,19 +8,17 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/public/feeds/yandex.xml")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: async () => {
         try {
           const { computeYandexFeedSelection, buildYandexFeedXml } = await import(
             "@/lib/yandex-feed.server"
           );
-          const origin = new URL(request.url).origin;
+          const origin = "https://residence-more.ru";
           const selection = await computeYandexFeedSelection();
           const xml = buildYandexFeedXml(selection, origin);
           return new Response(xml, {
             headers: {
               "Content-Type": "application/xml; charset=utf-8",
-              // Яндекс забирает фид периодически; кэш на 5 минут
-              // защищает базу от лишних запросов.
               "Cache-Control": "public, max-age=300",
             },
           });
