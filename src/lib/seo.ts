@@ -85,6 +85,34 @@ export function propertyUrl(p: { title: string; ref_id: number }): string {
   return `${SITE_ORIGIN}${propertyPath(p)}`;
 }
 
+function pathnameFromMaybeUrl(value: string): string {
+  const raw = value.trim();
+  try {
+    const url = raw.includes("://") ? new URL(raw) : new URL(raw.startsWith("/") ? raw : `/rent/${raw}`, SITE_ORIGIN);
+    return (url.pathname.replace(/\/+$/, "") || "/").toLowerCase();
+  } catch {
+    const path = raw.startsWith("/") ? raw : `/rent/${raw}`;
+    return path.replace(/\/+$/, "").toLowerCase();
+  }
+}
+
+/** Совпадение со старым WordPress-адресом из source_url. */
+export function propertyMatchesLegacyPath(
+  property: { source_url?: string | null },
+  requestKey: string,
+): boolean {
+  const stored = property.source_url ? pathnameFromMaybeUrl(property.source_url) : "";
+  if (!stored.startsWith("/rent/")) return false;
+  const wanted = pathnameFromMaybeUrl(requestKey);
+  if (stored === wanted) return true;
+  const storedTail = stored.split("/").filter(Boolean);
+  const wantedTail = wanted.split("/").filter(Boolean);
+  if (wantedTail.length === 0) return false;
+  if (storedTail.slice(-wantedTail.length).join("/") === wantedTail.join("/")) return true;
+  const last = wantedTail.at(-1) ?? "";
+  return last.length > 4 && storedTail.at(-1) === last;
+}
+
 /** Постоянный публичный URL фото (без подписи). */
 export function publicPhotoUrl(path: string): string {
   const encoded = path
@@ -132,12 +160,17 @@ function fitTitle(core: string): string {
   return `${trimmed}${suffix}`;
 }
 
-/** Title карточки объекта под поисковые запросы «снять … в ЖК … Сочи». */
-export function propertyMetaTitle(p: Property): string {
+/** H1 карточки: «Снять студию в ЖК Лазурный берег 2 в Сочи». */
+export function propertyPageHeading(p: Pick<Property, "type" | "rooms" | "is_apartments" | "complex_name">): string {
   const phrase = rentListingPhrase(p);
   const jk = p.complex_name?.trim() ? ` в ЖК ${p.complex_name.trim()}` : "";
+  return `Снять ${phrase}${jk} в Сочи`;
+}
+
+/** Title карточки объекта под поисковые запросы «снять … в ЖК … Сочи». */
+export function propertyMetaTitle(p: Property): string {
   const price = p.price_month ? ` — ${formatMoney(p.price_month)}` : "";
-  return fitTitle(`Снять ${phrase}${jk} в Сочи${price}`);
+  return fitTitle(`${propertyPageHeading(p)}${price}`);
 }
 
 export function propertyMetaDescription(p: Property): string {

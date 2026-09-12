@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 
 import { loadPublishedProperties } from "@/lib/public-catalog.functions";
-import { propertySlug, slugifyName } from "@/lib/seo";
+import { propertyMatchesLegacyPath, propertySlug, slugifyName } from "@/lib/seo";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -34,7 +34,7 @@ export const getPublicProperty = createServerFn({ method: "POST" })
       return data;
     }
 
-    const refId = refIdFromKey(key);
+    const refId = key.includes("/") ? null : refIdFromKey(key);
     if (refId != null) {
       const { data, error } = await published().eq("ref_id", refId).maybeSingle();
       if (error) throw new Error(error.message);
@@ -46,6 +46,7 @@ export const getPublicProperty = createServerFn({ method: "POST" })
     return (
       all.find((p) => propertySlug(p) === wanted) ??
       all.find((p) => slugifyName(p.title) === wanted) ??
+      all.find((p) => propertyMatchesLegacyPath(p, key)) ??
       null
     );
   });

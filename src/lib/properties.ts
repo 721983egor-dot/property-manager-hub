@@ -70,6 +70,7 @@ export type Property = {
   cian_jk_id: number | null;
   is_apartments: boolean | null;
   sort_order: number | null;
+  source_url?: string | null;
   created_at: string;
   updated_at: string;
 };

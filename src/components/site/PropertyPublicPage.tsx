@@ -26,7 +26,7 @@ import {
   type Property,
 } from "@/lib/properties";
 import { infrastructureLabel, type Complex } from "@/lib/complexes";
-import { slugifyName } from "@/lib/seo";
+import { propertyPageHeading, publicPhotoUrl, slugifyName } from "@/lib/seo";
 
 /**
  * Публичная страница объекта — точный макет сайта Residence More.
@@ -67,6 +67,7 @@ export type PublicPropertyView = Pick<
   | "rent_terms"
   | "extra_features"
   | "photos"
+  | "is_apartments"
 >;
 
 export type PublicComplexView = Pick<
@@ -160,6 +161,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+
+function photoSrc(path: string, photoUrls: Record<string, string>) {
+  return photoUrls[path] || publicPhotoUrl(path);
+}
 
 export function PropertyPublicPage({
   property,
@@ -336,10 +341,10 @@ export function PropertyPublicPage({
           {/* Галерея */}
           <div className="lg:col-span-7">
             <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-site-navy-soft">
-              {current && photoUrls[current.path] ? (
+              {current?.path ? (
                 <img
-                  src={photoUrls[current.path]}
-                  alt={`${property.title} — фото ${safeActive + 1}`}
+                  src={photoSrc(current.path, photoUrls)}
+                  alt={`${propertyPageHeading(property)} — фото ${safeActive + 1}`}
                   className="size-full object-cover"
                 />
               ) : (
@@ -383,8 +388,11 @@ export function PropertyPublicPage({
             ) : null}
 
             <h1 className="mt-2 font-body text-[24px] font-bold leading-[1.15] tracking-tight sm:text-[32px] lg:text-[36px]">
-              {property.title}
+              {propertyPageHeading(property)}
             </h1>
+            {property.title.trim() && property.title.trim() !== propertyPageHeading(property) ? (
+              <p className="mt-2 text-[16px] leading-snug text-site-muted">{property.title}</p>
+            ) : null}
 
 
 
@@ -548,12 +556,12 @@ export function PropertyPublicPage({
             <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
               {/* Галерея комплекса */}
               <div className="lg:col-span-7">
-                {complexPhotos.length > 0 && photoUrls[complexPhotos[safeComplexActive]!.path] ? (
+                {complexPhotos.length > 0 && complexPhotos[safeComplexActive]?.path ? (
                   <>
                     <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-site-navy-soft">
                       <img
-                        src={photoUrls[complexPhotos[safeComplexActive]!.path]}
-                        alt={`${complex.name} — фото ${safeComplexActive + 1}`}
+                        src={photoSrc(complexPhotos[safeComplexActive]!.path, photoUrls)}
+                        alt={`ЖК ${complex.name}, Сочи — фото ${safeComplexActive + 1}`}
                         loading="lazy"
                         className="size-full object-cover"
                       />

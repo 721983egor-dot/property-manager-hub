@@ -6,8 +6,8 @@ import { trackEvent } from "@/lib/analytics";
 import { SITE_ORIGIN } from "@/lib/site";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { fetchComplex } from "@/lib/complexes";
-import { signedUrls, type Property } from "@/lib/properties";
-import { propertyJsonLd, propertyMetaDescription, propertyMetaTitle, propertySlug, propertyUrl, jsonLdScript } from "@/lib/seo";
+import { type Property } from "@/lib/properties";
+import { propertyJsonLd, propertyMetaDescription, propertyMetaTitle, propertySlug, propertyUrl, jsonLdScript, publicPhotoUrl } from "@/lib/seo";
 import { fetchCurrentBooking } from "@/lib/bookings";
 import { publicPropertyQueryOptions } from "@/lib/public-property.functions";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/rent/$id")({
     const url = propertyUrl(p);
     const photoPath = p.photos?.[0]?.path;
     const ogImage = photoPath
-      ? `${SITE_ORIGIN}/api/public/feed-photo/${encodeURIComponent(photoPath)}`
+      ? publicPhotoUrl(photoPath)
       : `${SITE_ORIGIN}/og-cover.jpg`;
     return {
       meta: [
@@ -106,12 +106,7 @@ function RentDetailPage() {
     ...(complex?.photos ?? []).map((p) => p.path),
     ...(complex?.main_photo ? [complex.main_photo] : []),
   ];
-
-  const { data: urls = {} } = useQuery({
-    queryKey: ["photo-urls", paths.slice().sort().join("|")],
-    queryFn: () => signedUrls(paths),
-    enabled: paths.length > 0,
-  });
+  const urls = Object.fromEntries(paths.map((path) => [path, publicPhotoUrl(path)]));
 
   useEffect(() => {
     trackEvent(data.id, "page_view");

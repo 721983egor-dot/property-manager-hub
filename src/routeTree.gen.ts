@@ -24,6 +24,7 @@ import { Route as PCodeRouteImport } from './routes/p.$code'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
 import { Route as RentJkSlugRouteImport } from './routes/rent.jk.$slug'
+import { Route as RentComplexSlugRouteImport } from './routes/rent.$complex.$slug'
 import { Route as RobotsTxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAssistantIndexRouteImport } from './routes/_authenticated/assistant.index'
@@ -130,6 +131,11 @@ const RentIdRoute = RentIdRouteImport.update({
 const RentJkSlugRoute = RentJkSlugRouteImport.update({
   id: '/jk/$slug',
   path: '/jk/$slug',
+  getParentRoute: () => RentRoute,
+} as any)
+const RentComplexSlugRoute = RentComplexSlugRouteImport.update({
+  id: '/$complex/$slug',
+  path: '/$complex/$slug',
   getParentRoute: () => RentRoute,
 } as any)
 const RobotsTxtRoute = RobotsTxtRouteImport.update({
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
+  '/rent/$complex/$slug': typeof RentComplexSlugRoute
   '/rent/': typeof RentIndexRoute
   '/robots.txt': typeof RobotsTxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -385,6 +392,7 @@ export interface FileRoutesByTo {
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
+  '/rent/$complex/$slug': typeof RentComplexSlugRoute
   '/rent': typeof RentIndexRoute
   '/robots.txt': typeof RobotsTxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -436,6 +444,7 @@ export interface FileRoutesById {
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
+  '/rent/$complex/$slug': typeof RentComplexSlugRoute
   '/rent/': typeof RentIndexRoute
   '/robots.txt': typeof RobotsTxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -487,6 +496,7 @@ export interface FileRouteTypes {
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
+    | '/rent/$complex/$slug'
     | '/rent/'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -535,6 +545,7 @@ export interface FileRouteTypes {
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
+    | '/rent/$complex/$slug'
     | '/rent'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -585,6 +596,7 @@ export interface FileRouteTypes {
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
+    | '/rent/$complex/$slug'
     | '/rent/'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -751,6 +763,13 @@ declare module '@tanstack/react-router' {
       path: '/jk/$slug'
       fullPath: '/rent/jk/$slug'
       preLoaderRoute: typeof RentJkSlugRouteImport
+      parentRoute: typeof RentRoute
+    }
+    '/rent/$complex/$slug': {
+      id: '/rent/$complex/$slug'
+      path: '/$complex/$slug'
+      fullPath: '/rent/$complex/$slug'
+      preLoaderRoute: typeof RentComplexSlugRouteImport
       parentRoute: typeof RentRoute
     }
     '/robots.txt': {
@@ -1045,12 +1064,14 @@ const AuthenticatedRouteRouteWithChildren =
 interface RentRouteChildren {
   RentIdRoute: typeof RentIdRoute
   RentJkSlugRoute: typeof RentJkSlugRoute
+  RentComplexSlugRoute: typeof RentComplexSlugRoute
   RentIndexRoute: typeof RentIndexRoute
 }
 
 const RentRouteChildren: RentRouteChildren = {
   RentIdRoute: RentIdRoute,
   RentJkSlugRoute: RentJkSlugRoute,
+  RentComplexSlugRoute: RentComplexSlugRoute,
   RentIndexRoute: RentIndexRoute,
 }
 
