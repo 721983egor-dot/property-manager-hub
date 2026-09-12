@@ -387,11 +387,11 @@ export function PropertyPublicPage({
               </p>
             ) : null}
 
-            <h1 className="mt-2 font-body text-[24px] font-bold leading-[1.15] tracking-tight sm:text-[32px] lg:text-[36px]">
+            <h1 className="mt-1.5 font-body text-[18px] font-bold leading-snug tracking-tight sm:text-[20px] lg:text-[22px]">
               {propertyPageHeading(property)}
             </h1>
             {property.title.trim() && property.title.trim() !== propertyPageHeading(property) ? (
-              <p className="mt-2 text-[16px] leading-snug text-site-muted">{property.title}</p>
+              <p className="mt-1.5 text-[15px] leading-snug text-site-muted">{property.title}</p>
             ) : null}
 
 
