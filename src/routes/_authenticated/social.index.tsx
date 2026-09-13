@@ -8,29 +8,25 @@ import {
   Loader2,
   Send,
   Share2,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminOnly } from "@/components/AdminOnly";
-import { ChatText } from "@/components/ChatText";
 import { SocialPostPreview } from "@/components/SocialPostPreview";
+import { SochiPulseAiBlock } from "@/components/SochiPulseAiBlock";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { AssistantChatMessage } from "@/lib/assistant.functions";
 import {
-  askSocialAssistant,
   cancelSocialPost,
   deleteSocialPost,
   getSocialBoard,
   listPostmypostProjects,
   mapSocialChannel,
   publishSocialPost,
-  runSocialAssistantAction,
   saveSocialBrand,
   saveSocialConnection,
   saveSocialPost,
@@ -66,12 +62,12 @@ export const Route = createFileRoute("/_authenticated/social/")({
   ),
 });
 
-type Tab = "posts" | "compose" | "ai" | "brand" | "connect";
+type Tab = "posts" | "pulse" | "compose" | "brand" | "connect";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "posts", label: "Лента" },
+  { key: "pulse", label: "Пульс Сочи" },
   { key: "compose", label: "Пост" },
-  { key: "ai", label: "ИИ" },
   { key: "brand", label: "Голос" },
   { key: "connect", label: "Подключение" },
 ];
@@ -114,6 +110,7 @@ function SocialPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Instagram, ВКонтакте, Telegram и Макс. Публикация и статистика — через Postmypost.
             Перед отправкой смотрите, как пост выглядит в каждой сети. В Instagram — обычный пост без цен.
+            Пульс Сочи — новости, погода и события, из них сразу пишется черновик.
           </p>
         </div>
       </header>
@@ -171,6 +168,7 @@ function SocialPage() {
 
           <div className="mt-6">
             {tab === "posts" && <PostsTab boardPosts={board.posts} onChange={refresh} />}
+            {tab === "pulse" && <SochiPulseAiBlock onChange={refresh} />}
             {tab === "compose" && (
               <ComposeTab
                 defaultPlatforms={board.channels.filter((c) => c.enabled).map((c) => c.platform)}
@@ -180,7 +178,6 @@ function SocialPage() {
                 }}
               />
             )}
-            {tab === "ai" && <AiTab onChange={refresh} />}
             {tab === "brand" && (
               <BrandTab
                 initial={board.brand}
@@ -514,121 +511,6 @@ function ComposeTab({
         </div>
         <SocialPostPreview body={body} topic={topic} platforms={platforms} variants={variants} />
       </div>
-    </div>
-  );
-}
-
-function AiTab({ onChange }: { onChange: () => void }) {
-  const askFn = useServerFn(askSocialAssistant);
-  const runFn = useServerFn(runSocialAssistantAction);
-  const [draft, setDraft] = useState("");
-  const [messages, setMessages] = useState<AssistantChatMessage[]>([]);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const [actions, setActions] = useState<{ id: string; tool: string; summary: string; input: string }[]>([]);
-
-  const send = async () => {
-    const text = draft.trim();
-    if (!text || pending) return;
-    const next = [...messages, { role: "user" as const, content: text }];
-    setDraft("");
-    setPending(true);
-    setError("");
-    setMessages(next);
-    try {
-      const reply = await askFn({ data: { messages: next } });
-      if (reply.error) setError(reply.error);
-      if (reply.text) setMessages([...next, { role: "assistant", content: reply.text }]);
-      setActions(reply.actions ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось спросить ИИ");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const confirmMut = useMutation({
-    mutationFn: (action: { id: string; tool: string; summary: string; input: string }) =>
-      runFn({ data: { action } }),
-    onSuccess: (r) => {
-      toast[r.ok ? "success" : "error"](r.message);
-      setActions([]);
-      onChange();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="size-4 text-primary" />
-            Редактор соцсетей
-          </CardTitle>
-          <CardDescription>
-            Попросите рубрики на месяц, текст про объект или адаптацию. Instagram всегда уходит как обычный пост без цен.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="max-h-[28rem] space-y-3 overflow-y-auto rounded-md border border-border p-3">
-            {!messages.length && (
-              <p className="text-sm text-muted-foreground">
-                Например: «Придумай 8 тем на неделю про долгосрочную аренду в Сочи» или «Пост про Карат 1802 для Instagram и VK».
-              </p>
-            )}
-            {messages.map((m, i) => (
-              <div key={`${m.role}-${i}`} className={m.role === "user" ? "text-right" : ""}>
-                <div
-                  className={`inline-block max-w-[90%] rounded-2xl px-3 py-2 text-sm ${
-                    m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                  }`}
-                >
-                  <ChatText text={m.content} />
-                </div>
-              </div>
-            ))}
-            {pending ? <p className="text-xs text-muted-foreground">Думаю…</p> : null}
-          </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {actions.map((action) => (
-            <div key={action.id} className="flex flex-wrap items-center gap-2 rounded-md border border-border p-3">
-              <p className="min-w-0 flex-1 text-sm">{action.summary}</p>
-              <Button size="sm" onClick={() => confirmMut.mutate(action)} disabled={confirmMut.isPending}>
-                Подтвердить
-              </Button>
-            </div>
-          ))}
-          <div className="flex gap-2">
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={3}
-              placeholder="Напишите задачу редактору…"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
-            />
-            <Button className="self-end" onClick={() => void send()} disabled={pending}>
-              {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle className="text-base">Как учится</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>Напишите «запомни: в Instagram не ставим ссылки в текст» — правило сохранится.</p>
-          <p>Instagram по закону нельзя вести как рекламу: без цен, депозита и телефона, только «напишите в директ».</p>
-          <p>Голос бренда задаётся во вкладке «Голос» и подставляется в каждый ответ.</p>
-          <p>Статистика Postmypost подтягивается в ленту, чтобы следующие тексты опирались на то, что уже выходило.</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

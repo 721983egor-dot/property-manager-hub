@@ -94,6 +94,7 @@ export const saveSocialPost = createServerFn({ method: "POST" })
       body: string;
       platforms: SocialPlatform[];
       propertyId?: string | null;
+      pulseItemId?: string | null;
       scheduledAt?: string | null;
       publish?: boolean;
       variants?: Partial<Record<SocialPlatform, string>>;
@@ -181,4 +182,13 @@ export const runSocialAssistantAction = createServerFn({ method: "POST" })
     } catch (e) {
       return { ok: false, message: e instanceof Error ? e.message : "Не удалось выполнить" };
     }
+  });
+
+export const getSochiPulse = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { force?: boolean } | undefined) => input ?? {})
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context.userId);
+    const { loadSochiPulse } = await import("@/lib/sochi-pulse.server");
+    return loadSochiPulse({ force: Boolean(data.force) });
   });

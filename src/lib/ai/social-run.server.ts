@@ -11,6 +11,7 @@ export const SOCIAL_ASSISTANT_PROMPT = `Ты — SMM-режим Ассистен
 - Факты об объектах (цена, комнаты, свободен ли) бери ТОЛЬКО из инструментов searchProperties / getPropertyDetails. Не выдумывай метраж и цену.
 - Голос бренда и выученные правила — из getSocialBrand и блока ниже. Соблюдай их.
 - Черновик или публикация — только proposeSocialPost. Ничего не публикуй само.
+- Пульс Сочи (погода, новости, афиша) — getSochiPulse. Посты про город пиши только из этих фактов, передавай pulseItemId. Если по теме уже есть пост — сначала скажи об этом.
 - По просьбе «запомни, как пишем» — rememberSocialSkill.
 - Instagram: НЕ реклама. Без цен, депозита, телефона, ссылок и блока «условия аренды». Живой пост про место и ощущение, хештеги в конце, призыв только «напишите в директ». Всегда передавай instagramBody отдельно. В ответе человеку показывай обе версии: полную и Instagram.
 - ВКонтакте / Telegram / Макс: можно цену, условия и ссылку на объект.
@@ -46,12 +47,14 @@ export async function askSocialAssistantCore(messages: AssistantChatMessage[]): 
   };
 
   try {
-    const [brand, skills, channels, posts, properties] = await Promise.all([
+    const pulseMod = await import("@/lib/sochi-pulse.server");
+    const [brand, skills, channels, posts, properties, pulse] = await Promise.all([
       loadSocialBrand(),
       loadSocialSkills(),
       loadSocialChannels(),
       loadSocialPosts(20),
       ctx.allProperties(),
+      pulseMod.loadSochiPulse().catch(() => null),
     ]);
 
     const free = properties
@@ -79,9 +82,11 @@ ${postLines.join("\n") || "- (нет постов)"}
 Свободные объекты (до 20, для идей контента):
 ${free.map((n) => `- ${n}`).join("\n") || "- (нет)"}`;
 
+    const pulseBlock = pulse ? pulseMod.sochiPulsePrompt(pulse) : "";
+
     const result = streamText({
       model: setup.model,
-      system: SOCIAL_ASSISTANT_PROMPT + socialBrandPrompt(brand) + socialSkillsPrompt(skills) + live,
+      system: SOCIAL_ASSISTANT_PROMPT + socialBrandPrompt(brand) + socialSkillsPrompt(skills) + live + pulseBlock,
       messages: messages.slice(-20),
       tools,
       stopWhen: stepCountIs(20),

@@ -68,6 +68,7 @@ export type SocialPost = {
   body: string;
   property_id: string | null;
   property_title: string | null;
+  pulse_item_id: string | null;
   scheduled_at: string | null;
   published_at: string | null;
   created_by: string;

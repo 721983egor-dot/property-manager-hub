@@ -1457,6 +1457,7 @@ export type Database = {
           postmypost_publication_id: number | null
           property_id: string | null
           published_at: string | null
+          pulse_item_id: string | null
           scheduled_at: string | null
           source: string
           status: string
@@ -1472,6 +1473,7 @@ export type Database = {
           postmypost_publication_id?: number | null
           property_id?: string | null
           published_at?: string | null
+          pulse_item_id?: string | null
           scheduled_at?: string | null
           source?: string
           status?: string
@@ -1487,11 +1489,57 @@ export type Database = {
           postmypost_publication_id?: number | null
           property_id?: string | null
           published_at?: string | null
+          pulse_item_id?: string | null
           scheduled_at?: string | null
           source?: string
           status?: string
           topic?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      social_pulse_items: {
+        Row: {
+          created_at: string
+          fetched_at: string
+          fingerprint: string
+          id: string
+          kind: string
+          payload: Json
+          published_at: string | null
+          source: string
+          starts_at: string | null
+          summary: string
+          title: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          fetched_at?: string
+          fingerprint: string
+          id?: string
+          kind: string
+          payload?: Json
+          published_at?: string | null
+          source?: string
+          starts_at?: string | null
+          summary?: string
+          title?: string
+          url?: string
+        }
+        Update: {
+          created_at?: string
+          fetched_at?: string
+          fingerprint?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          published_at?: string | null
+          source?: string
+          starts_at?: string | null
+          summary?: string
+          title?: string
+          url?: string
         }
         Relationships: []
       }

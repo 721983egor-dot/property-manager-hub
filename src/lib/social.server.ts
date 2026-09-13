@@ -25,7 +25,7 @@ import {
 const CHANNEL_COLUMNS =
   "id, platform, name, enabled, postmypost_account_id, postmypost_channel, external_url, last_synced_at, last_error";
 const POST_COLUMNS =
-  "id, status, topic, body, property_id, scheduled_at, published_at, created_by, source, postmypost_publication_id, last_error, created_at";
+  "id, status, topic, body, property_id, pulse_item_id, scheduled_at, published_at, created_by, source, postmypost_publication_id, last_error, created_at";
 const TARGET_COLUMNS =
   "id, post_id, channel_id, platform, body, status, postmypost_account_id, external_url, last_error";
 
@@ -156,6 +156,7 @@ function mapPost(
     body: String(row["body"] ?? ""),
     property_id: (row["property_id"] as string | null) ?? null,
     property_title: propertyTitle,
+    pulse_item_id: (row["pulse_item_id"] as string | null) ?? null,
     scheduled_at: (row["scheduled_at"] as string | null) ?? null,
     published_at: (row["published_at"] as string | null) ?? null,
     created_by: String(row["created_by"] ?? ""),
@@ -168,11 +169,18 @@ function mapPost(
 }
 
 export async function loadSocialPosts(limit = 80): Promise<SocialPost[]> {
-  const { data, error } = await supabaseAdmin
+  let { data, error } = await supabaseAdmin
     .from("social_posts")
     .select(POST_COLUMNS)
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (error && /pulse_item_id/i.test(error.message)) {
+    ({ data, error } = await supabaseAdmin
+      .from("social_posts")
+      .select(POST_COLUMNS.replace(", pulse_item_id", ""))
+      .order("created_at", { ascending: false })
+      .limit(limit));
+  }
   if (error) throw new Error(error.message);
   const posts = (data ?? []) as Record<string, unknown>[];
   if (!posts.length) return [];
@@ -328,6 +336,7 @@ export type SaveSocialPostInput = {
   body: string;
   platforms: SocialPlatform[];
   propertyId?: string | null;
+  pulseItemId?: string | null;
   scheduledAt?: string | null;
   publish?: boolean;
   source?: "manual" | "assistant";
@@ -385,6 +394,7 @@ export async function saveSocialPost(input: SaveSocialPostInput): Promise<Social
     source: input.source ?? "manual",
     status: input.publish ? status : "draft",
     last_error: "",
+    ...(input.pulseItemId ? { pulse_item_id: input.pulseItemId } : {}),
   };
 
   let postId = input.id ?? "";

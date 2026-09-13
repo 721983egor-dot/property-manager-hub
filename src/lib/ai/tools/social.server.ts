@@ -106,6 +106,42 @@ export function createSocialTools(ctx: AssistantToolContext) {
       }),
     }),
 
+    getSochiPulse: tool({
+      description:
+        "Пульс Сочи: текущая погода, свежие новости и ближайшие события. Показывает, по каким темам уже есть пост. Вызывай перед текстом про город, погоду или афишу.",
+      inputSchema: z.object({
+        force: z.boolean().optional().describe("true — обновить источники, а не брать кэш"),
+      }),
+      execute: async ({ force }) => {
+        const { loadSochiPulse } = await import("@/lib/sochi-pulse.server");
+        const board = await loadSochiPulse({ force: Boolean(force) });
+        const compact = (item: {
+          id: string;
+          title: string;
+          summary: string;
+          source: string;
+          url: string;
+          startsAt: string | null;
+          relatedPosts: { status: string; topic: string }[];
+        }) => ({
+          id: item.id,
+          title: item.title,
+          summary: item.summary.slice(0, 280),
+          source: item.source,
+          url: item.url,
+          when: item.startsAt,
+          alreadyPosted: item.relatedPosts.map((p) => `${p.status}: ${p.topic}`),
+        });
+        return {
+          fetchedAt: board.fetchedAt,
+          weather: board.weather ? compact(board.weather) : null,
+          news: board.news.slice(0, 12).map(compact),
+          events: board.events.slice(0, 10).map(compact),
+          errors: board.errors,
+        };
+      },
+    }),
+
     rememberSocialSkill: tool({
       description:
         "Запомнить правило именно для соцсетей (тон, хештеги, что не писать, как адаптировать текст под Instagram/VK/Telegram/Макс). Вызывай, когда менеджер просит «запомни», «всегда так», «больше так не пиши» в контексте постов.",
@@ -143,13 +179,17 @@ export function createSocialTools(ctx: AssistantToolContext) {
           .describe("Версия для Instagram без цен и рекламы. Если пусто — система соберёт сама."),
         platforms: platformsSchema,
         ref: z.string().optional().describe("Объект, если пост про конкретную квартиру/дом"),
+        pulseItemId: z
+          .string()
+          .optional()
+          .describe("id пункта Пульса Сочи, если пост по погоде, новости или событию"),
         scheduledAt: z
           .string()
           .optional()
           .describe("ISO-дата публикации, если это не «прямо сейчас»"),
         publishNow: z.boolean().optional(),
       }),
-      execute: async ({ topic, body, instagramBody, platforms, ref, scheduledAt, publishNow }) => {
+      execute: async ({ topic, body, instagramBody, platforms, ref, pulseItemId, scheduledAt, publishNow }) => {
         let propertyId: string | undefined;
         let propertyText = "";
         if (ref) {
@@ -170,6 +210,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
             body,
             platforms,
             propertyId: propertyId ?? null,
+            pulseItemId: pulseItemId?.trim() || null,
             scheduledAt: scheduledAt || null,
             publish: Boolean(publishNow || scheduledAt),
             variants: instagramBody?.trim() ? { instagram: instagramBody.trim() } : undefined,
