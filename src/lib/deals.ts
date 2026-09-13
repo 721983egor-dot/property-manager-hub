@@ -46,6 +46,8 @@ export type Deal = {
   adults: number;
   children: number;
   comment: string;
+  telegram: string;
+  preferred_messenger: string;
   custom: Record<string, unknown>;
   position: number;
   created_at: string;
@@ -71,7 +73,7 @@ export const DEAL_SOURCES = [
 ];
 
 const DEAL_COLUMNS =
-  "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, custom, position, created_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
+  "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, telegram, preferred_messenger, custom, position, created_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
 
 
 /* ---------------- стадии ---------------- */
@@ -176,6 +178,8 @@ export async function fetchDeals(): Promise<Deal[]> {
   if (error) throw error;
   return (data ?? []).map((d) => ({
     ...(d as Deal),
+    telegram: String((d as { telegram?: string }).telegram ?? ""),
+    preferred_messenger: String((d as { preferred_messenger?: string }).preferred_messenger ?? ""),
     custom: ((d as { custom: unknown }).custom ?? {}) as Record<string, unknown>,
   }));
 }
@@ -191,6 +195,8 @@ export type DealInput = {
   adults: number;
   children: number;
   comment: string;
+  telegram: string;
+  preferred_messenger: string;
   custom: Record<string, unknown>;
 };
 
@@ -360,6 +366,8 @@ const DEAL_FIELD_LABELS: Record<string, string> = {
   adults: "Взрослых",
   children: "Детей",
   comment: "Описание",
+  telegram: "Telegram",
+  preferred_messenger: "Мессенджер",
   custom: "Дополнительные поля",
   position: "Позиция в канбане",
   start_date: "Дата заезда",
@@ -457,6 +465,8 @@ export async function fetchClientDeals(clientId: string): Promise<Deal[]> {
   if (error) throw error;
   return (data ?? []).map((d) => ({
     ...(d as Deal),
+    telegram: String((d as { telegram?: string }).telegram ?? ""),
+    preferred_messenger: String((d as { preferred_messenger?: string }).preferred_messenger ?? ""),
     custom: ((d as { custom: unknown }).custom ?? {}) as Record<string, unknown>,
   }));
 }
@@ -539,6 +549,8 @@ export async function fetchPropertyDeals(propertyId: string): Promise<Deal[]> {
   if (error) throw error;
   return (data ?? []).map((d) => ({
     ...(d as Deal),
+    telegram: String((d as { telegram?: string }).telegram ?? ""),
+    preferred_messenger: String((d as { preferred_messenger?: string }).preferred_messenger ?? ""),
     custom: ((d as { custom: unknown }).custom ?? {}) as Record<string, unknown>,
   }));
 }

@@ -84,10 +84,36 @@ export type AvitoChat = {
   itemId: string | null;
   title: string;
   updatedAt: string;
+  opponentName: string;
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function personName(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  const rec = asRecord(value);
+  const combined = [rec.first_name, rec.last_name, rec.firstName, rec.lastName]
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+  return String(rec.name ?? rec.user_name ?? rec.userName ?? combined).trim();
+}
+
+/** Имя собеседника в чате Авито — аккаунт, на который зарегистрирован клиент. */
+function opponentNameFromChat(chat: Record<string, unknown>, ownUserId: number): string {
+  const users = (Array.isArray(chat.users) ? chat.users : []).map(asRecord);
+  const others = users.filter((user) => {
+    const id = Number(user.id ?? user.user_id ?? user.userId);
+    return !(Number.isFinite(id) && id === ownUserId);
+  });
+  const pick =
+    others.length > 0 && others.length < users.length
+      ? others[0]
+      : (users[users.length - 1] ?? users[0]);
+  const name = personName(pick) || personName(chat.opponent ?? chat.user);
+  return name.slice(0, 120);
 }
 
 function toIso(value: unknown): string {
@@ -120,6 +146,7 @@ export async function fetchAvitoChats(limit = 50): Promise<AvitoChat[]> {
         itemId: itemId == null || itemId === "" ? null : String(itemId),
         title: String(value.title ?? value.url ?? "").slice(0, 200),
         updatedAt: toIso(chat.updated ?? chat.updated_at ?? chat.created),
+        opponentName: opponentNameFromChat(chat, auth.userId),
       };
     })
     .filter((chat) => chat.chatId.length > 0);

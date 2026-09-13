@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { formatTelegramHandle } from "@/lib/chat-contact";
 
 export type ChatMessage = {
   id: string;
@@ -365,25 +366,97 @@ export const updateThreadContact = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Оператор: создать клиента из переписки. */
+export const createClientFromThread = createServerFn({ method: "POST" })
+  .inputValidator(
+    (input: { threadId: string; name: string; phone?: string; comment?: string }) =>
+      z
+        .object({
+          threadId: z.string().uuid(),
+          name: z.string().trim().min(1, "Укажите имя").max(120),
+          phone: z.string().trim().max(32).optional().default(""),
+          comment: z.string().trim().max(4000).optional().default(""),
+        })
+        .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const db = await admin();
+    const { data: thread } = await db
+      .from("chat_threads")
+      .select("source, name, phone")
+      .eq("id", data.threadId)
+      .maybeSingle();
+    if (!thread) throw new Error("Диалог не найден");
+
+    await db
+      .from("chat_threads")
+      .update({ name: data.name, phone: data.phone })
+      .eq("id", data.threadId);
+
+    const phoneTail = data.phone.replace(/\D/g, "").slice(-10);
+    if (phoneTail) {
+      const { data: clients } = await db
+        .from("clients")
+        .select("id")
+        .ilike("phone", `%${phoneTail}%`)
+        .limit(1);
+      const existingId = (clients ?? [])[0]?.id ?? null;
+      if (existingId) {
+        return { ok: true as const, clientId: existingId, created: false };
+      }
+    }
+
+    const source = chatSourceToDealSource((thread.source as ChatThread["source"]) || "site");
+    const commentParts = [
+      data.comment.trim(),
+      data.comment.trim() ? "" : `Чат ${source}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const { data: client, error } = await db
+      .from("clients")
+      .insert({ full_name: data.name, phone: data.phone, comment: commentParts })
+      .select("id")
+      .single();
+    if (error) throw new Error("Не удалось создать клиента");
+    return { ok: true as const, clientId: client.id as string, created: true };
+  });
+
 /** Оператор: создать сделку из переписки. */
 export const createDealFromThread = createServerFn({ method: "POST" })
   .inputValidator(
     (input: {
       threadId: string;
       name: string;
-      phone: string;
+      phone?: string;
       comment?: string;
       budget?: number | null;
       propertyId?: string | null;
+      telegram?: string;
+      preferredMessenger?: string;
     }) =>
       z
         .object({
           threadId: z.string().uuid(),
           name: z.string().trim().min(1, "Укажите имя").max(120),
-          phone: z.string().trim().min(5, "Укажите телефон").max(32),
+          phone: z.string().trim().max(32).optional().default(""),
           comment: z.string().trim().max(4000).optional().default(""),
           budget: z.number().nonnegative().nullable().optional(),
           propertyId: z.string().uuid().nullable().optional(),
+          telegram: z.string().trim().max(64).optional().default(""),
+          preferredMessenger: z.string().trim().max(32).optional().default(""),
+        })
+        .superRefine((value, ctx) => {
+          const digits = value.phone.replace(/\D/g, "");
+          const handle = value.telegram.replace(/^@/, "");
+          if (digits.length < 5 && handle.length < 3) {
+            ctx.addIssue({
+              code: "custom",
+              message: "Укажите телефон или аккаунт Telegram",
+              path: ["phone"],
+            });
+          }
         })
         .parse(input),
   )
@@ -420,9 +493,19 @@ export const createDealFromThread = createServerFn({ method: "POST" })
       clientId = (clients ?? [])[0]?.id ?? null;
     }
     if (!clientId) {
+      const sourceLabel = chatSourceToDealSource(
+        (thread.source as ChatThread["source"]) || "site",
+      );
+      const telegramNote = formatTelegramHandle(data.telegram)
+        ? `Telegram: ${formatTelegramHandle(data.telegram)}`
+        : "";
       const { data: client, error: clientError } = await db
         .from("clients")
-        .insert({ full_name: data.name, phone: data.phone })
+        .insert({
+          full_name: data.name,
+          phone: data.phone,
+          comment: [telegramNote, `Чат ${sourceLabel}`].filter(Boolean).join(". "),
+        })
         .select("id")
         .single();
       if (clientError) throw new Error("Не удалось создать клиента");
@@ -458,6 +541,8 @@ export const createDealFromThread = createServerFn({ method: "POST" })
         source,
         budget: data.budget ?? null,
         comment: commentParts,
+        telegram: formatTelegramHandle(data.telegram) || data.telegram.trim(),
+        preferred_messenger: data.preferredMessenger.trim(),
       })
       .select("id")
       .single();

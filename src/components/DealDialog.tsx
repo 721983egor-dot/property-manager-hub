@@ -33,6 +33,7 @@ import { DealWonDialog } from "@/components/DealWonDialog";
 
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { DEAL_SOURCES, deleteDeal, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
+import { formatTelegramHandle, PREFERRED_MESSENGERS, telegramHref } from "@/lib/chat-contact";
 
 const NONE = "__none__";
 
@@ -72,6 +73,8 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   const [adults, setAdults] = useState("0");
   const [children, setChildren] = useState("0");
   const [comment, setComment] = useState("");
+  const [telegram, setTelegram] = useState("");
+  const [messenger, setMessenger] = useState("");
   const [custom, setCustom] = useState<Record<string, unknown>>({});
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [wonOpen, setWonOpen] = useState(false);
@@ -92,6 +95,8 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     setAdults(String(deal?.adults ?? 0));
     setChildren(String(deal?.children ?? 0));
     setComment(deal?.comment ?? "");
+    setTelegram(deal?.telegram ?? "");
+    setMessenger(deal?.preferred_messenger ?? "");
     setCustom(deal?.custom ?? {});
   }, [open, deal, defaultStageId, stages, profile?.id]);
 
@@ -147,6 +152,8 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
         adults: Number(adults) || 0,
         children: Number(children) || 0,
         comment,
+        telegram: formatTelegramHandle(telegram) || telegram.trim(),
+        preferred_messenger: messenger,
         custom,
       }),
     onSuccess: (id: string) => {
@@ -193,6 +200,8 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           budget: null,
           responsible_id: null,
           comment: "",
+          telegram: "",
+          preferred_messenger: "",
           source: "",
           client_id: null,
           property_id: null,
@@ -316,6 +325,16 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
               {selectedClient?.phone ? (
                 <ClientContactButtons phone={selectedClient.phone} variant="row" className="mt-1" />
               ) : null}
+              {telegramHref(telegram) ? (
+                <a
+                  href={telegramHref(telegram)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 text-xs text-primary hover:underline"
+                >
+                  {formatTelegramHandle(telegram)}
+                </a>
+              ) : null}
             </div>
 
 
@@ -354,6 +373,28 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
                 value={budget}
                 onChange={(e) => setBudget(e.target.value.replace(/[^\d]/g, ""))}
               />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label>Аккаунт в Telegram</Label>
+              <Input
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                placeholder="@username"
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label>Удобный мессенджер</Label>
+              <Select value={messenger || NONE} onValueChange={(v) => setMessenger(v === NONE ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Как удобнее писать клиенту" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Не указан</SelectItem>
+                  {PREFERRED_MESSENGERS.map((item) => (
+                    <SelectItem key={item} value={item}>{item}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {isAdmin && (

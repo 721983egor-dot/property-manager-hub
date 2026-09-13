@@ -36,6 +36,7 @@ export async function syncAvitoChats(): Promise<{ chats: number; messages: numbe
       }
     }
   }
+  const { resolvedPlatformName } = await import("@/lib/chat-contact");
 
   let messageCount = 0;
   for (const chat of chats) {
@@ -45,6 +46,7 @@ export async function syncAvitoChats(): Promise<{ chats: number; messages: numbe
     const needsMessages = !prev || new Date(updatedAt).getTime() > new Date(prev.last_message_at).getTime();
 
     let threadId = prev?.id;
+    const nextName = resolvedPlatformName(prev?.name, chat.opponentName, "Клиент Авито");
     if (!threadId) {
       const { data: thread, error: threadError } = await supabaseAdmin
         .from("chat_threads")
@@ -55,7 +57,7 @@ export async function syncAvitoChats(): Promise<{ chats: number; messages: numbe
             external_id: chat.chatId,
             external_offer_id: chat.itemId,
             property_id: propertyId,
-            name: "Клиент Авито",
+            name: nextName || "Клиент Авито",
             first_page: chat.title || (chat.itemId ? `Объявление Авито №${chat.itemId}` : "Авито"),
             last_message_at: updatedAt,
           },
@@ -73,6 +75,7 @@ export async function syncAvitoChats(): Promise<{ chats: number; messages: numbe
           property_id: propertyId,
           first_page: chat.title || (chat.itemId ? `Объявление Авито №${chat.itemId}` : "Авито"),
           last_message_at: needsMessages ? updatedAt : prev.last_message_at,
+          ...(nextName ? { name: nextName } : {}),
         })
         .eq("id", threadId);
     }

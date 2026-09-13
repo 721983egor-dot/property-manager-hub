@@ -11,9 +11,9 @@ import {
   Handshake,
   ListPlus,
   MailOpen,
-  RefreshCw,
   SendHorizonal,
   Trash2,
+  UserPlus,
   Zap,
 } from "lucide-react";
 
@@ -27,17 +27,15 @@ import {
   markThreadRead,
   sendOperatorMessage,
   setThreadStatus,
-  syncAvitoChatThreads,
-  syncCianChatThreads,
   syncPlatformChats,
-  updateThreadContact,
   type ChatThread,
 } from "@/lib/chat.functions";
+import { threadClientName } from "@/lib/chat-contact";
 import { Button } from "@/components/ui/button";
 import { ChatText } from "@/components/ChatText";
+import { CreateClientFromChatDialog } from "@/components/CreateClientFromChatDialog";
 import { CreateDealFromChatDialog } from "@/components/CreateDealFromChatDialog";
 import { SendSelectionDialog } from "@/components/SendSelectionDialog";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,16 +65,12 @@ function ChatsPage() {
   const markAllRead = useServerFn(markAllThreadsRead);
   const setStatus = useServerFn(setThreadStatus);
   const removeThread = useServerFn(deleteThread);
-  const saveContact = useServerFn(updateThreadContact);
-  const syncCian = useServerFn(syncCianChatThreads);
-  const syncAvito = useServerFn(syncAvitoChatThreads);
   const syncPlatforms = useServerFn(syncPlatformChats);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [text, setText] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [selectionOpen, setSelectionOpen] = useState(false);
+  const [clientOpen, setClientOpen] = useState(false);
   const [dealOpen, setDealOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const syncingRef = useRef(false);
@@ -107,12 +101,6 @@ function ChatsPage() {
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [messages.length, activeId]);
-
-  useEffect(() => {
-    if (!active) return;
-    setName(active.name);
-    setPhone(active.phone);
-  }, [active?.id]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -160,14 +148,6 @@ function ChatsPage() {
     onError: (e: Error) => toast.error(e.message || "Не удалось отправить"),
   });
 
-  const contactMutation = useMutation({
-    mutationFn: () => saveContact({ data: { threadId: activeId!, name, phone } }),
-    onSuccess: () => {
-      toast.success("Контакт сохранён");
-      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
-    },
-  });
-
   const statusMutation = useMutation({
     mutationFn: (status: "open" | "closed") =>
       setStatus({ data: { threadId: activeId!, status } }),
@@ -180,26 +160,6 @@ function ChatsPage() {
       setActiveId(null);
       queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
     },
-  });
-
-  const syncMutation = useMutation({
-    mutationFn: () => syncCian({ data: undefined }),
-    onSuccess: (result) => {
-      toast.success(`ЦИАН обновлён: ${result.chats} чатов`);
-      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
-      if (activeId) queryClient.invalidateQueries({ queryKey: ["chat-messages", activeId] });
-    },
-    onError: (e: Error) => toast.error(e.message || "Не удалось обновить ЦИАН"),
-  });
-
-  const syncAvitoMutation = useMutation({
-    mutationFn: () => syncAvito({ data: undefined }),
-    onSuccess: (result) => {
-      toast.success(`Авито обновлён: ${result.chats} чатов`);
-      queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
-      if (activeId) queryClient.invalidateQueries({ queryKey: ["chat-messages", activeId] });
-    },
-    onError: (e: Error) => toast.error(e.message || "Не удалось обновить Авито"),
   });
 
   const markAllMutation = useMutation({
@@ -224,19 +184,6 @@ function ChatsPage() {
           >
             <MailOpen className="size-4" />
             Прочитать все
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending}>
-            <RefreshCw className={`size-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />
-            Обновить ЦИАН
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => syncAvitoMutation.mutate()}
-            disabled={syncAvitoMutation.isPending}
-          >
-            <RefreshCw className={`size-4 ${syncAvitoMutation.isPending ? "animate-spin" : ""}`} />
-            Обновить Авито
           </Button>
         </div>
       </header>
@@ -283,7 +230,12 @@ function ChatsPage() {
                     <ChevronLeft className="size-5" />
                   </button>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{chatSourceLabel(active.source)}</div>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="truncate text-sm font-medium">{threadClientName(active.name)}</div>
+                      <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {chatSourceLabel(active.source)}
+                      </span>
+                    </div>
                     {active.property_title && active.property_id ? (
                       <Link
                         to="/objects/$id/"
@@ -299,43 +251,28 @@ function ChatsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Имя клиента"
-                    className="h-9 w-full sm:w-40"
-                  />
-                  <Input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Телефон"
-                    className="h-9 w-full sm:w-40"
-                  />
+                  <Button size="sm" className="w-full sm:w-auto" onClick={() => setClientOpen(true)}>
+                    <UserPlus className="size-4" />
+                    Создать клиента
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full sm:w-auto"
-                    onClick={() => contactMutation.mutate()}
+                    onClick={() => setDealOpen(true)}
                   >
-                    Сохранить
+                    <Handshake className="size-4" />
+                    Создать сделку
                   </Button>
-                  <div className="col-span-2 grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:items-center">
+                  <div className="col-span-2 grid grid-cols-3 gap-2 sm:ml-auto sm:flex sm:items-center">
                     <Button
+                      variant="outline"
                       size="sm"
                       className="w-full sm:w-auto"
                       onClick={() => setSelectionOpen(true)}
                     >
                       <ListPlus className="size-4" />
                       Подборка
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full sm:w-auto"
-                      onClick={() => setDealOpen(true)}
-                    >
-                      <Handshake className="size-4" />
-                      Создать сделку
                     </Button>
                     <Button
                       variant="outline"
@@ -371,7 +308,10 @@ function ChatsPage() {
                         : "ml-auto bg-primary text-primary-foreground")
                     }
                   >
-                    <ChatText text={m.body} />
+                    <ChatText
+                      text={m.body}
+                      onCopy={() => toast.success("Скопировано")}
+                    />
                     <p className="mt-0.5 text-[10px] opacity-70">
                       {format(new Date(m.created_at), "d MMM, HH:mm", { locale: ru })}
                     </p>
@@ -446,10 +386,21 @@ function ChatsPage() {
                   queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
                 }}
               />
+              <CreateClientFromChatDialog
+                open={clientOpen}
+                onOpenChange={setClientOpen}
+                thread={active}
+                messages={messages}
+                onCreated={() => {
+                  queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+                  queryClient.invalidateQueries({ queryKey: ["crm-clients"] });
+                }}
+              />
               <CreateDealFromChatDialog
                 open={dealOpen}
                 onOpenChange={setDealOpen}
                 thread={active}
+                messages={messages}
                 onCreated={() => {
                   queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
                   queryClient.invalidateQueries({ queryKey: ["deals"] });
@@ -482,12 +433,17 @@ function ThreadCard({
       }
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm font-medium">{chatSourceLabel(thread.source)}</span>
-        {thread.unread_count > 0 && (
-          <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-            {thread.unread_count}
+        <span className="truncate text-sm font-medium">{threadClientName(thread.name)}</span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {chatSourceLabel(thread.source)}
           </span>
-        )}
+          {thread.unread_count > 0 && (
+            <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+              {thread.unread_count}
+            </span>
+          )}
+        </div>
       </div>
       {thread.property_title ? (
         <span className="truncate text-xs text-foreground/80">{thread.property_title}</span>

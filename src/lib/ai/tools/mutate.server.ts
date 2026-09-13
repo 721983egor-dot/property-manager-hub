@@ -384,7 +384,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeDeal: tool({
       description:
-        "Предложить создание или изменение сделки CRM: название, стадия, клиент, объект, источник, бюджет, взрослые, дети, комментарий, дополнительные поля. Требует подтверждения менеджера.",
+        "Предложить создание или изменение сделки CRM: название, стадия, клиент, объект, источник, бюджет, взрослые, дети, комментарий, Telegram, удобный мессенджер, дополнительные поля. Требует подтверждения менеджера.",
       inputSchema: z.object({
         dealId: z.string().optional(),
         title: z.string().optional(),
@@ -396,6 +396,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
         adults: z.number().optional(),
         children: z.number().optional(),
         comment: z.string().optional(),
+        telegram: z.string().optional().describe("Аккаунт клиента в Telegram, например @ivan"),
+        preferredMessenger: z
+          .enum(["Telegram", "WhatsApp", "MAX", "Телефон"])
+          .optional()
+          .describe("Удобный мессенджер клиента"),
         custom: z.record(z.string(), z.string()).optional(),
       }),
       execute: async (input) => {
@@ -418,6 +423,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (input.adults != null || input.children != null)
           parts.push(`гости ${input.adults ?? 0} взр. / ${input.children ?? 0} дет.`);
         if (input.source) parts.push(`источник ${input.source}`);
+        if (input.telegram) parts.push(`Telegram ${input.telegram}`);
+        if (input.preferredMessenger) parts.push(`мессенджер ${input.preferredMessenger}`);
         const summary = `${input.dealId ? "Изменить" : "Создать"} сделку: ${parts.join(", ") || "без изменений"}`;
         ctx.propose({
           tool: "upsertDeal",
@@ -433,6 +440,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
             adults: input.adults ?? null,
             children: input.children ?? null,
             comment: input.comment ?? null,
+            telegram: input.telegram ?? null,
+            preferredMessenger: input.preferredMessenger ?? null,
             custom: input.custom ?? null,
           },
         });

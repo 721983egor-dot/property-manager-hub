@@ -597,12 +597,14 @@ export type Database = {
           lead_id: string | null
           payment_day: number | null
           position: number
+          preferred_messenger: string
           price_month: number | null
           property_id: string | null
           responsible_id: string | null
           source: string
           stage_id: string
           start_date: string | null
+          telegram: string
           title: string
           updated_at: string
         }
@@ -622,12 +624,14 @@ export type Database = {
           lead_id?: string | null
           payment_day?: number | null
           position?: number
+          preferred_messenger?: string
           price_month?: number | null
           property_id?: string | null
           responsible_id?: string | null
           source?: string
           stage_id: string
           start_date?: string | null
+          telegram?: string
           title?: string
           updated_at?: string
         }
@@ -647,12 +651,14 @@ export type Database = {
           lead_id?: string | null
           payment_day?: number | null
           position?: number
+          preferred_messenger?: string
           price_month?: number | null
           property_id?: string | null
           responsible_id?: string | null
           source?: string
           stage_id?: string
           start_date?: string | null
+          telegram?: string
           title?: string
           updated_at?: string
         }

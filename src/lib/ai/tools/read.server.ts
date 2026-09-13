@@ -260,7 +260,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getClients: tool({
       description:
-        "Клиенты RM OS + брони из Календаря (в т.ч. кто живёт/забронировал без сделки CRM). Для человека передай query. Смотри currentRentals и calendarBookings — это не CRM.",
+        "Клиенты RM OS + брони из Календаря (в т.ч. кто живёт/забронировал без сделки CRM). Для человека передай query — ищет по ФИО, телефону и комментарию. Смотри currentRentals и calendarBookings — это не CRM.",
       inputSchema: z.object({
         query: z.string().optional(),
         blacklistedOnly: z.boolean().optional(),
@@ -1121,7 +1121,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getCrmDeals: tool({
       description:
-        "Только сделки CRM (канбан). НЕ календарь и НЕ текущая аренда. Для броней/кто живёт — getBookings / getCurrentRentals / getClientHistory. clientQuery — сделки клиента; без сделки у старых жильцов это нормально.",
+        "Только сделки CRM (канбан). НЕ календарь и НЕ текущая аренда. query ищет по названию, источнику, комментарию, Telegram и удобному мессенджеру. Для броней/кто живёт — getBookings / getCurrentRentals / getClientHistory.",
       inputSchema: z.object({
         query: z.string().optional(),
         clientQuery: z.string().optional().describe("ФИО или телефон клиента"),
@@ -1159,7 +1159,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         }
         if (query) {
           const like = postgrestValue(`%${query}%`);
-          q = q.or(`title.ilike.${like},source.ilike.${like},comment.ilike.${like}`);
+          q = q.or(`title.ilike.${like},source.ilike.${like},comment.ilike.${like},telegram.ilike.${like},preferred_messenger.ilike.${like}`);
         }
         const { data, error } = await q;
         if (error) return { error: error.message };
@@ -1195,6 +1195,8 @@ export function createReadTools(ctx: AssistantToolContext) {
           budget: d.budget,
           adults: d.adults,
           children: d.children,
+          telegram: d.telegram,
+          preferredMessenger: d.preferred_messenger,
           startDate: d.start_date,
           endDate: d.end_date,
           priceMonth: d.price_month,

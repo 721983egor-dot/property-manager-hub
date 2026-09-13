@@ -453,10 +453,40 @@ export async function fetchOfferStatsByDays(
 // Чаты и сообщения
 // ---------------------------------------------------------------------------
 
+function personName(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (!value || typeof value !== "object") return "";
+  const rec = value as Record<string, unknown>;
+  const combined = [rec["firstName"], rec["lastName"], rec["first_name"], rec["last_name"]]
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+  return String(rec["name"] ?? rec["userName"] ?? rec["fullName"] ?? combined).trim();
+}
+
+/** Имя клиента в чате ЦИАН — как в аккаунте площадки. */
+function cianOpponentName(chat: Record<string, unknown>): string {
+  for (const key of ["user", "opponent", "customer", "client", "author", "profile"]) {
+    const name = personName(chat[key]);
+    if (name) return name.slice(0, 120);
+  }
+  const users = Array.isArray(chat["users"]) ? chat["users"] : [];
+  for (const raw of users) {
+    const rec = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+    const role = String(rec["role"] ?? rec["type"] ?? rec["direction"] ?? "").toLowerCase();
+    if (role.includes("realtor") || role.includes("agent") || role === "out") continue;
+    const name = personName(raw);
+    if (name) return name.slice(0, 120);
+  }
+  const direct = personName(chat["userName"] ?? chat["opponentName"] ?? chat["clientName"]);
+  return direct.slice(0, 120);
+}
+
 export type CianChat = {
   chatId: number;
   offerId: number | null;
   updatedAt: string;
+  opponentName: string;
 };
 
 /** Чаты кабинета, новые первыми. */
@@ -479,6 +509,7 @@ export async function fetchChats(max = 200): Promise<CianChat[]> {
           ? Number((c["offer"] as Record<string, unknown>)["id"]) || null
           : null,
       updatedAt: String(c["updatedAt"] ?? ""),
+      opponentName: cianOpponentName(c),
     }));
     chats.push(...batch.filter((c) => Number.isFinite(c.chatId)));
     const total = Number(payload.result?.totalCount ?? 0);

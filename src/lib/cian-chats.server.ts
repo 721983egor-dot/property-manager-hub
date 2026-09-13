@@ -20,11 +20,11 @@ export async function syncCianChats(): Promise<{ chats: number; messages: number
   }
 
   const externalIds = chats.map((chat) => String(chat.chatId));
-  const existingByExternal = new Map<string, { id: string; last_message_at: string }>();
+  const existingByExternal = new Map<string, { id: string; last_message_at: string; name: string }>();
   if (externalIds.length > 0) {
     const { data: existing } = await supabaseAdmin
       .from("chat_threads")
-      .select("id, external_id, last_message_at")
+      .select("id, external_id, last_message_at, name")
       .eq("source", "cian")
       .in("external_id", externalIds);
     for (const row of existing ?? []) {
@@ -32,12 +32,15 @@ export async function syncCianChats(): Promise<{ chats: number; messages: number
         existingByExternal.set(String(row.external_id), {
           id: row.id,
           last_message_at: row.last_message_at,
+          name: row.name ?? "",
         });
       }
     }
   }
+  const { isGenericChatName, resolvedPlatformName } = await import("@/lib/chat-contact");
 
   let messageCount = 0;
+  let nameLookups = 0;
   for (const chat of chats) {
     const externalId = String(chat.chatId);
     const offerId = chat.offerId == null ? null : String(chat.offerId);
@@ -45,8 +48,11 @@ export async function syncCianChats(): Promise<{ chats: number; messages: number
     const prev = existingByExternal.get(externalId);
     const updatedAt = chat.updatedAt || new Date().toISOString();
     const needsMessages = !prev || new Date(updatedAt).getTime() > new Date(prev.last_message_at).getTime();
+    const needsName = isGenericChatName(prev?.name ?? "") && !chat.opponentName && nameLookups < 20;
+    if (needsName) nameLookups += 1;
 
     let threadId = prev?.id;
+    const nextName = resolvedPlatformName(prev?.name, chat.opponentName, "Клиент ЦИАН");
     if (!threadId) {
       const { data: thread, error: threadError } = await supabaseAdmin
         .from("chat_threads")
@@ -57,7 +63,7 @@ export async function syncCianChats(): Promise<{ chats: number; messages: number
             external_id: externalId,
             external_offer_id: offerId,
             property_id: propertyId,
-            name: "Клиент ЦИАН",
+            name: nextName || "Клиент ЦИАН",
             first_page: offerId ? `Объявление ЦИАН №${offerId}` : "ЦИАН",
             last_message_at: updatedAt,
           },
@@ -75,13 +81,21 @@ export async function syncCianChats(): Promise<{ chats: number; messages: number
           property_id: propertyId,
           first_page: offerId ? `Объявление ЦИАН №${offerId}` : "ЦИАН",
           last_message_at: needsMessages ? updatedAt : prev.last_message_at,
+          ...(nextName ? { name: nextName } : {}),
         })
         .eq("id", threadId);
     }
 
-    if (!needsMessages || !threadId) continue;
+    if ((!needsMessages && !needsName) || !threadId) continue;
 
     const messages = await fetchChatMessages(chat.chatId, 100);
+    const fromMessages = messages.find(
+      (message) => message.direction === "in" && message.author && !isGenericChatName(message.author),
+    )?.author;
+    const nameFromMessages = resolvedPlatformName(nextName || prev?.name, fromMessages, "Клиент ЦИАН");
+    if (nameFromMessages) {
+      await supabaseAdmin.from("chat_threads").update({ name: nameFromMessages }).eq("id", threadId);
+    }
     const incoming = messages.filter((message) => message.direction === "in");
     const latestIncoming =
       incoming

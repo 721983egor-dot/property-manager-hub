@@ -379,6 +379,8 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (input["adults"] != null) patch["adults"] = input["adults"];
     if (input["children"] != null) patch["children"] = input["children"];
     if (input["comment"] != null) patch["comment"] = input["comment"];
+    if (input["telegram"] != null) patch["telegram"] = input["telegram"];
+    if (input["preferredMessenger"] != null) patch["preferred_messenger"] = input["preferredMessenger"];
     if (input["custom"] != null) patch["custom"] = input["custom"];
     if (dealId) {
       const { error } = await supabaseAdmin

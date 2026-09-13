@@ -177,6 +177,7 @@ export function PropertyPublicPage({
   const [active, setActive] = useState(0);
   const [complexActive, setComplexActive] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [complexCopied, setComplexCopied] = useState(false);
 
   const photos = property.photos ?? [];
   const safeActive = photos.length ? Math.min(active, photos.length - 1) : 0;
@@ -243,6 +244,14 @@ export function PropertyPublicPage({
     navigator.clipboard.writeText(window.location.href).catch(() => undefined);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
+  }
+
+  function copyComplexLink() {
+    if (!complex) return;
+    const url = `${window.location.origin}/rent/jk/${slugifyName(complex.name)}`;
+    navigator.clipboard.writeText(url).catch(() => undefined);
+    setComplexCopied(true);
+    window.setTimeout(() => setComplexCopied(false), 2000);
   }
 
   const seasonRows = [
@@ -565,6 +574,19 @@ export function PropertyPublicPage({
                         loading="lazy"
                         className="size-full object-cover"
                       />
+                      <button
+                        type="button"
+                        onClick={copyComplexLink}
+                        aria-label={complexCopied ? "Ссылка скопирована" : "Поделиться комплексом"}
+                        title={complexCopied ? "Ссылка скопирована" : "Поделиться"}
+                        className="absolute right-4 top-4 z-10 grid size-11 place-items-center rounded-full bg-background/85 text-site-navy shadow-sm backdrop-blur-sm transition-colors hover:bg-background"
+                      >
+                        {complexCopied ? (
+                          <Check className="size-5 text-site-green" />
+                        ) : (
+                          <Share2 className="size-5" />
+                        )}
+                      </button>
                       {complexPhotos.length > 1 ? (
                         <>
                           {arrowButton(prevComplex, "left", "Предыдущее фото комплекса")}

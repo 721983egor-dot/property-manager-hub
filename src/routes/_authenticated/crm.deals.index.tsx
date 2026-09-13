@@ -330,6 +330,12 @@ function DealsPage() {
                             {deal.source}
                           </span>
                         )}
+                        {deal.telegram ? (
+                          <span className="text-muted-foreground">{deal.telegram}</span>
+                        ) : null}
+                        {deal.preferred_messenger ? (
+                          <span className="text-muted-foreground">{deal.preferred_messenger}</span>
+                        ) : null}
                       </div>
                       {cardFields.map((f) =>
                         deal.custom[f.key] == null || deal.custom[f.key] === "" ? null : (

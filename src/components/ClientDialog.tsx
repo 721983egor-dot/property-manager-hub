@@ -131,6 +131,7 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
               rows={3}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
+              placeholder="Пожелания, Telegram, откуда пишет — ассистент ищет по этому полю"
             />
           </div>
 

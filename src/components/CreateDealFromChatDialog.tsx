@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
+import { ChatContactHints } from "@/components/ChatContactHints";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,32 +14,53 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  formatTelegramHandle,
+  PREFERRED_MESSENGERS,
+  threadClientName,
+} from "@/lib/chat-contact";
 import {
   chatSourceToDealSource,
   createDealFromThread,
+  type ChatMessage,
   type ChatThread,
 } from "@/lib/chat.functions";
+
+const NONE = "__none__";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   thread: ChatThread;
+  messages: ChatMessage[];
   onCreated?: (dealId: string) => void;
 };
 
-/** Создание сделки из чата: источник уже заполнен, имя/телефон и комментарий — вручную. */
-export function CreateDealFromChatDialog({ open, onOpenChange, thread, onCreated }: Props) {
+/** Создание сделки из чата: источник уже заполнен, имя/телефон, Telegram и комментарий — вручную. */
+export function CreateDealFromChatDialog({ open, onOpenChange, thread, messages, onCreated }: Props) {
   const createDeal = useServerFn(createDealFromThread);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [telegram, setTelegram] = useState("");
+  const [messenger, setMessenger] = useState("");
   const [comment, setComment] = useState("");
   const [budget, setBudget] = useState("");
 
   useEffect(() => {
     if (!open) return;
-    setName(thread.name.trim());
+    const clientName = threadClientName(thread.name);
+    setName(clientName === "Клиент" ? "" : thread.name.trim());
     setPhone(thread.phone.trim());
+    setTelegram("");
+    setMessenger("");
     setComment("");
     setBudget("");
   }, [open, thread.id, thread.name, thread.phone]);
@@ -50,6 +72,8 @@ export function CreateDealFromChatDialog({ open, onOpenChange, thread, onCreated
           threadId: thread.id,
           name: name.trim(),
           phone: phone.trim(),
+          telegram: telegram.trim(),
+          preferredMessenger: messenger,
           comment: comment.trim(),
           budget: budget.trim() === "" ? null : Number(budget),
           propertyId: thread.property_id,
@@ -63,13 +87,20 @@ export function CreateDealFromChatDialog({ open, onOpenChange, thread, onCreated
     onError: (e: Error) => toast.error(e.message || "Не удалось создать сделку"),
   });
 
+  const canSubmit = name.trim() && (phone.trim().length >= 5 || telegram.trim().length >= 3);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Создать сделку</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <ChatContactHints
+            messages={messages}
+            onPhone={setPhone}
+            onTelegram={(handle) => setTelegram(formatTelegramHandle(handle))}
+          />
           <div className="space-y-1.5">
             <Label>Источник</Label>
             <Input value={chatSourceToDealSource(thread.source)} disabled />
@@ -95,8 +126,33 @@ export function CreateDealFromChatDialog({ open, onOpenChange, thread, onCreated
               id="chat-deal-phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+7…"
+              placeholder="+7… (можно без номера, если есть Telegram)"
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="chat-deal-telegram">Аккаунт в Telegram</Label>
+            <Input
+              id="chat-deal-telegram"
+              value={telegram}
+              onChange={(e) => setTelegram(e.target.value)}
+              placeholder="@username"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Удобный мессенджер</Label>
+            <Select value={messenger || NONE} onValueChange={(v) => setMessenger(v === NONE ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Как удобнее писать клиенту" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>Не указан</SelectItem>
+                {PREFERRED_MESSENGERS.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="chat-deal-budget">Бюджет (необязательно)</Label>
@@ -126,10 +182,7 @@ export function CreateDealFromChatDialog({ open, onOpenChange, thread, onCreated
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button
-            disabled={mutation.isPending || !name.trim() || !phone.trim()}
-            onClick={() => mutation.mutate()}
-          >
+          <Button disabled={mutation.isPending || !canSubmit} onClick={() => mutation.mutate()}>
             {mutation.isPending ? "Создаём…" : "Создать сделку"}
           </Button>
         </DialogFooter>
