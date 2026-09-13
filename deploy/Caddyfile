@@ -2,10 +2,17 @@
     auto_https disable_redirects
 }
 
-# Разрешаем служебным адресам отвечать на запросы со служебного поддомена RM OS
+# Разрешаем служебным адресам отвечать с рабочего и тестового RM OS / сайта
 (cors) {
+    @rmos header Origin https://rm-os.{$DOMAIN}
+    @preview_rmos header Origin https://preview-rm-os.{$DOMAIN}
+    @preview_site header Origin https://preview.{$DOMAIN}
+
+    header @rmos Access-Control-Allow-Origin "https://rm-os.{$DOMAIN}"
+    header @preview_rmos Access-Control-Allow-Origin "https://preview-rm-os.{$DOMAIN}"
+    header @preview_site Access-Control-Allow-Origin "https://preview.{$DOMAIN}"
+
     header {
-        Access-Control-Allow-Origin "https://rm-os.{$DOMAIN}"
         Access-Control-Allow-Credentials "true"
         Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         Access-Control-Allow-Headers "authorization, apikey, content-type, x-client-info, prefer, range, x-supabase-api-version, accept-profile, content-profile"
@@ -17,9 +24,8 @@
     respond @preflight 204
 }
 
-# Общие правила: служебные адреса базы/входа/фото идут в свои сервисы,
-# всё остальное — в приложение (сайт и RM OS).
-(supabase) {
+# База, вход и фото — общие. Само приложение подключается на каждом домене отдельно.
+(services) {
     handle_path /auth/v1/* {
         import cors
         reverse_proxy supabase-auth:9999
@@ -32,26 +38,77 @@
         import cors
         reverse_proxy supabase-storage:5000
     }
-    handle {
-        reverse_proxy app:3000
-    }
-
     encode gzip
 }
 
 {$DOMAIN} {
     tls {$TLS_EMAIL}
-    import supabase
+    import services
+    handle {
+        reverse_proxy app:3000
+    }
 }
 
 # Служебный адрес для входа менеджеров: корень ведёт сразу в RM OS
 rm-os.{$DOMAIN} {
     tls {$TLS_EMAIL}
     redir / /objects 302
-    import supabase
+    import services
+    handle {
+        reverse_proxy app:3000
+    }
+}
+
+# Тестовые копии закрыты паролем браузера и не индексируются.
+# /auth /rest /storage без basic auth: иначе Bearer-токен входа перезапишет пароль браузера.
+(preview_lock) {
+    header X-Robots-Tag "noindex, nofollow, noarchive"
+    header Referrer-Policy "no-referrer"
+    @preview_pages not path /auth/v1/* /rest/v1/* /storage/v1/* /robots.txt
+    basic_auth @preview_pages {
+        {$PREVIEW_USER} {$PREVIEW_PASSWORD_HASH}
+    }
+    handle /robots.txt {
+        header Content-Type "text/plain; charset=utf-8"
+        respond "User-agent: *\nDisallow: /\n" 200
+    }
+}
+
+# Тестовая копия сайта: правки с ветки preview, рабочий сайт не трогаем
+preview.{$DOMAIN} {
+    tls {$TLS_EMAIL}
+    import preview_lock
+    import services
+    handle {
+        reverse_proxy preview-app:3000
+    }
+}
+
+preview-rm-os.{$DOMAIN} {
+    tls {$TLS_EMAIL}
+    import preview_lock
+    redir / /objects 302
+    import services
+    handle {
+        reverse_proxy preview-app:3000
+    }
+}
+
+# GitHub дергает агент по токену; снаружи это не сайт
+deploy.{$DOMAIN} {
+    tls {$TLS_EMAIL}
+    header X-Robots-Tag "noindex, nofollow, noarchive"
+    handle /robots.txt {
+        header Content-Type "text/plain; charset=utf-8"
+        respond "User-agent: *\nDisallow: /\n" 200
+    }
+    reverse_proxy deploy-agent:8080
 }
 
 # Доступ по IP до переключения DNS
 :80 {
-    import supabase
+    import services
+    handle {
+        reverse_proxy app:3000
+    }
 }

@@ -34,8 +34,14 @@ export function YandexMetrika() {
   const loaded = useRef(false);
   const firstHit = useRef(true);
 
+  const isPreview =
+    process.env.PREVIEW_MODE === "1" ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname.startsWith("preview.") ||
+        window.location.hostname.startsWith("preview-rm-os.")));
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || isPreview) return;
     if (!isPublicPath(pathname)) return;
 
     if (!loaded.current) {
@@ -69,7 +75,9 @@ export function YandexMetrika() {
     }
 
     window.ym?.(COUNTER_ID, "hit", `${pathname}${searchStr ?? ""}`);
-  }, [pathname, searchStr]);
+  }, [isPreview, pathname, searchStr]);
+
+  if (isPreview) return null;
 
   return (
     <noscript>

@@ -2,10 +2,25 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-user-middleware";
 
+const deploymentSchema = z.object({
+  version: z.string().optional(),
+  at: z.string().optional(),
+  source: z.string().optional(),
+  target: z.string().optional(),
+  status: z.string().optional(),
+  error: z.string().optional(),
+});
+
 const deployResponseSchema = z.object({
   ok: z.boolean(),
   version: z.string().optional(),
+  preview_version: z.string().optional(),
   message: z.string(),
+  domain: z.string().optional(),
+  production_url: z.string().optional(),
+  preview_url: z.string().optional(),
+  preview_rm_os_url: z.string().optional(),
+  deployments: z.array(deploymentSchema).optional(),
 });
 
 const deployErrorSchema = z.object({
@@ -170,6 +185,13 @@ export const triggerDeploy = createServerFn({ method: "POST" })
       waitForProductionPlatformKeysEndpoint(),
     ]);
     return result;
+  });
+
+/** Выкладывает ветку preview на тестовые адреса. Рабочий сайт не трогает. */
+export const triggerPreviewDeploy = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .handler(async () => {
+    return callDeployAgent("/deploy-preview", { source: "rm-os-ui" });
   });
 
 /** Откатывает сайт на предыдущую версию. */

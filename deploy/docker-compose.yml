@@ -5,6 +5,8 @@ services:
     environment:
       - DOMAIN=${DOMAIN}
       - TLS_EMAIL=${TLS_EMAIL}
+      - PREVIEW_USER=${PREVIEW_USER:-preview}
+      - PREVIEW_PASSWORD_HASH=${PREVIEW_PASSWORD_HASH:-$$2y$$05$$j4UNi.r1VeA69TkNtGvl4OviK0bwhmnVUrV.vpPWH1LCcG9Nle1OK}
     ports:
       - "80:80"
       - "443:443"
@@ -49,6 +51,56 @@ services:
       - PUBLIC_SITE_URL=https://${DOMAIN}
       - PUBLIC_BASE_URL=https://${DOMAIN}
       - RM_OS_URL=https://rm-os.${DOMAIN}
+      - DEPLOY_AGENT_URL=http://deploy-agent:8080
+      - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
+    volumes:
+      - runtime_secrets:/data/runtime-secrets
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+      supabase-auth:
+        condition: service_started
+      supabase-rest:
+        condition: service_started
+      supabase-storage:
+        condition: service_started
+    networks:
+      - rm-os
+
+  # Тестовая копия приложения. Собирается из ветки preview, рабочий контейнер app не перезапускает.
+  preview-app:
+    profiles:
+      - preview
+    build:
+      context: ${PREVIEW_REPO_DIR:-/opt/rm-os/preview}
+      dockerfile: deploy/Dockerfile
+      args:
+        VITE_SUPABASE_URL: https://preview.${DOMAIN}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${SUPABASE_PROJECT_ID}
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PREVIEW_MODE=1
+      - SUPABASE_URL=http://caddy
+      - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_PROJECT_ID=${SUPABASE_PROJECT_ID}
+      - CIAN_API_KEY=${CIAN_API_KEY}
+      - YANDEX_REALTY_TOKEN=${YANDEX_REALTY_TOKEN}
+      - YANDEX_GEOCODER_API_KEY=${YANDEX_GEOCODER_API_KEY}
+      - YANDEX_MAPS_JS_API_KEY=${YANDEX_MAPS_JS_API_KEY}
+      - YANDEX_SUGGEST_API_KEY=${YANDEX_SUGGEST_API_KEY}
+      - LOVABLE_CRON_SECRET=${LOVABLE_CRON_SECRET}
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+      - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - PUBLIC_SITE_URL=https://preview.${DOMAIN}
+      - PUBLIC_BASE_URL=https://preview.${DOMAIN}
+      - RM_OS_URL=https://preview-rm-os.${DOMAIN}
       - DEPLOY_AGENT_URL=http://deploy-agent:8080
       - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
     volumes:
@@ -168,8 +220,11 @@ services:
     environment:
       - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
       - GITHUB_REPO=${GITHUB_REPO}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - DOMAIN=${DOMAIN}
       - APP_IMAGE=rm-os-app
+      - PREVIEW_DIR=/opt/rm-os/preview
+      - PREVIEW_BRANCH=preview
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - LOVABLE_API_KEY=${LOVABLE_API_KEY}
       - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
@@ -177,6 +232,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - deploy_data:/data
       - /opt/rm-os/repo:/data/repo
+      - /opt/rm-os/preview:/opt/rm-os/preview
       - /opt/rm-os/backups:/data/backups
     networks:
       - rm-os

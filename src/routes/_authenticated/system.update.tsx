@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   CheckCircle2,
   DownloadCloud,
+  ExternalLink,
+  FlaskConical,
   History,
   Loader2,
   RefreshCw,
@@ -16,7 +18,7 @@ import {
   Terminal,
 } from "lucide-react";
 
-import { getDeployStatus, triggerDeploy, triggerRollback } from "@/lib/deploy.functions";
+import { getDeployStatus, triggerDeploy, triggerPreviewDeploy, triggerRollback } from "@/lib/deploy.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -34,15 +36,29 @@ export const Route = createFileRoute("/_authenticated/system/update")({
   ),
 });
 
-const PROGRESS_STEPS = [
-  "Проверка обновлений…",
-  "Создание резервной копии базы…",
-  "Получение новой версии из GitHub…",
-  "Сборка приложения…",
-  "Применение изменений базы данных…",
-  "Переключение на новую версию…",
-  "Проверка работоспособности…",
-];
+const PROGRESS_STEPS = {
+  preview: [
+    "Получение тестовой версии из GitHub…",
+    "Сборка тестовой копии…",
+    "Выкладка на preview.residence-more.ru…",
+    "Проверка, что рабочий сайт не тронут…",
+  ],
+  deploy: [
+    "Проверка обновлений…",
+    "Создание резервной копии базы…",
+    "Получение проверенной версии из GitHub…",
+    "Сборка приложения…",
+    "Применение изменений базы данных…",
+    "Переключение рабочего сайта и RM OS…",
+    "Проверка работоспособности…",
+  ],
+  rollback: [
+    "Поиск предыдущей рабочей версии…",
+    "Восстановление базы из копии…",
+    "Сборка предыдущей версии…",
+    "Возврат рабочего сайта…",
+  ],
+} as const;
 
 /** Обрыв связи из-за перезапуска приложения, а не реальная ошибка обновления. */
 function isRestartError(err: unknown): boolean {
@@ -68,10 +84,17 @@ async function waitForAppRestart(timeoutMs = 5 * 60 * 1000): Promise<boolean> {
   return false;
 }
 
-function SystemUpdatePage() {
+function formatWhen(iso?: string) {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" });
+}
 
+function SystemUpdatePage() {
   const queryClient = useQueryClient();
   const loadStatus = useServerFn(getDeployStatus);
+  const doPreview = useServerFn(triggerPreviewDeploy);
   const doDeploy = useServerFn(triggerDeploy);
   const doRollback = useServerFn(triggerRollback);
 
@@ -83,7 +106,7 @@ function SystemUpdatePage() {
 
   const [progress, setProgress] = useState(0);
   const [activeStep, setActiveStep] = useState(-1);
-  const [operation, setOperation] = useState<"idle" | "deploy" | "rollback">("idle");
+  const [operation, setOperation] = useState<"idle" | "preview" | "deploy" | "rollback">("idle");
 
   useEffect(() => {
     if (operation === "idle") {
@@ -91,11 +114,12 @@ function SystemUpdatePage() {
       setActiveStep(-1);
       return;
     }
+    const steps = PROGRESS_STEPS[operation];
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 95) return prev;
         const next = prev + Math.random() * 6;
-        const step = Math.min(Math.floor((next / 100) * PROGRESS_STEPS.length), PROGRESS_STEPS.length - 1);
+        const step = Math.min(Math.floor((next / 100) * steps.length), steps.length - 1);
         setActiveStep(step);
         return Math.min(next, 95);
       });
@@ -103,15 +127,28 @@ function SystemUpdatePage() {
     return () => clearInterval(interval);
   }, [operation]);
 
+  const previewMutation = useMutation({
+    mutationFn: () => doPreview({ data: undefined }),
+    onMutate: () => {
+      setOperation("preview");
+      setProgress(5);
+      setActiveStep(0);
+    },
+    onSettled: () => {
+      setOperation("idle");
+      setProgress(100);
+      setActiveStep(-1);
+      queryClient.invalidateQueries({ queryKey: ["deploy-status"] });
+    },
+  });
+
   const deployMutation = useMutation({
     mutationFn: async () => {
       try {
         return await doDeploy({ data: undefined });
       } catch (err) {
-        // Во время обновления приложение перезапускается, поэтому ответ на запрос
-        // теряется. Это не ошибка — дожидаемся, пока приложение снова поднимется.
         if (!isRestartError(err)) throw err;
-        setActiveStep(PROGRESS_STEPS.length - 1);
+        setActiveStep(PROGRESS_STEPS.deploy.length - 1);
         const back = await waitForAppRestart();
         if (!back) {
           throw new Error(
@@ -165,8 +202,15 @@ function SystemUpdatePage() {
     },
   });
 
-
+  const busy = operation !== "idle" || previewMutation.isPending || deployMutation.isPending || rollbackMutation.isPending;
   const agentConfigured = !(status && status.message?.includes("Deploy-агент не настроен"));
+  const previewUrl = status?.preview_url ?? "https://preview.residence-more.ru";
+  const previewRmOsUrl = status?.preview_rm_os_url ?? "https://preview-rm-os.residence-more.ru";
+  const steps = operation === "idle" ? [] : PROGRESS_STEPS[operation];
+  const errorMessage =
+    previewMutation.error?.message || deployMutation.error?.message || rollbackMutation.error?.message;
+  const successMessage =
+    previewMutation.data?.message || deployMutation.data?.message || rollbackMutation.data?.message;
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-10">
@@ -180,7 +224,7 @@ function SystemUpdatePage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Обновление системы</h1>
             <p className="text-sm text-muted-foreground">
-              Обновите сайт и RM OS до последней версии из Lovable / GitHub
+              Сначала тест на Beget, затем рабочий сайт и RM OS. Lovable не используется.
             </p>
           </div>
         </div>
@@ -190,8 +234,7 @@ function SystemUpdatePage() {
             <ShieldAlert className="size-4" />
             <AlertTitle>Deploy-агент не подключён</AlertTitle>
             <AlertDescription>
-              Чтобы обновлять сайт по кнопке, нужен российский сервер с установленным deploy-агентом.
-              Передайте мне доступ к серверу — я настрою всё и добавлю сюда реальные данные.
+              Чтобы обновлять сайт по кнопке, нужен сервер Beget с установленным deploy-агентом.
             </AlertDescription>
           </Alert>
         )}
@@ -199,19 +242,60 @@ function SystemUpdatePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Server className="size-5 text-primary" />
-              Текущее состояние
+              <FlaskConical className="size-5 text-primary" />
+              1. Посмотреть на тесте
             </CardTitle>
             <CardDescription>
-              {isLoading
-                ? "Загружаем информацию о версии…"
-                : status?.message || "Нет данных"}
+              Сюда попадает ветка <span className="font-medium text-foreground">preview</span> из GitHub.
+              Адреса закрыты паролем браузера: клиенты и поиск их не видят. Рабочие{" "}
+              <span className="font-medium text-foreground">residence-more.ru</span> и{" "}
+              <span className="font-medium text-foreground">rm-os.residence-more.ru</span> не меняются.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Тестовая версия</p>
+              <p className="mt-1 text-lg font-semibold">{status?.preview_version ?? "—"}</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => previewMutation.mutate()} disabled={busy}>
+                {previewMutation.isPending ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <FlaskConical className="mr-2 size-4" />
+                )}
+                Выложить на тест
+              </Button>
+              <Button variant="outline" asChild>
+                <a href={previewUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-2 size-4" />
+                  Тестовый сайт
+                </a>
+              </Button>
+              <Button variant="outline" asChild>
+                <a href={previewRmOsUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-2 size-4" />
+                  Тестовый RM OS
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Server className="size-5 text-primary" />
+              2. Обновить рабочую систему
+            </CardTitle>
+            <CardDescription>
+              Нажимайте, только когда тест выглядит как нужно. На Beget уйдёт та же версия, что на тесте.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-lg border p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Установленная версия</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Рабочая версия</p>
                 <p className="mt-1 text-lg font-semibold">{status?.version ?? "—"}</p>
               </div>
               <div className="rounded-lg border p-4">
@@ -235,20 +319,21 @@ function SystemUpdatePage() {
             {operation !== "idle" && (
               <div className="space-y-2 rounded-lg border bg-muted/50 p-4">
                 <p className="text-sm font-medium">
-                  {operation === "deploy" ? "Идёт обновление…" : "Идёт откат…"}
+                  {operation === "preview"
+                    ? "Выкладываем тест…"
+                    : operation === "deploy"
+                      ? "Обновляем рабочую систему…"
+                      : "Возвращаем предыдущую версию…"}
                 </p>
                 <Progress value={progress} className="h-2" />
                 <p className="text-xs text-muted-foreground">
-                  {activeStep >= 0 ? PROGRESS_STEPS[activeStep] : "Запускаем…"}
+                  {activeStep >= 0 ? steps[activeStep] : "Запускаем…"}
                 </p>
               </div>
             )}
 
             <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={() => deployMutation.mutate()}
-                disabled={operation !== "idle" || deployMutation.isPending || rollbackMutation.isPending}
-              >
+              <Button onClick={() => deployMutation.mutate()} disabled={busy}>
                 {deployMutation.isPending ? (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 ) : (
@@ -256,11 +341,7 @@ function SystemUpdatePage() {
                 )}
                 Обновить систему
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => rollbackMutation.mutate()}
-                disabled={operation !== "idle" || deployMutation.isPending || rollbackMutation.isPending}
-              >
+              <Button variant="outline" onClick={() => rollbackMutation.mutate()} disabled={busy}>
                 {rollbackMutation.isPending ? (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 ) : (
@@ -271,20 +352,25 @@ function SystemUpdatePage() {
               <Button
                 variant="ghost"
                 onClick={() => queryClient.invalidateQueries({ queryKey: ["deploy-status"] })}
-                disabled={isLoading}
+                disabled={isLoading || busy}
               >
                 <RefreshCw className="mr-2 size-4" />
                 Обновить статус
               </Button>
             </div>
 
-            {(deployMutation.error || rollbackMutation.error) && (
+            {errorMessage && (
               <Alert variant="destructive">
                 <Terminal className="size-4" />
                 <AlertTitle>Ошибка</AlertTitle>
-                <AlertDescription>
-                  {deployMutation.error?.message || rollbackMutation.error?.message}
-                </AlertDescription>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
+            {!errorMessage && successMessage && operation === "idle" && (
+              <Alert>
+                <CheckCircle2 className="size-4" />
+                <AlertTitle>Готово</AlertTitle>
+                <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
           </CardContent>
@@ -296,14 +382,33 @@ function SystemUpdatePage() {
               <History className="size-5 text-primary" />
               Журнал обновлений
             </CardTitle>
-            <CardDescription>После подключения сервера здесь появится история деплоев</CardDescription>
+            <CardDescription>Тест и рабочая система пишутся отдельно</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
-              <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground">
-                <span>Пока обновлений не было</span>
-                <span>—</span>
-              </div>
+              {(status?.deployments ?? []).length === 0 ? (
+                <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground">
+                  <span>Пока обновлений не было</span>
+                  <span>—</span>
+                </div>
+              ) : (
+                [...(status?.deployments ?? [])].reverse().map((item, index) => (
+                  <div
+                    key={`${item.at ?? "row"}-${index}`}
+                    className="flex items-center justify-between gap-3 border-b px-4 py-3 text-sm last:border-b-0"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {item.target === "preview" ? "Тест" : "Рабочая система"} · {item.version ?? "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.status === "failed" ? item.error || "Ошибка" : item.source || "rm-os"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-muted-foreground">{formatWhen(item.at)}</span>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -313,10 +418,10 @@ function SystemUpdatePage() {
         <div className="text-sm text-muted-foreground">
           <p className="font-medium text-foreground">Как это работает</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
-            <li>Вы вносите изменения в Lovable и они попадают в GitHub.</li>
-            <li>На этой странице нажимаете «Обновить систему».</li>
-            <li>Сервер в России забирает свежий код, собирает приложение и переключает трафик.</li>
-            <li>Перед обновлением автоматически делается резервная копия базы данных.</li>
+            <li>Агент в Cursor правит код и пушит ветку preview на GitHub.</li>
+            <li>На этой странице нажимаете «Выложить на тест» и открываете preview.residence-more.ru — браузер спросит пароль.</li>
+            <li>Если не нравится — рабочий сайт не трогаем, продолжаем правки в Cursor.</li>
+            <li>Если всё ок — «Обновить систему»: Beget ставит ту же версию на residence-more.ru и rm-os.residence-more.ru.</li>
           </ol>
         </div>
       </div>

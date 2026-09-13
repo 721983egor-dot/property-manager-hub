@@ -30,6 +30,8 @@ from pydantic import BaseModel
 APP = FastAPI(title="RM OS Deploy Agent")
 
 REPO_DIR = Path(os.environ.get("REPO_DIR", "/data/repo"))
+PREVIEW_DIR = Path(os.environ.get("PREVIEW_DIR", "/opt/rm-os/preview"))
+PREVIEW_BRANCH = os.environ.get("PREVIEW_BRANCH", "preview")
 COMPOSE_FILE = REPO_DIR / "deploy" / "docker-compose.yml"
 ENV_FILE = REPO_DIR / "deploy" / ".env"
 BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", "/data/backups"))
@@ -37,6 +39,7 @@ STATE_FILE = Path(os.environ.get("STATE_FILE", "/data/state.json"))
 
 AGENT_TOKEN = os.environ["DEPLOY_AGENT_TOKEN"]
 GITHUB_REPO = os.environ["GITHUB_REPO"]
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 DOMAIN = os.environ.get("DOMAIN", "localhost")
 APP_IMAGE = os.environ.get("APP_IMAGE", "rm-os-app")
 
@@ -83,11 +86,57 @@ def backup_database() -> str:
     return str(path)
 
 
-def get_git_version() -> str:
+def get_git_version(repo_dir: Path | None = None) -> str:
     try:
-        return run(["git", "-C", str(REPO_DIR), "rev-parse", "--short", "HEAD"]).strip()
+        return run(["git", "-C", str(repo_dir or REPO_DIR), "rev-parse", "--short", "HEAD"]).strip()
     except Exception:
         return "unknown"
+
+
+def remote_has_branch(repo_dir: Path, branch: str) -> bool:
+    result = subprocess.run(
+        ["git", "-C", str(repo_dir), "rev-parse", "--verify", f"origin/{branch}"],
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
+def sync_git(repo_dir: Path, branch: str) -> str:
+    """Приводит каталог к origin/<branch>. Рабочий сайт этот каталог не переключает сам."""
+    repo_dir.parent.mkdir(parents=True, exist_ok=True)
+    if not (repo_dir / ".git").exists():
+        run(["git", "clone", GITHUB_REPO, str(repo_dir)])
+    run(["git", "-C", str(repo_dir), "fetch", "origin", "--prune"])
+    if not remote_has_branch(repo_dir, branch):
+        raise RuntimeError(
+            f"Ветка `{branch}` не найдена на GitHub. Сначала запушьте её: git push -u origin {branch}"
+        )
+    run(["git", "-C", str(repo_dir), "checkout", "-B", branch, f"origin/{branch}"])
+    run(["git", "-C", str(repo_dir), "reset", "--hard", f"origin/{branch}"])
+    return get_git_version(repo_dir)
+
+
+def production_source_branch(repo_dir: Path) -> str:
+    """На рабочий сервер уходит проверенная preview, если такая ветка уже есть."""
+    run(["git", "-C", str(repo_dir), "fetch", "origin", "--prune"])
+    if remote_has_branch(repo_dir, PREVIEW_BRANCH):
+        return PREVIEW_BRANCH
+    return "main"
+
+
+def maybe_fast_forward_github_main() -> None:
+    """Если есть токен GitHub — main на GitHub совпадёт с тем, что ушло на рабочий сервер."""
+    if not GITHUB_TOKEN:
+        return
+    remote = GITHUB_REPO
+    if remote.startswith("https://") and "@" not in remote:
+        remote = remote.replace("https://", f"https://x-access-token:{GITHUB_TOKEN}@", 1)
+    try:
+        run(["git", "-C", str(REPO_DIR), "push", remote, "HEAD:main"])
+    except Exception:
+        # Рабочий деплой уже прошёл; рассинхрон GitHub не откатывает сайт.
+        pass
 
 
 def register_telegram_webhook() -> None:
@@ -168,11 +217,17 @@ def status(authorization: str | None = Header(None)):
     verify_token(authorization)
     state = load_state()
     version = state.get("current_version", "unknown")
+    preview_version = state.get("preview_version", "—")
     return {
         "ok": True,
         "version": version,
-        "message": f"Deploy-агент работает. Текущая версия: {version}",
+        "preview_version": preview_version,
+        "message": f"Рабочая версия: {version}. Тест: {preview_version}",
         "domain": DOMAIN,
+        "production_url": f"https://rm-os.{DOMAIN}",
+        "preview_url": f"https://preview.{DOMAIN}",
+        "preview_rm_os_url": f"https://preview-rm-os.{DOMAIN}",
+        "deployments": state.get("deployments", [])[-12:],
     }
 
 
@@ -193,15 +248,14 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
         # 1. Резервная копия
         backup_path = backup_database()
 
-        # 2. Обновление кода
+        # 2. На рабочий сервер ставим ту версию, которую уже смотрели на тесте (preview),
+        # либо main — пока отдельной тестовой ветки ещё нет.
         if not REPO_DIR.exists():
             REPO_DIR.parent.mkdir(parents=True, exist_ok=True)
             run(["git", "clone", GITHUB_REPO, str(REPO_DIR)])
-        else:
-            run(["git", "-C", str(REPO_DIR), "fetch", "origin"])
-            run(["git", "-C", str(REPO_DIR), "reset", "--hard", "origin/main"])
-
-        version = get_git_version()
+        source_branch = production_source_branch(REPO_DIR)
+        version = sync_git(REPO_DIR, source_branch)
+        maybe_fast_forward_github_main()
 
         # 3. Сначала применяем миграции отдельным одноразовым контейнером.
         # При ошибке текущая версия приложения остаётся запущенной.
@@ -234,6 +288,17 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             timeout=180,
         )
 
+        try:
+            run(
+                [
+                    "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
+                    "exec", "-T", "caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile",
+                ],
+                timeout=60,
+            )
+        except Exception:
+            pass
+
         # Один Telegram-бот может иметь только один адрес. После каждого
         # обновления возвращаем его на рабочий сервер и рабочую базу.
         register_telegram_webhook()
@@ -248,6 +313,7 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             "at": datetime.now(timezone.utc).isoformat(),
             "backup": backup_path,
             "source": req.source,
+            "target": "production",
             "status": "success",
         })
         state["current_version"] = version
@@ -258,7 +324,8 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
         return {
             "ok": True,
             "version": version,
-            "message": f"Обновление выполнено. Версия {version}. Резервная копия: {backup_path}",
+            "preview_version": state.get("preview_version", "—"),
+            "message": f"Рабочая система обновлена до {version}. Сайт: https://{DOMAIN}, RM OS: https://rm-os.{DOMAIN}",
         }
     except Exception as e:
         state["deployments"].append({
@@ -272,12 +339,84 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@APP.post("/deploy-preview")
+def deploy_preview(req: DeployRequest, authorization: str | None = Header(None)):
+    """Собирает тестовую копию. Рабочий контейнер app и миграции не трогает."""
+    verify_token(authorization)
+    state = load_state()
+
+    try:
+        version = sync_git(PREVIEW_DIR, PREVIEW_BRANCH)
+
+        run(
+            [
+                "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
+                "--profile", "preview",
+                "build", "preview-app",
+            ],
+            timeout=600,
+        )
+        run(
+            [
+                "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
+                "--profile", "preview",
+                "up", "-d", "--no-deps", "preview-app",
+            ],
+            timeout=120,
+        )
+
+        try:
+            run(
+                [
+                    "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
+                    "exec", "-T", "caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile",
+                ],
+                timeout=60,
+            )
+        except Exception:
+            pass
+
+        state["deployments"].append({
+            "version": version,
+            "at": datetime.now(timezone.utc).isoformat(),
+            "source": req.source,
+            "target": "preview",
+            "status": "success",
+        })
+        state["preview_version"] = version
+        save_state(state)
+
+        return {
+            "ok": True,
+            "version": version,
+            "preview_version": version,
+            "message": (
+                f"Тестовая версия {version} на https://preview.{DOMAIN} "
+                f"и https://preview-rm-os.{DOMAIN}. Рабочий сайт не изменён."
+            ),
+        }
+    except Exception as e:
+        state["deployments"].append({
+            "version": "unknown",
+            "at": datetime.now(timezone.utc).isoformat(),
+            "source": req.source,
+            "target": "preview",
+            "status": "failed",
+            "error": str(e),
+        })
+        save_state(state)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @APP.post("/rollback")
 def rollback(authorization: str | None = Header(None)):
     verify_token(authorization)
     state = load_state()
     deployments = state.get("deployments", [])
-    successful = [d for d in deployments if d.get("status") == "success"]
+    successful = [
+        d for d in deployments
+        if d.get("status") == "success" and d.get("target") != "preview" and d.get("backup")
+    ]
 
     if len(successful) < 2:
         raise HTTPException(status_code=400, detail="Нет предыдущей версии для отката")
@@ -310,6 +449,7 @@ def rollback(authorization: str | None = Header(None)):
             "version": target,
             "at": datetime.now(timezone.utc).isoformat(),
             "source": "rollback",
+            "target": "production",
             "status": "success",
         })
         state["current_version"] = target

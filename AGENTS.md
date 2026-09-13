@@ -1,13 +1,11 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+## Разработка и обновления
+
+Источник правды — GitHub и сервер Beget. Lovable не используем.
+
+- Ветка `preview` — закрытый тест: https://preview.residence-more.ru и https://preview-rm-os.residence-more.ru (пароль браузера, не для клиентов).
+- Рабочие https://residence-more.ru и https://rm-os.residence-more.ru обновляются только после явной команды Егора («обновить систему», «в прод»).
+- Агенты Cursor не пушат в `main` и не выкладывают рабочую систему сами. Правки — в `preview`, затем тест, затем кнопка в RM OS → Настройки → Обновление системы.
+- Не переписывать опубликованную историю git (force push, rebase/amend уже запушенных коммитов).
 
 ## Ассистент (ИИ) — обязательное правило
 

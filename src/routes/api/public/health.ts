@@ -6,6 +6,15 @@ export const Route = createFileRoute("/api/public/health")({
     handlers: {
       GET: async () =>
         {
+          if (process.env["PREVIEW_MODE"] === "1") {
+            return new Response(JSON.stringify({ ok: true, preview: true, at: new Date().toISOString() }), {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+                "cache-control": "no-store",
+              },
+            });
+          }
           try {
             const { telegramCall, webhookSecret } = await import("@/lib/telegram/api.server");
             const expectedUrl = "https://rm-os.residence-more.ru/api/public/telegram/webhook";

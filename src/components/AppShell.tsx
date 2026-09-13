@@ -36,6 +36,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteCartBar } from "@/components/site/SiteCartBar";
 import { SiteChatWidget } from "@/components/site/SiteChatWidget";
+import { PreviewBanner } from "@/components/PreviewBanner";
 
 
 /** Префиксы внутренних разделов RM OS — всё остальное рендерится как публичный сайт. */
@@ -61,6 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!isCrm) {
     return (
       <div className="flex min-h-screen w-full flex-col bg-white text-site-navy">
+        <PreviewBanner />
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />
@@ -310,7 +312,9 @@ function CrmShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
+    <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+      <PreviewBanner />
+      <div className="flex min-h-0 min-w-0 flex-1">
       <CrmShellNotifications />
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
         <div className="flex h-16 items-center gap-2.5 px-5">
@@ -361,6 +365,7 @@ function CrmShell({ children }: { children: ReactNode }) {
         </header>
         <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
         <CrmMobileNav unread={unread} />
+      </div>
       </div>
     </div>
   );
