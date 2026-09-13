@@ -133,10 +133,14 @@ export function createSocialTools(ctx: AssistantToolContext) {
 
     proposeSocialPost: tool({
       description:
-        "Предложить черновик или публикацию поста в соцсети. Текст уже напиши в голосе бренда. Требует подтверждения менеджера. Макс Postmypost пока не публикует — для него сохранится текст для копирования.",
+        "Предложить черновик или публикацию. body — полная версия с ценой для VK/Telegram/Макс. instagramBody — обычный пост БЕЗ цен, телефона и оферты. Если instagramBody не передан, система сама уберёт рекламу.",
       inputSchema: z.object({
         topic: z.string().describe("Короткая тема поста"),
-        body: z.string().describe("Готовый текст поста"),
+        body: z.string().describe("Полный текст с ценой и условиями для VK, Telegram и Макс"),
+        instagramBody: z
+          .string()
+          .optional()
+          .describe("Версия для Instagram без цен и рекламы. Если пусто — система соберёт сама."),
         platforms: platformsSchema,
         ref: z.string().optional().describe("Объект, если пост про конкретную квартиру/дом"),
         scheduledAt: z
@@ -145,7 +149,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
           .describe("ISO-дата публикации, если это не «прямо сейчас»"),
         publishNow: z.boolean().optional(),
       }),
-      execute: async ({ topic, body, platforms, ref, scheduledAt, publishNow }) => {
+      execute: async ({ topic, body, instagramBody, platforms, ref, scheduledAt, publishNow }) => {
         let propertyId: string | undefined;
         let propertyText = "";
         if (ref) {
@@ -156,7 +160,8 @@ export function createSocialTools(ctx: AssistantToolContext) {
         }
         const when = publishNow ? "опубликовать сейчас" : scheduledAt ? `запланировать на ${scheduledAt}` : "сохранить черновик";
         const nets = platforms.join(", ");
-        const summary = `${when[0].toUpperCase()}${when.slice(1)} пост «${topic || body.slice(0, 40)}» → ${nets}${propertyText ? ` (${propertyText})` : ""}`;
+        const igNote = platforms.includes("instagram") ? "; Instagram — без цен и оферты" : "";
+        const summary = `${when[0].toUpperCase()}${when.slice(1)} пост «${topic || body.slice(0, 40)}» → ${nets}${igNote}${propertyText ? ` (${propertyText})` : ""}`;
         ctx.propose({
           tool: "createSocialPost",
           summary,
@@ -167,6 +172,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
             propertyId: propertyId ?? null,
             scheduledAt: scheduledAt || null,
             publish: Boolean(publishNow || scheduledAt),
+            variants: instagramBody?.trim() ? { instagram: instagramBody.trim() } : undefined,
           },
         });
         return { proposed: true, summary, body };

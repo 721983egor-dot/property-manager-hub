@@ -7,6 +7,15 @@ export type PostmypostAccount = {
   id: number;
   name: string;
   channel: string;
+  channelId: number | null;
+};
+
+/** Номера каналов Postmypost, которые мы ведём в RM OS. */
+const CHANNEL_ID_MAP: Record<number, string> = {
+  1: "instagram",
+  2: "vk",
+  6: "telegram",
+  27: "max",
 };
 
 type Json = Record<string, unknown>;
@@ -68,6 +77,8 @@ async function request<T>(
 
 export function guessAccountChannel(account: unknown): string {
   const rec = asRecord(account);
+  const channelId = Number(rec["chanel_id"] ?? rec["channel_id"]);
+  if (Number.isFinite(channelId) && CHANNEL_ID_MAP[channelId]) return CHANNEL_ID_MAP[channelId];
   const nested = asRecord(rec["channel"] ?? rec["social_network"] ?? rec["network"]);
   const raw = [
     rec["channel"],
@@ -96,7 +107,13 @@ function mapAccount(row: unknown): PostmypostAccount | null {
   const name =
     String(rec["name"] ?? rec["title"] ?? rec["username"] ?? rec["login"] ?? "").trim() ||
     `Аккаунт ${id}`;
-  return { id, name, channel: guessAccountChannel(row) };
+  const channelIdRaw = Number(rec["chanel_id"] ?? rec["channel_id"]);
+  return {
+    id,
+    name,
+    channel: guessAccountChannel(row),
+    channelId: Number.isFinite(channelIdRaw) && channelIdRaw > 0 ? channelIdRaw : null,
+  };
 }
 
 function mapProject(row: unknown): PostmypostProject | null {

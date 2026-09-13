@@ -420,6 +420,10 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       scheduledAt: (input["scheduledAt"] as string | null) ?? null,
       publish: Boolean(input["publish"]),
       source: "assistant",
+      variants:
+        (input["variants"] as
+          | Partial<Record<"instagram" | "vk" | "telegram" | "max", string>>
+          | undefined) ?? undefined,
     });
     return post.status === "draft" ? "Черновик поста сохранён" : "Пост отправлен в очередь публикации";
   },

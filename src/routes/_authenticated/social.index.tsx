@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 import { AdminOnly } from "@/components/AdminOnly";
 import { ChatText } from "@/components/ChatText";
+import { SocialPostPreview } from "@/components/SocialPostPreview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import {
   type SocialPlatform,
   type SocialPost,
 } from "@/lib/social";
+import { toInstagramOrganic } from "@/lib/social-adapt";
 
 export const Route = createFileRoute("/_authenticated/social/")({
   head: () => ({
@@ -102,7 +104,7 @@ function SocialPage() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["social-board"] });
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -111,7 +113,7 @@ function SocialPage() {
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Instagram, ВКонтакте, Telegram и Макс. Публикация и статистика — через Postmypost.
-            ИИ здесь тот же Ассистент RM OS, только в режиме редактора.
+            Перед отправкой смотрите, как пост выглядит в каждой сети. В Instagram — обычный пост без цен.
           </p>
         </div>
       </header>
@@ -301,6 +303,19 @@ function PostsTab({
               <CardContent className="space-y-3">
                 <p className="whitespace-pre-wrap text-sm">{post.body}</p>
                 {post.last_error ? <p className="text-sm text-destructive">{post.last_error}</p> : null}
+                <details className="rounded-lg border border-border bg-muted/30 p-3">
+                  <summary className="cursor-pointer text-sm font-medium">Как будет выглядеть в сетях</summary>
+                  <div className="mt-4">
+                    <SocialPostPreview
+                      body={post.body}
+                      topic={post.topic}
+                      platforms={post.targets.map((t) => t.platform)}
+                      variants={Object.fromEntries(
+                        post.targets.filter((t) => t.body).map((t) => [t.platform, t.body]),
+                      )}
+                    />
+                  </div>
+                </details>
                 <div className="flex flex-wrap gap-2">
                   {(post.status === "draft" || post.status === "failed") && (
                     <Button size="sm" onClick={() => publishMut.mutate(post.id)} disabled={publishMut.isPending}>
@@ -322,7 +337,9 @@ function PostsTab({
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        void navigator.clipboard.writeText(post.body);
+                        const maxBody =
+                          post.targets.find((t) => t.platform === "max")?.body || post.body;
+                        void navigator.clipboard.writeText(maxBody);
                         toast.success("Текст скопирован для Макс");
                       }}
                     >
@@ -358,10 +375,16 @@ function ComposeTab({
   const saveFn = useServerFn(saveSocialPost);
   const [topic, setTopic] = useState("");
   const [body, setBody] = useState("");
+  const [instagramBody, setInstagramBody] = useState("");
+  const [instagramTouched, setInstagramTouched] = useState(false);
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(
     defaultPlatforms.length ? defaultPlatforms : [...SOCIAL_PLATFORMS],
   );
   const [scheduled, setScheduled] = useState("");
+
+  const autoInstagram = toInstagramOrganic(body);
+  const instagramValue = instagramTouched ? instagramBody : autoInstagram;
+  const variants = platforms.includes("instagram") ? { instagram: instagramValue } : undefined;
 
   const toggle = (platform: SocialPlatform) => {
     setPlatforms((cur) =>
@@ -378,12 +401,15 @@ function ComposeTab({
           platforms,
           scheduledAt: fromLocalInput(scheduled),
           publish,
+          variants,
         },
       }),
     onSuccess: () => {
       toast.success("Сохранено");
       setTopic("");
       setBody("");
+      setInstagramBody("");
+      setInstagramTouched(false);
       setScheduled("");
       onSaved();
     },
@@ -391,61 +417,104 @@ function ComposeTab({
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Новый пост</CardTitle>
-        <CardDescription>
-          Один текст на все сети. ИИ в соседней вкладке поможет сформулировать и адаптировать.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Тема</Label>
-          <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Свободная квартира у моря" />
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,28rem)_1fr]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Новый пост</CardTitle>
+          <CardDescription>
+            Пишете полный текст с ценой — для ВКонтакте, Telegram и Макс. Instagram сам
+            собирается как обычный пост без цен, телефона и оферты.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Тема</Label>
+            <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Свободная квартира у моря" />
+          </div>
+          <div className="space-y-2">
+            <Label>Текст для VK, Telegram и Макс</Label>
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={10}
+              placeholder="Можно цену, условия и ссылку на объект…"
+            />
+          </div>
+          {platforms.includes("instagram") ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Instagram — без рекламы</Label>
+                {instagramTouched ? (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline"
+                    onClick={() => {
+                      setInstagramTouched(false);
+                      setInstagramBody("");
+                    }}
+                  >
+                    Вернуть автоверсию
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">Цены и телефон уберём сами</span>
+                )}
+              </div>
+              <Textarea
+                value={instagramValue}
+                onChange={(e) => {
+                  setInstagramTouched(true);
+                  setInstagramBody(e.target.value);
+                }}
+                rows={8}
+                placeholder="Живой пост про место и ощущение, без цен"
+              />
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {SOCIAL_PLATFORMS.map((platform) => (
+              <button
+                key={platform}
+                type="button"
+                onClick={() => toggle(platform)}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                  platforms.includes(platform)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {PLATFORM_LABEL[platform]}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <CalendarClock className="size-4" />
+              Отложить (необязательно)
+            </Label>
+            <Input type="datetime-local" value={scheduled} onChange={(e) => setScheduled(e.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => saveMut.mutate(false)} disabled={saveMut.isPending}>
+              Черновик
+            </Button>
+            <Button onClick={() => saveMut.mutate(true)} disabled={saveMut.isPending}>
+              {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              {scheduled ? "В очередь Postmypost" : "Опубликовать"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="min-w-0 space-y-3">
+        <div>
+          <h2 className="text-base font-semibold">Как будет выглядеть</h2>
+          <p className="text-sm text-muted-foreground">
+            Instagram показывается как обычный пост. Во ВКонтакте, Telegram и Макс остаются цена и ссылка.
+          </p>
         </div>
-        <div className="space-y-2">
-          <Label>Текст</Label>
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={10}
-            placeholder="Напишите пост или попросите ИИ…"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {SOCIAL_PLATFORMS.map((platform) => (
-            <button
-              key={platform}
-              type="button"
-              onClick={() => toggle(platform)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-                platforms.includes(platform)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {PLATFORM_LABEL[platform]}
-            </button>
-          ))}
-        </div>
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            <CalendarClock className="size-4" />
-            Отложить (необязательно)
-          </Label>
-          <Input type="datetime-local" value={scheduled} onChange={(e) => setScheduled(e.target.value)} />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => saveMut.mutate(false)} disabled={saveMut.isPending}>
-            Черновик
-          </Button>
-          <Button onClick={() => saveMut.mutate(true)} disabled={saveMut.isPending}>
-            {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            {scheduled ? "В очередь Postmypost" : "Опубликовать"}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        <SocialPostPreview body={body} topic={topic} platforms={platforms} variants={variants} />
+      </div>
+    </div>
   );
 }
 
@@ -498,8 +567,7 @@ function AiTab({ onChange }: { onChange: () => void }) {
             Редактор соцсетей
           </CardTitle>
           <CardDescription>
-            Не отдельный бот: тот же Ассистент RM OS, но с голосом бренда, лентой постов и объектами.
-            Попросите рубрики на месяц, текст про объект или адаптацию под Instagram и Макс.
+            Попросите рубрики на месяц, текст про объект или адаптацию. Instagram всегда уходит как обычный пост без цен.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -556,6 +624,7 @@ function AiTab({ onChange }: { onChange: () => void }) {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>Напишите «запомни: в Instagram не ставим ссылки в текст» — правило сохранится.</p>
+          <p>Instagram по закону нельзя вести как рекламу: без цен, депозита и телефона, только «напишите в директ».</p>
           <p>Голос бренда задаётся во вкладке «Голос» и подставляется в каждый ответ.</p>
           <p>Статистика Postmypost подтягивается в ленту, чтобы следующие тексты опирались на то, что уже выходило.</p>
         </CardContent>
@@ -716,8 +785,8 @@ function ConnectTab({
         <CardHeader>
           <CardTitle>Postmypost</CardTitle>
           <CardDescription>
-            Токен берётся в кабинете Postmypost → Access Tokens. Проект — тот, где подключены Instagram,
-            VK и Telegram. Макс в API Postmypost пока нет: текст копируется в группу, либо привяжите webhook-аккаунт.
+            Токен берётся в кабинете Postmypost → Access Tokens. Проект — «Резиденция - Море», где
+            подключены Instagram, VK, Telegram и Макс.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

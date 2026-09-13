@@ -96,6 +96,7 @@ export const saveSocialPost = createServerFn({ method: "POST" })
       propertyId?: string | null;
       scheduledAt?: string | null;
       publish?: boolean;
+      variants?: Partial<Record<SocialPlatform, string>>;
     }) => ({
       ...input,
       topic: String(input.topic ?? "").trim(),

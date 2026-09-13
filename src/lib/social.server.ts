@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { adaptPostForPlatform, bodiesForPlatforms } from "@/lib/social-adapt";
 import { getPlatformSecret, setPlatformSecret } from "@/lib/platform-secrets.server";
 import {
   createPostmypostPublication,
@@ -331,6 +332,7 @@ export type SaveSocialPostInput = {
   publish?: boolean;
   source?: "manual" | "assistant";
   createdBy?: string;
+  variants?: Partial<Record<SocialPlatform, string>>;
 };
 
 async function replaceTargets(
@@ -338,9 +340,11 @@ async function replaceTargets(
   body: string,
   platforms: SocialPlatform[],
   channels: SocialChannel[],
+  variants?: Partial<Record<SocialPlatform, string>>,
 ) {
   const { error: delError } = await supabaseAdmin.from("social_post_targets").delete().eq("post_id", postId);
   if (delError) throw new Error(delError.message);
+  const bodies = bodiesForPlatforms(body, platforms, variants);
   const rows = platforms
     .map((platform) => channels.find((c) => c.platform === platform))
     .filter((c): c is SocialChannel => Boolean(c))
@@ -348,7 +352,7 @@ async function replaceTargets(
       post_id: postId,
       channel_id: channel.id,
       platform: channel.platform,
-      body,
+      body: bodies[channel.platform],
       status: "draft",
       postmypost_account_id: channel.postmypost_account_id,
     }));
@@ -393,7 +397,7 @@ export async function saveSocialPost(input: SaveSocialPostInput): Promise<Social
     postId = data.id;
   }
 
-  await replaceTargets(postId, body, platforms, channels);
+  await replaceTargets(postId, body, platforms, channels, input.variants);
   if (input.publish) {
     try {
       await publishSocialPost(postId, { immediate: Boolean(input.publish) && !input.scheduledAt });
@@ -471,7 +475,7 @@ export async function publishSocialPost(
     status: "pending_publication",
     details: withAccounts.map((t) => ({
       accountId: Number(t.postmypost_account_id),
-      content: (t.body || post.body).trim(),
+      content: adaptPostForPlatform(t.body || post.body, t.platform).trim(),
     })),
   });
 
