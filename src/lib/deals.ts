@@ -72,8 +72,35 @@ export const DEAL_SOURCES = [
   "Другое",
 ];
 
-const DEAL_COLUMNS =
-  "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, telegram, preferred_messenger, custom, position, created_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
+const DEAL_COLUMNS_CORE =
+  "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, custom, position, created_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
+
+const DEAL_COLUMNS = `${DEAL_COLUMNS_CORE}, telegram, preferred_messenger`;
+
+function missingDealContactColumn(message: string) {
+  return /telegram|preferred_messenger|schema cache|could not find/i.test(message);
+}
+
+function mapDealRow(d: Record<string, unknown>): Deal {
+  const custom = ((d.custom ?? {}) as Record<string, unknown>) ?? {};
+  return {
+    ...(d as unknown as Deal),
+    telegram: String(d.telegram || custom.telegram || ""),
+    preferred_messenger: String(d.preferred_messenger || custom.preferred_messenger || ""),
+    custom,
+  };
+}
+
+function payloadWithContact(input: DealInput): DealInput {
+  return {
+    ...input,
+    custom: {
+      ...input.custom,
+      ...(input.telegram ? { telegram: input.telegram } : {}),
+      ...(input.preferred_messenger ? { preferred_messenger: input.preferred_messenger } : {}),
+    },
+  };
+}
 
 
 /* ---------------- стадии ---------------- */
@@ -170,18 +197,19 @@ export function slugifyFieldKey(label: string) {
 
 /* ---------------- сделки ---------------- */
 
+async function loadDeals(
+  run: (columns: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }>,
+): Promise<Deal[]> {
+  const first = await run(DEAL_COLUMNS);
+  const result = missingDealContactColumn(first.error?.message ?? "") ? await run(DEAL_COLUMNS_CORE) : first;
+  if (result.error) throw result.error;
+  return (result.data ?? []).map((d) => mapDealRow(d as Record<string, unknown>));
+}
+
 export async function fetchDeals(): Promise<Deal[]> {
-  const { data, error } = await supabase
-    .from("deals")
-    .select(DEAL_COLUMNS)
-    .order("position", { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map((d) => ({
-    ...(d as Deal),
-    telegram: String((d as { telegram?: string }).telegram ?? ""),
-    preferred_messenger: String((d as { preferred_messenger?: string }).preferred_messenger ?? ""),
-    custom: ((d as { custom: unknown }).custom ?? {}) as Record<string, unknown>,
-  }));
+  return loadDeals(async (columns) =>
+    supabase.from("deals").select(columns).order("position", { ascending: true }),
+  );
 }
 
 export type DealInput = {
@@ -201,18 +229,20 @@ export type DealInput = {
 };
 
 export async function saveDeal(id: string | null, input: DealInput) {
-  if (id) {
-    const { error } = await supabase.from("deals").update(input as never).eq("id", id);
-    if (error) throw error;
-    return id;
+  const payload = payloadWithContact(input);
+  const write = async (row: DealInput) =>
+    id
+      ? supabase.from("deals").update(row as never).eq("id", id)
+      : supabase.from("deals").insert(row as never).select("id").single();
+
+  let result = await write(payload);
+  if (result.error && missingDealContactColumn(result.error.message)) {
+    const { telegram: _t, preferred_messenger: _m, ...rest } = payload;
+    result = await write(rest as DealInput);
   }
-  const { data, error } = await supabase
-    .from("deals")
-    .insert(input as never)
-    .select("id")
-    .single();
-  if (error) throw error;
-  return (data as { id: string }).id;
+  if (result.error) throw result.error;
+  if (id) return id;
+  return (result.data as { id: string }).id;
 }
 
 export async function deleteDeal(id: string) {
@@ -457,18 +487,9 @@ export async function deleteDealShowing(id: string) {
 /* ---------------- сделки клиента ---------------- */
 
 export async function fetchClientDeals(clientId: string): Promise<Deal[]> {
-  const { data, error } = await supabase
-    .from("deals")
-    .select(DEAL_COLUMNS)
-    .eq("client_id", clientId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((d) => ({
-    ...(d as Deal),
-    telegram: String((d as { telegram?: string }).telegram ?? ""),
-    preferred_messenger: String((d as { preferred_messenger?: string }).preferred_messenger ?? ""),
-    custom: ((d as { custom: unknown }).custom ?? {}) as Record<string, unknown>,
-  }));
+  return loadDeals(async (columns) =>
+    supabase.from("deals").select(columns).eq("client_id", clientId).order("created_at", { ascending: false }),
+  );
 }
 
 /* ---------------- успешное закрытие ---------------- */
@@ -541,16 +562,11 @@ export async function fetchPropertyShowings(propertyId: string): Promise<DealSho
 
 /** Сделки, связанные с объектом (текущие и закрытые). */
 export async function fetchPropertyDeals(propertyId: string): Promise<Deal[]> {
-  const { data, error } = await supabase
-    .from("deals")
-    .select(DEAL_COLUMNS)
-    .or(`property_id.eq.${propertyId},closed_property_id.eq.${propertyId}`)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((d) => ({
-    ...(d as Deal),
-    telegram: String((d as { telegram?: string }).telegram ?? ""),
-    preferred_messenger: String((d as { preferred_messenger?: string }).preferred_messenger ?? ""),
-    custom: ((d as { custom: unknown }).custom ?? {}) as Record<string, unknown>,
-  }));
+  return loadDeals(async (columns) =>
+    supabase
+      .from("deals")
+      .select(columns)
+      .or(`property_id.eq.${propertyId},closed_property_id.eq.${propertyId}`)
+      .order("created_at", { ascending: false }),
+  );
 }

@@ -363,11 +363,8 @@ def deploy_preview(req: DeployRequest, authorization: str | None = Header(None))
             timeout=120,
         )
 
-        run(
-            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "caddy"],
-            timeout=120,
-        )
-
+        # Caddy общий для рабочего и тестового сайта. Пересоздание во время
+        # «Выложить на тест» роняет HTTPS и оставляет контейнер в Created.
         state["deployments"].append({
             "version": version,
             "at": datetime.now(timezone.utc).isoformat(),

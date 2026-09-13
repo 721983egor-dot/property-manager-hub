@@ -435,6 +435,7 @@ export const createDealFromThread = createServerFn({ method: "POST" })
       propertyId?: string | null;
       telegram?: string;
       preferredMessenger?: string;
+      responsibleId?: string | null;
     }) =>
       z
         .object({
@@ -446,6 +447,7 @@ export const createDealFromThread = createServerFn({ method: "POST" })
           propertyId: z.string().uuid().nullable().optional(),
           telegram: z.string().trim().max(64).optional().default(""),
           preferredMessenger: z.string().trim().max(32).optional().default(""),
+          responsibleId: z.string().uuid().nullable().optional(),
         })
         .superRefine((value, ctx) => {
           const digits = value.phone.replace(/\D/g, "");
@@ -508,7 +510,7 @@ export const createDealFromThread = createServerFn({ method: "POST" })
         })
         .select("id")
         .single();
-      if (clientError) throw new Error("Не удалось создать клиента");
+      if (clientError) throw new Error(clientError.message || "Не удалось создать клиента");
       clientId = client.id;
     }
 
@@ -531,23 +533,41 @@ export const createDealFromThread = createServerFn({ method: "POST" })
       .join("\n\n")
       .slice(0, 3900);
 
-    const { data: deal, error } = await db
-      .from("deals")
-      .insert({
-        title: `Чат — ${data.name}`,
-        stage_id: stage.id,
-        client_id: clientId,
-        property_id: propertyId,
-        source,
-        budget: data.budget ?? null,
-        comment: commentParts,
-        telegram: formatTelegramHandle(data.telegram) || data.telegram.trim(),
-        preferred_messenger: data.preferredMessenger.trim(),
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error("Не удалось создать сделку");
-    return { ok: true as const, dealId: deal.id as string };
+    const telegram = formatTelegramHandle(data.telegram) || data.telegram.trim();
+    const preferredMessenger = data.preferredMessenger.trim();
+    const baseRow: Record<string, unknown> = {
+      title: `Чат — ${data.name}`,
+      stage_id: stage.id,
+      client_id: clientId,
+      property_id: propertyId,
+      responsible_id: data.responsibleId ?? null,
+      source,
+      budget: data.budget ?? null,
+      comment: commentParts,
+      custom: {
+        ...(telegram ? { telegram } : {}),
+        ...(preferredMessenger ? { preferred_messenger: preferredMessenger } : {}),
+      },
+    };
+
+    const attempts: Record<string, unknown>[] = [
+      { ...baseRow, telegram, preferred_messenger: preferredMessenger },
+      baseRow,
+      { ...baseRow, property_id: null },
+    ];
+
+    let deal: { id: string } | null = null;
+    let lastError = "";
+    for (const payload of attempts) {
+      const inserted = await db.from("deals").insert(payload as never).select("id").single();
+      if (!inserted.error && inserted.data) {
+        deal = inserted.data as { id: string };
+        break;
+      }
+      lastError = inserted.error?.message ?? lastError;
+    }
+    if (!deal) throw new Error(lastError || "Не удалось создать сделку");
+    return { ok: true as const, dealId: deal.id };
   });
 
 /** Быстрые ответы для чата. */

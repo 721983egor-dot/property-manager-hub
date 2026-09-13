@@ -379,25 +379,32 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (input["adults"] != null) patch["adults"] = input["adults"];
     if (input["children"] != null) patch["children"] = input["children"];
     if (input["comment"] != null) patch["comment"] = input["comment"];
-    if (input["telegram"] != null) patch["telegram"] = input["telegram"];
-    if (input["preferredMessenger"] != null) patch["preferred_messenger"] = input["preferredMessenger"];
-    if (input["custom"] != null) patch["custom"] = input["custom"];
-    if (dealId) {
-      const { error } = await supabaseAdmin
-        .from("deals")
-        .update(patch as never)
-        .eq("id", dealId);
-      if (error) throw new Error(error.message);
-      return "Сделка обновлена";
+    if (input["telegram"] != null) {
+      patch["telegram"] = input["telegram"];
+      const custom = (patch["custom"] as Record<string, unknown> | undefined) ?? {};
+      patch["custom"] = { ...custom, telegram: input["telegram"] };
     }
-    const stageId = must(patch["stage_id"] as string, "Не указана стадия сделки");
-    const { error } = await supabaseAdmin.from("deals").insert({
-      ...patch,
-      stage_id: stageId,
-      title: (patch["title"] as string) ?? "Новая сделка",
-    } as never);
+    if (input["preferredMessenger"] != null) {
+      patch["preferred_messenger"] = input["preferredMessenger"];
+      const custom = (patch["custom"] as Record<string, unknown> | undefined) ?? {};
+      patch["custom"] = { ...custom, preferred_messenger: input["preferredMessenger"] };
+    }
+    if (input["custom"] != null) patch["custom"] = { ...(patch["custom"] as object), ...(input["custom"] as object) };
+    const writeDeal = async (row: Record<string, unknown>) =>
+      dealId
+        ? supabaseAdmin.from("deals").update(row as never).eq("id", dealId)
+        : supabaseAdmin.from("deals").insert({
+            ...row,
+            stage_id: must(row["stage_id"] as string, "Не указана стадия сделки"),
+            title: (row["title"] as string) ?? "Новая сделка",
+          } as never);
+    let { error } = await writeDeal(patch);
+    if (error && /telegram|preferred_messenger|schema cache|could not find/i.test(error.message)) {
+      const { telegram: _t, preferred_messenger: _m, ...rest } = patch;
+      ({ error } = await writeDeal(rest));
+    }
     if (error) throw new Error(error.message);
-    return "Сделка создана";
+    return dealId ? "Сделка обновлена" : "Сделка создана";
   },
 
   createSocialPost: async (input) => {
