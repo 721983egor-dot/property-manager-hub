@@ -25,18 +25,28 @@
 }
 
 # База, вход и фото — общие. Само приложение подключается на каждом домене отдельно.
+# Снимаем CORS бэкенда: иначе два Access-Control-Allow-Origin и браузер блокирует вход.
 (services) {
     handle_path /auth/v1/* {
         import cors
-        reverse_proxy supabase-auth:9999
+        reverse_proxy supabase-auth:9999 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
     }
     handle_path /rest/v1/* {
         import cors
-        reverse_proxy supabase-rest:3000
+        reverse_proxy supabase-rest:3000 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
     }
     handle_path /storage/v1/* {
         import cors
-        reverse_proxy supabase-storage:5000
+        reverse_proxy supabase-storage:5000 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
     }
     encode gzip
 }
