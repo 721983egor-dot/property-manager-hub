@@ -97,8 +97,10 @@ preview.{$DOMAIN} {
 preview-rm-os.{$DOMAIN} {
     tls {$TLS_EMAIL}
     import preview_lock
-    redir / /objects 302
     import services
+    handle / {
+        redir * /objects 302
+    }
     handle {
         reverse_proxy preview-app:3000
     }
