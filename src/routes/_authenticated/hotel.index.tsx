@@ -65,7 +65,7 @@ function HotelSummaryPage() {
     ),
   ).length;
   const arrivals = hotelBookings.filter((b) => b.status === "active" && b.start_date === today);
-  const unmapped = rooms.filter((r) => !r.bnovo_room_id).length;
+  const untyped = categories.filter((c) => !c.bnovo_room_type_id).length;
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
@@ -102,7 +102,7 @@ function HotelSummaryPage() {
           icon={Users}
           label="Заезды сегодня"
           value={String(arrivals.length)}
-          hint={unmapped ? `${unmapped} номеров без ID Bnovo` : "Сопоставление Bnovo в порядке"}
+          hint={untyped ? `${untyped} категорий без ID Bnovo` : "Категории сопоставлены с Bnovo"}
         />
       </div>
 

@@ -468,7 +468,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
     }),
 
     proposeHotelRoom: tool({
-      description: "Предложить добавить или изменить номер апарт-отеля N-11 (категория, ID Bnovo, цена за ночь).",
+      description:
+        "Предложить добавить или изменить номер апарт-отеля N-11. ID комнаты Bnovo необязателен: бронь приходит на категорию, номер выбирают при заселении.",
       inputSchema: z.object({
         roomId: z.string().optional(),
         name: z.string(),
@@ -481,6 +482,24 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async (input) => {
         const summary = `${input.roomId ? "Обновить" : "Добавить"} номер N-11 «${input.name}»`;
         ctx.propose({ tool: "saveHotelRoom", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeHotelCategory: tool({
+      description:
+        "Предложить добавить или изменить категорию номеров N-11 и ID типа комнаты в Bnovo (room_type_id). Брони падают на категорию.",
+      inputSchema: z.object({
+        categoryId: z.string().optional(),
+        code: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        guests: z.number().optional(),
+        bnovoRoomTypeId: z.string().optional(),
+      }),
+      execute: async (input) => {
+        const summary = `${input.categoryId ? "Обновить" : "Добавить"} категорию N-11 «${input.name}»`;
+        ctx.propose({ tool: "saveHotelCategory", summary, input });
         return { proposed: true, summary };
       },
     }),

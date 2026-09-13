@@ -12,6 +12,7 @@ export type HotelRoomCategory = {
   area: number | null;
   price_night: number | null;
   sort_order: number;
+  bnovo_room_type_id: string | null;
 };
 
 export type Owner = {

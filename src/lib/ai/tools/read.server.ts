@@ -1248,7 +1248,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
     getHotelOverview: tool({
       description:
-        "N-11 Резиденция — отдельный проект, апарт-отель: номера, категории, загрузка, брони короткого проживания, собственники. Не путать с Резиденция Море. Календарь общий.",
+        "N-11 Резиденция — отдельный проект, апарт-отель: номера, категории, загрузка, брони короткого проживания, собственники. Не путать с Резиденция Море. Календарь общий. Брони Bnovo приходят на категорию (Стандарт Плюс: 546 и 567, Делюкс: 526 и 530); конкретный номер назначается при заселении.",
       inputSchema: z.object({
         fromDate: z.string().optional(),
         toDate: z.string().optional(),
@@ -1260,7 +1260,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           const [{ data: rooms }, { data: categories }, { data: owners }, { data: links }, { data: runs }] =
             await Promise.all([
               admin.from("properties").select("id, internal_name, title, status, room_category_id, bnovo_room_id, price_night, guests_max, floor").eq("portfolio", "n11" as never),
-              admin.from("hotel_room_categories").select("id, code, name, guests, sort_order").order("sort_order"),
+              admin.from("hotel_room_categories").select("id, code, name, guests, sort_order, bnovo_room_type_id").order("sort_order"),
               admin.from("owners").select("id, full_name, phone, email"),
               admin.from("property_owners").select("property_id, owner_id, share_percent"),
               admin.from("bnovo_sync_runs").select("started_at, status, summary").order("started_at", { ascending: false }).limit(5),

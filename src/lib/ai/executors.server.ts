@@ -480,6 +480,27 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Номер N-11 сохранён";
   },
 
+  saveHotelCategory: async (input) => {
+    const code = must(String(input["code"] ?? "").trim().toLowerCase(), "Не указан код категории");
+    const name = must(String(input["name"] ?? "").trim(), "Не указано название категории");
+    const row = {
+      code,
+      name,
+      description: String(input["description"] ?? "").trim(),
+      guests: Number(input["guests"] ?? 2) || 2,
+      bnovo_room_type_id: String(input["bnovoRoomTypeId"] ?? "").trim() || null,
+    };
+    const categoryId = String(input["categoryId"] ?? "");
+    if (categoryId) {
+      const { error } = await supabaseAdmin.from("hotel_room_categories").update(row as never).eq("id", categoryId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin.from("hotel_room_categories").insert(row as never);
+      if (error) throw new Error(error.message);
+    }
+    return "Категория N-11 сохранена";
+  },
+
   saveHotelOwner: async (input) => {
     const fullName = must(String(input["fullName"] ?? "").trim(), "Не указан собственник");
     const ownerId = (input["ownerId"] as string) || "";

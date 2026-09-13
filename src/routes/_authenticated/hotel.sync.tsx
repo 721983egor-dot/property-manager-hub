@@ -70,8 +70,9 @@ function HotelSyncPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Bnovo API v1</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Сейчас доступна односторонняя выгрузка броней: список за период и карточка по id. Номера
-          и категории заводим в RM OS и сопоставляем по ID комнаты Bnovo.
+          Сейчас доступна односторонняя выгрузка броней. В Bnovo бронь садится на категорию
+          (Стандарт Плюс, Делюкс), а конкретный номер менеджер выбирает при заселении. RM OS
+          раскладывает такие брони по свободным номерам категории.
         </p>
       </header>
       <HotelTabs active="sync" />

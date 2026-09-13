@@ -59,6 +59,7 @@ export const saveHotelCategory = createServerFn({ method: "POST" })
         area: number | null;
         price_night: number | null;
         sort_order: number;
+        bnovo_room_type_id?: string | null;
       },
   )
   .handler(async ({ context, data }): Promise<{ id: string }> => {
@@ -71,6 +72,7 @@ export const saveHotelCategory = createServerFn({ method: "POST" })
       area: data.area,
       price_night: data.price_night,
       sort_order: data.sort_order,
+      bnovo_room_type_id: data.bnovo_room_type_id?.trim() || null,
     };
     if (!row.code || !row.name) throw new Error("Укажите код и название категории");
     if (data.id) {

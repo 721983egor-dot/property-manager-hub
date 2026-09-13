@@ -95,7 +95,7 @@ function HotelRoomsPage() {
     status: "free",
     comment: "",
   });
-  const [catForm, setCatForm] = useState({
+  const emptyCategory = {
     id: "",
     code: "",
     name: "",
@@ -104,7 +104,9 @@ function HotelRoomsPage() {
     area: "",
     price_night: "",
     sort_order: "10",
-  });
+    bnovo_room_type_id: "",
+  };
+  const [catForm, setCatForm] = useState(emptyCategory);
 
   const roomMutation = useMutation({
     mutationFn: () =>
@@ -143,6 +145,7 @@ function HotelRoomsPage() {
           area: catForm.area ? Number(catForm.area) : null,
           price_night: catForm.price_night ? Number(catForm.price_night) : null,
           sort_order: Number(catForm.sort_order) || 0,
+          bnovo_room_type_id: catForm.bnovo_room_type_id,
         },
       }),
     onSuccess: async () => {
@@ -159,12 +162,19 @@ function HotelRoomsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Номера N-11</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Каждый номер — строка общей шахматки. ID Bnovo нужен, чтобы подтянуть брони из PMS.
+            Бронь из Bnovo приходит на категорию (Стандарт Плюс, Делюкс). Конкретный номер
+            менеджер выбирает при заселении — ID комнаты в Bnovo не обязателен.
           </p>
         </div>
         {isAdmin ? (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setCategoryOpen(true)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCatForm(emptyCategory);
+                setCategoryOpen(true);
+              }}
+            >
               Категория
             </Button>
             <Button
@@ -210,11 +220,15 @@ function HotelRoomsPage() {
                 area: c.area == null ? "" : String(c.area),
                 price_night: c.price_night == null ? "" : String(c.price_night),
                 sort_order: String(c.sort_order),
+                bnovo_room_type_id: c.bnovo_room_type_id ?? "",
               });
               setCategoryOpen(true);
             }}
           >
             {c.name}
+            {c.bnovo_room_type_id ? (
+              <span className="ml-2 text-xs text-muted-foreground">Bnovo {c.bnovo_room_type_id}</span>
+            ) : null}
             {isAdmin ? <Pencil className="ml-2 inline size-3.5 text-muted-foreground" /> : null}
           </button>
         ))}
@@ -226,7 +240,7 @@ function HotelRoomsPage() {
             <tr>
               <th className="px-4 py-3 font-medium">Номер</th>
               <th className="px-4 py-3 font-medium">Категория</th>
-              <th className="px-4 py-3 font-medium">ID Bnovo</th>
+              <th className="px-4 py-3 font-medium">ID номера Bnovo</th>
               <th className="px-4 py-3 font-medium">Собственники</th>
               <th className="px-4 py-3 font-medium">Цена/ночь</th>
               {isAdmin ? <th className="px-4 py-3 font-medium" /> : null}
@@ -246,7 +260,9 @@ function HotelRoomsPage() {
                   <tr key={room.id} className="border-t border-border">
                     <td className="px-4 py-3 font-medium">{internalTitle(room)}</td>
                     <td className="px-4 py-3">{category?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{room.bnovo_room_id || "не задан"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {room.bnovo_room_id || "подтянется при заселении"}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {(ownersByRoom.get(room.id) ?? []).join(", ") || "—"}
                     </td>
@@ -339,10 +355,11 @@ function HotelRoomsPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="ID номера в Bnovo">
+            <Field label="ID номера в Bnovo (необязательно)">
               <Input
                 value={form.bnovo_room_id}
                 onChange={(e) => setForm((f) => ({ ...f, bnovo_room_id: e.target.value }))}
+                placeholder="появится, когда гостя заселят в конкретный номер"
               />
             </Field>
             <Field label="Цена за ночь, ₽">
@@ -418,6 +435,17 @@ function HotelRoomsPage() {
                 onChange={(e) => setCatForm((f) => ({ ...f, sort_order: e.target.value }))}
               />
             </Field>
+            <Field label="ID категории Bnovo (room_type_id)">
+              <Input
+                value={catForm.bnovo_room_type_id}
+                onChange={(e) => setCatForm((f) => ({ ...f, bnovo_room_type_id: e.target.value }))}
+                placeholder="например 720995"
+              />
+            </Field>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">
+              Бронь в Bnovo садится на категорию. Если поле пустое, RM OS запомнит ID сама при
+              первой выгрузке, где в названии есть номер 546 / 567 / 526 / 530.
+            </p>
           </div>
           <DialogFooter className="sm:justify-between">
             {catForm.id ? (

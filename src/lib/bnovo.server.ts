@@ -23,6 +23,7 @@ export type BnovoBooking = {
   departure: string;
   roomId: string;
   roomName: string;
+  roomTypeId: string;
   categoryName: string;
   guestName: string;
   guestPhone: string;
@@ -62,6 +63,12 @@ function recordOf(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function labelOf(value: unknown): string {
+  const rec = recordOf(value);
+  if (rec) return textOf(pick(rec, ["name", "title", "label"]));
+  return textOf(value);
 }
 
 function pick(obj: Record<string, unknown>, keys: string[]): unknown {
@@ -133,13 +140,22 @@ export function normalizeBnovoBooking(raw: Record<string, unknown>): BnovoBookin
     roomId: textOf(
       pick(raw, ["room_id", "roomId", "room.id", "room_number_id"]) ||
         pick(room, ["id", "room_id"]),
-    ),
+    ).replace(/^0$/, ""),
     roomName: textOf(
       pick(raw, ["room_name", "room_number", "room.name", "room.number", "number_name"]) ||
         pick(room, ["name", "number", "title"]),
     ),
-    categoryName: textOf(
-      pick(raw, ["category", "category_name", "room_type", "room.category_name", "plan_name"]) ||
+    roomTypeId: textOf(
+      pick(raw, [
+        "room_type_id",
+        "parent_room_type_id",
+        "category_id",
+        "room_type.id",
+        "room.room_type_id",
+      ]),
+    ),
+    categoryName: labelOf(
+      pick(raw, ["category", "category_name", "room_type", "plan_name", "room.category_name"]) ||
         pick(room, ["category", "category_name", "type"]),
     ),
     guestName,
@@ -153,8 +169,8 @@ export function normalizeBnovoBooking(raw: Record<string, unknown>): BnovoBookin
     ),
     amount: numOf(pick(raw, ["amount", "total", "price", "sum", "prices.total"])),
     source: textOf(sourceRaw),
-    adults: numOf(pick(raw, ["adults", "adult", "guests_count", "persons"])),
-    children: numOf(pick(raw, ["children", "child"])),
+    adults: numOf(pick(raw, ["extra.adults", "adults", "adult", "guests_count", "persons"])),
+    children: numOf(pick(raw, ["extra.children", "children", "child"])),
     comment: textOf(pick(raw, ["notes", "comment", "note", "special_wishes", "customer.notes"])),
     raw,
   };
@@ -230,7 +246,7 @@ export async function listBnovoBookings(
 ): Promise<BnovoBooking[]> {
   const token = await bnovoAuth(creds);
   const base = (creds.baseUrl || DEFAULT_BASE).replace(/\/$/, "");
-  const pageSize = 100;
+  const pageSize = 50;
   const collected: Record<string, unknown>[] = [];
   let offset = 0;
   let total: number | null = null;
