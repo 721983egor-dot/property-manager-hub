@@ -64,7 +64,7 @@ rm-os.{$DOMAIN} {
 (preview_lock) {
     header X-Robots-Tag "noindex, nofollow, noarchive"
     header Referrer-Policy "no-referrer"
-    @preview_pages not path /auth/v1/* /rest/v1/* /storage/v1/* /robots.txt
+    @preview_pages not path /auth/v1/* /rest/v1/* /storage/v1/* /robots.txt /.well-known/acme-challenge/*
     basic_auth @preview_pages {
         {$PREVIEW_USER} {$PREVIEW_PASSWORD_HASH}
     }

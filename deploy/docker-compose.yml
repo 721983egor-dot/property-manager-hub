@@ -7,6 +7,7 @@ services:
       - TLS_EMAIL=${TLS_EMAIL}
       - PREVIEW_USER=${PREVIEW_USER:-preview}
       - PREVIEW_PASSWORD_HASH=${PREVIEW_PASSWORD_HASH:-$$2y$$05$$j4UNi.r1VeA69TkNtGvl4OviK0bwhmnVUrV.vpPWH1LCcG9Nle1OK}
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile", "--watch"]
     ports:
       - "80:80"
       - "443:443"

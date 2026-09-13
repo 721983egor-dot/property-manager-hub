@@ -288,16 +288,11 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             timeout=180,
         )
 
-        try:
-            run(
-                [
-                    "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
-                    "exec", "-T", "caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile",
-                ],
-                timeout=60,
-            )
-        except Exception:
-            pass
+        # Пересоздаём Caddy: новый Caddyfile, пароль теста и сертификаты preview.
+        run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "caddy"],
+            timeout=120,
+        )
 
         # Один Telegram-бот может иметь только один адрес. После каждого
         # обновления возвращаем его на рабочий сервер и рабочую базу.
@@ -365,16 +360,10 @@ def deploy_preview(req: DeployRequest, authorization: str | None = Header(None))
             timeout=120,
         )
 
-        try:
-            run(
-                [
-                    "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
-                    "exec", "-T", "caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile",
-                ],
-                timeout=60,
-            )
-        except Exception:
-            pass
+        run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "caddy"],
+            timeout=120,
+        )
 
         state["deployments"].append({
             "version": version,
