@@ -117,6 +117,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         status: z.string().optional().describe("free | soon_free | booked | rented | archived"),
         type: z.string().optional(),
         publishedOnly: z.boolean().optional(),
+        portfolio: z.enum(["rm", "n11"]).optional(),
         maxPrice: z.number().optional(),
         minRooms: z.number().optional(),
       }),
@@ -126,6 +127,7 @@ export function createReadTools(ctx: AssistantToolContext) {
             list.filter((r) => {
               if (input.status && r["status"] !== input.status) return false;
               if (input.type && r["type"] !== input.type) return false;
+              if (input.portfolio && r["portfolio"] !== input.portfolio) return false;
               if (input.publishedOnly && r["published"] !== true) return false;
               if (input.maxPrice != null && Number(r["price_month"] ?? Infinity) > input.maxPrice)
                 return false;
@@ -151,6 +153,7 @@ export function createReadTools(ctx: AssistantToolContext) {
             priceMonth: r["price_month"],
             commission: r["commission"],
             published: r["published"],
+            portfolio: r["portfolio"] ?? "rm",
             createdAt: r["created_at"],
           });
 
@@ -264,15 +267,17 @@ export function createReadTools(ctx: AssistantToolContext) {
       inputSchema: z.object({
         query: z.string().optional(),
         blacklistedOnly: z.boolean().optional(),
+        portfolio: z.enum(["rm", "n11"]).optional().describe("Клиенты РМ или гости N-11"),
       }),
-      execute: async ({ query, blacklistedOnly }) => {
+      execute: async ({ query, blacklistedOnly, portfolio }) => {
         try {
           let q = admin
             .from("clients")
-            .select("id, full_name, phone, comment, blacklisted, blacklist_reason, created_at")
+            .select("id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, created_at")
             .order("created_at", { ascending: false })
             .limit(query ? 50 : 200);
           if (blacklistedOnly) q = q.eq("blacklisted", true);
+          if (portfolio) q = q.contains("portfolios", [portfolio]);
           if (query) {
             const clean = query.replace(/[%,()*]/g, "").trim();
             const digits = clean.replace(/\D/g, "");
@@ -327,6 +332,7 @@ export function createReadTools(ctx: AssistantToolContext) {
                 fullName: c.full_name,
                 phone: c.phone,
                 comment: c.comment,
+                portfolio: (c as { portfolios?: string[] }).portfolios ?? ["rm"],
                 blacklisted: c.blacklisted,
                 blacklistReason: c.blacklist_reason,
                 currentRentalsCount: current.length,
@@ -1220,6 +1226,133 @@ export function createReadTools(ctx: AssistantToolContext) {
           fields: (fields ?? []).filter((f) => !f.archived),
           deals,
         };
+      },
+    }),
+    getHotelOverview: tool({
+      description:
+        "Апарт-отель N-11: номера, категории, загрузка, брони короткого проживания, собственники. Смотри этот блок отдельно от долгосрочной аренды РМ, но календарь общий.",
+      inputSchema: z.object({
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+      }),
+      execute: async ({ fromDate, toDate }) => {
+        try {
+          const from = fromDate || dateOnly(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+          const to = toDate || dateOnly(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString());
+          const [{ data: rooms }, { data: categories }, { data: owners }, { data: links }, { data: runs }] =
+            await Promise.all([
+              admin.from("properties").select("id, internal_name, title, status, room_category_id, bnovo_room_id, price_night, guests_max, floor").eq("portfolio", "n11" as never),
+              admin.from("hotel_room_categories").select("id, code, name, guests, sort_order").order("sort_order"),
+              admin.from("owners").select("id, full_name, phone, email"),
+              admin.from("property_owners").select("property_id, owner_id, share_percent"),
+              admin.from("bnovo_sync_runs").select("started_at, status, summary").order("started_at", { ascending: false }).limit(5),
+            ]);
+          const ids = (rooms ?? []).map((r) => r.id);
+          const { data: bookingRows } = ids.length
+            ? await admin
+                .from("bookings")
+                .select(BOOKING_COLUMNS)
+                .in("property_id", ids)
+                .neq("status", "cancelled" as never)
+                .lte("start_date", to)
+                .gte("end_date", from)
+            : { data: [] };
+          const today = dateOnly(new Date().toISOString());
+          const occupiedToday = (rooms ?? []).filter((room) =>
+            (bookingRows ?? []).some(
+              (b) => b.property_id === room.id && b.start_date <= today && b.end_date >= today,
+            ),
+          ).length;
+          return {
+            hotel: "N-11 Residence, Сочи, Навагинская",
+            period: { from, to },
+            rooms: rooms?.length ?? 0,
+            occupiedToday,
+            categories: categories ?? [],
+            owners: (owners ?? []).map((o) => ({
+              ...o,
+              rooms: (links ?? []).filter((l) => l.owner_id === o.id).map((l) => l.property_id),
+            })),
+            bookings: (bookingRows ?? []).slice(0, 80),
+            lastBnovoSync: runs ?? [],
+          };
+        } catch (e) {
+          return { error: e instanceof Error ? e.message : "Ошибка чтения N-11" };
+        }
+      },
+    }),
+    getHotelOccupancy: tool({
+      description: "Загрузка апарт-отеля N-11 за период, можно по категории.",
+      inputSchema: z.object({
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+        category: z.string().optional(),
+      }),
+      execute: async ({ fromDate, toDate, category }) => {
+        const overview = await (async () => {
+          const from = fromDate || dateOnly(new Date().toISOString());
+          const to = toDate || dateOnly(new Date(Date.now() + 30 * 86400000).toISOString());
+          let roomsQuery = admin.from("properties").select("id, internal_name, room_category_id").eq("portfolio", "n11" as never);
+          const { data: cats } = await admin.from("hotel_room_categories").select("id, name, code");
+          if (category) {
+            const found = (cats ?? []).find(
+              (c) => c.name.toLowerCase().includes(category.toLowerCase()) || c.code === category,
+            );
+            if (found) roomsQuery = roomsQuery.eq("room_category_id", found.id);
+          }
+          const { data: rooms } = await roomsQuery;
+          const ids = (rooms ?? []).map((r) => r.id);
+          const { data: bookings } = ids.length
+            ? await admin
+                .from("bookings")
+                .select("property_id, start_date, end_date, status")
+                .in("property_id", ids)
+                .neq("status", "cancelled" as never)
+                .lte("start_date", to)
+                .gte("end_date", from)
+            : { data: [] };
+          return { from, to, rooms: rooms ?? [], bookings: bookings ?? [], categories: cats ?? [] };
+        })();
+        return overview;
+      },
+    }),
+    getHotelOwners: tool({
+      description: "Собственники номеров апарт-отеля N-11 и их доли.",
+      inputSchema: z.object({ query: z.string().optional() }),
+      execute: async ({ query }) => {
+        const { data: owners, error } = await admin.from("owners").select("*").order("full_name");
+        if (error) return { error: error.message };
+        const { data: links } = await admin.from("property_owners").select("*");
+        const { data: rooms } = await admin
+          .from("properties")
+          .select("id, internal_name, title, room_category_id")
+          .eq("portfolio", "n11" as never);
+        const names = new Map((rooms ?? []).map((r) => [r.id, r.internal_name || r.title]));
+        const list = (owners ?? [])
+          .filter((o) => !query || o.full_name.toLowerCase().includes(query.toLowerCase()))
+          .map((o) => ({
+            ...o,
+            rooms: (links ?? [])
+              .filter((l) => l.owner_id === o.id)
+              .map((l) => ({
+                property: names.get(l.property_id) ?? l.property_id,
+                sharePercent: l.share_percent,
+              })),
+          }));
+        return { count: list.length, owners: list };
+      },
+    }),
+    getBnovoSync: tool({
+      description: "Статус синхронизации броней N-11 с Bnovo API v1 и последние выгрузки.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { data, error } = await admin
+          .from("bnovo_sync_runs")
+          .select("*")
+          .order("started_at", { ascending: false })
+          .limit(10);
+        if (error) return { error: error.message };
+        return { runs: data ?? [] };
       },
     }),
   };

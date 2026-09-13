@@ -1,10 +1,11 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, Navigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Building2,
   CalendarDays,
   ChevronDown,
   Handshake,
+  Hotel,
   Inbox,
   LogOut,
   Megaphone,
@@ -51,6 +52,8 @@ const CRM_PREFIXES = [
   "/chats",
   "/assistant",
   "/system",
+  "/hotel",
+  "/owner",
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -81,10 +84,25 @@ const NAV_LINK_CLASS =
 function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith("/system"));
-  const { isAdmin } = useAccess();
+  const { isAdmin, isOwner } = useAccess();
+
+  if (isOwner) {
+    return (
+      <nav className="px-3 py-2">
+        <Link to="/owner" onClick={onNavigate} className={NAV_LINK_CLASS}>
+          <Hotel className="size-4 shrink-0" />
+          Кабинет N-11
+        </Link>
+      </nav>
+    );
+  }
 
   return (
     <nav className="px-3 py-2">
+      <Link to="/hotel" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Hotel className="size-4 shrink-0" />
+        Апарт-отель N-11
+      </Link>
       <Link to="/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Building2 className="size-4 shrink-0" />
         Объекты
@@ -217,6 +235,7 @@ type NavItem = {
 
 
 const MOBILE_NAV: NavItem[] = [
+  { to: "/hotel", label: "N-11", icon: Hotel },
   { to: "/objects", label: "Объекты", icon: Building2 },
   { to: "/calendar", label: "Календарь", icon: CalendarDays, managerOnly: true },
   { to: "/chats", label: "Чаты", icon: MessagesSquare, adminOnly: true },
@@ -229,10 +248,12 @@ const MOBILE_NAV: NavItem[] = [
 
 function CrmMobileNav({ unread }: { unread: number }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { isAdmin } = useAccess();
-  const items = MOBILE_NAV.filter(
-    (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || !isAdmin),
-  );
+  const { isAdmin, isOwner } = useAccess();
+  const items = isOwner
+    ? [{ to: "/owner", label: "Кабинет", icon: Hotel }]
+    : MOBILE_NAV.filter(
+        (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || !isAdmin),
+      );
 
 
   return (
@@ -300,12 +321,22 @@ function CrmShell({ children }: { children: ReactNode }) {
   const loadThreads = useServerFn(fetchThreads);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
+  const { isOwner, loading } = useAccess();
   const { data } = useQuery({
     queryKey: ["chat-threads"],
     queryFn: () => loadThreads({ data: undefined }),
-    refetchInterval: 15000,
+    refetchInterval: 15_000,
+    enabled: !isOwner,
   });
   const unread = (data?.threads ?? []).reduce((sum, t) => sum + t.unread_count, 0);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  if (!loading && isOwner && !pathname.startsWith("/owner")) {
+    return <Navigate to="/owner" />;
+  }
 
   useEffect(() => {
     setMenuOpen(false);

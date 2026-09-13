@@ -48,10 +48,12 @@ export const Route = createFileRoute("/_authenticated/crm/clients/")({
   component: ClientsPage,
 });
 
-type FilterKey = ClientStatus | "all" | "blacklist";
+type FilterKey = ClientStatus | "all" | "blacklist" | "n11" | "rm";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "Все" },
+  { key: "n11", label: "Клиенты N-11" },
+  { key: "rm", label: "Клиенты РМ" },
   { key: "renting", label: "Арендует" },
   { key: "booked", label: "Забронировал" },
   { key: "left", label: "Съехал" },
@@ -106,6 +108,12 @@ function ClientsPage() {
         const active = currentBookingOf(list) ?? upcomingBookingOf(list);
         const property = properties.find((p) => p.id === active?.property_id) ?? null;
         const latest = list[0] ?? null;
+        const portfolios = new Set(client.portfolios ?? []);
+        for (const booking of list) {
+          const bookedProperty = properties.find((p) => p.id === booking.property_id);
+          if (bookedProperty?.portfolio === "n11") portfolios.add("n11");
+          else if (bookedProperty) portfolios.add("rm");
+        }
         return {
           client,
           status,
@@ -113,6 +121,7 @@ function ClientsPage() {
           propertyName: property ? internalTitle(property) : null,
           source: active?.source ?? latest?.source ?? null,
           total: list.length,
+          portfolios,
         };
       })
       .filter((row) => {
@@ -124,6 +133,8 @@ function ClientsPage() {
         }
         if (filter === "all") return true;
         if (filter === "blacklist") return row.client.blacklisted;
+        if (filter === "n11") return row.portfolios.has("n11");
+        if (filter === "rm") return row.portfolios.has("rm") || row.portfolios.size === 0;
         return row.status === filter;
       });
   }, [clients, byClient, properties, search, filter]);

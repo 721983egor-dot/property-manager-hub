@@ -19,6 +19,11 @@ import { Route as ManagementRouteImport } from './routes/management'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RentRouteImport } from './routes/rent'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedHotelIndexRouteImport } from './routes/_authenticated/hotel.index'
+import { Route as AuthenticatedHotelRoomsRouteImport } from './routes/_authenticated/hotel.rooms'
+import { Route as AuthenticatedHotelOwnersRouteImport } from './routes/_authenticated/hotel.owners'
+import { Route as AuthenticatedHotelSyncRouteImport } from './routes/_authenticated/hotel.sync'
+import { Route as AuthenticatedOwnerIndexRouteImport } from './routes/_authenticated/owner.index'
 import { Route as ApiPhotoUploadRouteImport } from './routes/api/photo-upload'
 import { Route as PCodeRouteImport } from './routes/p.$code'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
@@ -51,6 +56,7 @@ import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authenticated/objects.$id.edit'
 import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_authenticated/objects.$id.preview'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
+import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/cron/bnovo-sync'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
 import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/public/feeds/yandex[.]xml'
@@ -106,6 +112,31 @@ const RentRoute = RentRouteImport.update({
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHotelIndexRoute = AuthenticatedHotelIndexRouteImport.update({
+  id: '/hotel/',
+  path: '/hotel/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHotelRoomsRoute = AuthenticatedHotelRoomsRouteImport.update({
+  id: '/hotel/rooms',
+  path: '/hotel/rooms',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHotelOwnersRoute = AuthenticatedHotelOwnersRouteImport.update({
+  id: '/hotel/owners',
+  path: '/hotel/owners',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHotelSyncRoute = AuthenticatedHotelSyncRouteImport.update({
+  id: '/hotel/sync',
+  path: '/hotel/sync',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOwnerIndexRoute = AuthenticatedOwnerIndexRouteImport.update({
+  id: '/owner/',
+  path: '/owner/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPhotoUploadRoute = ApiPhotoUploadRouteImport.update({
@@ -287,6 +318,11 @@ const ApiPublicCronCianSyncRoute = ApiPublicCronCianSyncRouteImport.update({
   path: '/api/public/cron/cian-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronBnovoSyncRoute = ApiPublicCronBnovoSyncRouteImport.update({
+  id: '/api/public/cron/bnovo-sync',
+  path: '/api/public/cron/bnovo-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicFeedPhotoSplatRoute = ApiPublicFeedPhotoSplatRouteImport.update({
   id: '/api/public/feed-photo/$',
   path: '/api/public/feed-photo/$',
@@ -339,6 +375,11 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/hotel/': typeof AuthenticatedHotelIndexRoute
+  '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
+  '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
+  '/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/owner/': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
@@ -367,6 +408,7 @@ export interface FileRoutesByFullPath {
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
@@ -388,6 +430,11 @@ export interface FileRoutesByTo {
   '/management': typeof ManagementRoute
   '/privacy': typeof PrivacyRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/hotel': typeof AuthenticatedHotelIndexRoute
+  '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
+  '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
+  '/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/owner': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
@@ -416,6 +463,7 @@ export interface FileRoutesByTo {
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
@@ -440,6 +488,11 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/hotel/': typeof AuthenticatedHotelIndexRoute
+  '/_authenticated/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
+  '/_authenticated/hotel/owners': typeof AuthenticatedHotelOwnersRoute
+  '/_authenticated/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/_authenticated/owner/': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
@@ -468,6 +521,7 @@ export interface FileRoutesById {
   '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
@@ -492,6 +546,11 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rent'
     | '/calendar'
+    | '/hotel/'
+    | '/hotel/rooms'
+    | '/hotel/owners'
+    | '/hotel/sync'
+    | '/owner/'
     | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
@@ -541,6 +600,11 @@ export interface FileRouteTypes {
     | '/management'
     | '/privacy'
     | '/calendar'
+    | '/hotel'
+    | '/hotel/rooms'
+    | '/hotel/owners'
+    | '/hotel/sync'
+    | '/owner'
     | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
@@ -592,6 +656,11 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rent'
     | '/_authenticated/calendar'
+    | '/_authenticated/hotel/'
+    | '/_authenticated/hotel/rooms'
+    | '/_authenticated/hotel/owners'
+    | '/_authenticated/hotel/sync'
+    | '/_authenticated/owner/'
     | '/api/photo-upload'
     | '/p/$code'
     | '/rent/$id'
@@ -647,6 +716,7 @@ export interface RootRouteChildren {
   PCodeRoute: typeof PCodeRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
+  ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
   ApiPublicFeedsYandexDotxmlRoute: typeof ApiPublicFeedsYandexDotxmlRoute
@@ -728,6 +798,41 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hotel/': {
+      id: '/_authenticated/hotel/'
+      path: '/hotel/'
+      fullPath: '/hotel/'
+      preLoaderRoute: typeof AuthenticatedHotelIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hotel/rooms': {
+      id: '/_authenticated/hotel/rooms'
+      path: '/hotel/rooms'
+      fullPath: '/hotel/rooms'
+      preLoaderRoute: typeof AuthenticatedHotelRoomsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hotel/owners': {
+      id: '/_authenticated/hotel/owners'
+      path: '/hotel/owners'
+      fullPath: '/hotel/owners'
+      preLoaderRoute: typeof AuthenticatedHotelOwnersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hotel/sync': {
+      id: '/_authenticated/hotel/sync'
+      path: '/hotel/sync'
+      fullPath: '/hotel/sync'
+      preLoaderRoute: typeof AuthenticatedHotelSyncRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/owner/': {
+      id: '/_authenticated/owner/'
+      path: '/owner/'
+      fullPath: '/owner/'
+      preLoaderRoute: typeof AuthenticatedOwnerIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/photo-upload': {
@@ -954,6 +1059,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronCianSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/bnovo-sync': {
+      id: '/api/public/cron/bnovo-sync'
+      path: '/api/public/cron/bnovo-sync'
+      fullPath: '/api/public/cron/bnovo-sync'
+      preLoaderRoute: typeof ApiPublicCronBnovoSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/feed-photo/$': {
       id: '/api/public/feed-photo/$'
       path: '/api/public/feed-photo/$'
@@ -1008,6 +1120,11 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedHotelIndexRoute: typeof AuthenticatedHotelIndexRoute
+  AuthenticatedHotelRoomsRoute: typeof AuthenticatedHotelRoomsRoute
+  AuthenticatedHotelOwnersRoute: typeof AuthenticatedHotelOwnersRoute
+  AuthenticatedHotelSyncRoute: typeof AuthenticatedHotelSyncRoute
+  AuthenticatedOwnerIndexRoute: typeof AuthenticatedOwnerIndexRoute
   AuthenticatedComplexesNewRoute: typeof AuthenticatedComplexesNewRoute
   AuthenticatedObjectsNewRoute: typeof AuthenticatedObjectsNewRoute
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
@@ -1034,6 +1151,11 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedHotelIndexRoute: AuthenticatedHotelIndexRoute,
+  AuthenticatedHotelRoomsRoute: AuthenticatedHotelRoomsRoute,
+  AuthenticatedHotelOwnersRoute: AuthenticatedHotelOwnersRoute,
+  AuthenticatedHotelSyncRoute: AuthenticatedHotelSyncRoute,
+  AuthenticatedOwnerIndexRoute: AuthenticatedOwnerIndexRoute,
   AuthenticatedComplexesNewRoute: AuthenticatedComplexesNewRoute,
   AuthenticatedObjectsNewRoute: AuthenticatedObjectsNewRoute,
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
@@ -1091,6 +1213,7 @@ const rootRouteChildren: RootRouteChildren = {
   PCodeRoute: PCodeRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
+  ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
   ApiPublicFeedsYandexDotxmlRoute: ApiPublicFeedsYandexDotxmlRoute,

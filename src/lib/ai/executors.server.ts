@@ -441,6 +441,74 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     });
     return "Голос бренда для соцсетей обновлён";
   },
+
+  saveHotelRoom: async (input) => {
+    const name = must(String(input["name"] ?? "").trim(), "Не указан номер");
+    const row = {
+      title: name.startsWith("N-11") ? name : `N-11 ${name}`,
+      internal_name: name,
+      type: "aparts",
+      portfolio: "n11",
+      published: false,
+      service_type: "management",
+      address: "Сочи, улица Навагинская",
+      complex_name: "N-11 Residence",
+      room_category_id: (input["category"] as string) || null,
+      bnovo_room_id: String(input["bnovoRoomId"] ?? "").trim() || null,
+      price_night: (input["priceNight"] as number) ?? null,
+      guests_max: (input["guests"] as number) ?? null,
+      floor: (input["floor"] as number) ?? null,
+      status: "free",
+      rooms: 1,
+      bathrooms: 1,
+    };
+    const roomId = (input["roomId"] as string) || "";
+    if (roomId) {
+      const { error } = await supabaseAdmin.from("properties").update(row as never).eq("id", roomId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin.from("properties").insert(row as never);
+      if (error) throw new Error(error.message);
+    }
+    return "Номер N-11 сохранён";
+  },
+
+  saveHotelOwner: async (input) => {
+    const fullName = must(String(input["fullName"] ?? "").trim(), "Не указан собственник");
+    const ownerId = (input["ownerId"] as string) || "";
+    const row = {
+      full_name: fullName,
+      phone: String(input["phone"] ?? ""),
+      email: String(input["email"] ?? ""),
+    };
+    let id = ownerId;
+    if (id) {
+      const { error } = await supabaseAdmin.from("owners").update(row as never).eq("id", id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data, error } = await supabaseAdmin.from("owners").insert(row as never).select("id").single();
+      if (error || !data) throw new Error(error?.message ?? "Не удалось сохранить собственника");
+      id = (data as { id: string }).id;
+    }
+    const rooms = (input["rooms"] as string[]) ?? [];
+    if (rooms.length) {
+      await supabaseAdmin.from("property_owners").delete().eq("owner_id", id);
+      const { error } = await supabaseAdmin.from("property_owners").insert(
+        rooms.map((propertyId) => ({ owner_id: id, property_id: propertyId })) as never,
+      );
+      if (error) throw new Error(error.message);
+    }
+    return "Собственник N-11 сохранён";
+  },
+
+  runBnovoSync: async (input) => {
+    const { syncBnovoBookings } = await import("@/lib/bnovo-sync.server");
+    const result = await syncBnovoBookings({
+      from: input["fromDate"] as string | undefined,
+      to: input["toDate"] as string | undefined,
+    });
+    return result.summary;
+  },
 };
 
 /** Выполняет подтверждённое действие и пишет его в журнал. */

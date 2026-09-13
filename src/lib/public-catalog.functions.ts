@@ -60,6 +60,7 @@ export async function loadPublishedProperties(): Promise<Property[]> {
     .select("*")
     .eq("published", true)
     .neq("status", "archived")
+    .neq("portfolio", "n11" as never)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => normalizeProperty(row as Record<string, unknown>));

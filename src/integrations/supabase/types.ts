@@ -1689,10 +1689,21 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "manager"
+      app_role: "admin" | "manager" | "owner"
       booking_price_type: "fixed" | "periodic"
-      booking_source: "avito" | "cian" | "website" | "social" | "referral"
+      booking_source:
+        | "avito"
+        | "cian"
+        | "website"
+        | "social"
+        | "referral"
+        | "bnovo"
+        | "booking_com"
+        | "ostrovok"
+        | "walkin"
       booking_status: "active" | "cancelled" | "completed"
+      business_portfolio: "rm" | "n11"
+      stay_kind: "long_term" | "short_stay"
       lead_status: "new" | "in_work" | "done" | "rejected"
       listing_platform: "site" | "avito" | "cian" | "yandex"
       management_fee_type: "percent" | "amount"
@@ -1832,10 +1843,22 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager"],
+      app_role: ["admin", "manager", "owner"],
       booking_price_type: ["fixed", "periodic"],
-      booking_source: ["avito", "cian", "website", "social", "referral"],
+      booking_source: [
+        "avito",
+        "cian",
+        "website",
+        "social",
+        "referral",
+        "bnovo",
+        "booking_com",
+        "ostrovok",
+        "walkin",
+      ],
       booking_status: ["active", "cancelled", "completed"],
+      business_portfolio: ["rm", "n11"],
+      stay_kind: ["long_term", "short_stay"],
       lead_status: ["new", "in_work", "done", "rejected"],
       listing_platform: ["site", "avito", "cian", "yandex"],
       management_fee_type: ["percent", "amount"],

@@ -466,5 +466,52 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+
+    proposeHotelRoom: tool({
+      description: "Предложить добавить или изменить номер апарт-отеля N-11 (категория, ID Bnovo, цена за ночь).",
+      inputSchema: z.object({
+        roomId: z.string().optional(),
+        name: z.string(),
+        category: z.string().optional(),
+        bnovoRoomId: z.string().optional(),
+        priceNight: z.number().optional(),
+        guests: z.number().optional(),
+        floor: z.number().optional(),
+      }),
+      execute: async (input) => {
+        const summary = `${input.roomId ? "Обновить" : "Добавить"} номер N-11 «${input.name}»`;
+        ctx.propose({ tool: "saveHotelRoom", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeHotelOwner: tool({
+      description: "Предложить добавить собственника N-11 и привязать к номерам (можно несколько долей).",
+      inputSchema: z.object({
+        ownerId: z.string().optional(),
+        fullName: z.string(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        rooms: z.array(z.string()).optional(),
+      }),
+      execute: async (input) => {
+        const summary = `${input.ownerId ? "Обновить" : "Добавить"} собственника ${input.fullName}`;
+        ctx.propose({ tool: "saveHotelOwner", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeBnovoSync: tool({
+      description: "Предложить выгрузить брони апарт-отеля из Bnovo API v1 в календарь RM OS.",
+      inputSchema: z.object({
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+      }),
+      execute: async (input) => {
+        const summary = `Выгрузить брони N-11 из Bnovo${input.fromDate ? ` с ${input.fromDate}` : ""}`;
+        ctx.propose({ tool: "runBnovoSync", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
   };
 }

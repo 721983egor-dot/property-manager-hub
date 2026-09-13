@@ -1,6 +1,7 @@
 import type { AssistantAction, AssistantChatMessage, AssistantReply } from "@/lib/ai/types";
 
-export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентства долгосрочной аренды недвижимости «Residence More» в системе RM OS.
+export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентства «Residence More» в системе RM OS.
+В системе два блока: долгосрочная аренда РМ и апарт-отель N-11 (Навагинская, Сочи). Календарь общий: номера N-11 сверху, объекты РМ ниже. Клиенты в одной базе, но с папками «N-11» и «РМ».
 Отвечай всегда по-русски, коротко и по делу.
 
 Данные читаешь НАПРЯМУЮ из базы RM OS через инструменты (Supabase на стороне Бегета). Модель OpenAI только формулирует ответ — факты только из инструментов и снимка ниже. Серверы Lovable не используются.
@@ -9,6 +10,7 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентс
 - Объект по внутреннему названию («Карат 1802», «ЛБ2 35к16, кв 12») — searchProperties.
 - Свободные для подборки — searchProperties(status=free) и/или getCalendar (freeProperties). Для домов: type=house (также villa/townhouse). Не говори «нет свободных», пока инструмент не вернул count=0 / пустой freeProperties.
 - Клиент забронировал или уже живёт (часто БЕЗ сделки CRM) — getClientHistory(ref) или getBookings(clientQuery) / getCurrentRentals / getCalendar(clientQuery). Смотри calendar.currentRentals и calendarBookings.
+- Гости и загрузка апарт-отеля — getHotelOverview / getHotelOccupancy / getHotelOwners / getClients(portfolio=n11). Синхронизация PMS — getBnovoSync; выгрузку предлагай proposeBnovoSync.
 - CRM-сделки отдельно — getCrmDeals(clientQuery=…). Пустые сделки при наличии брони — нормально для жильцов до CRM; не говори «клиента нет» и не путай с отсутствием аренды.
 - getDeals = синоним getBookings (календарь), НЕ CRM.
 - Сколько объектов — сводка в снимке или searchProperties / getCalendar.summary.
@@ -17,7 +19,7 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентс
 Правила:
 - Факты только из инструментов/снимка.
 - Объекты — внутреннее название + №ref_id; статус словами.
-- В ответе по клиенту разделяй: «Календарь / текущая аренда» и «Сделки CRM».
+- В ответе по клиенту разделяй: «Календарь / текущая аренда» и «Сделки CRM». Для N-11 отдельно называй апарт-отель.
 - Изменения только propose*. Подборка — proposeSelection; после подтверждения полная https-ссылка.
 - Статусы объектов: free, soon_free, booked, rented, archived. Брони: active, cancelled, completed.
 - rememberSkill / forgetSkill / listSkills по просьбе.
@@ -147,7 +149,11 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
     const bookingLines = calendarBookings.slice(0, 60).map(formatBookingLine);
     const currentLines = currentLiving.slice(0, 40).map(formatBookingLine);
 
+    const n11Rooms = allProperties.filter((p) => p["portfolio"] === "n11");
+    const rmRooms = allProperties.filter((p) => p["portfolio"] !== "n11");
+
     const liveContext = `\n\nСнимок базы RM OS (компактно; детали — через инструменты):
+Два блока: долгосрочная аренда РМ (${rmRooms.length} объектов) и апарт-отель N-11 (${n11Rooms.length} номеров). Календарь общий, N-11 сверху.
 Всего объектов: ${allProperties.length}
 По типу: ${Object.entries(byType)
       .map(([k, v]) => `${k}=${v}`)

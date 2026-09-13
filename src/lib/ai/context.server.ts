@@ -6,7 +6,7 @@ export type PropertyRef = { id: string; ref_id: number; title: string };
 
 /** Полная карточка — только для getPropertyDetails. */
 export const PROPERTY_COLUMNS =
-  "id, ref_id, title, internal_name, type, status, address, complex_name, complex_id, rooms, bathrooms, beds_count, area, land_area, floor, total_floors, price_month, seasonal_pricing, summer_price_month, deposit, commission, utilities_month, description, rent_terms, availability_note, photos, published, service_type, management_fee_type, management_fee_value, repair_type, location_description, card_highlights, appliances, extra_features, outdoor_spaces, bathroom_features, created_at, updated_at";
+  "id, ref_id, title, internal_name, type, status, address, complex_name, complex_id, rooms, bathrooms, beds_count, area, land_area, floor, total_floors, price_month, seasonal_pricing, summer_price_month, deposit, commission, utilities_month, description, rent_terms, availability_note, photos, published, service_type, management_fee_type, management_fee_value, repair_type, location_description, card_highlights, appliances, extra_features, outdoor_spaces, bathroom_features, portfolio, room_category_id, bnovo_room_id, price_night, guests_max, created_at, updated_at";
 
 /** Лёгкий список для поиска/индекса — без photos и длинных текстов. */
 export const PROPERTY_LIST_COLUMNS =

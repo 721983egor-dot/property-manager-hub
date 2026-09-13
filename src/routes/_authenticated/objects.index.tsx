@@ -117,6 +117,7 @@ function ObjectsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const rows = properties.filter((p) => {
+      if (p.portfolio === "n11") return false;
       if (p.status === "archived" && tab !== "archive" && !statuses.includes("archived"))
         return false;
       if (tab === "archive" && p.status !== "archived") return false;
