@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/calendar")({
       {
         name: "description",
         content:
-          "Шахматка занятости: сверху апарт-отель N-11, ниже объекты долгосрочной аренды.",
+          "Шахматка занятости двух проектов: сверху N-11 Резиденция, ниже Резиденция Море.",
       },
       { property: "og:title", content: "Календарь занятости — RM OS" },
       {
@@ -229,7 +229,7 @@ function CalendarPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Календарь</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Сверху апарт-отель N-11, ниже объекты РМ. Одна шахматка, те же брони.
+            Два проекта в одной шахматке: сверху N-11 Резиденция, ниже Резиденция Море.
           </p>
         </div>
         <Button

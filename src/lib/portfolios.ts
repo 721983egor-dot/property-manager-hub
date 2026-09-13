@@ -1,9 +1,9 @@
-/** Два бизнеса в одной RM OS: долгосрочная аренда и апарт-отель N-11. */
+/** RM OS — система управления компанией. Два отдельных проекта в одном месте. */
 export type Portfolio = "rm" | "n11";
 
 export const PORTFOLIOS: { value: Portfolio; label: string; short: string }[] = [
-  { value: "n11", label: "Апарт-отель N-11", short: "N-11" },
-  { value: "rm", label: "Резиденция&Море", short: "РМ" },
+  { value: "n11", label: "N-11 Резиденция", short: "N-11" },
+  { value: "rm", label: "Резиденция Море", short: "РМ" },
 ];
 
 export function portfolioLabel(value: Portfolio | string | null | undefined) {

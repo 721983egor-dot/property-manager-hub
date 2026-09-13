@@ -103,7 +103,7 @@ def remote_has_branch(repo_dir: Path, branch: str) -> bool:
 
 
 def sync_git(repo_dir: Path, branch: str) -> str:
-    """Приводит каталог к origin/<branch>. Рабочий сайт этот каталог не переключает сам."""
+    """Приводит каталог к origin/<branch>. Локальные правки на сервере не сохраняем."""
     repo_dir.parent.mkdir(parents=True, exist_ok=True)
     if not (repo_dir / ".git").exists():
         run(["git", "clone", GITHUB_REPO, str(repo_dir)])
@@ -112,7 +112,10 @@ def sync_git(repo_dir: Path, branch: str) -> str:
         raise RuntimeError(
             f"Ветка `{branch}` не найдена на GitHub. Сначала запушьте её: git push -u origin {branch}"
         )
-    run(["git", "-C", str(repo_dir), "checkout", "-B", branch, f"origin/{branch}"])
+    # Каталог выкладки — не рабочая копия. Иначе грязный Caddyfile блокирует «Выложить на тест».
+    run(["git", "-C", str(repo_dir), "reset", "--hard", "HEAD"])
+    run(["git", "-C", str(repo_dir), "clean", "-fd"])
+    run(["git", "-C", str(repo_dir), "checkout", "-f", "-B", branch, f"origin/{branch}"])
     run(["git", "-C", str(repo_dir), "reset", "--hard", f"origin/{branch}"])
     return get_git_version(repo_dir)
 

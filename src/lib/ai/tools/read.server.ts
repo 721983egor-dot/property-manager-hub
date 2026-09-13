@@ -1163,11 +1163,24 @@ export function createReadTools(ctx: AssistantToolContext) {
           };
           q = q.eq("client_id", resolvedClient.id);
         }
+        const like = query ? postgrestValue(`%${query}%`) : "";
+        const coreSearch = query
+          ? `title.ilike.${like},source.ilike.${like},comment.ilike.${like}`
+          : "";
         if (query) {
-          const like = postgrestValue(`%${query}%`);
-          q = q.or(`title.ilike.${like},source.ilike.${like},comment.ilike.${like},telegram.ilike.${like},preferred_messenger.ilike.${like}`);
+          q = q.or(`${coreSearch},telegram.ilike.${like},preferred_messenger.ilike.${like}`);
         }
-        const { data, error } = await q;
+        let { data, error } = await q;
+        if (error && query && /telegram|preferred_messenger|schema cache|could not find/i.test(error.message)) {
+          let retry = admin.from("deals").select("*").limit(200);
+          if (stage) {
+            const found = (stages ?? []).find((s) => s.name.toLowerCase() === stage.toLowerCase());
+            if (found) retry = retry.eq("stage_id", found.id);
+          }
+          if (resolvedClient) retry = retry.eq("client_id", resolvedClient.id);
+          retry = retry.or(coreSearch);
+          ({ data, error } = await retry);
+        }
         if (error) return { error: error.message };
         const clientIds = [
           ...new Set((data ?? []).map((d) => d.client_id).filter(Boolean)),
@@ -1201,8 +1214,13 @@ export function createReadTools(ctx: AssistantToolContext) {
           budget: d.budget,
           adults: d.adults,
           children: d.children,
-          telegram: d.telegram,
-          preferredMessenger: d.preferred_messenger,
+          telegram:
+            d.telegram ||
+            String((d.custom as { telegram?: string } | null)?.telegram ?? ""),
+          preferredMessenger:
+            d.preferred_messenger ||
+            String((d.custom as { preferred_messenger?: string } | null)?.preferred_messenger ?? ""),
+          responsibleId: d.responsible_id,
           startDate: d.start_date,
           endDate: d.end_date,
           priceMonth: d.price_month,
@@ -1230,7 +1248,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
     getHotelOverview: tool({
       description:
-        "Апарт-отель N-11: номера, категории, загрузка, брони короткого проживания, собственники. Смотри этот блок отдельно от долгосрочной аренды РМ, но календарь общий.",
+        "N-11 Резиденция — отдельный проект, апарт-отель: номера, категории, загрузка, брони короткого проживания, собственники. Не путать с Резиденция Море. Календарь общий.",
       inputSchema: z.object({
         fromDate: z.string().optional(),
         toDate: z.string().optional(),

@@ -15,10 +15,10 @@ import { formatDateRu, toISODate } from "@/lib/rentals";
 export const Route = createFileRoute("/_authenticated/hotel/")({
   head: () => ({
     meta: [
-      { title: "Апарт-отель N-11 — RM OS" },
+      { title: "N-11 Резиденция — RM OS" },
       {
         name: "description",
-        content: "Управление апарт-отелем N-11: загрузка, номера, собственники и синхронизация Bnovo.",
+        content: "Управление N-11 Резиденция: загрузка, номера, собственники и синхронизация Bnovo.",
       },
     ],
   }),
@@ -71,9 +71,9 @@ function HotelSummaryPage() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Апарт-отель N-11</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">N-11 Резиденция</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Навагинская, центр Сочи. Календарь общий с РМ — номера N-11 стоят сверху.
+            Отдельный проект — апарт-отель на Навагинской. В RM OS рядом с Резиденция Море для удобства.
           </p>
         </div>
         <Button asChild>
