@@ -4,7 +4,7 @@
  *
  * v1 умеет только читать брони:
  *   POST /api/v1/auth  → bearer access_token
- *   GET  /api/v1/bookings?date_from=&date_to=
+ *   GET  /api/v1/bookings?date_from=&date_to=&limit=&offset=
  *   GET  /api/v1/bookings/{id}
  */
 
@@ -84,10 +84,20 @@ function pick(obj: Record<string, unknown>, keys: string[]): unknown {
 export function normalizeBnovoBooking(raw: Record<string, unknown>): BnovoBooking | null {
   const id = textOf(pick(raw, ["id", "booking_id", "bookingId", "number", "uid"]));
   const arrival = dateOf(
-    pick(raw, ["arrival", "arrival_date", "date_from", "start_date", "checkin", "check_in", "from"]),
+    pick(raw, [
+      "dates.arrival",
+      "arrival",
+      "arrival_date",
+      "date_from",
+      "start_date",
+      "checkin",
+      "check_in",
+      "from",
+    ]),
   );
   const departure = dateOf(
     pick(raw, [
+      "dates.departure",
       "departure",
       "departure_date",
       "date_to",
@@ -103,9 +113,21 @@ export function normalizeBnovoBooking(raw: Record<string, unknown>): BnovoBookin
     recordOf(pick(raw, ["customer", "guest", "guests.0", "client", "contact"])) ?? {};
   const people = Array.isArray(raw["guests"]) ? raw["guests"] : [];
   const firstGuest = recordOf(people[0]) ?? {};
+  const statusRaw = pick(raw, ["status.name", "status", "status_name", "state"]);
+  const sourceRaw = pick(raw, ["source.name", "source", "channel", "ota", "provider", "origin"]);
+  const guestName =
+    [textOf(pick(guest, ["name"])), textOf(pick(guest, ["surname", "lastname", "last_name"]))]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    textOf(
+      pick(raw, ["name", "full_name", "customer_name"]) ||
+        pick(guest, ["full_name", "fio"]) ||
+        pick(firstGuest, ["name", "full_name", "fio"]),
+    );
   return {
     id,
-    status: textOf(pick(raw, ["status", "status_name", "state"])).toLowerCase(),
+    status: textOf(statusRaw).toLowerCase(),
     arrival,
     departure: departure || arrival,
     roomId: textOf(
@@ -117,14 +139,10 @@ export function normalizeBnovoBooking(raw: Record<string, unknown>): BnovoBookin
         pick(room, ["name", "number", "title"]),
     ),
     categoryName: textOf(
-      pick(raw, ["category", "category_name", "room_type", "room.category_name"]) ||
+      pick(raw, ["category", "category_name", "room_type", "room.category_name", "plan_name"]) ||
         pick(room, ["category", "category_name", "type"]),
     ),
-    guestName: textOf(
-      pick(raw, ["name", "full_name", "customer_name"]) ||
-        pick(guest, ["name", "full_name", "fio"]) ||
-        pick(firstGuest, ["name", "full_name", "fio"]),
-    ),
+    guestName,
     guestPhone: textOf(
       pick(raw, ["phone", "customer_phone"]) ||
         pick(guest, ["phone", "tel", "mobile"]) ||
@@ -134,10 +152,10 @@ export function normalizeBnovoBooking(raw: Record<string, unknown>): BnovoBookin
       pick(guest, ["email"]) || pick(firstGuest, ["email"]) || pick(raw, ["email"]),
     ),
     amount: numOf(pick(raw, ["amount", "total", "price", "sum", "prices.total"])),
-    source: textOf(pick(raw, ["source", "channel", "ota", "provider", "origin"])),
+    source: textOf(sourceRaw),
     adults: numOf(pick(raw, ["adults", "adult", "guests_count", "persons"])),
     children: numOf(pick(raw, ["children", "child"])),
-    comment: textOf(pick(raw, ["comment", "notes", "note", "special_wishes"])),
+    comment: textOf(pick(raw, ["notes", "comment", "note", "special_wishes", "customer.notes"])),
     raw,
   };
 }
@@ -153,10 +171,18 @@ async function requestJson(url: string, init: RequestInit) {
   }
   if (!response.ok) {
     const rec = recordOf(json);
+    const err = recordOf(pick(rec ?? {}, ["error"])) ?? rec;
+    const details = recordOf(err ? err["errors"] : null);
+    const detailText = details
+      ? Object.entries(details)
+          .map(([key, value]) => `${key}: ${textOf(value)}`)
+          .join("; ")
+      : "";
     const message =
+      textOf(pick(err ?? {}, ["message", "error", "detail"])) ||
       textOf(pick(rec ?? {}, ["message", "error", "detail"])) ||
       `Bnovo HTTP ${response.status}`;
-    throw new Error(message);
+    throw new Error(detailText ? `${message} (${detailText})` : message);
   }
   return json;
 }
@@ -204,11 +230,29 @@ export async function listBnovoBookings(
 ): Promise<BnovoBooking[]> {
   const token = await bnovoAuth(creds);
   const base = (creds.baseUrl || DEFAULT_BASE).replace(/\/$/, "");
-  const url = `${base}/api/v1/bookings?date_from=${encodeURIComponent(from)}&date_to=${encodeURIComponent(to)}`;
-  const json = await requestJson(url, {
-    headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
-  });
-  return bookingsFromPayload(json)
+  const pageSize = 100;
+  const collected: Record<string, unknown>[] = [];
+  let offset = 0;
+  let total: number | null = null;
+  while (true) {
+    const url =
+      `${base}/api/v1/bookings?date_from=${encodeURIComponent(from)}` +
+      `&date_to=${encodeURIComponent(to)}&limit=${pageSize}&offset=${offset}`;
+    const json = await requestJson(url, {
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+    });
+    const page = bookingsFromPayload(json);
+    collected.push(...page);
+    const rec = recordOf(json);
+    const data = recordOf(rec?.["data"]) ?? rec;
+    const meta = recordOf(data?.["meta"]);
+    total = numOf(meta?.["total"]) ?? total;
+    offset += page.length;
+    if (page.length === 0) break;
+    if (total != null && offset >= total) break;
+    if (page.length < pageSize) break;
+  }
+  return collected
     .map((row) => normalizeBnovoBooking(row))
     .filter((row): row is BnovoBooking => Boolean(row));
 }

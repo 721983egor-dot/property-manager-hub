@@ -37,6 +37,14 @@ export const getBnovoStatus = createServerFn({ method: "POST" })
     };
   });
 
+function parseBnovoAccountId(value: string) {
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) return trimmed;
+  const fromPair = trimmed.split("|")[0]?.trim() ?? "";
+  if (/^\d+$/.test(fromPair)) return fromPair;
+  return "";
+}
+
 export const saveBnovoSettings = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .inputValidator(
@@ -45,9 +53,16 @@ export const saveBnovoSettings = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }): Promise<{ ok: true }> => {
     await requireAdmin(context.userId);
+    const accountId = parseBnovoAccountId(data.accountId);
+    const password = data.password.trim() || (!accountId ? data.accountId.trim() : "");
+    if (!accountId) {
+      throw new Error(
+        "ID аккаунта Bnovo — это число с экрана «API-доступ», не длинный ключ. Ключ вставьте в поле «API-ключ».",
+      );
+    }
     const { setPlatformSecret } = await import("@/lib/platform-secrets.server");
-    await setPlatformSecret("BNOVO_ACCOUNT_ID", data.accountId.trim());
-    if (data.password.trim()) await setPlatformSecret("BNOVO_API_PASSWORD", data.password.trim());
+    await setPlatformSecret("BNOVO_ACCOUNT_ID", accountId);
+    if (password) await setPlatformSecret("BNOVO_API_PASSWORD", password);
     await setPlatformSecret("BNOVO_API_BASE_URL", data.baseUrl.trim());
     const { clearBnovoToken } = await import("@/lib/bnovo.server");
     clearBnovoToken();
@@ -62,8 +77,23 @@ export const testBnovoConnection = createServerFn({ method: "POST" })
     const { bnovoAuth, clearBnovoToken } = await import("@/lib/bnovo.server");
     const creds = await loadBnovoCredentials();
     if (!creds) throw new Error("Сначала сохраните ID аккаунта и ключ API");
+    if (!/^\d+$/.test(creds.accountId)) {
+      throw new Error(
+        "ID аккаунта Bnovo должен быть числом. Длинную строку оставьте в API-ключе, число возьмите на экране Octopus → API-доступ.",
+      );
+    }
     clearBnovoToken();
-    await bnovoAuth(creds);
+    try {
+      await bnovoAuth(creds);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Ошибка Bnovo";
+      if (/целым числом|integer/i.test(message)) {
+        throw new Error(
+          "Bnovo не принял ID: нужно число аккаунта, а не API-ключ. Откройте Octopus → API-доступ и скопируйте «ID аккаунта».",
+        );
+      }
+      throw error;
+    }
     return { ok: true };
   });
 

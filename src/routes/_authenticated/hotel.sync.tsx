@@ -90,10 +90,12 @@ function HotelSyncPage() {
               <Label>ID аккаунта Bnovo</Label>
               <Input
                 className="mt-1.5"
+                inputMode="numeric"
                 value={accountId}
-                placeholder={status?.accountId || "id"}
+                placeholder={status?.accountId || "только цифры"}
                 onChange={(e) => setAccountId(e.target.value)}
               />
+              <p className="mt-1 text-xs text-muted-foreground">Число с экрана Octopus → API-доступ, не ключ.</p>
             </div>
             <div>
               <Label>API-ключ (пароль)</Label>
@@ -101,7 +103,7 @@ function HotelSyncPage() {
                 className="mt-1.5"
                 type="password"
                 value={password}
-                placeholder={status?.hasPassword ? "задан, введите новый чтобы заменить" : "ключ"}
+                placeholder={status?.hasPassword ? "задан, введите новый чтобы заменить" : "длинная строка"}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
