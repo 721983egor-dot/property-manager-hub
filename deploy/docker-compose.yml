@@ -44,6 +44,7 @@ services:
       - LOVABLE_CRON_SECRET=${LOVABLE_CRON_SECRET}
       - LOVABLE_API_KEY=${LOVABLE_API_KEY}
       - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-${TELEGRAM_API_KEY}}
       - CIAN_API_KEY=${CIAN_API_KEY:-}
       - YANDEX_REALTY_TOKEN=${YANDEX_REALTY_TOKEN:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -96,6 +97,7 @@ services:
       - LOVABLE_CRON_SECRET=${LOVABLE_CRON_SECRET}
       - LOVABLE_API_KEY=${LOVABLE_API_KEY}
       - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-${TELEGRAM_API_KEY}}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
@@ -231,6 +233,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - LOVABLE_API_KEY=${LOVABLE_API_KEY}
       - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-${TELEGRAM_API_KEY}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - deploy_data:/data
@@ -258,6 +261,21 @@ services:
             -H "x-cron-secret: $$SECRET" || true
           sleep 900
         done
+    depends_on:
+      - app
+    networks:
+      - rm-os
+
+  # Telegram не достучаться входящим HTTPS до Бегета — бот сам забирает сообщения.
+  telegram-poller:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-${TELEGRAM_API_KEY}}
+      - TELEGRAM_FORWARD_URL=http://app:3000/api/public/telegram/webhook
+    volumes:
+      - ./telegram-poller.py:/poller.py:ro
+    command: ["python", "/poller.py"]
     depends_on:
       - app
     networks:

@@ -60,8 +60,8 @@ function TelegramSettingsPage() {
 
   const webhookMutation = useMutation({
     mutationFn: () => register(undefined as never),
-    onSuccess: (r) => {
-      toast.success(`Бот подключён к ${r.url}`);
+    onSuccess: () => {
+      toast.success("Приём сообщений включён");
       void queryClient.invalidateQueries({ queryKey: ["telegram-status"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -92,8 +92,12 @@ function TelegramSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="text-sm">
-            Адрес приёма сообщений:{" "}
-            <span className="break-all font-medium">{data?.webhookUrl || "не задан"}</span>
+            Сообщения бот забирает сам (опрос Telegram). Входящий адрес на сервер не нужен.
+            {data?.webhookUrl ? (
+              <span className="mt-1 block text-muted-foreground">
+                Сейчас в Telegram ещё висит webhook {data.webhookUrl} — нажмите кнопку ниже.
+              </span>
+            ) : null}
           </div>
           {data?.error && data.connected && (
             <p className="text-sm text-destructive">Последняя ошибка Telegram: {data.error}</p>
