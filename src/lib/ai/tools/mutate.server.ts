@@ -535,11 +535,12 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeTask: tool({
       description:
-        "Предложить создание или изменение задачи RM OS: название, дата, интервал времени (например 10:00–10:30), исполнитель, объект, комментарий, пункты чеклиста. Требует подтверждения менеджера.",
+        "Предложить создание или изменение задачи RM OS: название, тип, дата, интервал времени (например 10:00–10:30), исполнитель, объект, комментарий, пункты чеклиста. С датой и временем задача видна в календаре. Требует подтверждения менеджера.",
       inputSchema: z.object({
         taskId: z.string().optional(),
         title: z.string().optional(),
         description: z.string().optional(),
+        typeName: z.string().optional().describe("Название типа задачи"),
         dueDate: z.string().optional().describe("Дата ГГГГ-ММ-ДД, пустая строка чтобы убрать срок"),
         dueStart: z.string().optional().describe("Начало интервала ЧЧ:ММ"),
         dueEnd: z.string().optional().describe("Конец интервала ЧЧ:ММ"),
@@ -551,6 +552,15 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async (input) => {
         const property = input.propertyRef ? await label(input.propertyRef) : null;
         if (input.propertyRef && !property) return { error: "Объект не найден" };
+        let typeId: string | null = null;
+        let typeLabel = "";
+        if (input.typeName) {
+          const { data: types } = await ctx.admin.from("task_types").select("id, name").order("position");
+          const found = (types ?? []).find((t) => t.name.toLowerCase() === input.typeName!.toLowerCase());
+          if (!found) return { error: "Тип задачи не найден. Сначала создайте его через proposeTaskType." };
+          typeId = found.id;
+          typeLabel = found.name;
+        }
         let assigneeId: string | null = null;
         let assigneeName = "";
         if (input.assigneeQuery) {
@@ -568,6 +578,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         }
         const parts: string[] = [];
         if (input.title) parts.push(`«${input.title}»`);
+        if (typeLabel) parts.push(`тип ${typeLabel}`);
         if (input.dueDate === "") parts.push("без срока");
         else if (input.dueDate) {
           const range =
@@ -590,6 +601,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
             taskId: input.taskId ?? null,
             title: input.title ?? null,
             description: input.description ?? null,
+            typeId,
             dueDate: input.dueDate ?? null,
             dueStart: input.dueStart ?? null,
             dueEnd: input.dueEnd ?? null,
@@ -668,6 +680,37 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (!task) return { error: "Задача не найдена" };
         const summary = `Удалить задачу «${task.title}»`;
         ctx.propose({ tool: "deleteTask", summary, input: { taskId } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeTaskType: tool({
+      description:
+        "Предложить создание или изменение типа задачи (название и цвет). Требует подтверждения.",
+      inputSchema: z.object({
+        typeId: z.string().optional(),
+        name: z.string(),
+        color: z.string().optional().describe("HEX цвет, например #3b82f6"),
+      }),
+      execute: async ({ typeId, name, color }) => {
+        const summary = `${typeId ? "Изменить" : "Создать"} тип задачи «${name}»${color ? ` (${color})` : ""}`;
+        ctx.propose({
+          tool: "upsertTaskType",
+          summary,
+          input: { typeId: typeId ?? null, name, color: color ?? "#3b82f6" },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeDeleteTaskType: tool({
+      description: "Предложить удаление типа задачи. Требует подтверждения.",
+      inputSchema: z.object({ typeId: z.string() }),
+      execute: async ({ typeId }) => {
+        const { data: type } = await ctx.admin.from("task_types").select("name").eq("id", typeId).maybeSingle();
+        if (!type) return { error: "Тип не найден" };
+        const summary = `Удалить тип задачи «${type.name}»`;
+        ctx.propose({ tool: "deleteTaskType", summary, input: { typeId } });
         return { proposed: true, summary };
       },
     }),

@@ -559,6 +559,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     }
     if (input["assigneeId"] != null) patch["assignee_id"] = input["assigneeId"];
     if (input["propertyId"] != null) patch["property_id"] = input["propertyId"];
+    if (input["typeId"] != null) patch["task_type_id"] = input["typeId"];
     if (input["status"] != null) {
       patch["status"] = input["status"];
       patch["completed_at"] = input["status"] === "done" ? new Date().toISOString() : null;
@@ -578,6 +579,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
           due_end: (patch["due_end"] as string) ?? "",
           assignee_id: (patch["assignee_id"] as string | null) ?? null,
           property_id: (patch["property_id"] as string | null) ?? null,
+          task_type_id: (patch["task_type_id"] as string | null) ?? null,
           status: (patch["status"] as string) ?? "open",
           completed_at: (patch["completed_at"] as string | null) ?? null,
         } as never)
@@ -662,6 +664,34 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const { error } = await supabaseAdmin.from("tasks").delete().eq("id", taskId);
     if (error) throw new Error(error.message);
     return "Задача удалена";
+  },
+
+  upsertTaskType: async (input) => {
+    const typeId = (input["typeId"] as string | null) || null;
+    const row = {
+      name: String(input["name"] ?? "Тип").trim() || "Тип",
+      color: String(input["color"] ?? "#3b82f6"),
+    };
+    if (typeId) {
+      const { error } = await supabaseAdmin.from("task_types").update(row as never).eq("id", typeId);
+      if (error) throw new Error(error.message);
+      return "Тип задачи обновлён";
+    }
+    const { count } = await supabaseAdmin
+      .from("task_types")
+      .select("id", { count: "exact", head: true });
+    const { error } = await supabaseAdmin
+      .from("task_types")
+      .insert({ ...row, position: count ?? 0 } as never);
+    if (error) throw new Error(error.message);
+    return "Тип задачи создан";
+  },
+
+  deleteTaskType: async (input) => {
+    const typeId = must(input["typeId"] as string, "Не указан тип");
+    const { error } = await supabaseAdmin.from("task_types").delete().eq("id", typeId);
+    if (error) throw new Error(error.message);
+    return "Тип задачи удалён";
   },
 };
 

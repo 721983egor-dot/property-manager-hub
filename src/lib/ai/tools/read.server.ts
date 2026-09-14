@@ -1254,27 +1254,37 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getTasks: tool({
       description:
-        "Канбан задач RM OS: открытые и выполненные задачи сотрудников. Фильтры: текст, исполнитель, объект, статус (open/done), колонка (overdue/today/this_week/next_week/later/none). Возвращает дату, интервал времени, объект, чеклист и исполнителя.",
+        "Канбан и календарь задач RM OS: открытые и выполненные. Фильтры: текст, исполнитель, объект, тип, статус (open/done), колонка (overdue/today/this_week/next_week/later/none). Задачи с датой и временем видны в календаре.",
       inputSchema: z.object({
         query: z.string().optional(),
         assigneeQuery: z.string().optional().describe("ФИО или почта сотрудника"),
         propertyRef: z.string().optional(),
+        typeName: z.string().optional().describe("Название типа задачи"),
         status: z.enum(["open", "done", "all"]).optional(),
         column: z.enum(["overdue", "today", "this_week", "next_week", "later", "none"]).optional(),
       }),
-      execute: async ({ query, assigneeQuery, propertyRef, status, column }) => {
-        const [{ data: rows, error }, { data: items }, { data: profiles }] = await Promise.all([
-          admin
-            .from("tasks")
-            .select(
-              "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, position, completed_at, created_at, updated_at",
-            )
-            .order("due_date", { ascending: true })
-            .limit(300),
-          admin.from("task_items").select("id, task_id, title, done, position").order("position"),
-          admin.from("profiles").select("id, full_name, email"),
-        ]);
+      execute: async ({ query, assigneeQuery, propertyRef, typeName, status, column }) => {
+        const [{ data: rows, error }, { data: items }, { data: profiles }, { data: types }] =
+          await Promise.all([
+            admin
+              .from("tasks")
+              .select(
+                "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, task_type_id, position, completed_at, created_at, updated_at",
+              )
+              .order("due_date", { ascending: true })
+              .limit(300),
+            admin.from("task_items").select("id, task_id, title, done, position").order("position"),
+            admin.from("profiles").select("id, full_name, email"),
+            admin.from("task_types").select("id, name, color, position").order("position"),
+          ]);
         if (error) return { error: error.message };
+        const typeMap = new Map((types ?? []).map((t) => [t.id, t]));
+        let typeId: string | null = null;
+        if (typeName) {
+          const found = (types ?? []).find((t) => t.name.toLowerCase() === typeName.toLowerCase());
+          if (!found) return { count: 0, hint: "Тип задачи не найден", types: types ?? [], tasks: [] };
+          typeId = found.id;
+        }
         const staffMap = new Map(
           (profiles ?? []).map((p) => [p.id, (p.full_name || p.email || "Сотрудник").trim()]),
         );
@@ -1321,38 +1331,59 @@ export function createReadTools(ctx: AssistantToolContext) {
         const mapped = (rows ?? [])
           .filter((row) => (assigneeId ? row.assignee_id === assigneeId : true))
           .filter((row) => (propertyId ? row.property_id === propertyId : true))
+          .filter((row) => (typeId ? row.task_type_id === typeId : true))
           .filter((row) => (wantedStatus === "all" ? true : row.status === wantedStatus))
-          .map((row) => ({
-            id: row.id,
-            title: row.title,
-            description: row.description,
-            status: row.status,
-            dueDate: row.due_date,
-            dueStart: String(row.due_start || "").slice(0, 5),
-            dueEnd: String(row.due_end || "").slice(0, 5),
-            column: columnOf(row.due_date),
-            assignee: row.assignee_id ? (staffMap.get(row.assignee_id) ?? "") : "",
-            assigneeId: row.assignee_id,
-            property: row.property_id ? (names.get(row.property_id) ?? "") : "",
-            propertyId: row.property_id,
-            completedAt: row.completed_at,
-            createdAt: row.created_at,
-            items: itemsByTask.get(row.id) ?? [],
-          }))
+          .map((row) => {
+            const type = row.task_type_id ? typeMap.get(row.task_type_id) : null;
+            return {
+              id: row.id,
+              title: row.title,
+              description: row.description,
+              status: row.status,
+              dueDate: row.due_date,
+              dueStart: String(row.due_start || "").slice(0, 5),
+              dueEnd: String(row.due_end || "").slice(0, 5),
+              onCalendar: Boolean(row.due_date && row.due_start && row.due_end && row.status !== "done"),
+              column: columnOf(row.due_date),
+              type: type?.name ?? "",
+              typeColor: type?.color ?? null,
+              assignee: row.assignee_id ? (staffMap.get(row.assignee_id) ?? "") : "",
+              assigneeId: row.assignee_id,
+              property: row.property_id ? (names.get(row.property_id) ?? "") : "",
+              propertyId: row.property_id,
+              completedAt: row.completed_at,
+              createdAt: row.created_at,
+              items: itemsByTask.get(row.id) ?? [],
+            };
+          })
           .filter((row) => (column ? row.column === column : true))
           .filter((row) => {
             if (!query) return true;
             const term = query.toLowerCase();
-            return `${row.title} ${row.description} ${row.assignee} ${row.property} ${row.items.map((i) => i.title).join(" ")}`
+            return `${row.title} ${row.description} ${row.assignee} ${row.property} ${row.type} ${row.items.map((i) => i.title).join(" ")}`
               .toLowerCase()
               .includes(term);
           });
         return {
           count: mapped.length,
           source: "crm.tasks",
-          hint: "Колонки канбана считаются по дате: overdue / today / this_week / next_week / later / none.",
+          types: (types ?? []).map((t) => ({ id: t.id, name: t.name, color: t.color })),
+          hint: "Колонки канбана — по дате. В календарь попадают только задачи с датой и временем.",
           tasks: mapped,
         };
+      },
+    }),
+
+    getTaskTypes: tool({
+      description: "Список типов задач RM OS: название и цвет. Типы настраиваются в Задачи → Типы.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { data, error } = await admin
+          .from("task_types")
+          .select("id, name, color, position")
+          .order("position");
+        if (error) return { error: error.message };
+        return { count: (data ?? []).length, types: data ?? [] };
       },
     }),
 

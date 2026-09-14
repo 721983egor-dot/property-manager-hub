@@ -5,6 +5,13 @@ export type TaskStatus = "open" | "done";
 
 export type TaskColumnId = "overdue" | "today" | "this_week" | "next_week" | "later" | "none";
 
+export type TaskType = {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+};
+
 export type StaffTaskItem = {
   id: string;
   task_id: string;
@@ -25,6 +32,7 @@ export type StaffTask = {
   assignee_id: string | null;
   created_by: string | null;
   property_id: string | null;
+  task_type_id: string | null;
   position: number;
   completed_at: string | null;
   created_at: string;
@@ -47,8 +55,30 @@ export type TaskInput = {
   due_end: string;
   assignee_id: string | null;
   property_id: string | null;
+  task_type_id: string | null;
   position?: number;
 };
+
+export type TaskTypeInput = {
+  name: string;
+  color: string;
+  position: number;
+};
+
+export const TASK_TYPE_COLORS = [
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#10b981",
+  "#06b6d4",
+  "#3b82f6",
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#64748b",
+  "#0f172a",
+] as const;
 
 export const TASK_COLUMNS: { id: TaskColumnId; name: string; color: string }[] = [
   { id: "overdue", name: "Просроченные", color: "#dc2626" },
@@ -60,7 +90,7 @@ export const TASK_COLUMNS: { id: TaskColumnId; name: string; color: string }[] =
 ];
 
 const TASK_COLUMNS_SQL =
-  "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, position, completed_at, created_at, updated_at";
+  "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, task_type_id, position, completed_at, created_at, updated_at";
 
 export function timeSlots(stepMin = 30, from = "07:00", to = "22:00"): string[] {
   const [fromH, fromM] = from.split(":").map(Number);
@@ -87,6 +117,16 @@ export function formatTaskTimeRange(start: string, end: string): string {
   if (from && to) return `${from}–${to}`;
   if (from) return from;
   return "";
+}
+
+/** Задача попадает в календарь только если есть дата и интервал времени. */
+export function taskShowsOnCalendar(task: Pick<StaffTask, "due_date" | "due_start" | "due_end" | "status">) {
+  return Boolean(task.due_date && task.due_start && task.due_end && task.status !== "done");
+}
+
+export function timeToMinutes(value: string): number {
+  const [h, m] = normalizeTime(value).split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
 }
 
 function mondayOf(date: Date): Date {
@@ -134,6 +174,11 @@ export function dueDateForColumn(
   return toISODate(addDays(thisMonday, 14));
 }
 
+export function weekDays(anchor: Date): Date[] {
+  const monday = mondayOf(anchor);
+  return Array.from({ length: 7 }, (_, index) => addDays(monday, index));
+}
+
 function mapTask(row: Record<string, unknown>, items: StaffTaskItem[]): StaffTask {
   return {
     id: String(row.id),
@@ -146,6 +191,7 @@ function mapTask(row: Record<string, unknown>, items: StaffTaskItem[]): StaffTas
     assignee_id: (row.assignee_id as string | null) ?? null,
     created_by: (row.created_by as string | null) ?? null,
     property_id: (row.property_id as string | null) ?? null,
+    task_type_id: (row.task_type_id as string | null) ?? null,
     position: Number(row.position ?? 0),
     completed_at: (row.completed_at as string | null) ?? null,
     created_at: String(row.created_at ?? ""),
@@ -175,6 +221,36 @@ async function loadItems(taskIds: string[]): Promise<Map<string, StaffTaskItem[]
 async function attachItems(rows: Record<string, unknown>[]): Promise<StaffTask[]> {
   const items = await loadItems(rows.map((row) => String(row.id)));
   return rows.map((row) => mapTask(row, items.get(String(row.id)) ?? []));
+}
+
+export async function fetchTaskTypes(): Promise<TaskType[]> {
+  const { data, error } = await supabase
+    .from("task_types")
+    .select("id, name, color, position")
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as TaskType[];
+}
+
+export async function saveTaskType(id: string | null, input: TaskTypeInput): Promise<string> {
+  const row = {
+    name: input.name.trim() || "Тип",
+    color: input.color || "#3b82f6",
+    position: input.position,
+  };
+  if (id) {
+    const { error } = await supabase.from("task_types").update(row as never).eq("id", id);
+    if (error) throw error;
+    return id;
+  }
+  const { data, error } = await supabase.from("task_types").insert(row as never).select("id").single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+export async function deleteTaskType(id: string) {
+  const { error } = await supabase.from("task_types").delete().eq("id", id);
+  if (error) throw error;
 }
 
 export async function fetchTasks(): Promise<StaffTask[]> {
@@ -223,6 +299,7 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
     due_end: normalizeTime(input.due_end),
     assignee_id: input.assignee_id,
     property_id: input.property_id,
+    task_type_id: input.task_type_id,
     position: input.position ?? 0,
     completed_at: input.status === "done" ? new Date().toISOString() : null,
   };

@@ -40,6 +40,7 @@ import {
   deleteTaskItem,
   dueDateForColumn,
   fetchStaffDirectory,
+  fetchTaskTypes,
   formatTaskTimeRange,
   reopenTask,
   saveTask,
@@ -59,13 +60,25 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   task: StaffTask | null;
   defaultColumn?: TaskColumnId;
+  defaultDueDate?: string;
+  defaultDueStart?: string;
+  defaultDueEnd?: string;
 };
 
-export function TaskDialog({ open, onOpenChange, task, defaultColumn }: Props) {
+export function TaskDialog({
+  open,
+  onOpenChange,
+  task,
+  defaultColumn,
+  defaultDueDate,
+  defaultDueStart,
+  defaultDueEnd,
+}: Props) {
   const queryClient = useQueryClient();
   const { profile, isAdmin } = useAccess();
   const { data: properties = [] } = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
   const { data: staff = [] } = useQuery({ queryKey: ["staff-directory"], queryFn: fetchStaffDirectory });
+  const { data: types = [] } = useQuery({ queryKey: ["task-types"], queryFn: fetchTaskTypes });
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -74,6 +87,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumn }: Props) {
   const [dueEnd, setDueEnd] = useState(NONE);
   const [assigneeId, setAssigneeId] = useState(NONE);
   const [propertyId, setPropertyId] = useState(NONE);
+  const [typeId, setTypeId] = useState(NONE);
   const [propertyOpen, setPropertyOpen] = useState(false);
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [newItem, setNewItem] = useState("");
@@ -84,19 +98,17 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumn }: Props) {
     setDescription(task?.description ?? "");
     setDueDate(
       task?.due_date ??
+        defaultDueDate ??
         (defaultColumn ? dueDateForColumn(defaultColumn, new Date(), "create") ?? "" : ""),
     );
-    setDueStart(task?.due_start || NONE);
-    setDueEnd(task?.due_end || NONE);
+    setDueStart(task?.due_start || defaultDueStart || NONE);
+    setDueEnd(task?.due_end || defaultDueEnd || NONE);
     setAssigneeId(task?.assignee_id ?? profile?.id ?? NONE);
     setPropertyId(task?.property_id ?? NONE);
-    setDraftItems(
-      task
-        ? []
-        : [{ key: crypto.randomUUID(), title: "", done: false }],
-    );
+    setTypeId(task?.task_type_id ?? types[0]?.id ?? NONE);
+    setDraftItems(task ? [] : [{ key: crypto.randomUUID(), title: "", done: false }]);
     setNewItem("");
-  }, [open, task?.id, defaultColumn, profile?.id]);
+  }, [open, task?.id, defaultColumn, defaultDueDate, defaultDueStart, defaultDueEnd, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
 
   const selectedProperty = useMemo(
     () => properties.find((item) => item.id === (propertyId === NONE ? "" : propertyId)),
@@ -125,6 +137,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumn }: Props) {
         due_end: dueDate ? end : "",
         assignee_id: assigneeId === NONE ? null : assigneeId,
         property_id: propertyId === NONE ? null : propertyId,
+        task_type_id: typeId === NONE ? null : typeId,
         position: task?.position ?? 0,
       });
       if (!task) {
@@ -219,6 +232,25 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumn }: Props) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label>Тип</Label>
+              <Select value={typeId} onValueChange={setTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Тип задачи" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Без типа</SelectItem>
+                  {types.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      <span className="inline-flex items-center gap-2">
+                        <span className="size-2.5 rounded-full" style={{ background: type.color }} />
+                        {type.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid gap-1.5">
               <Label>Дата</Label>
               <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />

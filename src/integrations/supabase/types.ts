@@ -1634,6 +1634,33 @@ export type Database = {
           text?: string
           updated_at?: string
         }
+          Relationships: []
+      }
+      task_types: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
         Relationships: []
       }
       task_items: {
@@ -1688,6 +1715,7 @@ export type Database = {
           position: number
           property_id: string | null
           status: string
+          task_type_id: string | null
           title: string
           updated_at: string
         }
@@ -1704,6 +1732,7 @@ export type Database = {
           position?: number
           property_id?: string | null
           status?: string
+          task_type_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -1720,6 +1749,7 @@ export type Database = {
           position?: number
           property_id?: string | null
           status?: string
+          task_type_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -1729,6 +1759,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_task_type_id_fkey"
+            columns: ["task_type_id"]
+            isOneToOne: false
+            referencedRelation: "task_types"
             referencedColumns: ["id"]
           },
         ]
