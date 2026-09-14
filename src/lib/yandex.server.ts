@@ -23,6 +23,7 @@ export type YandexOffer = {
   internalId: string;
   feedId: string;
   errors: string[];
+  matchKeys: string[];
 };
 
 export type YandexDayStat = {
@@ -33,8 +34,40 @@ export type YandexDayStat = {
   calls: number;
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function pickText(...values: unknown[]): string {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function asOffer(snippet: unknown): Record<string, unknown> {
+  const row = asRecord(snippet);
+  const nested = asRecord(row.offer);
+  return Object.keys(nested).length > 0 ? nested : row;
+}
+
+function collectUuids(value: unknown, into: string[], depth = 0) {
+  if (depth > 5 || into.length > 24) return;
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (UUID_RE.test(text)) into.push(text);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectUuids(item, into, depth + 1);
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const item of Object.values(value)) collectUuids(item, into, depth + 1);
+  }
 }
 
 export async function readYandexConfig(): Promise<YandexConfig | null> {
@@ -115,20 +148,43 @@ export async function fetchYandexOffers(
     if (params.feedId) query.set("feedId", params.feedId);
     for (const error of params.errors ?? []) query.append("errors", error);
     const raw = asRecord(await yandexGet(cfg, `/crm/offers?${query.toString()}`));
-    const listing = asRecord(raw.listing);
-    const snippets = Array.isArray(listing.snippets) ? listing.snippets : [];
+    const root = Object.keys(asRecord(raw.response)).length > 0 ? asRecord(raw.response) : raw;
+    const listing = asRecord(root.listing);
+    const snippets = Array.isArray(listing.snippets)
+      ? listing.snippets
+      : Array.isArray(listing.offers)
+        ? listing.offers
+        : Array.isArray(root.offers)
+          ? root.offers
+          : Array.isArray(root.snippets)
+            ? root.snippets
+            : [];
     for (const snippet of snippets) {
-      const offer = asRecord(asRecord(snippet).offer);
+      const offer = asOffer(snippet);
       const state = asRecord(offer.state);
+      const partner = asRecord(offer.partner);
       const errors = Array.isArray(state.errors) ? state.errors : [];
+      const uuids: string[] = [];
+      collectUuids(snippet, uuids);
+      const internalId = pickText(
+        offer.internalId,
+        offer.internal_id,
+        offer["internal-id"],
+        partner.internalId,
+        partner.internal_id,
+        offer.xmlId,
+        offer.xml_id,
+        ...uuids,
+      );
       offers.push({
-        id: String(offer.id ?? ""),
-        url: String(offer.url ?? ""),
-        internalId: String(offer.internalId ?? ""),
-        feedId: String(offer.feedId ?? ""),
+        id: pickText(offer.id, offer.offerId, offer.offer_id),
+        url: pickText(offer.url, offer.cardUrl, offer.card_url, offer.partnerUrl, offer.partner_url),
+        internalId,
+        feedId: pickText(offer.feedId, offer.feed_id),
         errors: errors
           .map((item) => (typeof item === "string" ? item : String(asRecord(item).type ?? "")))
           .filter(Boolean),
+        matchKeys: Array.from(new Set([internalId, ...uuids].filter(Boolean))),
       });
     }
     const slicing = asRecord(listing.slicing);
@@ -139,10 +195,18 @@ export async function fetchYandexOffers(
   return offers;
 }
 
-function parseYandexDay(value: string): string | null {
-  const match = String(value).match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (match) return `${match[3]}-${match[2]}-${match[1]}`;
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+function parseYandexDay(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const ms = value > 1e12 ? value : value * 1000;
+    const date = new Date(ms);
+    if (!Number.isNaN(date.getTime())) return date.toISOString().slice(0, 10);
+  }
+  const text = String(value ?? "").trim();
+  const dashed = text.match(/^(\d{2})-(\d{2})-(\d{4})/);
+  if (dashed) return `${dashed[3]}-${dashed[2]}-${dashed[1]}`;
+  const dotted = text.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+  if (dotted) return `${dotted[3]}-${dotted[2]}-${dotted[1]}`;
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
   return null;
 }
 
@@ -157,17 +221,23 @@ export async function fetchYandexOfferStats(
     `?startTime=${encodeTime(from)}&endTime=${encodeTime(to)}`;
   const raw = asRecord(await yandexGet(cfg, path));
   const stats = asRecord(raw.stats);
-  const daily = Array.isArray(stats.daily) ? stats.daily : [];
+  const daily = Array.isArray(stats.daily)
+    ? stats.daily
+    : Array.isArray(raw.daily)
+      ? raw.daily
+      : Array.isArray(stats.byDay)
+        ? stats.byDay
+        : [];
   return daily.flatMap((item) => {
     const row = asRecord(item);
-    const date = parseYandexDay(String(row.day ?? ""));
+    const date = parseYandexDay(row.day ?? row.date ?? row.time ?? row.timestamp);
     if (!date) return [];
     return [
       {
         date,
-        impressions: Number(row.shows ?? 0),
-        views: Number(row.cardShows ?? row.shows ?? 0),
-        contact_views: Number(row.phoneShows ?? 0),
+        impressions: Number(row.shows ?? row.impressions ?? 0),
+        views: Number(row.cardShows ?? row.card_shows ?? row.views ?? row.shows ?? 0),
+        contact_views: Number(row.phoneShows ?? row.phone_shows ?? 0),
         calls: Number(row.calls ?? 0),
       },
     ];
@@ -181,6 +251,203 @@ function preferredFeed(feeds: YandexFeedInfo[]): YandexFeedInfo | null {
     feeds[0] ??
     null
   );
+}
+
+function normalizeMatchKey(value: string): string {
+  return value.trim().replace(/\/+$/, "").toLowerCase().replace(/^https?:\/\/www\./, "https://");
+}
+
+function addMatchKey(map: Map<string, string>, key: string, propertyId: string) {
+  const normalized = normalizeMatchKey(key);
+  if (!normalized || map.has(normalized)) return;
+  map.set(normalized, propertyId);
+}
+
+function pathFromUrl(value: string): string {
+  try {
+    return new URL(value).pathname;
+  } catch {
+    return value.replace(/^https?:\/\/[^/]+/i, "").split("?")[0] ?? "";
+  }
+}
+
+function offerLookupKeys(offer: YandexOffer): string[] {
+  const keys = [...offer.matchKeys, offer.internalId, offer.url];
+  if (UUID_RE.test(offer.id)) keys.push(offer.id);
+  const path = pathFromUrl(offer.url);
+  if (path) {
+    keys.push(path);
+    const ref = path.match(/-(\d+)\/?$/);
+    if (ref) keys.push(`ref:${ref[1]}`);
+  }
+  return keys;
+}
+
+type YandexListingRow = {
+  property_id: string;
+  published: boolean;
+  published_at: string | null;
+  external_id: string;
+  external_url: string;
+};
+
+async function loadYandexIndex() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { propertyPath } = await import("@/lib/seo");
+  const { SITE_ORIGIN } = await import("@/lib/site");
+
+  const [{ data: properties }, { data: listings }] = await Promise.all([
+    supabaseAdmin.from("properties").select("id, title, ref_id"),
+    supabaseAdmin
+      .from("property_listings")
+      .select("property_id, published, published_at, external_id, external_url")
+      .eq("platform", "yandex"),
+  ]);
+
+  const byKey = new Map<string, string>();
+  const byProperty = new Map<string, YandexListingRow>();
+
+  for (const row of (properties ?? []) as { id: string; title: string; ref_id: number }[]) {
+    addMatchKey(byKey, row.id, row.id);
+    addMatchKey(byKey, `ref:${row.ref_id}`, row.id);
+    const path = propertyPath(row);
+    addMatchKey(byKey, path, row.id);
+    addMatchKey(byKey, `${SITE_ORIGIN}${path}`, row.id);
+  }
+  for (const row of (listings ?? []) as YandexListingRow[]) {
+    byProperty.set(row.property_id, row);
+    addMatchKey(byKey, row.property_id, row.property_id);
+    if (row.external_id) addMatchKey(byKey, row.external_id, row.property_id);
+  }
+
+  return { supabaseAdmin, byKey, byProperty };
+}
+
+function resolveYandexPropertyId(offer: YandexOffer, byKey: Map<string, string>): string | null {
+  for (const key of offerLookupKeys(offer)) {
+    const propertyId = byKey.get(normalizeMatchKey(key));
+    if (propertyId && UUID_RE.test(propertyId)) return propertyId;
+  }
+  return null;
+}
+
+type YandexListingPatch = {
+  last_synced_at: string;
+  sync_status: string;
+  sync_error: string;
+  external_url?: string;
+  external_id?: string;
+  published?: boolean;
+  published_at?: string;
+  unpublished_at?: null;
+};
+
+function listingPatch(offer: YandexOffer, now: string, existing?: YandexListingRow): YandexListingPatch {
+  const keepId = existing?.external_id?.trim();
+  const feedId = UUID_RE.test(offer.internalId) ? offer.internalId : "";
+  const yandexCard = /realty\.yandex\./i.test(offer.url);
+  return {
+    last_synced_at: now,
+    sync_status: offer.errors.length ? "error" : "synced",
+    sync_error: offer.errors.join(", "),
+    ...(offer.url && (yandexCard || !existing?.external_url) ? { external_url: offer.url } : {}),
+    ...(!keepId && feedId ? { external_id: feedId } : {}),
+  };
+}
+
+async function upsertMatchedYandexListing(
+  supabaseAdmin: Awaited<ReturnType<typeof loadYandexIndex>>["supabaseAdmin"],
+  propertyId: string,
+  offer: YandexOffer,
+  existing: YandexListingRow | undefined,
+  now: string,
+) {
+  const patch = listingPatch(offer, now, existing);
+  if (existing?.published === false) {
+    await supabaseAdmin.from("property_listings").update(patch).eq("property_id", propertyId).eq("platform", "yandex");
+    return;
+  }
+  await supabaseAdmin.from("property_listings").upsert(
+    {
+      property_id: propertyId,
+      platform: "yandex" as const,
+      published: true,
+      published_at: existing?.published_at || now,
+      unpublished_at: null,
+      external_id: existing?.external_id || (UUID_RE.test(offer.internalId) ? offer.internalId : propertyId),
+      external_url: patch.external_url ?? existing?.external_url ?? "",
+      last_synced_at: patch.last_synced_at,
+      sync_status: patch.sync_status,
+      sync_error: patch.sync_error,
+    },
+    { onConflict: "property_id,platform" },
+  );
+}
+
+/**
+ * Создаёт записи Яндекса для объектов, которые уже в XML-фиде,
+ * но ещё не отмечены опубликованными в RM OS.
+ */
+export async function ensureYandexFeedListings(): Promise<number> {
+  const { computeYandexFeedSelection } = await import("@/lib/yandex-feed.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const selection = await computeYandexFeedSelection();
+  const now = new Date().toISOString();
+  const { data: existing } = await supabaseAdmin
+    .from("property_listings")
+    .select("property_id, published, published_at, external_id, external_url")
+    .eq("platform", "yandex");
+  const byProperty = new Map(((existing ?? []) as YandexListingRow[]).map((row) => [row.property_id, row]));
+
+  const rows = selection.included.flatMap(({ property, externalId }) => {
+    const current = byProperty.get(property.id);
+    if (current?.published === false) return [];
+    return [
+      {
+        property_id: property.id,
+        platform: "yandex" as const,
+        published: true,
+        published_at: current?.published_at || now,
+        unpublished_at: null,
+        external_id: current?.external_id || externalId,
+        external_url: current?.external_url || "",
+        last_synced_at: now,
+        sync_status: current ? undefined : "in_feed",
+        sync_error: current ? undefined : "",
+      },
+    ];
+  });
+
+  const toInsert = rows.filter((row) => !byProperty.has(row.property_id));
+  const toPublish = rows.filter((row) => {
+    const current = byProperty.get(row.property_id);
+    return current && current.published !== true;
+  });
+
+  if (toInsert.length > 0) {
+    const { error } = await supabaseAdmin.from("property_listings").upsert(
+      toInsert.map((row) => ({
+        ...row,
+        sync_status: row.sync_status ?? "in_feed",
+        sync_error: row.sync_error ?? "",
+      })),
+      { onConflict: "property_id,platform" },
+    );
+    if (error) throw new Error(error.message);
+  }
+  for (const row of toPublish) {
+    await supabaseAdmin
+      .from("property_listings")
+      .update({
+        published: true,
+        published_at: row.published_at,
+        unpublished_at: null,
+        last_synced_at: now,
+      })
+      .eq("property_id", row.property_id)
+      .eq("platform", "yandex");
+  }
+  return toInsert.length + toPublish.length;
 }
 
 export type YandexStatusSnapshot = {
@@ -201,6 +468,7 @@ export async function loadYandexFeedStatus(): Promise<
   const cfg = await readYandexConfig();
   if (!cfg) return { configured: false, oauthUrl: YANDEX_OAUTH_URL, feedUrl: YANDEX_FEED_URL };
 
+  await ensureYandexFeedListings();
   const feeds = await fetchYandexFeeds(cfg);
   const feed = preferredFeed(feeds);
   const offers = await fetchYandexOffers(cfg, feed?.id ? { feedId: feed.id } : {});
@@ -218,27 +486,12 @@ export async function loadYandexFeedStatus(): Promise<
     }
   }
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { byKey, byProperty, supabaseAdmin } = await loadYandexIndex();
   const now = new Date().toISOString();
   for (const offer of offers) {
-    if (!offer.internalId) continue;
-    const patch = {
-      last_synced_at: now,
-      sync_status: offer.errors.length ? "error" : "synced",
-      sync_error: offer.errors.join(", "),
-      ...(offer.url ? { external_url: offer.url } : {}),
-      ...(offer.id ? { external_id: offer.internalId } : {}),
-    };
-    await supabaseAdmin
-      .from("property_listings")
-      .update(patch)
-      .eq("platform", "yandex")
-      .eq("external_id", offer.internalId);
-    await supabaseAdmin
-      .from("property_listings")
-      .update(patch)
-      .eq("platform", "yandex")
-      .eq("property_id", offer.internalId);
+    const propertyId = resolveYandexPropertyId(offer, byKey);
+    if (!propertyId) continue;
+    await upsertMatchedYandexListing(supabaseAdmin, propertyId, offer, byProperty.get(propertyId), now);
   }
 
   return {
@@ -274,38 +527,27 @@ export async function syncYandexListingStats(days = 30): Promise<
   const cfg = await readYandexConfig();
   if (!cfg) return { configured: false, oauthUrl: YANDEX_OAUTH_URL, feedUrl: YANDEX_FEED_URL };
 
+  await ensureYandexFeedListings();
+
   const safeDays = [7, 30, 90].includes(days) ? days : 30;
   const to = new Date();
   const from = new Date(to.getTime() - (safeDays - 1) * 86_400_000);
   const iso = (value: Date) => value.toISOString().slice(0, 10);
 
   const offers = await fetchYandexOffers(cfg);
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: listings } = await supabaseAdmin
-    .from("property_listings")
-    .select("property_id, external_id")
-    .eq("platform", "yandex");
-  const { data: properties } = await supabaseAdmin.from("properties").select("id");
-  const byExternal = new Map<string, string>();
-  for (const row of (properties ?? []) as { id: string }[]) {
-    byExternal.set(row.id, row.id);
-  }
-  for (const row of (listings ?? []) as { property_id: string; external_id: string }[]) {
-    if (row.external_id) byExternal.set(row.external_id, row.property_id);
-    byExternal.set(row.property_id, row.property_id);
-  }
+  const { supabaseAdmin, byKey, byProperty } = await loadYandexIndex();
 
   const summary: { externalId: string; views: number; calls: number }[] = [];
   let synced = 0;
 
   for (const offer of offers) {
-    const propertyId = byExternal.get(offer.internalId) ?? byExternal.get(offer.id);
-    if (!propertyId || !/^[0-9a-f-]{36}$/i.test(propertyId) || !offer.id) continue;
+    const propertyId = resolveYandexPropertyId(offer, byKey);
+    if (!propertyId || !offer.id) continue;
     let daysStats: YandexDayStat[] = [];
     try {
       daysStats = await fetchYandexOfferStats(cfg, offer.id, from, to);
     } catch {
-      continue;
+      daysStats = [];
     }
     if (daysStats.length > 0) {
       await supabaseAdmin.from("listing_stats").upsert(
@@ -323,16 +565,7 @@ export async function syncYandexListingStats(days = 30): Promise<
         { onConflict: "property_id,platform,date" },
       );
     }
-    await supabaseAdmin
-      .from("property_listings")
-      .update({
-        last_synced_at: new Date().toISOString(),
-        sync_status: offer.errors.length ? "error" : "synced",
-        sync_error: offer.errors.join(", "),
-        ...(offer.url ? { external_url: offer.url } : {}),
-      })
-      .eq("property_id", propertyId)
-      .eq("platform", "yandex");
+    await upsertMatchedYandexListing(supabaseAdmin, propertyId, offer, byProperty.get(propertyId), new Date().toISOString());
     const views = daysStats.reduce((sum, day) => sum + day.views, 0);
     const calls = daysStats.reduce((sum, day) => sum + day.calls, 0);
     summary.push({ externalId: offer.internalId || offer.id, views, calls });

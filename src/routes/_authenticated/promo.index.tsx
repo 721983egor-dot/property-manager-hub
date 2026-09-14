@@ -17,8 +17,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PLATFORMS, fetchListings, type ListingPlatform } from "@/lib/listings";
-import { getPromoBoard, getPromoOverview, type PlatformTotals } from "@/lib/promo-stats.functions";
+import { PLATFORMS, fetchListings, isPlatformPublished, type ListingPlatform, type PropertyListing } from "@/lib/listings";
+import { getPromoBoard, getPromoFeedFlags, getPromoOverview, type PlatformTotals } from "@/lib/promo-stats.functions";
 import {
   fetchProperties,
   formatMoney,
@@ -104,6 +104,7 @@ function PromoListPage() {
   const [viewSort, setViewSort] = useState<ViewSort>("views_desc");
   const loadBoard = useServerFn(getPromoBoard);
   const loadOverview = useServerFn(getPromoOverview);
+  const loadFeedFlags = useServerFn(getPromoFeedFlags);
   const range = PERIODS.find((item) => item.key === period)!;
   const dates = periodRange(range.days);
 
@@ -115,6 +116,10 @@ function PromoListPage() {
     queryKey: ["property-listings"],
     queryFn: fetchListings,
   });
+  const { data: feedFlags } = useQuery({
+    queryKey: ["promo-feed-flags"],
+    queryFn: () => loadFeedFlags(),
+  });
   const { data: board = {} } = useQuery({
     queryKey: ["promo-board", dates.from, dates.to],
     queryFn: () => loadBoard({ data: dates }),
@@ -125,10 +130,10 @@ function PromoListPage() {
   });
 
   const listingMap = useMemo(() => {
-    const map = new Map<string, Partial<Record<ListingPlatform, { published: boolean }>>>();
+    const map = new Map<string, Partial<Record<ListingPlatform, PropertyListing>>>();
     for (const listing of listings) {
       const entry = map.get(listing.property_id) ?? {};
-      entry[listing.platform] = { published: listing.published };
+      entry[listing.platform] = listing;
       map.set(listing.property_id, entry);
     }
     return map;
@@ -144,7 +149,9 @@ function PromoListPage() {
     const rows = active.filter((property) => {
       const entry = listingMap.get(property.id) ?? {};
       if (filter === "site" && !property.published) return false;
-      if (filter !== "all" && filter !== "site" && !entry[filter]?.published) return false;
+      if (filter !== "all" && filter !== "site" && !isPlatformPublished(property, filter, entry[filter], feedFlags)) {
+        return false;
+      }
       if (!query) return true;
       return (
         internalTitle(property).toLowerCase().includes(query) ||
@@ -159,7 +166,7 @@ function PromoListPage() {
       return internalTitle(left).localeCompare(internalTitle(right), "ru");
     });
     return rows;
-  }, [active, board, filter, listingMap, search, viewSort]);
+  }, [active, board, feedFlags, filter, listingMap, search, viewSort]);
 
   const paths = active.map((property) => property.photos?.[0]?.path).filter(Boolean) as string[];
   const { data: urls = {} } = useQuery({
@@ -350,10 +357,12 @@ function PromoListPage() {
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     {PLATFORM_CARDS.map((platform) => {
-                      const published =
-                        platform.value === "site"
-                          ? property.published
-                          : Boolean(entry[platform.value]?.published);
+                      const published = isPlatformPublished(
+                        property,
+                        platform.value,
+                        entry[platform.value],
+                        feedFlags,
+                      );
                       const platformTotals = stats?.[platform.value] ?? EMPTY;
                       return (
                         <div key={platform.value} className="rounded-lg border border-border p-2.5">

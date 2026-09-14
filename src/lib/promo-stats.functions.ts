@@ -18,6 +18,12 @@ export type PlatformTotals = {
 
 export type PromoBoard = Record<string, Record<ListingPlatform, PlatformTotals>>;
 
+export type PromoFeedFlags = {
+  avito: boolean;
+  cian: boolean;
+  yandex: boolean;
+};
+
 export type PlatformDay = {
   date: string;
   total_views: number;
@@ -150,6 +156,20 @@ export const getPromoBoard = createServerFn({ method: "POST" })
 
     return board;
   });
+
+/** Флаги автопубликации фидов — объекты без явной записи всё равно могут быть на площадке. */
+export const getPromoFeedFlags = createServerFn({ method: "GET" }).handler(async (): Promise<PromoFeedFlags> => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.from("platform_credentials").select("platform, auto_publish");
+  if (error) throw new Error(error.message);
+  const flags: PromoFeedFlags = { avito: false, cian: false, yandex: false };
+  for (const row of data ?? []) {
+    if (row.platform === "avito" || row.platform === "cian" || row.platform === "yandex") {
+      flags[row.platform] = Boolean(row.auto_publish);
+    }
+  }
+  return flags;
+});
 
 /** Общая статистика просмотров Резиденции Море по дням — без номеров Н11. */
 export const getPromoOverview = createServerFn({ method: "POST" })

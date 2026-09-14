@@ -19,8 +19,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { setAvitoPublished } from "@/lib/avito.functions";
 import { setCianPublished, syncCianStats } from "@/lib/cian.functions";
-import { PLATFORMS, fetchPropertyListings, setSitePublished, type ListingPlatform } from "@/lib/listings";
+import { PLATFORMS, fetchPropertyListings, isPlatformPublished, setSitePublished, type ListingPlatform } from "@/lib/listings";
 import {
+  getPromoFeedFlags,
   getPropertyPlatformStats,
   getPropertyPromoMessages,
   refreshAvitoStats,
@@ -91,6 +92,7 @@ function PromoDetailPage() {
   const syncAvito = useServerFn(refreshAvitoStats);
   const syncYandex = useServerFn(refreshYandexStats);
   const loadMessages = useServerFn(getPropertyPromoMessages);
+  const loadFeedFlags = useServerFn(getPromoFeedFlags);
 
   const days = RANGES.find((item) => item.key === rangeKey)!.days;
   const to = toISODate(new Date());
@@ -103,6 +105,10 @@ function PromoDetailPage() {
   const { data: listings = [] } = useQuery({
     queryKey: ["property-listings", id],
     queryFn: () => fetchPropertyListings(id),
+  });
+  const { data: feedFlags } = useQuery({
+    queryKey: ["promo-feed-flags"],
+    queryFn: () => loadFeedFlags(),
   });
   const { data: showings = [] } = useQuery({
     queryKey: ["property-showings", id],
@@ -190,6 +196,10 @@ function PromoDetailPage() {
         throw failed.reason;
       }
       await qc.invalidateQueries({ queryKey: ["property-platform-stats", id] });
+      await qc.invalidateQueries({ queryKey: ["property-listings", id] });
+      await qc.invalidateQueries({ queryKey: ["property-listings"] });
+      await qc.invalidateQueries({ queryKey: ["promo-board"] });
+      await qc.invalidateQueries({ queryKey: ["promo-overview"] });
       await refetchMessages();
       toast.success("Статистика обновлена");
     } catch (e) {
@@ -240,8 +250,9 @@ function PromoDetailPage() {
       <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {PLATFORMS.map((platform) => {
           const row = listings.find((listing) => listing.platform === platform.value);
-          const published =
-            platform.value === "site" ? Boolean(property?.published) : Boolean(row?.published);
+          const published = property
+            ? isPlatformPublished(property, platform.value, row, feedFlags)
+            : Boolean(row?.published);
           const totals = series?.totals[platform.value];
               const thirdLabel = platform.value === "site" ? "Заявки" : "В избранном";
           const thirdValue = platform.value === "site" ? totals?.leads ?? 0 : totals?.favorites ?? 0;

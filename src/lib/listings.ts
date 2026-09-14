@@ -1,4 +1,8 @@
+import { missingAvitoFields } from "@/lib/avito";
+import { missingCianFields } from "@/lib/cian";
 import { supabase } from "@/integrations/supabase/client";
+import type { Property } from "@/lib/properties";
+import { missingYandexFields } from "@/lib/yandex";
 
 export type ListingPlatform = "site" | "avito" | "cian" | "yandex";
 
@@ -33,6 +37,38 @@ export const PLATFORMS: {
 
 export function platformLabel(value: ListingPlatform) {
   return PLATFORMS.find((p) => p.value === value)?.label ?? value;
+}
+
+/**
+ * Объект в фиде площадки: явная публикация, либо автопубликация
+ * при заполненных обязательных полях. Явное «снять» всегда сильнее.
+ */
+export function isFeedPublished(
+  listing: Pick<PropertyListing, "published"> | undefined,
+  autoPublish: boolean,
+  ready: boolean,
+): boolean {
+  if (listing?.published === false) return false;
+  if (listing?.published === true) return true;
+  return autoPublish && ready;
+}
+
+export function feedPlatformReady(property: Property, platform: ListingPlatform): boolean {
+  if (platform === "site") return true;
+  if (platform === "yandex") return missingYandexFields(property).length === 0;
+  if (platform === "cian") return missingCianFields(property).length === 0;
+  if (platform === "avito") return missingAvitoFields(property).length === 0;
+  return false;
+}
+
+export function isPlatformPublished(
+  property: Property,
+  platform: ListingPlatform,
+  listing: Pick<PropertyListing, "published"> | undefined,
+  autoPublish: Partial<Record<Exclude<ListingPlatform, "site">, boolean>> | undefined,
+): boolean {
+  if (platform === "site") return Boolean(property.published);
+  return isFeedPublished(listing, Boolean(autoPublish?.[platform]), feedPlatformReady(property, platform));
 }
 
 
