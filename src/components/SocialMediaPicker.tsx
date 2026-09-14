@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { SocialPhotoCropper } from "@/components/SocialPhotoCropper";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { cropAndCompressPhoto, readImageSize, readVideoMeta } from "@/lib/social-media.client";
+import { cropAndCompressPhoto, readImageSize, readVideoMeta } from "@/lib/social-media-browser";
 import {
   SOCIAL_MEDIA_MAX_ITEMS,
   VIDEO_MAX_SECONDS,
