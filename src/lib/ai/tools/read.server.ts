@@ -804,24 +804,48 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getListingStats: tool({
       description:
-        "Статистика площадок: показы, просмотры, звонки, сообщения, избранное за N дней по площадкам и объектам.",
+        "Статистика публикаций Резиденции Море (без Н11): просмотры, обращения и сообщения Авито/ЦИАН за N дней. Раздел «Публикация и реклама».",
       inputSchema: z.object({ days: z.number().optional(), ref: z.string().optional() }),
       execute: async ({ days, ref }) => {
         const period = days && days > 0 ? days : 30;
+        const since = dateOnly(daysAgoISO(period));
+        const { data: hotelRows } = await admin.from("properties").select("id").eq("portfolio", "n11" as never);
+        const hotelIds = new Set((hotelRows ?? []).map((row) => row.id));
+        let propertyId: string | undefined;
+        if (ref) {
+          const property = await ctx.findProperty(ref);
+          if (!property) return { error: "Объект не найден" };
+          propertyId = property["id"] as string;
+        }
         let q = admin
           .from("listing_stats")
           .select("property_id, platform, date, views, calls, messages, impressions, favorites")
-          .gte("date", dateOnly(daysAgoISO(period)));
-        if (ref) {
-          const p = await ctx.findProperty(ref);
-          if (!p) return { error: "Объект не найден" };
-          q = q.eq("property_id", p["id"] as string);
-        }
+          .gte("date", since);
+        if (propertyId) q = q.eq("property_id", propertyId);
         const { data, error } = await q;
         if (error) return { error: error.message };
+
+        let msgQuery = admin
+          .from("listing_messages")
+          .select("property_id, platform")
+          .in("platform", ["avito", "cian"])
+          .gte("sent_at", `${since}T00:00:00.000Z`);
+        if (propertyId) msgQuery = msgQuery.eq("property_id", propertyId);
+        const { data: listingMessages } = await msgQuery.limit(2000);
+
+        const chatCounts: Record<string, { avito: number; cian: number }> = {};
+        for (const row of listingMessages ?? []) {
+          const id = String(row.property_id);
+          if (hotelIds.has(id)) continue;
+          const bucket = (chatCounts[id] ??= { avito: 0, cian: 0 });
+          if (row.platform === "avito") bucket.avito += 1;
+          if (row.platform === "cian") bucket.cian += 1;
+        }
+
         const byPlatform: Record<string, { views: number; calls: number; messages: number }> = {};
         const byProperty: Record<string, { views: number; calls: number; messages: number }> = {};
         for (const r of data ?? []) {
+          if (hotelIds.has(r.property_id)) continue;
           const s = (byPlatform[r.platform] ??= { views: 0, calls: 0, messages: 0 });
           s.views += r.views ?? 0;
           s.calls += r.calls ?? 0;
@@ -831,12 +855,22 @@ export function createReadTools(ctx: AssistantToolContext) {
           p.calls += r.calls ?? 0;
           p.messages += r.messages ?? 0;
         }
+        for (const [id, counts] of Object.entries(chatCounts)) {
+          const p = (byProperty[id] ??= { views: 0, calls: 0, messages: 0 });
+          p.messages = Math.max(p.messages, counts.avito + counts.cian);
+        }
         const names = await nameMap(Object.keys(byProperty));
         return {
           periodDays: period,
+          chatMessages: chatCounts,
           byPlatform,
           byProperty: Object.entries(byProperty)
-            .map(([id, s]) => ({ property: names.get(id) ?? id, ...s }))
+            .map(([id, s]) => ({
+              property: names.get(id) ?? id,
+              ...s,
+              avitoMessages: chatCounts[id]?.avito ?? 0,
+              cianMessages: chatCounts[id]?.cian ?? 0,
+            }))
             .sort((a, b) => b.views - a.views)
             .slice(0, 40),
         };

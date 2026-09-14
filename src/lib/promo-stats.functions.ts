@@ -12,6 +12,7 @@ export type PlatformTotals = {
   contacts: number;
   favorites: number;
   leads: number;
+  messages: number;
   hasData: boolean;
 };
 
@@ -19,6 +20,7 @@ export type PromoBoard = Record<string, Record<ListingPlatform, PlatformTotals>>
 
 export type PlatformDay = {
   date: string;
+  total_views: number;
   site_views: number;
   site_contacts: number;
   avito_views: number;
@@ -34,8 +36,13 @@ export type PropertyPlatformStats = {
   totals: Record<ListingPlatform, PlatformTotals>;
 };
 
+export type PromoOverview = {
+  days: PlatformDay[];
+  totals: Record<ListingPlatform | "all", PlatformTotals>;
+};
+
 function emptyTotals(): PlatformTotals {
-  return { views: 0, contacts: 0, favorites: 0, leads: 0, hasData: false };
+  return { views: 0, contacts: 0, favorites: 0, leads: 0, messages: 0, hasData: false };
 }
 
 function emptyBoardRow(): Record<ListingPlatform, PlatformTotals> {
@@ -67,6 +74,7 @@ function eachDate(from: string, to: string): string[] {
 function emptyDay(date: string): PlatformDay {
   return {
     date,
+    total_views: 0,
     site_views: 0,
     site_contacts: 0,
     avito_views: 0,
@@ -76,6 +84,19 @@ function emptyDay(date: string): PlatformDay {
     yandex_views: 0,
     yandex_contacts: 0,
   };
+}
+
+function fillTotalViews(days: Iterable<PlatformDay>) {
+  for (const day of days) {
+    day.total_views = day.site_views + day.avito_views + day.cian_views + day.yandex_views;
+  }
+}
+
+async function n11PropertyIds() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.from("properties").select("id").eq("portfolio", "n11" as never);
+  if (error) throw new Error(error.message);
+  return new Set((data ?? []).map((row) => row.id));
 }
 
 /** Сводка просмотров и обращений по всем объектам — для карточек публикаций. */
@@ -90,6 +111,8 @@ export const getPromoBoard = createServerFn({ method: "POST" })
       return board[propertyId];
     };
 
+    const hotelIds = await n11PropertyIds();
+
     const { data: stats, error: statsError } = await supabaseAdmin
       .from("listing_stats")
       .select("property_id, platform, views, contact_views, favorites")
@@ -98,6 +121,7 @@ export const getPromoBoard = createServerFn({ method: "POST" })
     if (statsError) throw new Error(statsError.message);
 
     for (const row of stats ?? []) {
+      if (hotelIds.has(row.property_id)) continue;
       const platform = row.platform as ListingPlatform;
       if (!PLATFORMS.includes(platform) || platform === "site") continue;
       const bucket = ensure(row.property_id)[platform];
@@ -116,6 +140,7 @@ export const getPromoBoard = createServerFn({ method: "POST" })
     if (eventsError) throw new Error(eventsError.message);
 
     for (const row of events ?? []) {
+      if (hotelIds.has(row.property_id)) continue;
       const bucket = ensure(row.property_id).site;
       if (row.event_type === "page_view") bucket.views += 1;
       if (row.event_type === "contact_click") bucket.contacts += 1;
@@ -124,6 +149,80 @@ export const getPromoBoard = createServerFn({ method: "POST" })
     }
 
     return board;
+  });
+
+/** Общая статистика просмотров Резиденции Море по дням — без номеров Н11. */
+export const getPromoOverview = createServerFn({ method: "POST" })
+  .inputValidator(range)
+  .handler(async ({ data }): Promise<PromoOverview> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const hotelIds = await n11PropertyIds();
+    const byDay = new Map(eachDate(data.from, data.to).map((date) => [date, emptyDay(date)]));
+    const totals: PromoOverview["totals"] = {
+      all: emptyTotals(),
+      ...emptyBoardRow(),
+    };
+
+    const { data: stats, error: statsError } = await supabaseAdmin
+      .from("listing_stats")
+      .select("property_id, platform, date, views, contact_views, favorites")
+      .gte("date", data.from)
+      .lte("date", data.to);
+    if (statsError) throw new Error(statsError.message);
+
+    for (const row of stats ?? []) {
+      if (hotelIds.has(row.property_id)) continue;
+      const platform = row.platform as Exclude<ListingPlatform, "site">;
+      if (platform !== "avito" && platform !== "cian" && platform !== "yandex") continue;
+      const day = byDay.get(String(row.date).slice(0, 10));
+      if (!day) continue;
+      const views = row.views ?? 0;
+      const contacts = row.contact_views ?? 0;
+      day[`${platform}_views`] += views;
+      day[`${platform}_contacts`] += contacts;
+      totals[platform].views += views;
+      totals[platform].contacts += contacts;
+      totals[platform].favorites += row.favorites ?? 0;
+      totals[platform].hasData = true;
+    }
+
+    const { data: events, error: eventsError } = await supabaseAdmin
+      .from("property_events")
+      .select("property_id, event_type, occurred_at")
+      .in("event_type", ["page_view", "contact_click", "lead_submit"])
+      .gte("occurred_at", `${data.from}T00:00:00.000Z`)
+      .lte("occurred_at", `${data.to}T23:59:59.999Z`)
+      .limit(50_000);
+    if (eventsError) throw new Error(eventsError.message);
+
+    for (const row of events ?? []) {
+      if (hotelIds.has(row.property_id)) continue;
+      const day = byDay.get(String(row.occurred_at).slice(0, 10));
+      if (!day) continue;
+      if (row.event_type === "page_view") {
+        day.site_views += 1;
+        totals.site.views += 1;
+        totals.site.hasData = true;
+      }
+      if (row.event_type === "contact_click") {
+        day.site_contacts += 1;
+        totals.site.contacts += 1;
+        totals.site.hasData = true;
+      }
+      if (row.event_type === "lead_submit") {
+        totals.site.leads += 1;
+        totals.site.hasData = true;
+      }
+    }
+
+    fillTotalViews(byDay.values());
+    totals.all.views = totals.site.views + totals.avito.views + totals.cian.views + totals.yandex.views;
+    totals.all.contacts =
+      totals.site.contacts + totals.avito.contacts + totals.cian.contacts + totals.yandex.contacts;
+    totals.all.hasData =
+      totals.site.hasData || totals.avito.hasData || totals.cian.hasData || totals.yandex.hasData;
+
+    return { days: [...byDay.values()], totals };
   });
 
 /** Подтягивает свежую статистику Авито по уже связанным объявлениям. */
@@ -209,8 +308,56 @@ export const getPropertyPlatformStats = createServerFn({ method: "POST" })
       }
     }
 
+    const { loadMergedPropertyMessages } = await import("@/lib/listing-messages.server");
+    const messages = await loadMergedPropertyMessages(data.propertyId, {
+      from: data.from,
+      to: data.to,
+    });
+    totals.avito.messages = messages.avito.length;
+    totals.cian.messages = messages.cian.length;
+    if (messages.avito.length > 0) totals.avito.hasData = true;
+    if (messages.cian.length > 0) totals.cian.hasData = true;
+
+    fillTotalViews(byDay.values());
+
     return {
       days: [...byDay.values()],
       totals,
+    };
+  });
+
+export type PropertyPromoMessages = {
+  avito: { messages: PlatformMessage[]; error: string };
+  cian: { messages: PlatformMessage[]; error: string };
+};
+
+type PlatformMessage = {
+  id: string;
+  author: string;
+  direction: string;
+  body: string;
+  sent_at: string;
+};
+
+/** История сообщений Авито и ЦИАН по объекту: сначала API площадки, затем сохранённые чаты. */
+export const getPropertyPromoMessages = createServerFn({ method: "POST" })
+  .inputValidator((input: { propertyId: string }) => {
+    if (!input || !UUID_RE.test(input.propertyId)) throw new Error("Некорректный объект");
+    return { propertyId: input.propertyId };
+  })
+  .handler(async ({ data }): Promise<PropertyPromoMessages> => {
+    const {
+      pullAvitoListingMessages,
+      pullCianListingMessages,
+      loadMergedPropertyMessages,
+    } = await import("@/lib/listing-messages.server");
+    const [avitoPull, cianPull] = await Promise.all([
+      pullAvitoListingMessages(data.propertyId),
+      pullCianListingMessages(data.propertyId),
+    ]);
+    const stored = await loadMergedPropertyMessages(data.propertyId, { limit: 50 });
+    return {
+      avito: { messages: stored.avito, error: avitoPull.error },
+      cian: { messages: stored.cian, error: cianPull.error },
     };
   });

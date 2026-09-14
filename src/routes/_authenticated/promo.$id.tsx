@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ExternalLink, Globe, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronLeft, ExternalLink, Globe, RefreshCw } from "lucide-react";
 import {
   CartesianGrid,
   Legend,
@@ -18,9 +18,15 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { setAvitoPublished } from "@/lib/avito.functions";
-import { setCianPublished, syncCianMessages, syncCianStats } from "@/lib/cian.functions";
+import { setCianPublished, syncCianStats } from "@/lib/cian.functions";
 import { PLATFORMS, fetchPropertyListings, setSitePublished, type ListingPlatform } from "@/lib/listings";
-import { getPropertyPlatformStats, refreshAvitoStats, refreshYandexStats, type PlatformDay } from "@/lib/promo-stats.functions";
+import {
+  getPropertyPlatformStats,
+  getPropertyPromoMessages,
+  refreshAvitoStats,
+  refreshYandexStats,
+  type PlatformDay,
+} from "@/lib/promo-stats.functions";
 import { fetchProperty, internalTitle } from "@/lib/properties";
 import { fetchDealStages, fetchPropertyDeals, fetchPropertyShowings, formatBudget } from "@/lib/deals";
 import { fetchCrmClients } from "@/lib/clients";
@@ -81,10 +87,10 @@ function PromoDetailPage() {
   const setCian = useServerFn(setCianPublished);
   const setYandex = useServerFn(setYandexPublished);
   const loadSeries = useServerFn(getPropertyPlatformStats);
-  const syncCian = useServerFn(syncCianStats);
+  const loadCian = useServerFn(syncCianStats);
   const syncAvito = useServerFn(refreshAvitoStats);
   const syncYandex = useServerFn(refreshYandexStats);
-  const loadCianMessages = useServerFn(syncCianMessages);
+  const loadMessages = useServerFn(getPropertyPromoMessages);
 
   const days = RANGES.find((item) => item.key === rangeKey)!.days;
   const to = toISODate(new Date());
@@ -126,9 +132,13 @@ function PromoDetailPage() {
     queryKey: ["property-platform-stats", id, from, to],
     queryFn: () => loadSeries({ data: { propertyId: id, from, to } }),
   });
-  const { data: cianMessages, refetch: refetchMessages } = useQuery({
-    queryKey: ["cian-messages", id],
-    queryFn: () => loadCianMessages({ data: { propertyId: id } }),
+  const { data: inbox, refetch: refetchMessages } = useQuery({
+    queryKey: ["promo-messages", id],
+    queryFn: async () => {
+      const result = await loadMessages({ data: { propertyId: id } });
+      await qc.invalidateQueries({ queryKey: ["property-platform-stats", id] });
+      return result;
+    },
   });
 
   const stageById = new Map(dealStages.map((stage) => [stage.id, stage]));
@@ -172,7 +182,7 @@ function PromoDetailPage() {
     try {
       const results = await Promise.allSettled([
         syncAvito({}),
-        syncCian({ data: { propertyId: id, from, to } }),
+        loadCian({ data: { propertyId: id, from, to } }),
         syncYandex({}),
       ]);
       const failed = results.find((result) => result.status === "rejected");
@@ -233,8 +243,9 @@ function PromoDetailPage() {
           const published =
             platform.value === "site" ? Boolean(property?.published) : Boolean(row?.published);
           const totals = series?.totals[platform.value];
-          const thirdLabel = platform.value === "site" ? "Заявки" : "В избранном";
+              const thirdLabel = platform.value === "site" ? "Заявки" : "В избранном";
           const thirdValue = platform.value === "site" ? totals?.leads ?? 0 : totals?.favorites ?? 0;
+          const withMessages = platform.value === "avito" || platform.value === "cian";
           return (
             <article key={platform.value} className="flex min-h-[220px] flex-col rounded-xl border border-border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
@@ -255,10 +266,11 @@ function PromoDetailPage() {
                   ? `с ${new Date(row.published_at).toLocaleDateString("ru-RU")}`
                   : " "}
               </p>
-              <dl className="mt-3 grid grid-cols-3 gap-2">
+              <dl className={"mt-3 grid gap-2 " + (withMessages ? "grid-cols-2" : "grid-cols-3")}>
                 <Metric label="Просмотры" value={totals?.views ?? 0} compact />
                 <Metric label="Обращения" value={totals?.contacts ?? 0} compact />
                 <Metric label={thirdLabel} value={thirdValue} compact />
+                {withMessages ? <Metric label="Сообщения" value={totals?.messages ?? 0} compact /> : null}
               </dl>
               <div className="mt-auto flex gap-2 pt-4">
                 <PlatformAction
@@ -455,24 +467,17 @@ function PromoDetailPage() {
         )}
       </section>
 
-      <section className="mt-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="text-base font-semibold">Сообщения ЦИАН</h2>
-        {cianMessages?.messages?.length ? (
-          <ul className="mt-4 space-y-2">
-            {cianMessages.messages.map((message) => (
-              <li key={message.id} className="rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">
-                  {message.author} · {new Date(message.sent_at).toLocaleString("ru-RU")}
-                </p>
-                <p className="mt-1 text-sm">{message.body}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            {cianMessages?.error || "Сообщений пока нет"}
-          </p>
-        )}
+      <section className="mt-6 grid gap-6 lg:grid-cols-2">
+        <MessageHistoryCard
+          title="Сообщения ЦИАН"
+          messages={inbox?.cian.messages ?? []}
+          error={inbox?.cian.messages.length ? "" : inbox?.cian.error}
+        />
+        <MessageHistoryCard
+          title="Сообщения Авито"
+          messages={inbox?.avito.messages ?? []}
+          error={inbox?.avito.messages.length ? "" : inbox?.avito.error}
+        />
       </section>
     </div>
   );
@@ -491,6 +496,59 @@ function chartLinesFor(platform: ChartPlatform): { key: keyof PlatformDay; label
     { key: `${platform}_views`, label: "Просмотры", color: LINE_COLOR[platform] },
     { key: `${platform}_contacts`, label: "Обращения", color: "#16a34a" },
   ];
+}
+
+const PREVIEW_COUNT = 3;
+
+function MessageHistoryCard({
+  title,
+  messages,
+  error,
+}: {
+  title: string;
+  messages: { id: string; author: string; direction: string; body: string; sent_at: string }[];
+  error?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const preview = messages.slice(0, PREVIEW_COUNT);
+  const rest = messages.slice(PREVIEW_COUNT);
+  const visible = open ? messages : preview;
+
+  return (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold">{title}</h2>
+        {messages.length > 0 ? (
+          <p className="text-xs text-muted-foreground">{messages.length}</p>
+        ) : null}
+      </div>
+      {visible.length > 0 ? (
+        <ul className="mt-4 space-y-2">
+          {visible.map((message) => (
+            <li key={message.id} className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">
+                {message.direction === "out" ? "Мы" : message.author || "Клиент"} ·{" "}
+                {new Date(message.sent_at).toLocaleString("ru-RU")}
+              </p>
+              <p className={open ? "mt-1 text-sm" : "mt-1 line-clamp-2 text-sm"}>{message.body}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">{error || "Сообщений пока нет"}</p>
+      )}
+      {rest.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ChevronDown className={"size-4 transition-transform " + (open ? "rotate-180" : "")} />
+          {open ? "Свернуть" : `Показать все (${messages.length})`}
+        </button>
+      ) : null}
+    </section>
+  );
 }
 
 function PlatformAction({

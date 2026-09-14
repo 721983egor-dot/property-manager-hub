@@ -4,11 +4,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { BarChart3, Download, Link2, Search } from "lucide-react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PLATFORMS, fetchListings, type ListingPlatform } from "@/lib/listings";
-import { getPromoBoard, type PlatformTotals } from "@/lib/promo-stats.functions";
+import { getPromoBoard, getPromoOverview, type PlatformTotals } from "@/lib/promo-stats.functions";
 import {
   fetchProperties,
   formatMoney,
@@ -35,15 +45,44 @@ export const Route = createFileRoute("/_authenticated/promo/")({
   ),
 });
 
-type Filter = "all" | "published" | "unpublished";
-type Period = "7" | "30";
+type PublishFilter = "all" | ListingPlatform;
+type Period = "7" | "30" | "90";
+type ChartSeries = "total" | "platforms" | ListingPlatform;
 
 const PERIODS: { key: Period; label: string; days: number }[] = [
   { key: "7", label: "7 дней", days: 7 },
   { key: "30", label: "30 дней", days: 30 },
+  { key: "90", label: "90 дней", days: 90 },
 ];
 
-const EMPTY: PlatformTotals = { views: 0, contacts: 0, favorites: 0, leads: 0, hasData: false };
+const PUBLISH_FILTERS: { key: PublishFilter; label: string }[] = [
+  { key: "all", label: "Все" },
+  { key: "site", label: "Сайт" },
+  { key: "avito", label: "Авито" },
+  { key: "cian", label: "ЦИАН" },
+  { key: "yandex", label: "Яндекс" },
+];
+
+const LINE_COLOR: Record<ListingPlatform, string> = {
+  site: "hsl(var(--primary))",
+  avito: "#2563eb",
+  cian: "#0284c7",
+  yandex: "#d97706",
+};
+
+const PLATFORM_ORDER: ListingPlatform[] = ["site", "avito", "cian", "yandex"];
+const PLATFORM_CARDS = [...PLATFORMS].sort(
+  (a, b) => PLATFORM_ORDER.indexOf(a.value) - PLATFORM_ORDER.indexOf(b.value),
+);
+
+const EMPTY: PlatformTotals = {
+  views: 0,
+  contacts: 0,
+  favorites: 0,
+  leads: 0,
+  messages: 0,
+  hasData: false,
+};
 
 function periodRange(days: number) {
   const to = toISODate(new Date());
@@ -57,9 +96,11 @@ function formatCount(value: number) {
 
 function PromoListPage() {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<PublishFilter>("all");
   const [period, setPeriod] = useState<Period>("7");
+  const [chartSeries, setChartSeries] = useState<ChartSeries>("total");
   const loadBoard = useServerFn(getPromoBoard);
+  const loadOverview = useServerFn(getPromoOverview);
   const range = PERIODS.find((item) => item.key === period)!;
   const dates = periodRange(range.days);
 
@@ -75,13 +116,9 @@ function PromoListPage() {
     queryKey: ["promo-board", dates.from, dates.to],
     queryFn: () => loadBoard({ data: dates }),
   });
-
-  const active = properties.filter((p) => p.status !== "archived");
-  const paths = active.map((p) => p.photos?.[0]?.path).filter(Boolean) as string[];
-  const { data: urls = {} } = useQuery({
-    queryKey: ["photo-urls", paths.slice().sort().join("|")],
-    queryFn: () => signedUrls(paths),
-    enabled: paths.length > 0,
+  const { data: overview, isLoading: overviewLoading } = useQuery({
+    queryKey: ["promo-overview", dates.from, dates.to],
+    queryFn: () => loadOverview({ data: dates }),
   });
 
   const listingMap = useMemo(() => {
@@ -94,17 +131,35 @@ function PromoListPage() {
     return map;
   }, [listings]);
 
-  const filtered = active.filter((property) => {
-    if (filter === "published" && !property.published) return false;
-    if (filter === "unpublished" && property.published) return false;
+  const active = useMemo(
+    () => properties.filter((property) => property.status !== "archived" && property.portfolio !== "n11"),
+    [properties],
+  );
+
+  const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return true;
-    return (
-      internalTitle(property).toLowerCase().includes(query) ||
-      property.title.toLowerCase().includes(query) ||
-      property.complex_name.toLowerCase().includes(query)
-    );
+    return active.filter((property) => {
+      const entry = listingMap.get(property.id) ?? {};
+      if (filter === "site" && !property.published) return false;
+      if (filter !== "all" && filter !== "site" && !entry[filter]?.published) return false;
+      if (!query) return true;
+      return (
+        internalTitle(property).toLowerCase().includes(query) ||
+        property.title.toLowerCase().includes(query) ||
+        property.complex_name.toLowerCase().includes(query)
+      );
+    });
+  }, [active, filter, listingMap, search]);
+
+  const paths = active.map((property) => property.photos?.[0]?.path).filter(Boolean) as string[];
+  const { data: urls = {} } = useQuery({
+    queryKey: ["photo-urls", paths.slice().sort().join("|")],
+    queryFn: () => signedUrls(paths),
+    enabled: paths.length > 0,
   });
+
+  const chartLines = chartLinesFor(chartSeries);
+  const totals = overview?.totals;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
@@ -112,7 +167,7 @@ function PromoListPage() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Публикация и реклама</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Статистика по каждой площадке за выбранный период.
+            Статистика Резиденции Море по площадкам за выбранный период.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -131,6 +186,84 @@ function PromoListPage() {
         </div>
       </header>
 
+      <section className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <h2 className="text-base font-semibold">Просмотры</h2>
+          <ChipRow
+            value={period}
+            onChange={(value) => setPeriod(value)}
+            items={PERIODS.map((item) => ({ key: item.key, label: item.label }))}
+          />
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <OverviewStat
+            label="Всего просмотров"
+            value={totals?.all.views ?? 0}
+            active={chartSeries === "total"}
+            onClick={() => setChartSeries("total")}
+          />
+          {PLATFORM_CARDS.map((platform) => (
+            <OverviewStat
+              key={platform.value}
+              label={platform.short}
+              value={totals?.[platform.value].views ?? 0}
+              active={chartSeries === platform.value}
+              onClick={() => setChartSeries(platform.value)}
+            />
+          ))}
+        </div>
+        <div className="mt-3">
+          <ChipRow
+            value={chartSeries}
+            onChange={(value) => setChartSeries(value)}
+            items={[
+              { key: "total", label: "Всего" },
+              { key: "platforms", label: "По площадкам" },
+              { key: "site", label: "Сайт" },
+              { key: "avito", label: "Авито" },
+              { key: "cian", label: "ЦИАН" },
+              { key: "yandex", label: "Яндекс" },
+            ]}
+          />
+        </div>
+
+        {overviewLoading ? (
+          <p className="mt-6 text-sm text-muted-foreground">Загрузка графика...</p>
+        ) : (
+          <div className="mt-5 h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={overview?.days ?? []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(value: string) => value.slice(8) + "." + value.slice(5, 7)}
+                  fontSize={12}
+                />
+                <YAxis allowDecimals={false} fontSize={12} width={36} />
+                <Tooltip labelFormatter={(value: string) => new Date(value).toLocaleDateString("ru-RU")} />
+                <Legend />
+                {chartLines.map((line) => (
+                  <Line
+                    key={line.key}
+                    type="monotone"
+                    dataKey={line.key}
+                    name={line.label}
+                    stroke={line.color}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Нажмите на площадку сверху, чтобы увидеть только её просмотры. «По площадкам» показывает все
+          линии сразу.
+        </p>
+      </section>
+
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -141,28 +274,16 @@ function PromoListPage() {
             className="h-9 pl-9"
           />
         </div>
-        <ChipRow
-          value={period}
-          onChange={setPeriod}
-          items={PERIODS.map((item) => ({ key: item.key, label: item.label }))}
-        />
-        <ChipRow
-          value={filter}
-          onChange={setFilter}
-          items={[
-            { key: "all", label: "Все" },
-            { key: "published", label: "На сайте" },
-            { key: "unpublished", label: "Не на сайте" },
-          ]}
-        />
+        <ChipRow value={filter} onChange={setFilter} items={PUBLISH_FILTERS} />
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">Фильтр: опубликовано на выбранной площадке.</p>
 
       {isLoading ? (
         <p className="mt-8 text-sm text-muted-foreground">Загрузка...</p>
       ) : filtered.length === 0 ? (
         <p className="mt-8 text-sm text-muted-foreground">Объекты не найдены</p>
       ) : (
-        <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((property) => {
             const photo = property.photos?.[0]?.path;
             const entry = listingMap.get(property.id) ?? {};
@@ -170,15 +291,15 @@ function PromoListPage() {
             return (
               <article
                 key={property.id}
-                className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card"
+                className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card"
               >
-                <div className="aspect-[16/10] bg-muted">
+                <div className="relative h-44 shrink-0 overflow-hidden bg-muted sm:h-48">
                   {photo && urls[photo] ? (
                     <img
                       src={urls[photo]}
                       alt={property.title}
                       loading="lazy"
-                      className="size-full object-cover"
+                      className="absolute inset-0 block size-full object-cover"
                     />
                   ) : (
                     <div className="grid size-full place-items-center text-xs text-muted-foreground">
@@ -186,7 +307,7 @@ function PromoListPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex flex-1 flex-col p-4">
+                <div className="flex min-h-0 flex-1 flex-col p-4">
                   <div className="min-h-[4.75rem]">
                     <h2 className="line-clamp-2 text-[15px] font-semibold leading-snug">
                       {internalTitle(property)}
@@ -198,16 +319,16 @@ function PromoListPage() {
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    {PLATFORMS.map((platform) => {
+                    {PLATFORM_CARDS.map((platform) => {
                       const published =
                         platform.value === "site"
                           ? property.published
                           : Boolean(entry[platform.value]?.published);
-                      const totals = stats?.[platform.value] ?? EMPTY;
+                      const platformTotals = stats?.[platform.value] ?? EMPTY;
                       return (
                         <div key={platform.value} className="rounded-lg border border-border p-2.5">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-xs font-medium">{platform.label}</p>
+                            <p className="truncate text-xs font-medium">{platform.short}</p>
                             <span
                               className={
                                 "size-2 shrink-0 rounded-full " +
@@ -216,11 +337,11 @@ function PromoListPage() {
                             />
                           </div>
                           <p className="mt-2 text-lg font-semibold tabular-nums leading-none">
-                            {totals.hasData || published ? formatCount(totals.views) : "—"}
+                            {platformTotals.hasData || published ? formatCount(platformTotals.views) : "—"}
                           </p>
                           <p className="mt-1 text-[11px] text-muted-foreground">
-                            {totals.hasData || published
-                              ? `${formatCount(totals.contacts)} обр.`
+                            {platformTotals.hasData || published
+                              ? `${formatCount(platformTotals.contacts)} обр.`
                               : "нет данных"}
                           </p>
                         </div>
@@ -228,12 +349,14 @@ function PromoListPage() {
                     })}
                   </div>
 
-                  <Button asChild variant="outline" className="mt-4 h-9 w-full">
-                    <Link to="/promo/$id" params={{ id: property.id }}>
-                      <BarChart3 className="size-4" />
-                      Статистика
-                    </Link>
-                  </Button>
+                  <div className="mt-auto pt-4">
+                    <Button asChild variant="outline" className="h-9 w-full">
+                      <Link to="/promo/$id" params={{ id: property.id }}>
+                        <BarChart3 className="size-4" />
+                        Статистика
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </article>
             );
@@ -244,17 +367,57 @@ function PromoListPage() {
   );
 }
 
+function chartLinesFor(series: ChartSeries): { key: string; label: string; color: string }[] {
+  if (series === "total") {
+    return [{ key: "total_views", label: "Всего просмотров", color: "hsl(var(--foreground))" }];
+  }
+  if (series === "platforms") {
+    return PLATFORM_CARDS.map((platform) => ({
+      key: `${platform.value}_views`,
+      label: platform.short,
+      color: LINE_COLOR[platform.value],
+    }));
+  }
+  return [{ key: `${series}_views`, label: "Просмотры", color: LINE_COLOR[series] }];
+}
+
+function OverviewStat({
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "rounded-lg border p-3 text-left transition-colors " +
+        (active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50")
+      }
+    >
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums">{formatCount(value)}</p>
+    </button>
+  );
+}
+
 function ChipRow<T extends string>({
   value,
   onChange,
   items,
 }: {
-  value: T;
+  value: string;
   onChange: (value: T) => void;
   items: { key: T; label: string }[];
 }) {
   return (
-    <div className="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-border p-1">
+    <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border p-1">
       {items.map((item) => (
         <button
           key={item.key}

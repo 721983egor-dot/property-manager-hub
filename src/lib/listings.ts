@@ -22,12 +22,13 @@ const LISTING_COLUMNS =
 export const PLATFORMS: {
   value: ListingPlatform;
   label: string;
+  short: string;
   available: boolean;
 }[] = [
-  { value: "site", label: "Сайт РМ", available: true },
-  { value: "cian", label: "ЦИАН", available: true },
-  { value: "yandex", label: "Яндекс Недвижимость", available: true },
-  { value: "avito", label: "Авито", available: true },
+  { value: "site", label: "Сайт РМ", short: "Сайт", available: true },
+  { value: "cian", label: "ЦИАН", short: "ЦИАН", available: true },
+  { value: "yandex", label: "Яндекс Недвижимость", short: "Яндекс", available: true },
+  { value: "avito", label: "Авито", short: "Авито", available: true },
 ];
 
 export function platformLabel(value: ListingPlatform) {
