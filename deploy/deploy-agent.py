@@ -337,15 +337,14 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@APP.post("/deploy-preview")
-def deploy_preview(req: DeployRequest, authorization: str | None = Header(None)):
-    """Собирает тестовую копию. Рабочий контейнер app и миграции не трогает."""
-    verify_token(authorization)
-    state = load_state()
+PREVIEW_JOB = threading.Lock()
 
+
+def run_preview_job(source: str) -> None:
+    """Сборка теста долгая. Идёт в фоне, чтобы браузер не рвал связь."""
+    state = load_state()
     try:
         version = sync_git(PREVIEW_DIR, PREVIEW_BRANCH)
-
         run(
             [
                 "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
@@ -362,39 +361,61 @@ def deploy_preview(req: DeployRequest, authorization: str | None = Header(None))
             ],
             timeout=120,
         )
-
-        # Caddy общий для рабочего и тестового сайта. Пересоздание во время
-        # «Выложить на тест» роняет HTTPS и оставляет контейнер в Created.
+        state = load_state()
         state["deployments"].append({
             "version": version,
             "at": datetime.now(timezone.utc).isoformat(),
-            "source": req.source,
+            "source": source,
             "target": "preview",
             "status": "success",
         })
         state["preview_version"] = version
         save_state(state)
-
-        return {
-            "ok": True,
-            "version": version,
-            "preview_version": version,
-            "message": (
-                f"Тестовая версия {version} на https://preview.{DOMAIN} "
-                f"и https://preview-rm-os.{DOMAIN}. Рабочий сайт не изменён."
-            ),
-        }
     except Exception as e:
+        state = load_state()
         state["deployments"].append({
             "version": "unknown",
             "at": datetime.now(timezone.utc).isoformat(),
-            "source": req.source,
+            "source": source,
             "target": "preview",
             "status": "failed",
             "error": str(e),
         })
         save_state(state)
-        raise HTTPException(status_code=500, detail=str(e))
+
+
+@APP.post("/deploy-preview")
+def deploy_preview(req: DeployRequest, authorization: str | None = Header(None)):
+    """Запускает сборку теста. Рабочий контейнер app и миграции не трогает."""
+    verify_token(authorization)
+    state = load_state()
+    if not PREVIEW_JOB.acquire(blocking=False):
+        return {
+            "ok": True,
+            "version": state.get("current_version", "unknown"),
+            "preview_version": state.get("preview_version", "—"),
+            "message": (
+                "Тест уже собирается. Подождите 5–10 минут и нажмите «Обновить статус». "
+                "Рабочий сайт не меняется."
+            ),
+        }
+
+    def job() -> None:
+        try:
+            run_preview_job(req.source)
+        finally:
+            PREVIEW_JOB.release()
+
+    threading.Thread(target=job, daemon=True).start()
+    return {
+        "ok": True,
+        "version": state.get("current_version", "unknown"),
+        "preview_version": state.get("preview_version", "—"),
+        "message": (
+            f"Сборка теста запущена. Через 5–10 минут откройте https://preview.{DOMAIN} "
+            f"и https://preview-rm-os.{DOMAIN}. Рабочий сайт не изменён."
+        ),
+    }
 
 
 @APP.post("/rollback")
