@@ -1,4 +1,4 @@
-import { ImagePlus, Loader2, Trash2, Video } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImagePlus, Loader2, Trash2, Video } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -53,15 +53,28 @@ export function SocialMediaPicker({
     }
   }, [items]);
 
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
   const commitItems = (next: SocialMediaItem[]) => {
-    const keep = new Set(next.map((item) => item.path));
+    const ordered = next.map((item, index) => ({ ...item, sortOrder: index }));
+    const keep = new Set(ordered.map((item) => item.path));
     for (const [path, url] of blobUrls.current) {
       if (keep.has(path)) continue;
       URL.revokeObjectURL(url);
       blobUrls.current.delete(path);
     }
-    itemsRef.current = next;
-    onChange(next);
+    itemsRef.current = ordered;
+    onChange(ordered);
+  };
+
+  const move = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return;
+    const next = [...items];
+    const [item] = next.splice(from, 1);
+    if (!item) return;
+    next.splice(to, 0, item);
+    commitItems(next);
   };
 
   const addPrepared = async (
@@ -187,14 +200,47 @@ export function SocialMediaPicker({
       </div>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {items.map((item, index) => (
-          <div key={item.path} className="relative overflow-hidden rounded-lg border border-border bg-muted">
+          <div
+            key={item.path}
+            draggable
+            onDragStart={(e) => {
+              setDragIndex(index);
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", String(index));
+            }}
+            onDragEnd={() => {
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+            onDragOver={(e) => {
+              if (dragIndex === null) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setOverIndex(index);
+            }}
+            onDrop={(e) => {
+              if (dragIndex === null) return;
+              e.preventDefault();
+              move(dragIndex, index);
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+            className={`relative cursor-grab overflow-hidden rounded-lg border border-border bg-muted active:cursor-grabbing ${
+              dragIndex === index ? "opacity-50" : ""
+            } ${overIndex === index && dragIndex !== null && dragIndex !== index ? "ring-2 ring-primary" : ""}`}
+          >
             {item.kind === "video" ? (
-              <video src={item.url || socialMediaDisplayUrl(item.path)} className="aspect-[4/5] w-full object-cover" muted />
+              <video
+                src={item.url || socialMediaDisplayUrl(item.path)}
+                className="pointer-events-none aspect-[4/5] w-full object-cover"
+                muted
+              />
             ) : (
               <img
                 src={item.url || socialMediaDisplayUrl(item.path)}
                 alt=""
-                className="aspect-[4/5] w-full object-cover"
+                draggable={false}
+                className="pointer-events-none aspect-[4/5] w-full object-cover"
                 referrerPolicy="no-referrer"
                 onError={(event) => {
                   const fallback = socialMediaDisplayUrl(item.path);
@@ -206,9 +252,35 @@ export function SocialMediaPicker({
             <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
               {item.kind === "video" ? "видео" : `${index + 1}`}
             </span>
-            <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white">
+            <span className="absolute bottom-7 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white">
               {formatBytes(item.bytes)}
             </span>
+            <div className="absolute bottom-1 right-1 flex gap-0.5">
+              <button
+                type="button"
+                className="rounded bg-black/60 p-1 text-white disabled:opacity-30"
+                disabled={index === 0}
+                aria-label="Сдвинуть влево"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  move(index, index - 1);
+                }}
+              >
+                <ChevronLeft className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                className="rounded bg-black/60 p-1 text-white disabled:opacity-30"
+                disabled={index === items.length - 1}
+                aria-label="Сдвинуть вправо"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  move(index, index + 1);
+                }}
+              >
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
             <button
               type="button"
               className="absolute right-1 top-1 rounded bg-black/60 p-1 text-white"
@@ -243,7 +315,8 @@ export function SocialMediaPicker({
       />
       <p className="text-[11px] text-muted-foreground">
         Формат и вес — как у Postmypost: фото JPEG, кадр от 4:5 до широкого. Для каждого снимка
-        откроется рамка — её можно двигать и масштабировать. Видео больше лимита сожмём на сервере.
+        откроется рамка. Порядок в альбоме — перетащите снимок или стрелки. Видео больше лимита
+        сожмём на сервере.
       </p>
       {items.some((item) => item.kind === "video") ? (
         <p className="flex items-center gap-1 text-[11px] text-muted-foreground">

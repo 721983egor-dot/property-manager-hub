@@ -430,6 +430,47 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return post.status === "draft" ? "Черновик поста сохранён" : "Пост отправлен в очередь публикации";
   },
 
+  updateSocialPost: async (input) => {
+    const { loadSocialPosts, saveSocialPost } = await import("@/lib/social.server");
+    const { objectUrlFromPost } = await import("@/lib/social-adapt");
+    const postId = must(input["postId"] as string, "Не указан пост");
+    const posts = await loadSocialPosts(80);
+    const post = posts.find((p) => p.id === postId);
+    if (!post) throw new Error("Пост не найден");
+    if (post.status !== "draft" && post.status !== "failed") {
+      throw new Error("Править можно только черновик. Запланированный пост сначала снимите с очереди.");
+    }
+    const platforms = Array.isArray(input["platforms"])
+      ? (input["platforms"] as ("instagram" | "vk" | "telegram" | "max")[])
+      : post.targets.map((t) => t.platform);
+    const nextBody = input["body"] != null ? String(input["body"]) : post.body;
+    const instagramBody =
+      input["instagramBody"] != null
+        ? String(input["instagramBody"])
+        : (post.targets.find((t) => t.platform === "instagram")?.body ?? "");
+    const objectUrl =
+      input["objectUrl"] != null
+        ? String(input["objectUrl"]).trim()
+        : objectUrlFromPost(post.body, post.targets);
+    const saved = await saveSocialPost({
+      id: postId,
+      topic: input["topic"] != null ? String(input["topic"]) : post.topic,
+      body: nextBody,
+      platforms,
+      propertyId: post.property_id,
+      pulseItemId: post.pulse_item_id,
+      objectUrl: objectUrl || undefined,
+      scheduledAt:
+        input["scheduledAt"] !== undefined
+          ? ((input["scheduledAt"] as string | null) ?? null)
+          : post.scheduled_at,
+      publish: Boolean(input["publish"]),
+      source: "assistant",
+      variants: platforms.includes("instagram") && instagramBody.trim() ? { instagram: instagramBody } : undefined,
+    });
+    return saved.status === "draft" ? "Черновик обновлён" : "Пост отправлен в очередь публикации";
+  },
+
   publishSocialPost: async (input) => {
     const { publishSocialPost } = await import("@/lib/social.server");
     return publishSocialPost(must(input["postId"] as string, "Не указан пост"), {

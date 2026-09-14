@@ -447,24 +447,45 @@ export async function saveSocialPost(input: SaveSocialPostInput): Promise<Social
       ? "scheduled"
       : "draft";
 
+  let postId = input.id ?? "";
+  let existingPropertyId: string | null | undefined;
+  if (postId) {
+    const { data, error } = await supabaseAdmin
+      .from("social_posts")
+      .select("id, status, property_id")
+      .eq("id", postId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("Пост не найден");
+    if (data.status !== "draft" && data.status !== "failed") {
+      throw new Error("Править можно только черновик. Запланированный пост сначала снимите с очереди.");
+    }
+    existingPropertyId = (data.property_id as string | null) ?? null;
+  }
+
   const row = {
     topic,
     body,
-    property_id: input.propertyId || null,
+    property_id: input.propertyId !== undefined ? input.propertyId || null : (existingPropertyId ?? null),
     scheduled_at: input.scheduledAt || null,
-    created_by: input.createdBy ?? "",
-    source: input.source ?? "manual",
     status: input.publish ? status : "draft",
     last_error: "",
-    ...(input.pulseItemId ? { pulse_item_id: input.pulseItemId } : {}),
+    ...(input.pulseItemId !== undefined ? { pulse_item_id: input.pulseItemId || null } : {}),
   };
 
-  let postId = input.id ?? "";
   if (postId) {
     const { error } = await supabaseAdmin.from("social_posts").update(row).eq("id", postId);
     if (error) throw new Error(error.message);
   } else {
-    const { data, error } = await supabaseAdmin.from("social_posts").insert(row).select("id").single();
+    const { data, error } = await supabaseAdmin
+      .from("social_posts")
+      .insert({
+        ...row,
+        created_by: input.createdBy ?? "",
+        source: input.source ?? "manual",
+      })
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
     postId = data.id;
   }

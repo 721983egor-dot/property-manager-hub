@@ -6,6 +6,7 @@ import {
   CalendarClock,
   Copy,
   Loader2,
+  Pencil,
   Send,
   Share2,
   Trash2,
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 
 import { AdminOnly } from "@/components/AdminOnly";
 import { SocialMediaPicker } from "@/components/SocialMediaPicker";
+import { SocialPostCalendar } from "@/components/SocialPostCalendar";
 import { SocialPostPreview } from "@/components/SocialPostPreview";
 import { SochiPulseAiBlock } from "@/components/SochiPulseAiBlock";
 import { Button } from "@/components/ui/button";
@@ -42,9 +44,10 @@ import {
   type SocialPlatform,
   type SocialPost,
 } from "@/lib/social";
-import { toInstagramOrganic } from "@/lib/social-adapt";
+import { toInstagramOrganic, objectUrlFromPost as objectUrlFromBodies } from "@/lib/social-adapt";
 import {
   MESSENGER_CAPTION_LIMIT,
+  socialMediaDisplayUrl,
   type SocialMediaItem,
 } from "@/lib/social-media";
 
@@ -67,10 +70,11 @@ export const Route = createFileRoute("/_authenticated/social/")({
   ),
 });
 
-type Tab = "posts" | "pulse" | "compose" | "brand" | "connect";
+type Tab = "posts" | "calendar" | "pulse" | "compose" | "brand" | "connect";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "posts", label: "Лента" },
+  { key: "calendar", label: "Календарь" },
   { key: "pulse", label: "Пульс Сочи" },
   { key: "compose", label: "Пост" },
   { key: "brand", label: "Голос" },
@@ -85,6 +89,10 @@ function toLocalInput(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function objectUrlFromPost(post: SocialPost) {
+  return objectUrlFromBodies(post.body, post.targets);
+}
+
 function fromLocalInput(value: string) {
   if (!value) return null;
   const d = new Date(value);
@@ -95,6 +103,7 @@ function SocialPage() {
   const queryClient = useQueryClient();
   const loadBoard = useServerFn(getSocialBoard);
   const [tab, setTab] = useState<Tab>("posts");
+  const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
 
   const boardQuery = useQuery({
     queryKey: ["social-board"],
@@ -103,6 +112,10 @@ function SocialPage() {
   const board = boardQuery.data;
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["social-board"] });
+  const editPost = (post: SocialPost) => {
+    setEditingPost(post);
+    setTab("compose");
+  };
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
@@ -159,7 +172,10 @@ function SocialPage() {
               <button
                 key={item.key}
                 type="button"
-                onClick={() => setTab(item.key)}
+                onClick={() => {
+                  if (item.key === "compose" && tab !== "compose") setEditingPost(null);
+                  setTab(item.key);
+                }}
                 className={`rounded-full px-3 py-1.5 text-sm font-medium ${
                   tab === item.key
                     ? "bg-primary text-primary-foreground"
@@ -172,13 +188,29 @@ function SocialPage() {
           </div>
 
           <div className="mt-6">
-            {tab === "posts" && <PostsTab boardPosts={board.posts} onChange={refresh} />}
+            {tab === "posts" && (
+              <PostsTab boardPosts={board.posts} onChange={refresh} onEdit={editPost} />
+            )}
+            {tab === "calendar" && (
+              <SocialPostCalendar posts={board.posts} onEdit={editPost} />
+            )}
             {tab === "pulse" && <SochiPulseAiBlock onChange={refresh} />}
             {tab === "compose" && (
               <ComposeTab
+                key={editingPost?.id ?? "new"}
+                initial={editingPost}
                 defaultPlatforms={board.channels.filter((c) => c.enabled).map((c) => c.platform)}
-                onSaved={() => {
+                onPublished={() => {
+                  setEditingPost(null);
                   refresh();
+                  setTab("posts");
+                }}
+                onDraftSaved={(post) => {
+                  setEditingPost(post);
+                  refresh();
+                }}
+                onCancelEdit={() => {
+                  setEditingPost(null);
                   setTab("posts");
                 }}
               />
@@ -201,9 +233,11 @@ function SocialPage() {
 function PostsTab({
   boardPosts,
   onChange,
+  onEdit,
 }: {
   boardPosts: SocialPost[];
   onChange: () => void;
+  onEdit: (post: SocialPost) => void;
 }) {
   const publishFn = useServerFn(publishSocialPost);
   const cancelFn = useServerFn(cancelSocialPost);
@@ -310,14 +344,14 @@ function PostsTab({
                       item.kind === "video" ? (
                         <video
                           key={item.path}
-                          src={item.url}
+                          src={item.url || socialMediaDisplayUrl(item.path)}
                           className="h-20 w-16 shrink-0 rounded-md bg-muted object-cover"
                           muted
                         />
                       ) : (
                         <img
                           key={item.path}
-                          src={item.url}
+                          src={item.url || socialMediaDisplayUrl(item.path)}
                           alt=""
                           className="h-20 w-16 shrink-0 rounded-md bg-muted object-cover"
                           referrerPolicy="no-referrer"
@@ -342,6 +376,12 @@ function PostsTab({
                   </div>
                 </details>
                 <div className="flex flex-wrap gap-2">
+                  {(post.status === "draft" || post.status === "failed") && (
+                    <Button size="sm" variant="outline" onClick={() => onEdit(post)}>
+                      <Pencil className="size-4" />
+                      Править
+                    </Button>
+                  )}
                   {(post.status === "draft" || post.status === "failed") && (
                     <Button size="sm" onClick={() => publishMut.mutate(post.id)} disabled={publishMut.isPending}>
                       Опубликовать
@@ -391,27 +431,40 @@ function PostsTab({
 }
 
 function ComposeTab({
+  initial,
   defaultPlatforms,
-  onSaved,
+  onPublished,
+  onDraftSaved,
+  onCancelEdit,
 }: {
+  initial?: SocialPost | null;
   defaultPlatforms: SocialPlatform[];
-  onSaved: () => void;
+  onPublished: () => void;
+  onDraftSaved: (post: SocialPost) => void;
+  onCancelEdit: () => void;
 }) {
   const saveFn = useServerFn(saveSocialPost);
-  const [topic, setTopic] = useState("");
-  const [body, setBody] = useState("");
-  const [instagramBody, setInstagramBody] = useState("");
-  const [instagramTouched, setInstagramTouched] = useState(false);
+  const igTarget = initial?.targets.find((t) => t.platform === "instagram")?.body ?? "";
+  const [postId, setPostId] = useState(initial?.id ?? "");
+  const [topic, setTopic] = useState(initial?.topic ?? "");
+  const [body, setBody] = useState(initial?.body ?? "");
+  const [instagramBody, setInstagramBody] = useState(igTarget);
+  const [instagramTouched, setInstagramTouched] = useState(Boolean(igTarget));
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(
-    defaultPlatforms.length ? defaultPlatforms : [...SOCIAL_PLATFORMS],
+    initial?.targets.length
+      ? initial.targets.map((t) => t.platform)
+      : defaultPlatforms.length
+        ? defaultPlatforms
+        : [...SOCIAL_PLATFORMS],
   );
-  const [scheduled, setScheduled] = useState("");
-  const [media, setMedia] = useState<SocialMediaItem[]>([]);
-  const [objectUrl, setObjectUrl] = useState("");
+  const [scheduled, setScheduled] = useState(toLocalInput(initial?.scheduled_at ?? null));
+  const [media, setMedia] = useState<SocialMediaItem[]>(initial?.media ?? []);
+  const [objectUrl, setObjectUrl] = useState(initial ? objectUrlFromPost(initial) : "");
 
   const autoInstagram = toInstagramOrganic(body);
   const instagramValue = instagramTouched ? instagramBody : autoInstagram;
   const variants = platforms.includes("instagram") ? { instagram: instagramValue } : undefined;
+  const editing = Boolean(postId);
 
   const toggle = (platform: SocialPlatform) => {
     setPlatforms((cur) =>
@@ -423,6 +476,7 @@ function ComposeTab({
     mutationFn: (publish: boolean) =>
       saveFn({
         data: {
+          id: postId || undefined,
           topic,
           body,
           platforms,
@@ -441,16 +495,15 @@ function ComposeTab({
           })),
         },
       }),
-    onSuccess: () => {
-      toast.success("Сохранено");
-      setTopic("");
-      setBody("");
-      setInstagramBody("");
-      setInstagramTouched(false);
-      setScheduled("");
-      setMedia([]);
-      setObjectUrl("");
-      onSaved();
+    onSuccess: (saved, publish) => {
+      if (publish) {
+        toast.success(saved.scheduled_at ? "В очереди Postmypost" : "Опубликовано");
+        onPublished();
+        return;
+      }
+      toast.success("Черновик сохранён — можно править дальше");
+      setPostId(saved.id);
+      onDraftSaved(saved);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -459,10 +512,11 @@ function ComposeTab({
     <div className="grid gap-6 xl:grid-cols-[minmax(0,28rem)_1fr]">
       <Card>
         <CardHeader>
-          <CardTitle>Новый пост</CardTitle>
+          <CardTitle>{editing ? "Черновик" : "Новый пост"}</CardTitle>
           <CardDescription>
-            Пишете полный текст с ценой — для ВКонтакте, Telegram и Макс. Instagram сам
-            собирается как обычный пост без цен, телефона и оферты.
+            {editing
+              ? "Меняйте текст, фото и дату — сохраните снова, чтобы обновить черновик."
+              : "Пишете полный текст с ценой — для ВКонтакте, Telegram и Макс. Instagram сам собирается как обычный пост без цен, телефона и оферты."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -557,12 +611,17 @@ function ComposeTab({
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => saveMut.mutate(false)} disabled={saveMut.isPending}>
-              Черновик
+              {editing ? "Сохранить черновик" : "Черновик"}
             </Button>
             <Button onClick={() => saveMut.mutate(true)} disabled={saveMut.isPending}>
               {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
               {scheduled ? "В очередь Postmypost" : "Опубликовать"}
             </Button>
+            {editing ? (
+              <Button type="button" variant="ghost" onClick={onCancelEdit}>
+                К ленте
+              </Button>
+            ) : null}
           </div>
         </CardContent>
       </Card>

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { propertyLabel } from "@/lib/ai/context.server";
 import { socialMediaRulesText } from "@/lib/social-media";
+import { objectUrlFromPost } from "@/lib/social-adapt";
 import {
   addSocialSkill,
   loadSocialBrand,
@@ -49,7 +50,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
 
     getSocialPosts: tool({
       description:
-        "Лента постов соцсетей: черновики, очередь, опубликованные. Можно фильтровать по статусу.",
+        "Лента и календарь постов: черновики, очередь Postmypost, опубликованные. Смотри scheduledAt — это дата в календаре раздела «Соцсети». Черновик правится через proposeUpdateSocialPost.",
       inputSchema: z.object({
         status: z
           .enum(["draft", "scheduled", "publishing", "published", "failed", "cancelled"])
@@ -67,6 +68,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
           platforms: p.targets.map((t) => t.platform),
           scheduledAt: p.scheduled_at,
           publishedAt: p.published_at,
+          objectUrl: objectUrlFromPost(p.body, p.targets) || undefined,
           property: p.property_title,
           media: (p.media ?? []).map((m) => ({ kind: m.kind, bytes: m.bytes })),
           error: p.last_error || undefined,
@@ -233,6 +235,57 @@ export function createSocialTools(ctx: AssistantToolContext) {
           },
         });
         return { proposed: true, summary, body };
+      },
+    }),
+
+    proposeUpdateSocialPost: tool({
+      description:
+        "Предложить правки черновика или поста с ошибкой. Запланированный в Postmypost не трогай — сначала proposeCancelSocialPost. Передавай только поля, которые меняются. Фото не затираются.",
+      inputSchema: z.object({
+        postId: z.string(),
+        topic: z.string().optional(),
+        body: z.string().optional().describe("Полный текст для VK/Telegram/Макс"),
+        instagramBody: z.string().optional(),
+        objectUrl: z.string().optional().describe("Адрес карточки объекта"),
+        platforms: platformsSchema.optional(),
+        scheduledAt: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("ISO-дата или null, чтобы убрать расписание"),
+        publishNow: z.boolean().optional(),
+      }),
+      execute: async ({ postId, topic, body, instagramBody, objectUrl, platforms, scheduledAt, publishNow }) => {
+        const posts = await loadSocialPosts(80);
+        const post = posts.find((p) => p.id === postId);
+        if (!post) return { error: "Пост не найден" };
+        if (post.status !== "draft" && post.status !== "failed") {
+          return { error: "Править можно только черновик. Запланированный сначала снимите с очереди." };
+        }
+        const bits: string[] = [];
+        if (topic != null) bits.push("тему");
+        if (body != null) bits.push("текст");
+        if (instagramBody != null) bits.push("Instagram");
+        if (objectUrl != null) bits.push("ссылку");
+        if (platforms) bits.push("сети");
+        if (scheduledAt !== undefined) bits.push("дату");
+        if (publishNow) bits.push("публикацию");
+        const summary = `Править черновик «${post.topic || post.body.slice(0, 40)}»${bits.length ? `: ${bits.join(", ")}` : ""}`;
+        ctx.propose({
+          tool: "updateSocialPost",
+          summary,
+          input: {
+            postId,
+            topic,
+            body,
+            instagramBody,
+            objectUrl,
+            platforms,
+            scheduledAt,
+            publish: Boolean(publishNow),
+          },
+        });
+        return { proposed: true, summary };
       },
     }),
 

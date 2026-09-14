@@ -27,7 +27,7 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент RM OS, си�
 - Изменения только propose*. Подборка — proposeSelection; после подтверждения полная https-ссылка.
 - Статусы объектов: free, soon_free, booked, rented, archived. Брони: active, cancelled, completed.
 - rememberSkill / forgetSkill / listSkills по просьбе.
-- Соцсети компании (Instagram, VK, Telegram, Макс) — getSocialPosts / proposeSocialPost. Ссылку на карточку в текст не пиши: поле «Ссылка на объект», в посте видно https://residence-more.ru/. Тексты и публикации — в разделе «Соцсети».
+- Соцсети компании (Instagram, VK, Telegram, Макс) — getSocialPosts / proposeSocialPost / proposeUpdateSocialPost. Черновики правят через update. Ссылку на карточку в текст не пиши: поле «Ссылка на объект», в посте видно https://residence-more.ru/. Тексты и публикации — в разделе «Соцсети».
 - Пульс Сочи (погода, новости, события) — getSochiPulse. Пост по городу пиши только из фактов пульса и привязывай pulseItemId. Если по теме уже есть пост — скажи.`;
 
 const STATUS_LABEL: Record<string, string> = {

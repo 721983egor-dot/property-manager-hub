@@ -54,6 +54,21 @@ export function applyObjectLink(text: string, objectUrl?: string) {
   return `${source}\n\nПодробнее: ${masked}`;
 }
 
+export function extractObjectUrl(text: string) {
+  const match = text.match(/<a href="([^"]+)">https:\/\/residence-more\.ru\/?<\/a>/i);
+  if (!match?.[1]) return "";
+  return match[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&lt;/g, "<");
+}
+
+export function objectUrlFromPost(body: string, targets: { platform: string; body: string }[]) {
+  for (const target of targets) {
+    if (target.platform === "instagram") continue;
+    const url = extractObjectUrl(target.body);
+    if (url) return url;
+  }
+  return extractObjectUrl(body);
+}
+
 /** Канонический текст (VK / Telegram / Макс) превращаем в обычный пост для Instagram: без цен, телефонов и оферты. */
 export function toInstagramOrganic(source: string): string {
   if (!source.trim()) return "";
