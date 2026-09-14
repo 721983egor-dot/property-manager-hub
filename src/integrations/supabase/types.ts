@@ -1411,6 +1411,51 @@ export type Database = {
         }
         Relationships: []
       }
+      social_post_media: {
+        Row: {
+          bytes: number
+          created_at: string
+          duration_sec: number | null
+          height: number | null
+          id: string
+          kind: string
+          mime: string
+          path: string
+          post_id: string
+          postmypost_file_id: number | null
+          sort_order: number
+          width: number | null
+        }
+        Insert: {
+          bytes?: number
+          created_at?: string
+          duration_sec?: number | null
+          height?: number | null
+          id?: string
+          kind: string
+          mime?: string
+          path: string
+          post_id: string
+          postmypost_file_id?: number | null
+          sort_order?: number
+          width?: number | null
+        }
+        Update: {
+          bytes?: number
+          created_at?: string
+          duration_sec?: number | null
+          height?: number | null
+          id?: string
+          kind?: string
+          mime?: string
+          path?: string
+          post_id?: string
+          postmypost_file_id?: number | null
+          sort_order?: number
+          width?: number | null
+        }
+        Relationships: []
+      }
       social_post_targets: {
         Row: {
           body: string

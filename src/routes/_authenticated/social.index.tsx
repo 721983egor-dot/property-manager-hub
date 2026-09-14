@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 
 import { AdminOnly } from "@/components/AdminOnly";
+import { SocialMediaPicker } from "@/components/SocialMediaPicker";
 import { SocialPostPreview } from "@/components/SocialPostPreview";
 import { SochiPulseAiBlock } from "@/components/SochiPulseAiBlock";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ import {
   type SocialPost,
 } from "@/lib/social";
 import { toInstagramOrganic } from "@/lib/social-adapt";
+import type { SocialMediaItem } from "@/lib/social-media";
 
 export const Route = createFileRoute("/_authenticated/social/")({
   head: () => ({
@@ -299,6 +301,27 @@ function PostsTab({
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="whitespace-pre-wrap text-sm">{post.body}</p>
+                {post.media?.length ? (
+                  <div className="flex gap-2 overflow-x-auto">
+                    {post.media.map((item) =>
+                      item.kind === "video" ? (
+                        <video
+                          key={item.path}
+                          src={item.url}
+                          className="h-20 w-16 shrink-0 rounded-md object-cover"
+                          muted
+                        />
+                      ) : (
+                        <img
+                          key={item.path}
+                          src={item.url}
+                          alt=""
+                          className="h-20 w-16 shrink-0 rounded-md object-cover"
+                        />
+                      ),
+                    )}
+                  </div>
+                ) : null}
                 {post.last_error ? <p className="text-sm text-destructive">{post.last_error}</p> : null}
                 <details className="rounded-lg border border-border bg-muted/30 p-3">
                   <summary className="cursor-pointer text-sm font-medium">Как будет выглядеть в сетях</summary>
@@ -307,6 +330,7 @@ function PostsTab({
                       body={post.body}
                       topic={post.topic}
                       platforms={post.targets.map((t) => t.platform)}
+                      media={post.media}
                       variants={Object.fromEntries(
                         post.targets.filter((t) => t.body).map((t) => [t.platform, t.body]),
                       )}
@@ -378,6 +402,7 @@ function ComposeTab({
     defaultPlatforms.length ? defaultPlatforms : [...SOCIAL_PLATFORMS],
   );
   const [scheduled, setScheduled] = useState("");
+  const [media, setMedia] = useState<SocialMediaItem[]>([]);
 
   const autoInstagram = toInstagramOrganic(body);
   const instagramValue = instagramTouched ? instagramBody : autoInstagram;
@@ -399,6 +424,15 @@ function ComposeTab({
           scheduledAt: fromLocalInput(scheduled),
           publish,
           variants,
+          media: media.map((item) => ({
+            path: item.path,
+            kind: item.kind,
+            mime: item.mime,
+            bytes: item.bytes,
+            width: item.width,
+            height: item.height,
+            durationSec: item.durationSec,
+          })),
         },
       }),
     onSuccess: () => {
@@ -408,6 +442,7 @@ function ComposeTab({
       setInstagramBody("");
       setInstagramTouched(false);
       setScheduled("");
+      setMedia([]);
       onSaved();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -467,6 +502,7 @@ function ComposeTab({
               />
             </div>
           ) : null}
+          <SocialMediaPicker items={media} onChange={setMedia} />
           <div className="flex flex-wrap gap-2">
             {SOCIAL_PLATFORMS.map((platform) => (
               <button
@@ -509,7 +545,7 @@ function ComposeTab({
             Instagram показывается как обычный пост. Во ВКонтакте, Telegram и Макс остаются цена и ссылка.
           </p>
         </div>
-        <SocialPostPreview body={body} topic={topic} platforms={platforms} variants={variants} />
+        <SocialPostPreview body={body} topic={topic} platforms={platforms} variants={variants} media={media} />
       </div>
     </div>
   );

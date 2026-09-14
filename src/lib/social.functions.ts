@@ -98,6 +98,15 @@ export const saveSocialPost = createServerFn({ method: "POST" })
       scheduledAt?: string | null;
       publish?: boolean;
       variants?: Partial<Record<SocialPlatform, string>>;
+      media?: {
+        path: string;
+        kind: "photo" | "video";
+        mime: string;
+        bytes: number;
+        width?: number | null;
+        height?: number | null;
+        durationSec?: number | null;
+      }[];
     }) => ({
       ...input,
       topic: String(input.topic ?? "").trim(),
@@ -105,6 +114,20 @@ export const saveSocialPost = createServerFn({ method: "POST" })
       platforms: platformsOf(input.platforms),
       scheduledAt: input.scheduledAt || null,
       propertyId: input.propertyId || null,
+      media: Array.isArray(input.media)
+        ? input.media
+            .slice(0, 10)
+            .map((item) => ({
+              path: String(item.path ?? "").trim(),
+              kind: item.kind === "video" ? ("video" as const) : ("photo" as const),
+              mime: String(item.mime ?? ""),
+              bytes: Number(item.bytes ?? 0),
+              width: item.width ?? null,
+              height: item.height ?? null,
+              durationSec: item.durationSec ?? null,
+            }))
+            .filter((item) => item.path)
+        : undefined,
     }),
   )
   .handler(async ({ context, data }): Promise<SocialPost> => {

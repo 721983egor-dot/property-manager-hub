@@ -2,15 +2,17 @@ import { Heart, MessageCircle, Send, Bookmark } from "lucide-react";
 
 import { PLATFORM_LABEL, type SocialPlatform } from "@/lib/social";
 import { adaptPostForPlatform } from "@/lib/social-adapt";
+import type { SocialMediaItem } from "@/lib/social-media";
 
 type Props = {
   body: string;
   platforms: SocialPlatform[];
   topic?: string;
   variants?: Partial<Record<SocialPlatform, string>>;
+  media?: SocialMediaItem[];
 };
 
-export function SocialPostPreview({ body, platforms, topic, variants }: Props) {
+export function SocialPostPreview({ body, platforms, topic, variants, media }: Props) {
   const list = platforms.length ? platforms : (["instagram", "vk", "telegram", "max"] as SocialPlatform[]);
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -20,6 +22,7 @@ export function SocialPostPreview({ body, platforms, topic, variants }: Props) {
           platform={platform}
           text={adaptPostForPlatform(variants?.[platform] || body, platform)}
           topic={topic}
+          media={media}
         />
       ))}
     </div>
@@ -30,10 +33,12 @@ function PreviewFrame({
   platform,
   text,
   topic,
+  media,
 }: {
   platform: SocialPlatform;
   text: string;
   topic?: string;
+  media?: SocialMediaItem[];
 }) {
   return (
     <div className="min-w-0">
@@ -48,27 +53,46 @@ function PreviewFrame({
         )}
       </div>
       {platform === "instagram" ? (
-        <InstagramFrame text={text} />
+        <InstagramFrame text={text} media={media} />
       ) : platform === "vk" ? (
-        <VkFrame text={text} topic={topic} />
+        <VkFrame text={text} topic={topic} media={media} />
       ) : platform === "telegram" ? (
-        <TelegramFrame text={text} />
+        <TelegramFrame text={text} media={media} />
       ) : (
-        <MaxFrame text={text} />
+        <MaxFrame text={text} media={media} />
       )}
     </div>
   );
 }
 
-function PhotoSlot() {
+function MediaSlot({ media }: { media?: SocialMediaItem[] }) {
+  const first = media?.[0];
+  if (!first?.url) {
+    return (
+      <div className="grid aspect-[4/5] place-items-center bg-gradient-to-br from-sky-100 via-stone-100 to-teal-100 text-xs text-muted-foreground">
+        Фото или видео
+      </div>
+    );
+  }
   return (
-    <div className="grid aspect-[4/5] place-items-center bg-gradient-to-br from-sky-100 via-stone-100 to-teal-100 text-xs text-muted-foreground">
-      Фото объекта
+    <div className="relative aspect-[4/5] bg-black">
+      {first.kind === "video" ? (
+        <video src={first.url} className="h-full w-full object-cover" muted playsInline />
+      ) : (
+        <img src={first.url} alt="" className="h-full w-full object-cover" />
+      )}
+      {media && media.length > 1 ? (
+        <span className="absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+          1/{media.length}
+        </span>
+      ) : first.kind === "video" ? (
+        <span className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">видео</span>
+      ) : null}
     </div>
   );
 }
 
-function InstagramFrame({ text }: { text: string }) {
+function InstagramFrame({ text, media }: { text: string; media?: SocialMediaItem[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-white text-[13px] shadow-sm">
       <div className="flex items-center gap-2 px-3 py-2">
@@ -80,7 +104,7 @@ function InstagramFrame({ text }: { text: string }) {
           <p className="text-[11px] text-muted-foreground">Сочи</p>
         </div>
       </div>
-      <PhotoSlot />
+      <MediaSlot media={media} />
       <div className="flex items-center gap-3 px-3 py-2">
         <Heart className="size-5" />
         <MessageCircle className="size-5" />
@@ -95,7 +119,7 @@ function InstagramFrame({ text }: { text: string }) {
   );
 }
 
-function VkFrame({ text, topic }: { text: string; topic?: string }) {
+function VkFrame({ text, topic, media }: { text: string; topic?: string; media?: SocialMediaItem[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-white text-[13px] shadow-sm">
       <div className="flex items-center gap-2 px-3 py-2">
@@ -110,7 +134,7 @@ function VkFrame({ text, topic }: { text: string; topic?: string }) {
       {topic ? <p className="px-3 text-sm font-medium">{topic}</p> : null}
       <p className="whitespace-pre-wrap px-3 py-2 leading-snug">{text || "Текст появится здесь"}</p>
       <div className="mx-3 mb-3 overflow-hidden rounded-lg border border-border">
-        <PhotoSlot />
+        <MediaSlot media={media} />
         <p className="bg-muted px-3 py-2 text-[12px] text-muted-foreground">residence-more.ru</p>
       </div>
       <div className="flex gap-4 border-t border-border px-3 py-2 text-[12px] text-muted-foreground">
@@ -122,25 +146,31 @@ function VkFrame({ text, topic }: { text: string; topic?: string }) {
   );
 }
 
-function TelegramFrame({ text }: { text: string }) {
+function TelegramFrame({ text, media }: { text: string; media?: SocialMediaItem[] }) {
   return (
     <div className="rounded-xl border border-border bg-[#e7f0f8] p-3 shadow-sm">
       <p className="mb-2 text-[12px] font-medium text-[#2a6ea8]">Резиденция & Море</p>
-      <div className="rounded-2xl rounded-tl-sm bg-white px-3 py-2 text-[13px] shadow-sm">
-        <p className="whitespace-pre-wrap leading-snug">{text || "Текст появится здесь"}</p>
-        <p className="mt-1 text-right text-[10px] text-muted-foreground">сейчас</p>
+      <div className="overflow-hidden rounded-2xl rounded-tl-sm bg-white text-[13px] shadow-sm">
+        {media?.length ? <MediaSlot media={media} /> : null}
+        <div className="px-3 py-2">
+          <p className="whitespace-pre-wrap leading-snug">{text || "Текст появится здесь"}</p>
+          <p className="mt-1 text-right text-[10px] text-muted-foreground">сейчас</p>
+        </div>
       </div>
     </div>
   );
 }
 
-function MaxFrame({ text }: { text: string }) {
+function MaxFrame({ text, media }: { text: string; media?: SocialMediaItem[] }) {
   return (
     <div className="rounded-xl border border-border bg-[#f4f1ea] p-3 shadow-sm">
       <p className="mb-2 text-[12px] font-medium text-[#5b4636]">Макс · Резиденция & Море</p>
-      <div className="rounded-2xl rounded-tl-sm bg-white px-3 py-2 text-[13px] shadow-sm">
-        <p className="whitespace-pre-wrap leading-snug">{text || "Текст появится здесь"}</p>
-        <p className="mt-1 text-right text-[10px] text-muted-foreground">сейчас</p>
+      <div className="overflow-hidden rounded-2xl rounded-tl-sm bg-white text-[13px] shadow-sm">
+        {media?.length ? <MediaSlot media={media} /> : null}
+        <div className="px-3 py-2">
+          <p className="whitespace-pre-wrap leading-snug">{text || "Текст появится здесь"}</p>
+          <p className="mt-1 text-right text-[10px] text-muted-foreground">сейчас</p>
+        </div>
       </div>
     </div>
   );

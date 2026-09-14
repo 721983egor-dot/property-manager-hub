@@ -25,6 +25,7 @@ import { Route as AuthenticatedHotelOwnersRouteImport } from './routes/_authenti
 import { Route as AuthenticatedHotelSyncRouteImport } from './routes/_authenticated/hotel.sync'
 import { Route as AuthenticatedOwnerIndexRouteImport } from './routes/_authenticated/owner.index'
 import { Route as ApiPhotoUploadRouteImport } from './routes/api/photo-upload'
+import { Route as ApiSocialMediaUploadRouteImport } from './routes/api/social-media-upload'
 import { Route as PCodeRouteImport } from './routes/p.$code'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
@@ -143,6 +144,11 @@ const AuthenticatedOwnerIndexRoute = AuthenticatedOwnerIndexRouteImport.update({
 const ApiPhotoUploadRoute = ApiPhotoUploadRouteImport.update({
   id: '/api/photo-upload',
   path: '/api/photo-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialMediaUploadRoute = ApiSocialMediaUploadRouteImport.update({
+  id: '/api/social-media-upload',
+  path: '/api/social-media-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PCodeRoute = PCodeRouteImport.update({
@@ -388,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/hotel/sync': typeof AuthenticatedHotelSyncRoute
   '/owner/': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
+  '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -444,6 +451,7 @@ export interface FileRoutesByTo {
   '/hotel/sync': typeof AuthenticatedHotelSyncRoute
   '/owner': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
+  '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -503,6 +511,7 @@ export interface FileRoutesById {
   '/_authenticated/hotel/sync': typeof AuthenticatedHotelSyncRoute
   '/_authenticated/owner/': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
+  '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -562,6 +571,7 @@ export interface FileRouteTypes {
     | '/hotel/sync'
     | '/owner/'
     | '/api/photo-upload'
+    | '/api/social-media-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
@@ -617,6 +627,7 @@ export interface FileRouteTypes {
     | '/hotel/sync'
     | '/owner'
     | '/api/photo-upload'
+    | '/api/social-media-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
@@ -674,6 +685,7 @@ export interface FileRouteTypes {
     | '/_authenticated/hotel/sync'
     | '/_authenticated/owner/'
     | '/api/photo-upload'
+    | '/api/social-media-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
@@ -726,6 +738,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RentRoute: typeof RentRouteWithChildren
   ApiPhotoUploadRoute: typeof ApiPhotoUploadRoute
+  ApiSocialMediaUploadRoute: typeof ApiSocialMediaUploadRoute
   PCodeRoute: typeof PCodeRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
@@ -853,6 +866,13 @@ declare module '@tanstack/react-router' {
       path: '/api/photo-upload'
       fullPath: '/api/photo-upload'
       preLoaderRoute: typeof ApiPhotoUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social-media-upload': {
+      id: '/api/social-media-upload'
+      path: '/api/social-media-upload'
+      fullPath: '/api/social-media-upload'
+      preLoaderRoute: typeof ApiSocialMediaUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$code': {
@@ -1232,6 +1252,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RentRoute: RentRouteWithChildren,
   ApiPhotoUploadRoute: ApiPhotoUploadRoute,
+  ApiSocialMediaUploadRoute: ApiSocialMediaUploadRoute,
   PCodeRoute: PCodeRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,

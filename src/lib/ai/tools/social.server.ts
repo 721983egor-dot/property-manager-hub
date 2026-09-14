@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { propertyLabel } from "@/lib/ai/context.server";
+import { socialMediaRulesText } from "@/lib/social-media";
 import {
   addSocialSkill,
   loadSocialBrand,
@@ -67,6 +68,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
           scheduledAt: p.scheduled_at,
           publishedAt: p.published_at,
           property: p.property_title,
+          media: (p.media ?? []).map((m) => ({ kind: m.kind, bytes: m.bytes })),
           error: p.last_error || undefined,
         }));
       },
@@ -165,6 +167,13 @@ export function createSocialTools(ctx: AssistantToolContext) {
         const removed = await removeSocialSkill(query);
         return removed ? { removed } : { error: "Такое правило не найдено" };
       },
+    }),
+
+    getSocialMediaRules: tool({
+      description:
+        "Правила фото и видео для постов через Postmypost: JPEG до 4 МБ, кадр 4:5–1.91:1, видео MP4 до 45 МБ. Файлы добавляет менеджер во вкладке «Пост».",
+      inputSchema: z.object({}),
+      execute: async () => ({ rules: socialMediaRulesText() }),
     }),
 
     proposeSocialPost: tool({

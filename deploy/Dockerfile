@@ -22,6 +22,8 @@ RUN bun install && bun run build
 # Runtime
 FROM node:22-alpine
 
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 COPY --from=builder /app/.output ./.output

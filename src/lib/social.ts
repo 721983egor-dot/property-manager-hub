@@ -1,3 +1,5 @@
+import type { SocialMediaItem } from "@/lib/social-media";
+
 export const SOCIAL_PLATFORMS = ["instagram", "vk", "telegram", "max"] as const;
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 
@@ -77,6 +79,7 @@ export type SocialPost = {
   last_error: string;
   created_at: string;
   targets: SocialPostTarget[];
+  media: SocialMediaItem[];
 };
 
 export type SocialPostStatsRow = {
