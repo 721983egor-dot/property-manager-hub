@@ -48,6 +48,7 @@ export const Route = createFileRoute("/_authenticated/promo/")({
 type PublishFilter = "all" | ListingPlatform;
 type Period = "7" | "30" | "90";
 type ChartSeries = "total" | "platforms" | ListingPlatform;
+type ViewSort = "views_desc" | "views_asc";
 
 const PERIODS: { key: Period; label: string; days: number }[] = [
   { key: "7", label: "7 дней", days: 7 },
@@ -64,11 +65,12 @@ const PUBLISH_FILTERS: { key: PublishFilter; label: string }[] = [
 ];
 
 const LINE_COLOR: Record<ListingPlatform, string> = {
-  site: "hsl(var(--primary))",
+  site: "#4f46e5",
   avito: "#2563eb",
   cian: "#0284c7",
   yandex: "#d97706",
 };
+const TOTAL_LINE_COLOR = "#0f172a";
 
 const PLATFORM_ORDER: ListingPlatform[] = ["site", "avito", "cian", "yandex"];
 const PLATFORM_CARDS = [...PLATFORMS].sort(
@@ -99,6 +101,7 @@ function PromoListPage() {
   const [filter, setFilter] = useState<PublishFilter>("all");
   const [period, setPeriod] = useState<Period>("7");
   const [chartSeries, setChartSeries] = useState<ChartSeries>("total");
+  const [viewSort, setViewSort] = useState<ViewSort>("views_desc");
   const loadBoard = useServerFn(getPromoBoard);
   const loadOverview = useServerFn(getPromoOverview);
   const range = PERIODS.find((item) => item.key === period)!;
@@ -138,7 +141,7 @@ function PromoListPage() {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return active.filter((property) => {
+    const rows = active.filter((property) => {
       const entry = listingMap.get(property.id) ?? {};
       if (filter === "site" && !property.published) return false;
       if (filter !== "all" && filter !== "site" && !entry[filter]?.published) return false;
@@ -149,7 +152,14 @@ function PromoListPage() {
         property.complex_name.toLowerCase().includes(query)
       );
     });
-  }, [active, filter, listingMap, search]);
+    const dir = viewSort === "views_asc" ? 1 : -1;
+    rows.sort((left, right) => {
+      const delta = propertyViews(board[left.id], filter) - propertyViews(board[right.id], filter);
+      if (delta !== 0) return delta * dir;
+      return internalTitle(left).localeCompare(internalTitle(right), "ru");
+    });
+    return rows;
+  }, [active, board, filter, listingMap, search, viewSort]);
 
   const paths = active.map((property) => property.photos?.[0]?.path).filter(Boolean) as string[];
   const { data: urls = {} } = useQuery({
@@ -233,25 +243,35 @@ function PromoListPage() {
         ) : (
           <div className="mt-5 h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={overview?.days ?? []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <LineChart data={overview?.days ?? []} margin={{ top: 12, right: 16, left: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(value: string) => value.slice(8) + "." + value.slice(5, 7)}
                   fontSize={12}
+                  interval="preserveStartEnd"
+                  minTickGap={16}
                 />
-                <YAxis allowDecimals={false} fontSize={12} width={36} />
+                <YAxis
+                  allowDecimals={false}
+                  fontSize={12}
+                  width={44}
+                  domain={[0, (max: number) => Math.max(1, Math.ceil(max * 1.15))]}
+                />
                 <Tooltip labelFormatter={(value: string) => new Date(value).toLocaleDateString("ru-RU")} />
                 <Legend />
                 {chartLines.map((line) => (
                   <Line
                     key={line.key}
-                    type="monotone"
+                    type="linear"
                     dataKey={line.key}
                     name={line.label}
                     stroke={line.color}
-                    strokeWidth={2}
-                    dot={false}
+                    strokeWidth={2.5}
+                    dot={{ r: 2.5, strokeWidth: 0, fill: line.color }}
+                    activeDot={{ r: 4 }}
+                    connectNulls
+                    isAnimationActive={false}
                   />
                 ))}
               </LineChart>
@@ -275,8 +295,18 @@ function PromoListPage() {
           />
         </div>
         <ChipRow value={filter} onChange={setFilter} items={PUBLISH_FILTERS} />
+        <ChipRow
+          value={viewSort}
+          onChange={(value) => setViewSort(value)}
+          items={[
+            { key: "views_desc", label: "Больше просмотров" },
+            { key: "views_asc", label: "Меньше просмотров" },
+          ]}
+        />
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Фильтр: опубликовано на выбранной площадке.</p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Фильтр: опубликовано на выбранной площадке. Сортировка по просмотрам за выбранный период.
+      </p>
 
       {isLoading ? (
         <p className="mt-8 text-sm text-muted-foreground">Загрузка...</p>
@@ -369,7 +399,7 @@ function PromoListPage() {
 
 function chartLinesFor(series: ChartSeries): { key: string; label: string; color: string }[] {
   if (series === "total") {
-    return [{ key: "total_views", label: "Всего просмотров", color: "hsl(var(--foreground))" }];
+    return [{ key: "total_views", label: "Всего просмотров", color: TOTAL_LINE_COLOR }];
   }
   if (series === "platforms") {
     return PLATFORM_CARDS.map((platform) => ({
@@ -379,6 +409,17 @@ function chartLinesFor(series: ChartSeries): { key: string; label: string; color
     }));
   }
   return [{ key: `${series}_views`, label: "Просмотры", color: LINE_COLOR[series] }];
+}
+
+function propertyViews(
+  stats: Record<ListingPlatform, PlatformTotals> | undefined,
+  filter: PublishFilter,
+) {
+  if (!stats) return 0;
+  if (filter === "all") {
+    return PLATFORM_ORDER.reduce((sum, platform) => sum + (stats[platform]?.views ?? 0), 0);
+  }
+  return stats[filter]?.views ?? 0;
 }
 
 function OverviewStat({

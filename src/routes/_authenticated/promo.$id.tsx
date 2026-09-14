@@ -69,7 +69,7 @@ const CHART_PLATFORMS = [
 type ChartPlatform = (typeof CHART_PLATFORMS)[number]["key"];
 
 const LINE_COLOR: Record<Exclude<ChartPlatform, "all">, string> = {
-  site: "hsl(var(--primary))",
+  site: "#4f46e5",
   avito: "#2563eb",
   cian: "#0284c7",
   yandex: "#d97706",
@@ -325,14 +325,21 @@ function PromoDetailPage() {
         ) : (
           <div className="mt-5 h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={series?.days ?? []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <LineChart data={series?.days ?? []} margin={{ top: 12, right: 16, left: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(value: string) => value.slice(8) + "." + value.slice(5, 7)}
                   fontSize={12}
+                  interval="preserveStartEnd"
+                  minTickGap={16}
                 />
-                <YAxis allowDecimals={false} fontSize={12} width={32} />
+                <YAxis
+                  allowDecimals={false}
+                  fontSize={12}
+                  width={44}
+                  domain={[0, (max: number) => Math.max(1, Math.ceil(max * 1.15))]}
+                />
                 <Tooltip
                   labelFormatter={(value: string) => new Date(value).toLocaleDateString("ru-RU")}
                 />
@@ -340,12 +347,15 @@ function PromoDetailPage() {
                 {chartLines.map((line) => (
                   <Line
                     key={line.key}
-                    type="monotone"
+                    type="linear"
                     dataKey={line.key}
                     name={line.label}
                     stroke={line.color}
-                    strokeWidth={2}
-                    dot={false}
+                    strokeWidth={2.5}
+                    dot={{ r: 2.5, strokeWidth: 0, fill: line.color }}
+                    activeDot={{ r: 4 }}
+                    connectNulls
+                    isAnimationActive={false}
                   />
                 ))}
               </LineChart>
