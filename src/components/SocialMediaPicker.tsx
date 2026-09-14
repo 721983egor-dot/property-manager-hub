@@ -1,5 +1,5 @@
 import { ImagePlus, Loader2, Trash2, Video } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SocialPhotoCropper } from "@/components/SocialPhotoCropper";
@@ -15,6 +15,7 @@ import {
   isHeicFile,
   isPhotoFile,
   isVideoFile,
+  socialMediaDisplayUrl,
   type SocialMediaCrop,
   type SocialMediaItem,
 } from "@/lib/social-media";
@@ -31,9 +32,37 @@ export function SocialMediaPicker({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  const blobUrls = useRef(new Map<string, string>());
   const [busy, setBusy] = useState(false);
   const [cropQueue, setCropQueue] = useState<PendingPhoto[]>([]);
   const cropFile = cropQueue[0] ?? null;
+
+  useEffect(() => {
+    return () => {
+      blobUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      blobUrls.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    const keep = new Set(items.map((item) => item.path));
+    for (const [path, url] of blobUrls.current) {
+      if (keep.has(path)) continue;
+      URL.revokeObjectURL(url);
+      blobUrls.current.delete(path);
+    }
+  }, [items]);
+
+  const commitItems = (next: SocialMediaItem[]) => {
+    const keep = new Set(next.map((item) => item.path));
+    for (const [path, url] of blobUrls.current) {
+      if (keep.has(path)) continue;
+      URL.revokeObjectURL(url);
+      blobUrls.current.delete(path);
+    }
+    itemsRef.current = next;
+    onChange(next);
+  };
 
   const addPrepared = async (
     file: File,
@@ -54,12 +83,14 @@ export function SocialMediaPicker({
       headers: { Authorization: `Bearer ${token}` },
       body: form,
     });
-    const payload = (await response.json().catch(() => null)) as SocialMediaItem & { error?: string };
-    if (!response.ok || payload.error) {
-      throw new Error(payload.error || "Не удалось загрузить файл");
+    const payload = (await response.json().catch(() => null)) as SocialMediaItem & { error?: string } | null;
+    if (!response.ok || !payload || payload.error) {
+      throw new Error(payload?.error || "Не удалось загрузить файл");
     }
+    const previewUrl = URL.createObjectURL(file);
+    blobUrls.current.set(payload.path, previewUrl);
     const current = itemsRef.current;
-    const next = [
+    commitItems([
       ...current,
       {
         id: payload.path,
@@ -70,12 +101,10 @@ export function SocialMediaPicker({
         width: payload.width,
         height: payload.height,
         durationSec: payload.durationSec,
-        url: payload.url,
+        url: previewUrl,
         sortOrder: current.length,
       },
-    ];
-    itemsRef.current = next;
-    onChange(next);
+    ]);
   };
 
   const uploadPhoto = async (file: File, crop: SocialMediaCrop) => {
@@ -160,9 +189,19 @@ export function SocialMediaPicker({
         {items.map((item, index) => (
           <div key={item.path} className="relative overflow-hidden rounded-lg border border-border bg-muted">
             {item.kind === "video" ? (
-              <video src={item.url} className="aspect-[4/5] w-full object-cover" muted />
+              <video src={item.url || socialMediaDisplayUrl(item.path)} className="aspect-[4/5] w-full object-cover" muted />
             ) : (
-              <img src={item.url} alt="" className="aspect-[4/5] w-full object-cover" />
+              <img
+                src={item.url || socialMediaDisplayUrl(item.path)}
+                alt=""
+                className="aspect-[4/5] w-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={(event) => {
+                  const fallback = socialMediaDisplayUrl(item.path);
+                  if (event.currentTarget.src.endsWith(fallback)) return;
+                  event.currentTarget.src = fallback;
+                }}
+              />
             )}
             <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
               {item.kind === "video" ? "видео" : `${index + 1}`}
@@ -173,7 +212,7 @@ export function SocialMediaPicker({
             <button
               type="button"
               className="absolute right-1 top-1 rounded bg-black/60 p-1 text-white"
-              onClick={() => onChange(items.filter((row) => row.path !== item.path))}
+              onClick={() => commitItems(items.filter((row) => row.path !== item.path))}
             >
               <Trash2 className="size-3.5" />
             </button>

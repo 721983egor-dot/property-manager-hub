@@ -43,7 +43,10 @@ import {
   type SocialPost,
 } from "@/lib/social";
 import { toInstagramOrganic } from "@/lib/social-adapt";
-import type { SocialMediaItem } from "@/lib/social-media";
+import {
+  MESSENGER_CAPTION_LIMIT,
+  type SocialMediaItem,
+} from "@/lib/social-media";
 
 export const Route = createFileRoute("/_authenticated/social/")({
   head: () => ({
@@ -308,7 +311,7 @@ function PostsTab({
                         <video
                           key={item.path}
                           src={item.url}
-                          className="h-20 w-16 shrink-0 rounded-md object-cover"
+                          className="h-20 w-16 shrink-0 rounded-md bg-muted object-cover"
                           muted
                         />
                       ) : (
@@ -316,7 +319,8 @@ function PostsTab({
                           key={item.path}
                           src={item.url}
                           alt=""
-                          className="h-20 w-16 shrink-0 rounded-md object-cover"
+                          className="h-20 w-16 shrink-0 rounded-md bg-muted object-cover"
+                          referrerPolicy="no-referrer"
                         />
                       ),
                     )}
@@ -403,6 +407,7 @@ function ComposeTab({
   );
   const [scheduled, setScheduled] = useState("");
   const [media, setMedia] = useState<SocialMediaItem[]>([]);
+  const [objectUrl, setObjectUrl] = useState("");
 
   const autoInstagram = toInstagramOrganic(body);
   const instagramValue = instagramTouched ? instagramBody : autoInstagram;
@@ -424,6 +429,7 @@ function ComposeTab({
           scheduledAt: fromLocalInput(scheduled),
           publish,
           variants,
+          objectUrl,
           media: media.map((item) => ({
             path: item.path,
             kind: item.kind,
@@ -443,6 +449,7 @@ function ComposeTab({
       setInstagramTouched(false);
       setScheduled("");
       setMedia([]);
+      setObjectUrl("");
       onSaved();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -469,8 +476,30 @@ function ComposeTab({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={10}
-              placeholder="Можно цену, условия и ссылку на объект…"
+              placeholder="Можно цену и условия. Ссылку на объект вставьте в поле ниже."
             />
+            {media.length && body.trim().length >= MESSENGER_CAPTION_LIMIT ? (
+              <p className="text-[11px] text-muted-foreground">
+                В Telegram и Макс альбом уйдёт отдельно, текст — следующим сообщением (подпись к медиа до{" "}
+                {MESSENGER_CAPTION_LIMIT} символов, как в Postmypost).
+              </p>
+            ) : media.length ? (
+              <p className="text-[11px] text-muted-foreground">
+                {body.trim().length}/{MESSENGER_CAPTION_LIMIT} символов подписи к альбому в Telegram и Макс
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label>Ссылка на объект</Label>
+            <Input
+              value={objectUrl}
+              onChange={(e) => setObjectUrl(e.target.value)}
+              placeholder="https://residence-more.ru/rent/…"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Вставьте карточку сами. В VK, Telegram и Макс будет видно https://residence-more.ru/, переход — сюда.
+              Instagram ссылку не ставит.
+            </p>
           </div>
           {platforms.includes("instagram") ? (
             <div className="space-y-2">
@@ -542,10 +571,18 @@ function ComposeTab({
         <div>
           <h2 className="text-base font-semibold">Как будет выглядеть</h2>
           <p className="text-sm text-muted-foreground">
-            Instagram показывается как обычный пост. Во ВКонтакте, Telegram и Макс остаются цена и ссылка.
+            Instagram — карусель. Telegram и Макс — как в Postmypost: несколько фото уходят
+            альбомом, длинный текст отдельным сообщением.
           </p>
         </div>
-        <SocialPostPreview body={body} topic={topic} platforms={platforms} variants={variants} media={media} />
+        <SocialPostPreview
+          body={body}
+          topic={topic}
+          platforms={platforms}
+          variants={variants}
+          media={media}
+          objectUrl={objectUrl}
+        />
       </div>
     </div>
   );

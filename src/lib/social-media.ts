@@ -97,6 +97,24 @@ export function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
 }
 
+/** Постоянный адрес файла с нашего сервера — подписанные ссылки хранилища в браузере часто не открываются. */
+export function socialMediaDisplayUrl(path: string) {
+  const encoded = path
+    .split("/")
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join("/");
+  return `/api/public/feed-photo/${encoded}`;
+}
+
+/** Telegram через бота Postmypost: подпись к медиа до 1024 символов, иначе текст отдельным сообщением. */
+export const MESSENGER_CAPTION_LIMIT = 1024;
+
+/** Telegram и Макс через Postmypost: подпись к медиа до 1024 символов, иначе текст отдельным сообщением. */
+export function messengerSendsTextSeparately(text: string, mediaCount: number) {
+  return mediaCount > 0 && text.trim().length >= MESSENGER_CAPTION_LIMIT;
+}
+
 export function isPhotoFile(file: File) {
   if (PHOTO_FORMATS.includes(file.type as (typeof PHOTO_FORMATS)[number])) return true;
   return /\.(jpe?g|png|webp)$/i.test(file.name);

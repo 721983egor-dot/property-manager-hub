@@ -418,6 +418,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       platforms: platforms as ("instagram" | "vk" | "telegram" | "max")[],
       propertyId: (input["propertyId"] as string | null) ?? null,
       pulseItemId: (input["pulseItemId"] as string | null) ?? null,
+      objectUrl: String(input["objectUrl"] ?? "").trim() || undefined,
       scheduledAt: (input["scheduledAt"] as string | null) ?? null,
       publish: Boolean(input["publish"]),
       source: "assistant",

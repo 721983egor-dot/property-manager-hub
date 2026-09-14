@@ -5,7 +5,13 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { PHOTO_MAX_BYTES, VIDEO_MAX_BYTES, VIDEO_MAX_WIDTH, type SocialMediaKind } from "@/lib/social-media";
+import {
+  PHOTO_MAX_BYTES,
+  VIDEO_MAX_BYTES,
+  VIDEO_MAX_WIDTH,
+  socialMediaDisplayUrl,
+  type SocialMediaKind,
+} from "@/lib/social-media";
 
 const PHOTO_BUCKET = "property-photos";
 
@@ -21,12 +27,6 @@ export type StoredSocialMedia = {
   durationSec: number | null;
   url: string;
 };
-
-async function signedUrl(path: string) {
-  const { data, error } = await supabaseAdmin.storage.from(PHOTO_BUCKET).createSignedUrl(path, 60 * 60 * 24);
-  if (error || !data?.signedUrl) throw new Error(error?.message || "Не удалось получить ссылку на файл");
-  return data.signedUrl;
-}
 
 function hasFfmpeg() {
   return exec("ffmpeg", ["-version"], { timeout: 8000 }).then(
@@ -133,7 +133,7 @@ export async function storeSocialMediaFile(input: {
     width: input.width ?? null,
     height: input.height ?? null,
     durationSec: input.durationSec ?? null,
-    url: await signedUrl(path),
+    url: socialMediaDisplayUrl(path),
   };
 }
 
@@ -145,13 +145,9 @@ export async function downloadSocialMedia(path: string) {
 }
 
 export async function signedSocialMediaUrls(paths: string[]) {
-  const unique = Array.from(new Set(paths.filter(Boolean)));
   const map: Record<string, string> = {};
-  if (!unique.length) return map;
-  const { data, error } = await supabaseAdmin.storage.from(PHOTO_BUCKET).createSignedUrls(unique, 60 * 60 * 12);
-  if (error) throw new Error(error.message);
-  for (const row of data ?? []) {
-    if (row.path && row.signedUrl) map[row.path] = row.signedUrl;
+  for (const path of Array.from(new Set(paths.filter(Boolean)))) {
+    map[path] = socialMediaDisplayUrl(path);
   }
   return map;
 }

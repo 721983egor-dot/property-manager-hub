@@ -367,6 +367,7 @@ export type SaveSocialPostInput = {
   body: string;
   platforms: SocialPlatform[];
   propertyId?: string | null;
+  objectUrl?: string;
   pulseItemId?: string | null;
   scheduledAt?: string | null;
   publish?: boolean;
@@ -382,10 +383,11 @@ async function replaceTargets(
   platforms: SocialPlatform[],
   channels: SocialChannel[],
   variants?: Partial<Record<SocialPlatform, string>>,
+  objectUrl?: string,
 ) {
   const { error: delError } = await supabaseAdmin.from("social_post_targets").delete().eq("post_id", postId);
   if (delError) throw new Error(delError.message);
-  const bodies = bodiesForPlatforms(body, platforms, variants);
+  const bodies = bodiesForPlatforms(body, platforms, variants, objectUrl);
   const rows = platforms
     .map((platform) => channels.find((c) => c.platform === platform))
     .filter((c): c is SocialChannel => Boolean(c))
@@ -467,7 +469,7 @@ export async function saveSocialPost(input: SaveSocialPostInput): Promise<Social
     postId = data.id;
   }
 
-  await replaceTargets(postId, body, platforms, channels, input.variants);
+  await replaceTargets(postId, body, platforms, channels, input.variants, input.objectUrl);
   if (input.media) await replaceMedia(postId, input.media);
   if (input.publish) {
     try {

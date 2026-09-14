@@ -186,6 +186,12 @@ export function createSocialTools(ctx: AssistantToolContext) {
           .string()
           .optional()
           .describe("Версия для Instagram без цен и рекламы. Если пусто — система соберёт сама."),
+        objectUrl: z
+          .string()
+          .optional()
+          .describe(
+            "Адрес карточки объекта. В VK/Telegram/Макс будет видно https://residence-more.ru/, переход на этот адрес. Не вставляй ссылку в body.",
+          ),
         platforms: platformsSchema,
         ref: z.string().optional().describe("Объект, если пост про конкретную квартиру/дом"),
         pulseItemId: z
@@ -198,7 +204,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
           .describe("ISO-дата публикации, если это не «прямо сейчас»"),
         publishNow: z.boolean().optional(),
       }),
-      execute: async ({ topic, body, instagramBody, platforms, ref, pulseItemId, scheduledAt, publishNow }) => {
+      execute: async ({ topic, body, instagramBody, platforms, ref, pulseItemId, scheduledAt, publishNow, objectUrl }) => {
         let propertyId: string | undefined;
         let propertyText = "";
         if (ref) {
@@ -222,6 +228,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
             pulseItemId: pulseItemId?.trim() || null,
             scheduledAt: scheduledAt || null,
             publish: Boolean(publishNow || scheduledAt),
+            objectUrl: objectUrl?.trim() || undefined,
             variants: instagramBody?.trim() ? { instagram: instagramBody.trim() } : undefined,
           },
         });

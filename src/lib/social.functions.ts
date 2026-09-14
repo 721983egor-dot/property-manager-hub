@@ -95,6 +95,7 @@ export const saveSocialPost = createServerFn({ method: "POST" })
       platforms: SocialPlatform[];
       propertyId?: string | null;
       pulseItemId?: string | null;
+      objectUrl?: string;
       scheduledAt?: string | null;
       publish?: boolean;
       variants?: Partial<Record<SocialPlatform, string>>;
@@ -114,6 +115,7 @@ export const saveSocialPost = createServerFn({ method: "POST" })
       platforms: platformsOf(input.platforms),
       scheduledAt: input.scheduledAt || null,
       propertyId: input.propertyId || null,
+      objectUrl: String(input.objectUrl ?? "").trim(),
       media: Array.isArray(input.media)
         ? input.media
             .slice(0, 10)
