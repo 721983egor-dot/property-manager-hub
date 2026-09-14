@@ -7,6 +7,7 @@ import {
   Handshake,
   Hotel,
   Inbox,
+  ListTodo,
   LogOut,
   Megaphone,
   MessagesSquare,
@@ -91,7 +92,7 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       <nav className="px-3 py-2">
         <Link to="/owner" onClick={onNavigate} className={NAV_LINK_CLASS}>
           <Hotel className="size-4 shrink-0" />
-          Кабинет N-11
+          Кабинет Н11
         </Link>
       </nav>
     );
@@ -101,7 +102,7 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
     <nav className="px-3 py-2">
       <Link to="/hotel" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Hotel className="size-4 shrink-0" />
-        N-11 Резиденция
+        Н11 Резиденция
       </Link>
       <Link to="/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Building2 className="size-4 shrink-0" />
@@ -144,6 +145,10 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         CRM
       </p>
+      <Link to="/crm/tasks" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <ListTodo className="size-4 shrink-0" />
+        Задачи
+      </Link>
       {isAdmin && (
         <Link to="/crm/deals" onClick={onNavigate} className={NAV_LINK_CLASS}>
           <Handshake className="size-4 shrink-0" />
@@ -235,7 +240,7 @@ type NavItem = {
 
 
 const MOBILE_NAV: NavItem[] = [
-  { to: "/hotel", label: "N-11", icon: Hotel },
+  { to: "/hotel", label: "Н11", icon: Hotel },
   { to: "/objects", label: "Объекты", icon: Building2 },
   { to: "/calendar", label: "Календарь", icon: CalendarDays, managerOnly: true },
   { to: "/chats", label: "Чаты", icon: MessagesSquare, adminOnly: true },

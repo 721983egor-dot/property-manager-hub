@@ -937,7 +937,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getActivityLog: tool({
       description:
-        "Журнал действий системы и сотрудников: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, deal_comments, deal_showings, bookings, selections, selection_items, property_listings, leads, profiles — карточки сотрудников, user_roles — доступы сотрудников, assistant, social_posts), объект, действие (insert/update/delete).",
+        "Журнал действий системы и сотрудников: кто, что и когда создал, изменил или удалил. Фильтры: период в днях, таблица (properties, clients, deals, deal_comments, deal_showings, bookings, selections, selection_items, property_listings, leads, profiles — карточки сотрудников, user_roles — доступы сотрудников, assistant, social_posts, tasks, task_items), объект, действие (insert/update/delete).",
       inputSchema: z.object({
         days: z.number().optional(),
         tableName: z.string().optional(),
@@ -970,12 +970,12 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getRecentChanges: tool({
       description:
-        "Что нового и что менялось в системе за последние N дней: созданные объекты, клиенты, брони, сделки, заявки и подборки плюс записи журнала. Используй для вопросов «что добавили сегодня/утром/за неделю».",
+        "Что нового и что менялось в системе за последние N дней: созданные объекты, клиенты, брони, сделки, задачи, заявки и подборки плюс записи журнала. Используй для вопросов «что добавили сегодня/утром/за неделю».",
       inputSchema: z.object({ days: z.number().optional() }),
       execute: async ({ days }) => {
         const period = days && days > 0 ? days : 3;
         const since = daysAgoISO(period);
-        const [props, clients, bookings, deals, leads, selections, log] = await Promise.all([
+        const [props, clients, bookings, deals, tasks, leads, selections, log] = await Promise.all([
           admin
             .from("properties")
             .select("id, ref_id, title, internal_name, status, price_month, created_at, updated_at")
@@ -987,6 +987,10 @@ export function createReadTools(ctx: AssistantToolContext) {
             .select("id, property_id, client_id, start_date, end_date, status, created_at")
             .gte("created_at", since),
           admin.from("deals").select("id, title, created_at").gte("created_at", since),
+          admin
+            .from("tasks")
+            .select("id, title, status, due_date, assignee_id, property_id, completed_at, created_at")
+            .gte("created_at", since),
           admin
             .from("leads")
             .select("id, name, phone, topic, status, created_at")
@@ -1019,6 +1023,7 @@ export function createReadTools(ctx: AssistantToolContext) {
             property: bookingNames.get(b.property_id) ?? b.property_id,
           })),
           newDeals: deals.data ?? [],
+          newTasks: tasks.data ?? [],
           newLeads: leads.data ?? [],
           newSelections: (selections.data ?? []).map((s) => ({
             ...s,
@@ -1243,6 +1248,135 @@ export function createReadTools(ctx: AssistantToolContext) {
           stages: (stages ?? []).map((s) => ({ name: s.name, kind: s.kind })),
           fields: (fields ?? []).filter((f) => !f.archived),
           deals,
+        };
+      },
+    }),
+
+    getTasks: tool({
+      description:
+        "Канбан задач RM OS: открытые и выполненные задачи сотрудников. Фильтры: текст, исполнитель, объект, статус (open/done), колонка (overdue/today/this_week/next_week/later/none). Возвращает дату, интервал времени, объект, чеклист и исполнителя.",
+      inputSchema: z.object({
+        query: z.string().optional(),
+        assigneeQuery: z.string().optional().describe("ФИО или почта сотрудника"),
+        propertyRef: z.string().optional(),
+        status: z.enum(["open", "done", "all"]).optional(),
+        column: z.enum(["overdue", "today", "this_week", "next_week", "later", "none"]).optional(),
+      }),
+      execute: async ({ query, assigneeQuery, propertyRef, status, column }) => {
+        const [{ data: rows, error }, { data: items }, { data: profiles }] = await Promise.all([
+          admin
+            .from("tasks")
+            .select(
+              "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, position, completed_at, created_at, updated_at",
+            )
+            .order("due_date", { ascending: true })
+            .limit(300),
+          admin.from("task_items").select("id, task_id, title, done, position").order("position"),
+          admin.from("profiles").select("id, full_name, email"),
+        ]);
+        if (error) return { error: error.message };
+        const staffMap = new Map(
+          (profiles ?? []).map((p) => [p.id, (p.full_name || p.email || "Сотрудник").trim()]),
+        );
+        let assigneeId: string | null = null;
+        if (assigneeQuery) {
+          const term = assigneeQuery.toLowerCase();
+          const found = (profiles ?? []).find((p) =>
+            `${p.full_name} ${p.email}`.toLowerCase().includes(term),
+          );
+          if (!found) return { count: 0, hint: "Сотрудник не найден", tasks: [] };
+          assigneeId = found.id;
+        }
+        const property = propertyRef ? await ctx.findProperty(propertyRef) : null;
+        if (propertyRef && !property) return { error: "Объект не найден" };
+        const propertyId = property ? (property["id"] as string) : null;
+        const propertyIds = [
+          ...new Set((rows ?? []).map((row) => row.property_id).filter(Boolean)),
+        ] as string[];
+        const names = await nameMap(propertyIds);
+        const itemsByTask = new Map<string, { id: string; title: string; done: boolean }[]>();
+        for (const item of items ?? []) {
+          const list = itemsByTask.get(item.task_id) ?? [];
+          list.push({ id: item.id, title: item.title, done: item.done });
+          itemsByTask.set(item.task_id, list);
+        }
+        const today = dateOnly(new Date().toISOString());
+        const mondayOffset = (d: Date) => {
+          const day = d.getDay();
+          return day === 0 ? -6 : 1 - day;
+        };
+        const start = new Date(`${today}T00:00:00`);
+        start.setDate(start.getDate() + mondayOffset(start));
+        const thisSunday = dateOnly(new Date(start.getTime() + 6 * 86400000).toISOString());
+        const nextSunday = dateOnly(new Date(start.getTime() + 13 * 86400000).toISOString());
+        const columnOf = (due: string | null) => {
+          if (!due) return "none";
+          if (due < today) return "overdue";
+          if (due === today) return "today";
+          if (due <= thisSunday) return "this_week";
+          if (due <= nextSunday) return "next_week";
+          return "later";
+        };
+        const wantedStatus = status ?? "open";
+        const mapped = (rows ?? [])
+          .filter((row) => (assigneeId ? row.assignee_id === assigneeId : true))
+          .filter((row) => (propertyId ? row.property_id === propertyId : true))
+          .filter((row) => (wantedStatus === "all" ? true : row.status === wantedStatus))
+          .map((row) => ({
+            id: row.id,
+            title: row.title,
+            description: row.description,
+            status: row.status,
+            dueDate: row.due_date,
+            dueStart: String(row.due_start || "").slice(0, 5),
+            dueEnd: String(row.due_end || "").slice(0, 5),
+            column: columnOf(row.due_date),
+            assignee: row.assignee_id ? (staffMap.get(row.assignee_id) ?? "") : "",
+            assigneeId: row.assignee_id,
+            property: row.property_id ? (names.get(row.property_id) ?? "") : "",
+            propertyId: row.property_id,
+            completedAt: row.completed_at,
+            createdAt: row.created_at,
+            items: itemsByTask.get(row.id) ?? [],
+          }))
+          .filter((row) => (column ? row.column === column : true))
+          .filter((row) => {
+            if (!query) return true;
+            const term = query.toLowerCase();
+            return `${row.title} ${row.description} ${row.assignee} ${row.property} ${row.items.map((i) => i.title).join(" ")}`
+              .toLowerCase()
+              .includes(term);
+          });
+        return {
+          count: mapped.length,
+          source: "crm.tasks",
+          hint: "Колонки канбана считаются по дате: overdue / today / this_week / next_week / later / none.",
+          tasks: mapped,
+        };
+      },
+    }),
+
+    getTask: tool({
+      description: "Одна задача RM OS со всеми пунктами чеклиста, исполнителем, объектом и сроком.",
+      inputSchema: z.object({ taskId: z.string() }),
+      execute: async ({ taskId }) => {
+        const [{ data: row, error }, { data: items }] = await Promise.all([
+          admin.from("tasks").select("*").eq("id", taskId).maybeSingle(),
+          admin.from("task_items").select("*").eq("task_id", taskId).order("position"),
+        ]);
+        if (error) return { error: error.message };
+        if (!row) return { error: "Задача не найдена" };
+        const [{ data: profile }, names] = await Promise.all([
+          row.assignee_id
+            ? admin.from("profiles").select("full_name, email").eq("id", row.assignee_id).maybeSingle()
+            : Promise.resolve({ data: null }),
+          nameMap(row.property_id ? [row.property_id] : []),
+        ]);
+        return {
+          ...row,
+          assigneeName: profile ? profile.full_name || profile.email : null,
+          propertyName: row.property_id ? (names.get(row.property_id) ?? null) : null,
+          items: items ?? [],
         };
       },
     }),

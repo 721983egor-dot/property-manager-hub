@@ -1,0 +1,345 @@
+import { supabase } from "@/integrations/supabase/client";
+import { addDays, parseISODate, toISODate } from "@/lib/rentals";
+
+export type TaskStatus = "open" | "done";
+
+export type TaskColumnId = "overdue" | "today" | "this_week" | "next_week" | "later" | "none";
+
+export type StaffTaskItem = {
+  id: string;
+  task_id: string;
+  title: string;
+  done: boolean;
+  position: number;
+  created_at: string;
+};
+
+export type StaffTask = {
+  id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  due_date: string | null;
+  due_start: string;
+  due_end: string;
+  assignee_id: string | null;
+  created_by: string | null;
+  property_id: string | null;
+  position: number;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items: StaffTaskItem[];
+};
+
+export type StaffDirectoryMember = {
+  id: string;
+  email: string;
+  full_name: string;
+};
+
+export type TaskInput = {
+  title: string;
+  description: string;
+  status: TaskStatus;
+  due_date: string | null;
+  due_start: string;
+  due_end: string;
+  assignee_id: string | null;
+  property_id: string | null;
+  position?: number;
+};
+
+export const TASK_COLUMNS: { id: TaskColumnId; name: string; color: string }[] = [
+  { id: "overdue", name: "Просроченные", color: "#dc2626" },
+  { id: "today", name: "Сегодня", color: "#2563eb" },
+  { id: "this_week", name: "На этой неделе", color: "#7c3aed" },
+  { id: "next_week", name: "На следующей неделе", color: "#0891b2" },
+  { id: "later", name: "Позже", color: "#64748b" },
+  { id: "none", name: "Без срока", color: "#94a3b8" },
+];
+
+const TASK_COLUMNS_SQL =
+  "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, position, completed_at, created_at, updated_at";
+
+export function timeSlots(stepMin = 30, from = "07:00", to = "22:00"): string[] {
+  const [fromH, fromM] = from.split(":").map(Number);
+  const [toH, toM] = to.split(":").map(Number);
+  const start = (fromH ?? 7) * 60 + (fromM ?? 0);
+  const end = (toH ?? 22) * 60 + (toM ?? 0);
+  const out: string[] = [];
+  for (let minutes = start; minutes <= end; minutes += stepMin) {
+    out.push(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
+  }
+  return out;
+}
+
+export const TASK_TIME_SLOTS = timeSlots();
+
+export function normalizeTime(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.slice(0, 5);
+}
+
+export function formatTaskTimeRange(start: string, end: string): string {
+  const from = normalizeTime(start);
+  const to = normalizeTime(end);
+  if (from && to) return `${from}–${to}`;
+  if (from) return from;
+  return "";
+}
+
+function mondayOf(date: Date): Date {
+  const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const weekday = copy.getDay();
+  copy.setDate(copy.getDate() + (weekday === 0 ? -6 : 1 - weekday));
+  return copy;
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** Колонка канбана по дате выполнения. Выполненные на доску не попадают. */
+export function taskColumnId(task: Pick<StaffTask, "status" | "due_date">, today = new Date()): TaskColumnId {
+  if (!task.due_date) return "none";
+  const due = parseISODate(task.due_date);
+  const now = startOfDay(today);
+  if (due < now) return "overdue";
+  if (due.getTime() === now.getTime()) return "today";
+  const thisMonday = mondayOf(now);
+  const thisSunday = addDays(thisMonday, 6);
+  const nextSunday = addDays(thisMonday, 13);
+  if (due <= thisSunday) return "this_week";
+  if (due <= nextSunday) return "next_week";
+  return "later";
+}
+
+export function dueDateForColumn(
+  column: TaskColumnId,
+  today = new Date(),
+  mode: "drop" | "create" = "drop",
+): string | null {
+  const now = startOfDay(today);
+  const thisMonday = mondayOf(now);
+  if (column === "none") return null;
+  if (column === "overdue") return toISODate(mode === "create" ? now : addDays(now, -1));
+  if (column === "today") return toISODate(now);
+  if (column === "this_week") {
+    const tomorrow = addDays(now, 1);
+    const thisSunday = addDays(thisMonday, 6);
+    return toISODate(tomorrow <= thisSunday ? tomorrow : thisSunday);
+  }
+  if (column === "next_week") return toISODate(addDays(thisMonday, 7));
+  return toISODate(addDays(thisMonday, 14));
+}
+
+function mapTask(row: Record<string, unknown>, items: StaffTaskItem[]): StaffTask {
+  return {
+    id: String(row.id),
+    title: String(row.title ?? ""),
+    description: String(row.description ?? ""),
+    status: row.status === "done" ? "done" : "open",
+    due_date: (row.due_date as string | null) ?? null,
+    due_start: normalizeTime(row.due_start as string),
+    due_end: normalizeTime(row.due_end as string),
+    assignee_id: (row.assignee_id as string | null) ?? null,
+    created_by: (row.created_by as string | null) ?? null,
+    property_id: (row.property_id as string | null) ?? null,
+    position: Number(row.position ?? 0),
+    completed_at: (row.completed_at as string | null) ?? null,
+    created_at: String(row.created_at ?? ""),
+    updated_at: String(row.updated_at ?? ""),
+    items,
+  };
+}
+
+async function loadItems(taskIds: string[]): Promise<Map<string, StaffTaskItem[]>> {
+  const grouped = new Map<string, StaffTaskItem[]>();
+  if (taskIds.length === 0) return grouped;
+  const { data, error } = await supabase
+    .from("task_items")
+    .select("id, task_id, title, done, position, created_at")
+    .in("task_id", taskIds)
+    .order("position", { ascending: true });
+  if (error) throw error;
+  for (const row of data ?? []) {
+    const item = row as StaffTaskItem;
+    const list = grouped.get(item.task_id) ?? [];
+    list.push(item);
+    grouped.set(item.task_id, list);
+  }
+  return grouped;
+}
+
+async function attachItems(rows: Record<string, unknown>[]): Promise<StaffTask[]> {
+  const items = await loadItems(rows.map((row) => String(row.id)));
+  return rows.map((row) => mapTask(row, items.get(String(row.id)) ?? []));
+}
+
+export async function fetchTasks(): Promise<StaffTask[]> {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(TASK_COLUMNS_SQL)
+    .order("position", { ascending: true })
+    .order("due_date", { ascending: true });
+  if (error) throw error;
+  return attachItems((data ?? []) as Record<string, unknown>[]);
+}
+
+export async function fetchPropertyTasks(propertyId: string): Promise<StaffTask[]> {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(TASK_COLUMNS_SQL)
+    .eq("property_id", propertyId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return attachItems((data ?? []) as Record<string, unknown>[]);
+}
+
+export async function fetchStaffDirectory(): Promise<StaffDirectoryMember[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name")
+    .order("full_name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    email: row.email ?? "",
+    full_name: row.full_name ?? "",
+  }));
+}
+
+export async function saveTask(id: string | null, input: TaskInput): Promise<string> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const row = {
+    title: input.title.trim() || "Без названия",
+    description: input.description.trim(),
+    status: input.status,
+    due_date: input.due_date,
+    due_start: normalizeTime(input.due_start),
+    due_end: normalizeTime(input.due_end),
+    assignee_id: input.assignee_id,
+    property_id: input.property_id,
+    position: input.position ?? 0,
+    completed_at: input.status === "done" ? new Date().toISOString() : null,
+  };
+  if (id) {
+    const { error } = await supabase.from("tasks").update(row as never).eq("id", id);
+    if (error) throw error;
+    return id;
+  }
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({ ...row, created_by: user?.id ?? null } as never)
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+export async function completeTask(id: string) {
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      status: "done",
+      completed_at: new Date().toISOString(),
+    } as never)
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function reopenTask(id: string) {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ status: "open", completed_at: null } as never)
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function postponeTask(id: string, dueDate: string | null) {
+  const patch: Record<string, unknown> = {
+    due_date: dueDate,
+    status: "open",
+    completed_at: null,
+  };
+  if (!dueDate) {
+    patch.due_start = "";
+    patch.due_end = "";
+  }
+  const { error } = await supabase.from("tasks").update(patch as never).eq("id", id);
+  if (error) throw error;
+}
+
+export async function moveTask(
+  id: string,
+  column: TaskColumnId,
+  position: number,
+  current: Pick<StaffTask, "due_start" | "due_end">,
+) {
+  const dueDate = dueDateForColumn(column);
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      due_date: dueDate,
+      due_start: dueDate ? current.due_start : "",
+      due_end: dueDate ? current.due_end : "",
+      position,
+      status: "open",
+      completed_at: null,
+    } as never)
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteTask(id: string) {
+  const { error } = await supabase.from("tasks").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function addTaskItem(taskId: string, title: string, position: number): Promise<StaffTaskItem> {
+  const { data, error } = await supabase
+    .from("task_items")
+    .insert({
+      task_id: taskId,
+      title: title.trim() || "Пункт",
+      done: false,
+      position,
+    } as never)
+    .select("id, task_id, title, done, position, created_at")
+    .single();
+  if (error) throw error;
+  return data as StaffTaskItem;
+}
+
+export async function saveTaskItems(taskId: string, titles: string[]) {
+  const rows = titles
+    .map((title) => title.trim())
+    .filter(Boolean)
+    .map((title, position) => ({
+      task_id: taskId,
+      title,
+      done: false,
+      position,
+    }));
+  if (rows.length === 0) return;
+  const { error } = await supabase.from("task_items").insert(rows as never);
+  if (error) throw error;
+}
+
+export async function setTaskItemDone(id: string, done: boolean) {
+  const { error } = await supabase.from("task_items").update({ done } as never).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateTaskItemTitle(id: string, title: string) {
+  const { error } = await supabase.from("task_items").update({ title: title.trim() } as never).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteTaskItem(id: string) {
+  const { error } = await supabase.from("task_items").delete().eq("id", id);
+  if (error) throw error;
+}

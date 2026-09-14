@@ -542,6 +542,127 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     });
     return result.summary;
   },
+
+  upsertTask: async (input) => {
+    const taskId = (input["taskId"] as string | null) || null;
+    const patch: Record<string, unknown> = {};
+    if (input["title"] != null) patch["title"] = input["title"];
+    if (input["description"] != null) patch["description"] = input["description"];
+    if (input["clearDue"]) {
+      patch["due_date"] = null;
+      patch["due_start"] = "";
+      patch["due_end"] = "";
+    } else {
+      if (input["dueDate"] != null) patch["due_date"] = input["dueDate"] || null;
+      if (input["dueStart"] != null) patch["due_start"] = input["dueStart"];
+      if (input["dueEnd"] != null) patch["due_end"] = input["dueEnd"];
+    }
+    if (input["assigneeId"] != null) patch["assignee_id"] = input["assigneeId"];
+    if (input["propertyId"] != null) patch["property_id"] = input["propertyId"];
+    if (input["status"] != null) {
+      patch["status"] = input["status"];
+      patch["completed_at"] = input["status"] === "done" ? new Date().toISOString() : null;
+    }
+    let savedId = taskId;
+    if (taskId) {
+      const { error } = await supabaseAdmin.from("tasks").update(patch as never).eq("id", taskId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data, error } = await supabaseAdmin
+        .from("tasks")
+        .insert({
+          title: (patch["title"] as string) || "Новая задача",
+          description: (patch["description"] as string) ?? "",
+          due_date: (patch["due_date"] as string | null) ?? null,
+          due_start: (patch["due_start"] as string) ?? "",
+          due_end: (patch["due_end"] as string) ?? "",
+          assignee_id: (patch["assignee_id"] as string | null) ?? null,
+          property_id: (patch["property_id"] as string | null) ?? null,
+          status: (patch["status"] as string) ?? "open",
+          completed_at: (patch["completed_at"] as string | null) ?? null,
+        } as never)
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      savedId = (data as { id: string }).id;
+    }
+    const items = input["items"];
+    if (Array.isArray(items) && savedId && !taskId) {
+      const rows = items
+        .map((title) => String(title ?? "").trim())
+        .filter(Boolean)
+        .map((title, position) => ({ task_id: savedId, title, done: false, position }));
+      if (rows.length) {
+        const { error } = await supabaseAdmin.from("task_items").insert(rows as never);
+        if (error) throw new Error(error.message);
+      }
+    }
+    return taskId ? "Задача обновлена" : "Задача создана";
+  },
+
+  completeTask: async (input) => {
+    const taskId = must(input["taskId"] as string, "Не указана задача");
+    const { error } = await supabaseAdmin
+      .from("tasks")
+      .update({ status: "done", completed_at: new Date().toISOString() } as never)
+      .eq("id", taskId);
+    if (error) throw new Error(error.message);
+    return "Задача отмечена выполненной";
+  },
+
+  postponeTask: async (input) => {
+    const taskId = must(input["taskId"] as string, "Не указана задача");
+    const dueDate = (input["dueDate"] as string | null) ?? null;
+    const patch: Record<string, unknown> = {
+      due_date: dueDate,
+      status: "open",
+      completed_at: null,
+    };
+    if (!dueDate) {
+      patch["due_start"] = "";
+      patch["due_end"] = "";
+    }
+    const { error } = await supabaseAdmin.from("tasks").update(patch as never).eq("id", taskId);
+    if (error) throw new Error(error.message);
+    return dueDate ? `Задача отложена на ${dueDate}` : "Срок задачи убран";
+  },
+
+  upsertTaskItem: async (input) => {
+    const taskId = must(input["taskId"] as string, "Не указана задача");
+    const itemId = (input["itemId"] as string | null) || null;
+    if (input["remove"] && itemId) {
+      const { error } = await supabaseAdmin.from("task_items").delete().eq("id", itemId);
+      if (error) throw new Error(error.message);
+      return "Пункт чеклиста удалён";
+    }
+    if (itemId) {
+      const patch: Record<string, unknown> = {};
+      if (input["title"] != null) patch["title"] = input["title"];
+      if (input["done"] != null) patch["done"] = Boolean(input["done"]);
+      const { error } = await supabaseAdmin.from("task_items").update(patch as never).eq("id", itemId);
+      if (error) throw new Error(error.message);
+      return "Пункт чеклиста обновлён";
+    }
+    const { count } = await supabaseAdmin
+      .from("task_items")
+      .select("id", { count: "exact", head: true })
+      .eq("task_id", taskId);
+    const { error } = await supabaseAdmin.from("task_items").insert({
+      task_id: taskId,
+      title: String(input["title"] ?? "Пункт"),
+      done: Boolean(input["done"]),
+      position: count ?? 0,
+    } as never);
+    if (error) throw new Error(error.message);
+    return "Пункт чеклиста добавлен";
+  },
+
+  deleteTask: async (input) => {
+    const taskId = must(input["taskId"] as string, "Не указана задача");
+    const { error } = await supabaseAdmin.from("tasks").delete().eq("id", taskId);
+    if (error) throw new Error(error.message);
+    return "Задача удалена";
+  },
 };
 
 /** Выполняет подтверждённое действие и пишет его в журнал. */

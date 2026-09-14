@@ -532,5 +532,144 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+
+    proposeTask: tool({
+      description:
+        "Предложить создание или изменение задачи RM OS: название, дата, интервал времени (например 10:00–10:30), исполнитель, объект, комментарий, пункты чеклиста. Требует подтверждения менеджера.",
+      inputSchema: z.object({
+        taskId: z.string().optional(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        dueDate: z.string().optional().describe("Дата ГГГГ-ММ-ДД, пустая строка чтобы убрать срок"),
+        dueStart: z.string().optional().describe("Начало интервала ЧЧ:ММ"),
+        dueEnd: z.string().optional().describe("Конец интервала ЧЧ:ММ"),
+        assigneeQuery: z.string().optional().describe("ФИО или почта исполнителя"),
+        propertyRef: z.string().optional(),
+        status: z.enum(["open", "done"]).optional(),
+        items: z.array(z.string()).optional().describe("Пункты чеклиста при создании"),
+      }),
+      execute: async (input) => {
+        const property = input.propertyRef ? await label(input.propertyRef) : null;
+        if (input.propertyRef && !property) return { error: "Объект не найден" };
+        let assigneeId: string | null = null;
+        let assigneeName = "";
+        if (input.assigneeQuery) {
+          const term = input.assigneeQuery.toLowerCase();
+          const { data: profiles } = await ctx.admin
+            .from("profiles")
+            .select("id, full_name, email")
+            .limit(200);
+          const found = (profiles ?? []).find((p) =>
+            `${p.full_name} ${p.email}`.toLowerCase().includes(term),
+          );
+          if (!found) return { error: "Сотрудник не найден" };
+          assigneeId = found.id;
+          assigneeName = found.full_name || found.email;
+        }
+        const parts: string[] = [];
+        if (input.title) parts.push(`«${input.title}»`);
+        if (input.dueDate === "") parts.push("без срока");
+        else if (input.dueDate) {
+          const range =
+            input.dueStart && input.dueEnd
+              ? ` ${input.dueStart}–${input.dueEnd}`
+              : input.dueStart
+                ? ` ${input.dueStart}`
+                : "";
+          parts.push(`${input.dueDate}${range}`);
+        }
+        if (assigneeName) parts.push(`исполнитель ${assigneeName}`);
+        if (property) parts.push(`объект ${property.text}`);
+        if (input.items?.length) parts.push(`чеклист: ${input.items.join(", ")}`);
+        if (input.status === "done") parts.push("выполнена");
+        const summary = `${input.taskId ? "Изменить" : "Создать"} задачу: ${parts.join(", ") || "поля задачи"}`;
+        ctx.propose({
+          tool: "upsertTask",
+          summary,
+          input: {
+            taskId: input.taskId ?? null,
+            title: input.title ?? null,
+            description: input.description ?? null,
+            dueDate: input.dueDate ?? null,
+            dueStart: input.dueStart ?? null,
+            dueEnd: input.dueEnd ?? null,
+            assigneeId,
+            propertyId: property?.id ?? null,
+            status: input.status ?? null,
+            items: input.items ?? null,
+            clearDue: input.dueDate === "",
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeCompleteTask: tool({
+      description: "Предложить отметить задачу выполненной. Требует подтверждения.",
+      inputSchema: z.object({ taskId: z.string() }),
+      execute: async ({ taskId }) => {
+        const { data: task } = await ctx.admin.from("tasks").select("title").eq("id", taskId).maybeSingle();
+        if (!task) return { error: "Задача не найдена" };
+        const summary = `Отметить задачу «${task.title}» выполненной`;
+        ctx.propose({ tool: "completeTask", summary, input: { taskId } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposePostponeTask: tool({
+      description: "Предложить отложить задачу на другую дату (или убрать срок). Требует подтверждения.",
+      inputSchema: z.object({
+        taskId: z.string(),
+        dueDate: z.string().optional().describe("Новая дата ГГГГ-ММ-ДД, пусто = без срока"),
+      }),
+      execute: async ({ taskId, dueDate }) => {
+        const { data: task } = await ctx.admin.from("tasks").select("title").eq("id", taskId).maybeSingle();
+        if (!task) return { error: "Задача не найдена" };
+        const summary = dueDate
+          ? `Отложить задачу «${task.title}» на ${dueDate}`
+          : `Убрать срок у задачи «${task.title}»`;
+        ctx.propose({ tool: "postponeTask", summary, input: { taskId, dueDate: dueDate || null } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeTaskItem: tool({
+      description:
+        "Предложить пункт чеклиста задачи: добавить, отметить кружком выполненным/невыполненным или удалить. Пункты — отдельные сущности. Требует подтверждения.",
+      inputSchema: z.object({
+        taskId: z.string(),
+        itemId: z.string().optional(),
+        title: z.string().optional(),
+        done: z.boolean().optional(),
+        remove: z.boolean().optional(),
+      }),
+      execute: async ({ taskId, itemId, title, done, remove }) => {
+        const { data: task } = await ctx.admin.from("tasks").select("title").eq("id", taskId).maybeSingle();
+        if (!task) return { error: "Задача не найдена" };
+        const summary = remove
+          ? `Удалить пункт чеклиста задачи «${task.title}»`
+          : itemId
+            ? `Изменить пункт чеклиста задачи «${task.title}»${title ? `: ${title}` : ""}${done != null ? (done ? " — выполнен" : " — открыт") : ""}`
+            : `Добавить пункт «${title ?? "пункт"}» в задачу «${task.title}»`;
+        ctx.propose({
+          tool: "upsertTaskItem",
+          summary,
+          input: { taskId, itemId: itemId ?? null, title: title ?? null, done, remove: Boolean(remove) },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeDeleteTask: tool({
+      description: "Предложить удаление задачи RM OS. Требует подтверждения.",
+      inputSchema: z.object({ taskId: z.string() }),
+      execute: async ({ taskId }) => {
+        const { data: task } = await ctx.admin.from("tasks").select("title").eq("id", taskId).maybeSingle();
+        if (!task) return { error: "Задача не найдена" };
+        const summary = `Удалить задачу «${task.title}»`;
+        ctx.propose({ tool: "deleteTask", summary, input: { taskId } });
+        return { proposed: true, summary };
+      },
+    }),
   };
 }

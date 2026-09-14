@@ -24,6 +24,8 @@ import { getPropertyPlatformStats, refreshAvitoStats, refreshYandexStats, type P
 import { fetchProperty, internalTitle } from "@/lib/properties";
 import { fetchDealStages, fetchPropertyDeals, fetchPropertyShowings, formatBudget } from "@/lib/deals";
 import { fetchCrmClients } from "@/lib/clients";
+import { fetchPropertyTasks, fetchStaffDirectory, formatTaskTimeRange } from "@/lib/tasks";
+import { formatDateRu } from "@/lib/rentals";
 import { setYandexPublished } from "@/lib/yandex-realty.functions";
 import { toISODate } from "@/lib/rentals";
 
@@ -112,6 +114,14 @@ function PromoDetailPage() {
     queryKey: ["crm-clients"],
     queryFn: fetchCrmClients,
   });
+  const { data: propertyTasks = [] } = useQuery({
+    queryKey: ["property-tasks", id],
+    queryFn: () => fetchPropertyTasks(id),
+  });
+  const { data: staffDirectory = [] } = useQuery({
+    queryKey: ["staff-directory"],
+    queryFn: fetchStaffDirectory,
+  });
   const { data: series, isLoading: statsLoading } = useQuery({
     queryKey: ["property-platform-stats", id, from, to],
     queryFn: () => loadSeries({ data: { propertyId: id, from, to } }),
@@ -123,6 +133,7 @@ function PromoDetailPage() {
 
   const stageById = new Map(dealStages.map((stage) => [stage.id, stage]));
   const clientById = new Map(crmClients.map((client) => [client.id, client]));
+  const staffById = new Map(staffDirectory.map((member) => [member.id, member.full_name || member.email]));
   const wonCount = propertyDeals.filter((deal) => stageById.get(deal.stage_id)?.kind === "won").length;
 
   async function toggleFeed(platform: "avito" | "cian" | "yandex", published: boolean) {
@@ -393,6 +404,55 @@ function PromoDetailPage() {
             </ul>
           )}
         </div>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-card p-5">
+        <h2 className="text-base font-semibold">Задачи по объекту</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          История созданных и выполненных задач, если объект выбран в карточке задачи.
+        </p>
+        {propertyTasks.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">Задач по объекту пока нет.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {propertyTasks.map((task) => {
+              const range = formatTaskTimeRange(task.due_start, task.due_end);
+              const doneItems = task.items.filter((item) => item.done).length;
+              return (
+                <li key={task.id} className="rounded-lg border border-border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">
+                      {task.title || "Без названия"}
+                      {range ? ` (${range})` : ""}
+                    </p>
+                    <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {task.status === "done" ? "Выполнена" : "В работе"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {task.due_date ? formatDateRu(task.due_date) : "Без срока"}
+                    {task.assignee_id ? ` · ${staffById.get(task.assignee_id) ?? "сотрудник"}` : ""}
+                    {task.items.length > 0 ? ` · чеклист ${doneItems}/${task.items.length}` : ""}
+                  </p>
+                  {task.status === "done" && task.completed_at ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Закрыта {new Date(task.completed_at).toLocaleString("ru-RU")}
+                    </p>
+                  ) : null}
+                  {task.items.length > 0 ? (
+                    <ul className="mt-2 space-y-1">
+                      {task.items.map((item) => (
+                        <li key={item.id} className="text-xs text-muted-foreground">
+                          {item.done ? "●" : "○"} {item.title}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-card p-5">

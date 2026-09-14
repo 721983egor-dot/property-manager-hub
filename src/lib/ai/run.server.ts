@@ -15,6 +15,7 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент RM OS, си�
 - Клиент забронировал или уже живёт (часто БЕЗ сделки CRM) — getClientHistory(ref) или getBookings(clientQuery) / getCurrentRentals / getCalendar(clientQuery). Смотри calendar.currentRentals и calendarBookings.
 - Гости и загрузка апарт-отеля — getHotelOverview / getHotelOccupancy / getHotelOwners / getClients(portfolio=n11). Синхронизация PMS — getBnovoSync; выгрузку предлагай proposeBnovoSync. Брони Bnovo садятся на категорию (Стандарт Плюс: 546 и 567, Делюкс: 526 и 530), конкретный номер менеджер выбирает при заселении.
 - CRM-сделки отдельно — getCrmDeals(clientQuery=…). Пустые сделки при наличии брони — нормально для жильцов до CRM; не говори «клиента нет» и не путай с отсутствием аренды.
+- Задачи сотрудников — getTasks / getTask. Канбан по дате: сегодня, просроченные, эта/следующая неделя, без срока. Чеклист — отдельные пункты (proposeTaskItem). Создание и перенос — proposeTask / proposeCompleteTask / proposePostponeTask.
 - getDeals = синоним getBookings (календарь), НЕ CRM.
 - Сколько объектов — сводка в снимке или searchProperties / getCalendar.summary.
 - Прежде чем сказать «не нашёл» — вызови инструмент.
@@ -69,7 +70,7 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
     const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     const until = new Date(Date.now() + 120 * 86400000).toISOString().slice(0, 10);
 
-    const [skills, properties, profileRows, roleRows, bookingsRes] = await Promise.all([
+    const [skills, properties, profileRows, roleRows, bookingsRes, openTasksRes] = await Promise.all([
       loadAssistantSkills(),
       ctx.allProperties(),
       ctx.admin
@@ -89,6 +90,12 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
         .gte("end_date", from)
         .order("start_date", { ascending: true })
         .limit(250),
+      ctx.admin
+        .from("tasks")
+        .select("id, title, due_date, due_start, due_end, status, assignee_id")
+        .eq("status", "open")
+        .order("due_date", { ascending: true })
+        .limit(80),
     ]);
 
     allProperties = properties;
@@ -99,6 +106,16 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
     staffLines = (profileRows.data ?? []).map((profile) => {
       const role = roleMap.get(profile.id) === "admin" ? "Администратор" : "Менеджер";
       return `- ${profile.full_name || "без ФИО"} | ${profile.email || "—"} | ${role}`;
+    });
+    const staffNameById = new Map(
+      (profileRows.data ?? []).map((profile) => [profile.id, profile.full_name || profile.email || "сотрудник"]),
+    );
+    const openTaskLines = (openTasksRes.data ?? []).slice(0, 40).map((task) => {
+      const when = task.due_date
+        ? `${task.due_date}${task.due_start ? ` ${String(task.due_start).slice(0, 5)}${task.due_end ? `–${String(task.due_end).slice(0, 5)}` : ""}` : ""}`
+        : "без срока";
+      const who = task.assignee_id ? staffNameById.get(task.assignee_id) ?? "" : "";
+      return `- ${task.title || "Без названия"} | ${when}${who ? ` | ${who}` : ""}`;
     });
 
     const byStatus: Record<string, number> = {};
@@ -185,7 +202,10 @@ ${currentLines.join("\n") || "- (нет)"}
 ${bookingLines.join("\n") || "- (нет броней в периоде)"}
 
 Сотрудники:
-${staffLines.join("\n") || "- (нет)"}`;
+${staffLines.join("\n") || "- (нет)"}
+
+Открытые задачи (до 40 из ${openTasksRes.data?.length ?? 0}):
+${openTaskLines.join("\n") || "- (нет)"}`;
 
     try {
       const result = streamText({
