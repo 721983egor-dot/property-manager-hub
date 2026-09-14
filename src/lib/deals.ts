@@ -311,7 +311,7 @@ export async function convertLeadToDeal(lead: {
     clientId = (data as { id: string }).id;
   }
 
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: sessionData } = await supabase.auth.getSession();
   const { data, error } = await supabase
     .from("deals")
     .insert({
@@ -319,7 +319,7 @@ export async function convertLeadToDeal(lead: {
       stage_id: stage.id,
       client_id: clientId,
       lead_id: lead.id,
-      responsible_id: userData.user?.id ?? null,
+      responsible_id: sessionData.session?.user?.id ?? null,
       source: "Сайт",
       comment: lead.message,
     } as never)

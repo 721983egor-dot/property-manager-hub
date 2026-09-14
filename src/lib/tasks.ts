@@ -288,8 +288,8 @@ export async function fetchStaffDirectory(): Promise<StaffDirectoryMember[]> {
 
 export async function saveTask(id: string | null, input: TaskInput): Promise<string> {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
   const row = {
     title: input.title.trim() || "Без названия",
     description: input.description.trim(),
@@ -310,7 +310,7 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
   }
   const { data, error } = await supabase
     .from("tasks")
-    .insert({ ...row, created_by: user?.id ?? null } as never)
+    .insert({ ...row, created_by: session?.user?.id ?? null } as never)
     .select("id")
     .single();
   if (error) throw error;
