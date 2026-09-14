@@ -3,6 +3,7 @@ import { lastOccupiedNight } from "@/lib/hotel";
 import { asPortfolios } from "@/lib/portfolios";
 import {
   clearBnovoToken,
+  getBnovoBooking,
   listBnovoBookings,
   type BnovoBooking,
   type BnovoCredentials,
@@ -262,6 +263,7 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
   let created = 0;
   let updated = 0;
   let skipped = 0;
+  let removed = 0;
 
   try {
     const { data: roomRows, error: roomError } = await supabaseAdmin
@@ -289,13 +291,18 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
 
     const { data: existingRows } = await supabaseAdmin
       .from("bookings")
-      .select("id, bnovo_id, property_id")
+      .select("id, bnovo_id, property_id, start_date, end_date, status, comment")
       .not("bnovo_id", "is", null);
     const existingByBnovo = new Map(
-      ((existingRows ?? []) as { id: string; bnovo_id: string; property_id: string }[]).map((row) => [
-        row.bnovo_id,
-        row,
-      ]),
+      ((existingRows ?? []) as {
+        id: string;
+        bnovo_id: string;
+        property_id: string;
+        start_date: string;
+        end_date: string;
+        status: string;
+        comment: string;
+      }[]).map((row) => [row.bnovo_id, row]),
     );
 
     clearBnovoToken();
@@ -408,8 +415,43 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
       }
     }
 
+    const remoteIds = new Set(n11.map((booking) => booking.id));
+    const n11RoomIds = new Set(rooms.map((room) => room.id));
+    for (const row of existingByBnovo.values()) {
+      if (!n11RoomIds.has(row.property_id)) continue;
+      if (row.status === "cancelled") continue;
+      if (row.end_date < from || row.start_date > to) continue;
+      if (remoteIds.has(row.bnovo_id)) continue;
+      let gone = false;
+      try {
+        const still = await getBnovoBooking(creds, row.bnovo_id);
+        gone = !still || cancelledStatus(still.status);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        if (/404|not found|не найден/i.test(message)) gone = true;
+        else {
+          warnings.push(`Бронь Bnovo ${row.bnovo_id}: не удалось проверить удаление (${message})`);
+          continue;
+        }
+      }
+      if (!gone) continue;
+      const note = "Удалено в Bnovo";
+      const { error } = await supabaseAdmin
+        .from("bookings")
+        .update({
+          status: "cancelled",
+          comment: row.comment?.includes(note) ? row.comment : [row.comment, note].filter(Boolean).join(". "),
+        } as never)
+        .eq("id", row.id);
+      if (error) {
+        warnings.push(`Бронь Bnovo ${row.bnovo_id}: не сняли в RM OS (${error.message})`);
+        continue;
+      }
+      removed += 1;
+    }
+
     const summary = [
-      `Bnovo Н11: новых ${created}, обновлено ${updated}, пропущено ${skipped}`,
+      `Bnovo Н11: новых ${created}, обновлено ${updated}, снято ${removed}, пропущено ${skipped}`,
       ignoredRm ? `объекты РМ не трогали (${ignoredRm})` : "",
     ]
       .filter(Boolean)
@@ -420,10 +462,10 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
         status: "ok",
         finished_at: new Date().toISOString(),
         summary,
-        details: { from, to, created, updated, skipped, ignoredRm, warnings: warnings.slice(0, 40) },
+        details: { from, to, created, updated, skipped, removed, ignoredRm, warnings: warnings.slice(0, 40) },
       } as never)
       .eq("id", runId);
-    return { created, updated, skipped, warnings, summary };
+    return { created, updated, skipped, removed, warnings, summary };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Ошибка синхронизации Bnovo";
     await supabaseAdmin

@@ -176,7 +176,7 @@ export function normalizeBnovoBooking(raw: Record<string, unknown>): BnovoBookin
   };
 }
 
-async function requestJson(url: string, init: RequestInit) {
+async function requestJson(url: string, init: RequestInit, opts?: { allowStatuses?: number[] }) {
   const response = await fetch(url, init);
   const text = await response.text();
   let json: unknown = null;
@@ -186,6 +186,7 @@ async function requestJson(url: string, init: RequestInit) {
     json = { raw: text };
   }
   if (!response.ok) {
+    if (opts?.allowStatuses?.includes(response.status)) return { __httpStatus: response.status, json };
     const rec = recordOf(json);
     const err = recordOf(pick(rec ?? {}, ["error"])) ?? rec;
     const details = recordOf(err ? err["errors"] : null);
@@ -276,10 +277,14 @@ export async function listBnovoBookings(
 export async function getBnovoBooking(creds: BnovoCredentials, id: string): Promise<BnovoBooking | null> {
   const token = await bnovoAuth(creds);
   const base = (creds.baseUrl || DEFAULT_BASE).replace(/\/$/, "");
-  const json = await requestJson(`${base}/api/v1/bookings/${encodeURIComponent(id)}`, {
-    headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
-  });
-  const rec = recordOf(json);
+  const json = await requestJson(
+    `${base}/api/v1/bookings/${encodeURIComponent(id)}`,
+    { headers: { Accept: "application/json", Authorization: `Bearer ${token}` } },
+    { allowStatuses: [404] },
+  );
+  const wrapped = recordOf(json);
+  if (wrapped && wrapped["__httpStatus"] === 404) return null;
+  const rec = wrapped;
   const inner = rec ? recordOf(rec["data"]) ?? rec : null;
   return inner ? normalizeBnovoBooking(inner) : null;
 }

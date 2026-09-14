@@ -78,6 +78,25 @@ export async function loadPublicComplexes(): Promise<Complex[]> {
 
 export const listPublicComplexes = createServerFn({ method: "POST" }).handler(loadPublicComplexes);
 
+/** Один комплекс для публичной карточки объекта. Без входа в RM OS. */
+export const getPublicComplex = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => input as { id: string })
+  .handler(async ({ data }) => {
+    const id = String(data.id ?? "").trim();
+    if (!id) return null;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin.from("complexes").select("*").eq("id", id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return row ? normalizeComplex(row as Record<string, unknown>) : null;
+  });
+
+export function publicComplexQueryOptions(id: string) {
+  return queryOptions({
+    queryKey: ["public-complex", id],
+    queryFn: () => getPublicComplex({ data: { id } }),
+  });
+}
+
 export function publishedPropertiesQueryOptions() {
   return queryOptions({
     queryKey: ["published-properties"],
