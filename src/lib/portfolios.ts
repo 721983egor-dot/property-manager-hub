@@ -2,7 +2,7 @@
 export type Portfolio = "rm" | "n11";
 
 export const PORTFOLIOS: { value: Portfolio; label: string; short: string }[] = [
-  { value: "n11", label: "N-11 Резиденция", short: "N-11" },
+  { value: "n11", label: "Н11 Резиденция", short: "Н11" },
   { value: "rm", label: "Резиденция Море", short: "РМ" },
 ];
 

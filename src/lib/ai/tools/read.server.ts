@@ -267,7 +267,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       inputSchema: z.object({
         query: z.string().optional(),
         blacklistedOnly: z.boolean().optional(),
-        portfolio: z.enum(["rm", "n11"]).optional().describe("Клиенты РМ или гости N-11"),
+        portfolio: z.enum(["rm", "n11"]).optional().describe("Клиенты РМ или гости Н11"),
       }),
       execute: async ({ query, blacklistedOnly, portfolio }) => {
         try {
@@ -1413,7 +1413,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
     getHotelOverview: tool({
       description:
-        "N-11 Резиденция — отдельный проект, апарт-отель: номера, категории, загрузка, брони короткого проживания, собственники. Не путать с Резиденция Море. Календарь общий. Брони Bnovo приходят на категорию (Стандарт Плюс: 546 и 567, Делюкс: 526 и 530); конкретный номер назначается при заселении.",
+        "Н11 Резиденция — отдельный проект, апарт-отель: номера, категории, загрузка, брони короткого проживания, собственники. Не путать с Резиденция Море. Календарь общий. Брони Bnovo приходят на категорию (Стандарт Плюс: 546 и 567, Делюкс: 526 и 530); конкретный номер назначается при заселении.",
       inputSchema: z.object({
         fromDate: z.string().optional(),
         toDate: z.string().optional(),
@@ -1447,7 +1447,7 @@ export function createReadTools(ctx: AssistantToolContext) {
             ),
           ).length;
           return {
-            hotel: "N-11 Residence, Сочи, Навагинская",
+            hotel: "Н11 Резиденция, Сочи, Навагинская",
             period: { from, to },
             rooms: rooms?.length ?? 0,
             occupiedToday,
@@ -1460,12 +1460,12 @@ export function createReadTools(ctx: AssistantToolContext) {
             lastBnovoSync: runs ?? [],
           };
         } catch (e) {
-          return { error: e instanceof Error ? e.message : "Ошибка чтения N-11" };
+          return { error: e instanceof Error ? e.message : "Ошибка чтения Н11" };
         }
       },
     }),
     getHotelOccupancy: tool({
-      description: "Загрузка апарт-отеля N-11 за период, можно по категории.",
+      description: "Загрузка апарт-отеля Н11 за период, можно по категории.",
       inputSchema: z.object({
         fromDate: z.string().optional(),
         toDate: z.string().optional(),
@@ -1500,7 +1500,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getHotelOwners: tool({
-      description: "Собственники номеров апарт-отеля N-11 и их доли.",
+      description: "Собственники номеров апарт-отеля Н11 и их доли.",
       inputSchema: z.object({ query: z.string().optional() }),
       execute: async ({ query }) => {
         const { data: owners, error } = await admin.from("owners").select("*").order("full_name");
@@ -1526,7 +1526,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getBnovoSync: tool({
-      description: "Статус синхронизации броней N-11 с Bnovo API v1 и последние выгрузки.",
+      description: "Статус синхронизации броней Н11 с Bnovo API v1 и последние выгрузки.",
       inputSchema: z.object({}),
       execute: async () => {
         const { data, error } = await admin

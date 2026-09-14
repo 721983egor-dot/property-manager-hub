@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/calendar")({
       {
         name: "description",
         content:
-          "Шахматка занятости двух проектов: сверху N-11 Резиденция, ниже Резиденция Море.",
+          "Шахматка занятости двух проектов: сверху Н11 Резиденция, ниже Резиденция Море.",
       },
       { property: "og:title", content: "Календарь занятости — RM OS" },
       {
@@ -229,7 +229,7 @@ function CalendarPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Календарь</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Два проекта в одной шахматке: сверху N-11 Резиденция, ниже Резиденция Море.
+            Два проекта в одной шахматке: сверху Н11 Резиденция, ниже Резиденция Море.
           </p>
         </div>
         <Button
@@ -252,7 +252,7 @@ function CalendarPage() {
           {(
             [
               ["all", "Все"],
-              ["n11", "N-11"],
+              ["n11", "Н11"],
               ["rm", "РМ"],
             ] as const
           ).map(([key, label]) => (
@@ -418,7 +418,7 @@ function CalendarPage() {
                     style={{ width: nameWidth }}
                     className="sticky left-0 z-20 shrink-0 border-b border-r border-border bg-muted px-3 py-2 text-xs font-semibold uppercase tracking-wide"
                   >
-                    {namesCollapsed ? "N-11" : `N-11 · ${group.category?.name ?? "Без категории"}`}
+                    {namesCollapsed ? "Н11" : `Н11 · ${group.category?.name ?? "Без категории"}`}
                   </div>
                   <div
                     style={{ width: gridWidth }}
@@ -431,7 +431,7 @@ function CalendarPage() {
                     <CalendarPropertyRow
                       key={property.id}
                       property={property}
-                      subtitle={group.category?.name ?? "N-11"}
+                      subtitle={group.category?.name ?? "Н11"}
                       nameWidth={nameWidth}
                       namesCollapsed={namesCollapsed}
                       gridWidth={gridWidth}
@@ -465,7 +465,7 @@ function CalendarPage() {
 
           {/* Строки объектов РМ */}
           {portfolioFilter !== "n11" &&
-          rows.map((property, rowIndex) => {
+            rows.map((property, rowIndex) => {
             const list = bookingsByProperty.get(property.id) ?? [];
             const complexName =
               (property.complex_id ? complexMap.get(property.complex_id) : null) ??

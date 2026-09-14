@@ -121,14 +121,14 @@ export const saveHotelRoom = createServerFn({ method: "POST" })
     const name = data.internal_name.trim() || data.title.trim();
     if (!name) throw new Error("Укажите номер комнаты");
     const row = {
-      title: data.title.trim() || `N-11 ${name}`,
+      title: data.title.trim() || `Н11 ${name}`,
       internal_name: name,
       type: "aparts" as const,
       portfolio: "n11" as const,
       published: false,
       service_type: "management" as const,
       address: N11_ADDRESS,
-      complex_name: "N-11 Residence",
+      complex_name: "Н11 Резиденция",
       room_category_id: data.room_category_id,
       bnovo_room_id: data.bnovo_room_id.trim() || null,
       price_night: data.price_night,

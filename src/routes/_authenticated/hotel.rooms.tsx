@@ -36,7 +36,7 @@ import { fetchProperties, internalTitle } from "@/lib/properties";
 
 export const Route = createFileRoute("/_authenticated/hotel/rooms")({
   head: () => ({
-    meta: [{ title: "Номера N-11 — RM OS" }],
+    meta: [{ title: "Номера Н11 — RM OS" }],
   }),
   component: HotelRoomsPage,
 });
@@ -160,7 +160,7 @@ function HotelRoomsPage() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Номера N-11</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Номера Н11</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Бронь из Bnovo приходит на категорию (Стандарт Плюс, Делюкс). Конкретный номер
             менеджер выбирает при заселении — ID комнаты в Bnovo не обязателен.
@@ -321,7 +321,7 @@ function HotelRoomsPage() {
       <Dialog open={roomOpen} onOpenChange={setRoomOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Номер" : "Новый номер N-11"}</DialogTitle>
+            <DialogTitle>{editingId ? "Номер" : "Новый номер Н11"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Номер (внутренний)">
@@ -335,7 +335,7 @@ function HotelRoomsPage() {
               <Input
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="N-11, 101"
+                placeholder="Н11, 101"
               />
             </Field>
             <Field label="Категория">

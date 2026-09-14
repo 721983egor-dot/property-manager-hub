@@ -16,10 +16,11 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { N11Logo } from "@/components/N11Logo";
 
 export const Route = createFileRoute("/_authenticated/owner/")({
   head: () => ({
-    meta: [{ title: "Кабинет собственника N-11" }],
+    meta: [{ title: "Кабинет собственника Н11" }],
   }),
   component: OwnerCabinetPage,
 });
@@ -67,9 +68,10 @@ function OwnerCabinetPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Кабинет собственника</h1>
+      <N11Logo variant="compact" className="h-8 sm:h-9" />
+      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Кабинет собственника</h1>
       <p className="mt-1.5 text-sm text-muted-foreground">
-        {data?.owner.full_name ?? "N-11"} · только ваши номера и загрузка по категориям
+        {data?.owner.full_name ?? "Н11"} · только ваши номера и загрузка по категориям
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">

@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, BedDouble, CalendarDays, Users } from "lucide-react";
 
 import { HotelTabs } from "@/components/HotelTabs";
+import { N11Logo } from "@/components/N11Logo";
 import { Button } from "@/components/ui/button";
 import { fetchBookings } from "@/lib/bookings";
 import { occupancyOf, groupHotelRooms } from "@/lib/hotel";
@@ -15,10 +16,10 @@ import { formatDateRu, toISODate } from "@/lib/rentals";
 export const Route = createFileRoute("/_authenticated/hotel/")({
   head: () => ({
     meta: [
-      { title: "N-11 Резиденция — RM OS" },
+      { title: "Н11 Резиденция — RM OS" },
       {
         name: "description",
-        content: "Управление N-11 Резиденция: загрузка, номера, собственники и синхронизация Bnovo.",
+        content: "Управление Н11 Резиденция: загрузка, номера, собственники и синхронизация Bnovo.",
       },
     ],
   }),
@@ -71,8 +72,11 @@ function HotelSummaryPage() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">N-11 Резиденция</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <h1>
+            <N11Logo variant="full" className="h-11 sm:h-14" />
+            <span className="sr-only">Н11 Резиденция</span>
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
             Отдельный проект — апарт-отель на Навагинской. В RM OS рядом с Резиденция Море для удобства.
           </p>
         </div>

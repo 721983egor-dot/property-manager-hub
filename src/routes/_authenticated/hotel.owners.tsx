@@ -30,7 +30,7 @@ import { fetchProperties, internalTitle } from "@/lib/properties";
 
 export const Route = createFileRoute("/_authenticated/hotel/owners")({
   head: () => ({
-    meta: [{ title: "Собственники N-11 — RM OS" }],
+    meta: [{ title: "Собственники Н11 — RM OS" }],
   }),
   component: HotelOwnersPage,
 });
@@ -107,7 +107,7 @@ function HotelOwnersPage() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Собственники N-11</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Собственники Н11</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             У номера может быть один собственник или несколько долей. Кабинет показывает только их
             категории и загрузку.

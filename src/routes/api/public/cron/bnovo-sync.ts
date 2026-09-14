@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * Периодическая выгрузка броней апарт-отеля N-11 из Bnovo API v1.
+ * Периодическая выгрузка броней апарт-отеля Н11 из Bnovo API v1.
  */
 export const Route = createFileRoute("/api/public/cron/bnovo-sync")({
   server: {

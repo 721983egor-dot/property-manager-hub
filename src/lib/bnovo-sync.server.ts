@@ -223,12 +223,12 @@ async function upsertGuest(
     .insert({
       full_name: name,
       phone,
-      comment: booking.guestEmail ? `Bnovo / ${booking.guestEmail}` : "Гость апарт-отеля N-11",
+      comment: booking.guestEmail ? `Bnovo / ${booking.guestEmail}` : "Гость апарт-отеля Н11",
       portfolios: ["n11"],
     } as never)
     .select("id")
     .single();
-  if (error || !created) throw new Error(error?.message ?? "Не удалось создать гостя N-11");
+  if (error || !created) throw new Error(error?.message ?? "Не удалось создать гостя Н11");
   return (created as { id: string }).id;
 }
 
@@ -329,7 +329,7 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
     const ignoredRm = remote.length - n11.length;
     if (n11.length === 0 && remote.length > 0) {
       warnings.push(
-        `Bnovo отдал ${remote.length} броней (в том числе долгосрочные объекты РМ). Среди них не нашлось N-11 — проверьте категории Стандарт Плюс и Делюкс.`,
+        `Bnovo отдал ${remote.length} броней (в том числе долгосрочные объекты РМ). Среди них не нашлось Н11 — проверьте категории Стандарт Плюс и Делюкс.`,
       );
     }
 
@@ -409,7 +409,7 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
     }
 
     const summary = [
-      `Bnovo N-11: новых ${created}, обновлено ${updated}, пропущено ${skipped}`,
+      `Bnovo Н11: новых ${created}, обновлено ${updated}, пропущено ${skipped}`,
       ignoredRm ? `объекты РМ не трогали (${ignoredRm})` : "",
     ]
       .filter(Boolean)

@@ -469,7 +469,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeHotelRoom: tool({
       description:
-        "Предложить добавить или изменить номер апарт-отеля N-11. ID комнаты Bnovo необязателен: бронь приходит на категорию, номер выбирают при заселении.",
+        "Предложить добавить или изменить номер апарт-отеля Н11. ID комнаты Bnovo необязателен: бронь приходит на категорию, номер выбирают при заселении.",
       inputSchema: z.object({
         roomId: z.string().optional(),
         name: z.string(),
@@ -480,7 +480,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         floor: z.number().optional(),
       }),
       execute: async (input) => {
-        const summary = `${input.roomId ? "Обновить" : "Добавить"} номер N-11 «${input.name}»`;
+        const summary = `${input.roomId ? "Обновить" : "Добавить"} номер Н11 «${input.name}»`;
         ctx.propose({ tool: "saveHotelRoom", summary, input });
         return { proposed: true, summary };
       },
@@ -488,7 +488,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeHotelCategory: tool({
       description:
-        "Предложить добавить или изменить категорию номеров N-11 и ID типа комнаты в Bnovo (room_type_id). Брони падают на категорию.",
+        "Предложить добавить или изменить категорию номеров Н11 и ID типа комнаты в Bnovo (room_type_id). Брони падают на категорию.",
       inputSchema: z.object({
         categoryId: z.string().optional(),
         code: z.string(),
@@ -498,14 +498,14 @@ export function createMutateTools(ctx: AssistantToolContext) {
         bnovoRoomTypeId: z.string().optional(),
       }),
       execute: async (input) => {
-        const summary = `${input.categoryId ? "Обновить" : "Добавить"} категорию N-11 «${input.name}»`;
+        const summary = `${input.categoryId ? "Обновить" : "Добавить"} категорию Н11 «${input.name}»`;
         ctx.propose({ tool: "saveHotelCategory", summary, input });
         return { proposed: true, summary };
       },
     }),
 
     proposeHotelOwner: tool({
-      description: "Предложить добавить собственника N-11 и привязать к номерам (можно несколько долей).",
+      description: "Предложить добавить собственника Н11 и привязать к номерам (можно несколько долей).",
       inputSchema: z.object({
         ownerId: z.string().optional(),
         fullName: z.string(),
@@ -527,7 +527,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         toDate: z.string().optional(),
       }),
       execute: async (input) => {
-        const summary = `Выгрузить брони N-11 из Bnovo${input.fromDate ? ` с ${input.fromDate}` : ""}`;
+        const summary = `Выгрузить брони Н11 из Bnovo${input.fromDate ? ` с ${input.fromDate}` : ""}`;
         ctx.propose({ tool: "runBnovoSync", summary, input });
         return { proposed: true, summary };
       },

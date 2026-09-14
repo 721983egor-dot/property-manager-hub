@@ -315,7 +315,7 @@ export function BookingDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectLabel>N-11 Резиденция</SelectLabel>
+                      <SelectLabel>Н11 Резиденция</SelectLabel>
                       {properties
                         .filter((p) => p.portfolio === "n11")
                         .map((p) => (

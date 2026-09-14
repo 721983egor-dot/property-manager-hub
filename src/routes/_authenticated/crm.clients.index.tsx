@@ -52,7 +52,7 @@ type FilterKey = ClientStatus | "all" | "blacklist" | "n11" | "rm";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "Все" },
-  { key: "n11", label: "Клиенты N-11" },
+  { key: "n11", label: "Клиенты Н11" },
   { key: "rm", label: "Клиенты РМ" },
   { key: "renting", label: "Арендует" },
   { key: "booked", label: "Забронировал" },

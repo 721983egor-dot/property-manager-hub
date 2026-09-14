@@ -1,5 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { asPortfolios } from "@/lib/portfolios";
+import {
+  getStaffCurrentBooking,
+  listStaffBookings,
+  listStaffClientBookings,
+  listStaffClients,
+} from "@/lib/staff-data.functions";
 
 export type BookingStatus = "active" | "cancelled" | "completed";
 export type BookingSource =

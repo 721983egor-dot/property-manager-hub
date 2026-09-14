@@ -20,7 +20,7 @@ import { formatDateRu } from "@/lib/rentals";
 
 export const Route = createFileRoute("/_authenticated/hotel/sync")({
   head: () => ({
-    meta: [{ title: "Синхронизация Bnovo — N-11" }],
+    meta: [{ title: "Синхронизация Bnovo — Н11" }],
   }),
   component: HotelSyncPage,
 });
