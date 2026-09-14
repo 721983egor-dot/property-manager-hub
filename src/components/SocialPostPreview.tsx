@@ -118,6 +118,8 @@ function PostText({ text, className, linkClassName }: { text: string; className?
     </p>
   );
 }
+
+function mediaSrc(item: SocialMediaItem) {
   return item.url || socialMediaDisplayUrl(item.path);
 }
 
