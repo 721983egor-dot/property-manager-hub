@@ -1411,6 +1411,51 @@ export type Database = {
         }
         Relationships: []
       }
+      social_post_media: {
+        Row: {
+          bytes: number
+          created_at: string
+          duration_sec: number | null
+          height: number | null
+          id: string
+          kind: string
+          mime: string
+          path: string
+          post_id: string
+          postmypost_file_id: number | null
+          sort_order: number
+          width: number | null
+        }
+        Insert: {
+          bytes?: number
+          created_at?: string
+          duration_sec?: number | null
+          height?: number | null
+          id?: string
+          kind: string
+          mime?: string
+          path: string
+          post_id: string
+          postmypost_file_id?: number | null
+          sort_order?: number
+          width?: number | null
+        }
+        Update: {
+          bytes?: number
+          created_at?: string
+          duration_sec?: number | null
+          height?: number | null
+          id?: string
+          kind?: string
+          mime?: string
+          path?: string
+          post_id?: string
+          postmypost_file_id?: number | null
+          sort_order?: number
+          width?: number | null
+        }
+        Relationships: []
+      }
       social_post_targets: {
         Row: {
           body: string
@@ -1457,6 +1502,7 @@ export type Database = {
           postmypost_publication_id: number | null
           property_id: string | null
           published_at: string | null
+          pulse_item_id: string | null
           scheduled_at: string | null
           source: string
           status: string
@@ -1472,6 +1518,7 @@ export type Database = {
           postmypost_publication_id?: number | null
           property_id?: string | null
           published_at?: string | null
+          pulse_item_id?: string | null
           scheduled_at?: string | null
           source?: string
           status?: string
@@ -1487,11 +1534,57 @@ export type Database = {
           postmypost_publication_id?: number | null
           property_id?: string | null
           published_at?: string | null
+          pulse_item_id?: string | null
           scheduled_at?: string | null
           source?: string
           status?: string
           topic?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      social_pulse_items: {
+        Row: {
+          created_at: string
+          fetched_at: string
+          fingerprint: string
+          id: string
+          kind: string
+          payload: Json
+          published_at: string | null
+          source: string
+          starts_at: string | null
+          summary: string
+          title: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          fetched_at?: string
+          fingerprint: string
+          id?: string
+          kind: string
+          payload?: Json
+          published_at?: string | null
+          source?: string
+          starts_at?: string | null
+          summary?: string
+          title?: string
+          url?: string
+        }
+        Update: {
+          created_at?: string
+          fetched_at?: string
+          fingerprint?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          published_at?: string | null
+          source?: string
+          starts_at?: string | null
+          summary?: string
+          title?: string
+          url?: string
         }
         Relationships: []
       }
@@ -1541,7 +1634,141 @@ export type Database = {
           text?: string
           updated_at?: string
         }
+          Relationships: []
+      }
+      task_types: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
         Relationships: []
+      }
+      task_items: {
+        Row: {
+          created_at: string
+          done: boolean
+          id: string
+          position: number
+          task_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          due_date: string | null
+          due_end: string
+          due_start: string
+          id: string
+          position: number
+          property_id: string | null
+          status: string
+          task_type_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          due_date?: string | null
+          due_end?: string
+          due_start?: string
+          id?: string
+          position?: number
+          property_id?: string | null
+          status?: string
+          task_type_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          due_date?: string | null
+          due_end?: string
+          due_start?: string
+          id?: string
+          position?: number
+          property_id?: string | null
+          status?: string
+          task_type_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_task_type_id_fkey"
+            columns: ["task_type_id"]
+            isOneToOne: false
+            referencedRelation: "task_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       telegram_accounts: {
         Row: {
@@ -1689,10 +1916,21 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "manager"
+      app_role: "admin" | "manager" | "owner"
       booking_price_type: "fixed" | "periodic"
-      booking_source: "avito" | "cian" | "website" | "social" | "referral"
+      booking_source:
+        | "avito"
+        | "cian"
+        | "website"
+        | "social"
+        | "referral"
+        | "bnovo"
+        | "booking_com"
+        | "ostrovok"
+        | "walkin"
       booking_status: "active" | "cancelled" | "completed"
+      business_portfolio: "rm" | "n11"
+      stay_kind: "long_term" | "short_stay"
       lead_status: "new" | "in_work" | "done" | "rejected"
       listing_platform: "site" | "avito" | "cian" | "yandex"
       management_fee_type: "percent" | "amount"
@@ -1832,10 +2070,22 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager"],
+      app_role: ["admin", "manager", "owner"],
       booking_price_type: ["fixed", "periodic"],
-      booking_source: ["avito", "cian", "website", "social", "referral"],
+      booking_source: [
+        "avito",
+        "cian",
+        "website",
+        "social",
+        "referral",
+        "bnovo",
+        "booking_com",
+        "ostrovok",
+        "walkin",
+      ],
       booking_status: ["active", "cancelled", "completed"],
+      business_portfolio: ["rm", "n11"],
+      stay_kind: ["long_term", "short_stay"],
       lead_status: ["new", "in_work", "done", "rejected"],
       listing_platform: ["site", "avito", "cian", "yandex"],
       management_fee_type: ["percent", "amount"],

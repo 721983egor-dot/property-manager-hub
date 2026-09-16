@@ -30,3 +30,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets on the server. Never commit, never `git clean` them.
+.env
+.env.*
+!.env.example
+deploy/.env
+

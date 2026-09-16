@@ -161,7 +161,14 @@ def main() -> None:
                     print(f"forward failed update_id={uid}: {e}", flush=True)
                     time.sleep(1)
         except urllib.error.HTTPError as e:
-            print(f"http error: {e.code} {e.read()[:300]}", flush=True)
+            body = e.read()[:300]
+            print(f"http error: {e.code} {body}", flush=True)
+            if e.code == 409:
+                try:
+                    http_json(f"{API}/deleteWebhook", {"drop_pending_updates": False}, timeout=30)
+                    print("webhook deleted after 409", flush=True)
+                except Exception as de:
+                    print(f"deleteWebhook after 409: {de}", flush=True)
             time.sleep(5)
         except Exception as e:
             print(f"poll error: {e}", flush=True)

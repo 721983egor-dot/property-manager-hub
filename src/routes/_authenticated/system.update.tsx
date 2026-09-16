@@ -64,7 +64,8 @@ const PROGRESS_STEPS = {
 function isRestartError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err ?? "");
   if (!message.trim()) return true;
-  return /invariant failed|failed to fetch|networkerror|load failed|network request failed|502|503|504|aborted|terminated/i.test(
+  // Node undici: "fetch failed"; браузер: "Failed to fetch" / "Load failed"
+  return /invariant failed|failed to fetch|fetch failed|networkerror|load failed|network request failed|502|503|504|aborted|terminated|econnrefused|econnreset|etimedout|socket hang up/i.test(
     message,
   );
 }
@@ -82,6 +83,88 @@ async function waitForAppRestart(timeoutMs = 5 * 60 * 1000): Promise<boolean> {
     }
   }
   return false;
+}
+
+type DeployStatus = {
+  ok?: boolean;
+  version?: string;
+  preview_version?: string;
+  message?: string;
+  production_busy?: boolean;
+  preview_busy?: boolean;
+  deployments?: { target?: string; status?: string; at?: string; error?: string; version?: string }[];
+};
+
+/** Сборка теста долгая: браузер часто показывает Failed to fetch, пока Docker ещё собирает. */
+async function waitForPreviewReady(
+  loadStatus: () => Promise<DeployStatus>,
+  previousVersion: string | undefined,
+  startedAt: number,
+  timeoutMs = 12 * 60 * 1000,
+): Promise<DeployStatus | null> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    try {
+      const next = await loadStatus();
+      const latest = [...(next.deployments ?? [])]
+        .reverse()
+        .find((item) => item.target === "preview");
+      const at = latest?.at ? Date.parse(latest.at) : 0;
+      if (latest?.status === "failed" && at >= startedAt - 15_000) {
+        throw new Error(latest.error || "Тестовая выкладка не удалась");
+      }
+      if (
+        latest?.status === "success" &&
+        at >= startedAt - 15_000 &&
+        next.preview_version &&
+        next.preview_version !== previousVersion
+      ) {
+        return next;
+      }
+    } catch (error) {
+      if (error instanceof Error && /не удалась/i.test(error.message)) throw error;
+    }
+  }
+  return null;
+}
+
+/** Рабочее обновление тоже в фоне — ждём смену version / success в журнале. */
+async function waitForProductionReady(
+  loadStatus: () => Promise<DeployStatus>,
+  previousVersion: string | undefined,
+  startedAt: number,
+  timeoutMs = 20 * 60 * 1000,
+): Promise<DeployStatus | null> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    try {
+      const next = await loadStatus();
+      const latest = [...(next.deployments ?? [])]
+        .reverse()
+        .find((item) => item.target === "production");
+      const at = latest?.at ? Date.parse(latest.at) : 0;
+      if (latest?.status === "failed" && at >= startedAt - 15_000) {
+        throw new Error(latest.error || "Обновление рабочей системы не удалось");
+      }
+      if (
+        latest?.status === "success" &&
+        at >= startedAt - 15_000 &&
+        next.version &&
+        next.version !== previousVersion
+      ) {
+        return next;
+      }
+      // На случай если version тот же SHA, но success свежий
+      if (latest?.status === "success" && at >= startedAt - 15_000) {
+        return next;
+      }
+    } catch (error) {
+      if (error instanceof Error && /не удалось/i.test(error.message)) throw error;
+    }
+  }
+  return null;
 }
 
 function formatWhen(iso?: string) {
@@ -128,7 +211,31 @@ function SystemUpdatePage() {
   }, [operation]);
 
   const previewMutation = useMutation({
-    mutationFn: () => doPreview({ data: undefined }),
+    mutationFn: async () => {
+      const previousVersion = status?.preview_version;
+      const startedAt = Date.now();
+      try {
+        return await doPreview({ data: undefined });
+      } catch (err) {
+        if (!isRestartError(err)) throw err;
+        const ready = await waitForPreviewReady(
+          () => loadStatus({ data: undefined }),
+          previousVersion,
+          startedAt,
+        );
+        if (!ready) {
+          throw new Error(
+            "Сборка теста ещё идёт или связь оборвалась. Подождите 5–10 минут и нажмите «Обновить статус». Рабочий сайт не менялся.",
+          );
+        }
+        return {
+          ...ready,
+          message:
+            ready.message ||
+            `Тестовая версия ${ready.preview_version} готова. Рабочий сайт не изменён.`,
+        };
+      }
+    },
     onMutate: () => {
       setOperation("preview");
       setProgress(5);
@@ -144,21 +251,49 @@ function SystemUpdatePage() {
 
   const deployMutation = useMutation({
     mutationFn: async () => {
+      const previousVersion = status?.version;
+      const startedAt = Date.now();
       try {
-        return await doDeploy({ data: undefined });
-      } catch (err) {
-        if (!isRestartError(err)) throw err;
-        setActiveStep(PROGRESS_STEPS.deploy.length - 1);
-        const back = await waitForAppRestart();
-        if (!back) {
+        const started = await doDeploy({ data: undefined });
+        const ready = await waitForProductionReady(
+          () => loadStatus({ data: undefined }),
+          previousVersion,
+          startedAt,
+        );
+        if (!ready) {
           throw new Error(
-            "Приложение не ответило после обновления. Подождите минуту и обновите страницу.",
+            "Обновление ещё идёт или связь с агентом оборвалась. Подождите 5–15 минут и нажмите «Обновить статус».",
           );
         }
         return {
-          ok: true,
-          message: "Обновление применено, приложение перезапущено",
+          ...ready,
+          message:
+            ready.message ||
+            started.message ||
+            `Рабочая система обновлена до ${ready.version}.`,
         };
+      } catch (err) {
+        if (!isRestartError(err)) throw err;
+        const ready = await waitForProductionReady(
+          () => loadStatus({ data: undefined }),
+          previousVersion,
+          startedAt,
+        );
+        if (ready) {
+          return {
+            ...ready,
+            message: ready.message || `Рабочая система обновлена до ${ready.version}.`,
+          };
+        }
+        const back = await waitForAppRestart();
+        if (!back) {
+          throw new Error(
+            "Нет связи с deploy-агентом (часто после сбоя самопересборки). На сервере Beget выполните:\ncd /opt/rm-os/repo && git fetch origin preview && git checkout preview && git pull && cd deploy && docker compose up -d --build --force-recreate deploy-agent",
+          );
+        }
+        throw new Error(
+          "Связь оборвалась, а новая версия в журнале не появилась. Подождите и нажмите «Обновить статус», либо перезапустите deploy-agent на Beget.",
+        );
       }
     },
     onMutate: () => {
@@ -204,6 +339,10 @@ function SystemUpdatePage() {
 
   const busy = operation !== "idle" || previewMutation.isPending || deployMutation.isPending || rollbackMutation.isPending;
   const agentConfigured = !(status && status.message?.includes("Deploy-агент не настроен"));
+  const agentUnreachable =
+    !!status &&
+    status.ok === false &&
+    /fetch failed|нет связи с deploy-агентом/i.test(status.message ?? "");
   const previewUrl = status?.preview_url ?? "https://preview.residence-more.ru";
   const previewRmOsUrl = status?.preview_rm_os_url ?? "https://preview-rm-os.residence-more.ru";
   const steps = operation === "idle" ? [] : PROGRESS_STEPS[operation];
@@ -238,6 +377,21 @@ function SystemUpdatePage() {
             </AlertDescription>
           </Alert>
         )}
+        {agentConfigured && agentUnreachable && (
+          <Alert variant="destructive">
+            <ShieldAlert className="size-4" />
+            <AlertTitle>Deploy-агент не отвечает</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>
+                Контейнер deploy-agent, скорее всего, упал. По SSH на Beget выполните:
+              </p>
+              <code className="block whitespace-pre-wrap rounded bg-muted px-3 py-2 text-xs text-foreground">
+                {`cd /opt/rm-os/repo && git fetch origin preview && git checkout preview && git pull && cd deploy && docker compose up -d --build --force-recreate deploy-agent`}
+              </code>
+              <p>Затем обновите эту страницу и снова нажмите «Обновить систему».</p>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card>
           <CardHeader>
@@ -247,7 +401,8 @@ function SystemUpdatePage() {
             </CardTitle>
             <CardDescription>
               Сюда попадает ветка <span className="font-medium text-foreground">preview</span> из GitHub.
-              Адреса закрыты паролем браузера: клиенты и поиск их не видят. Рабочие{" "}
+              Сборка занимает 5–10 минут: если браузер покажет Failed to fetch, подождите и обновите
+              статус — тест мог уже выложиться. Рабочие{" "}
               <span className="font-medium text-foreground">residence-more.ru</span> и{" "}
               <span className="font-medium text-foreground">rm-os.residence-more.ru</span> не меняются.
             </CardDescription>

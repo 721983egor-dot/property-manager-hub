@@ -25,18 +25,28 @@
 }
 
 # База, вход и фото — общие. Само приложение подключается на каждом домене отдельно.
+# Снимаем CORS бэкенда: иначе два Access-Control-Allow-Origin и браузер блокирует вход.
 (services) {
     handle_path /auth/v1/* {
         import cors
-        reverse_proxy supabase-auth:9999
+        reverse_proxy supabase-auth:9999 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
     }
     handle_path /rest/v1/* {
         import cors
-        reverse_proxy supabase-rest:3000
+        reverse_proxy supabase-rest:3000 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
     }
     handle_path /storage/v1/* {
         import cors
-        reverse_proxy supabase-storage:5000
+        reverse_proxy supabase-storage:5000 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
     }
     encode gzip
 }
@@ -59,18 +69,25 @@ rm-os.{$DOMAIN} {
     }
 }
 
-# Тестовые копии закрыты паролем браузера и не индексируются.
-# /auth /rest /storage без basic auth: иначе Bearer-токен входа перезапишет пароль браузера.
-(preview_lock) {
+# Тестовый сайт закрыт паролем браузера и не индексируется.
+# Запросы с Authorization: Bearer не трогаем: иначе RM OS после входа снова просит пароль страницы.
+(preview_headers) {
     header X-Robots-Tag "noindex, nofollow, noarchive"
     header Referrer-Policy "no-referrer"
-    @preview_pages not path /auth/v1/* /rest/v1/* /storage/v1/* /robots.txt /.well-known/acme-challenge/*
-    basic_auth @preview_pages {
-        {$PREVIEW_USER} {$PREVIEW_PASSWORD_HASH}
-    }
     handle /robots.txt {
         header Content-Type "text/plain; charset=utf-8"
         respond "User-agent: *\nDisallow: /\n" 200
+    }
+}
+
+(preview_lock) {
+    import preview_headers
+    @preview_pages {
+        not path /auth/v1/* /rest/v1/* /storage/v1/* /api/* /robots.txt /.well-known/acme-challenge/*
+        not header Authorization Bearer*
+    }
+    basic_auth @preview_pages {
+        {$PREVIEW_USER} {$PREVIEW_PASSWORD_HASH}
     }
 }
 
@@ -84,11 +101,14 @@ preview.{$DOMAIN} {
     }
 }
 
+# Тестовый RM OS: свой вход сотрудников, без пароля страницы — иначе окно браузера зацикливается
 preview-rm-os.{$DOMAIN} {
     tls {$TLS_EMAIL}
-    import preview_lock
-    redir / /objects 302
+    import preview_headers
     import services
+    handle / {
+        redir * /objects 302
+    }
     handle {
         reverse_proxy preview-app:3000
     }

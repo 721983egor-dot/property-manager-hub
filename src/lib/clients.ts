@@ -3,6 +3,8 @@ import type { Booking } from "@/lib/bookings";
 import { toISODate } from "@/lib/rentals";
 import { getStaffClient, listStaffClients } from "@/lib/staff-data.functions";
 
+import { asPortfolios, type Portfolio } from "@/lib/portfolios";
+
 export type CrmClient = {
   id: string;
   full_name: string;
@@ -10,6 +12,7 @@ export type CrmClient = {
   comment: string;
   blacklisted: boolean;
   blacklist_reason: string;
+  portfolios: Portfolio[];
 };
 
 export type ClientStatus = "renting" | "booked" | "left" | "none";
@@ -25,7 +28,7 @@ export function clientStatusLabel(status: ClientStatus) {
   return CLIENT_STATUSES.find((s) => s.value === status)?.label ?? status;
 }
 
-const SELECT = "id, full_name, phone, comment, blacklisted, blacklist_reason";
+const SELECT = "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios";
 
 /** Нормализация цифр телефона: Российский номер с 8 → 7, результат без '+'.
  *  Примеры: 8 900 001 51 96 → 79000015196, +7 900 001 51 96 → 79000015196. */
@@ -72,12 +75,17 @@ export function hasCallablePhone(phone: string) {
 
 export async function fetchCrmClients(): Promise<CrmClient[]> {
   const data = await listStaffClients();
-  return (data ?? []) as CrmClient[];
+  return ((data ?? []) as CrmClient[]).map((c) => ({
+    ...c,
+    portfolios: asPortfolios(c.portfolios),
+  }));
 }
 
 export async function fetchCrmClient(id: string): Promise<CrmClient | null> {
   const data = await getStaffClient({ data: { id } });
-  return (data as CrmClient | null) ?? null;
+  if (!data) return null;
+  const client = data as CrmClient;
+  return { ...client, portfolios: asPortfolios(client.portfolios) };
 }
 
 export type ClientInput = {
@@ -86,6 +94,7 @@ export type ClientInput = {
   comment: string;
   blacklisted: boolean;
   blacklist_reason: string;
+  portfolios: Portfolio[];
 };
 
 export async function saveClient(id: string | null, input: ClientInput) {
