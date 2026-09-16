@@ -54,6 +54,7 @@ import {
   type PropertyStatus,
 } from "@/lib/properties";
 import { createSelection } from "@/lib/selections";
+import { selectionPublicUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/objects/")({
@@ -174,7 +175,8 @@ function ObjectsPage() {
   const createSelectionMutation = useMutation({
     mutationFn: createSelection,
     onSuccess: (selection) => {
-      const link = `${window.location.origin}/p/${selection.code}`;
+      // Всегда публичный сайт, не домен RM OS (rm-os / preview-rm-os).
+      const link = selectionPublicUrl(selection.code);
       navigator.clipboard.writeText(link).then(() => {
         toast.success("Ссылка на подборку скопирована");
       });
@@ -248,8 +250,8 @@ function ObjectsPage() {
 
   const selectionLinkPreview = useMemo(() => {
     if (selectedList.length === 0) return "";
-    // Код ещё не создан, показываем только домен и путь.
-    return `${typeof window !== "undefined" ? window.location.origin : ""}/p/…`;
+    // Код ещё не создан — показываем публичный домен сайта и путь.
+    return selectionPublicUrl("…");
   }, [selectedList.length]);
 
   const { isAdmin } = useAccess();
