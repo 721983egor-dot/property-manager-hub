@@ -23,10 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BookingDialog } from "@/components/BookingDialog";
-import { fetchProperties, internalTitle, savePropertyOrder, shortPropertyLabel } from "@/lib/properties";
+import { fetchProperties, internalTitle, savePropertyOrder, shortPropertyLabel, type Property } from "@/lib/properties";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchComplexes } from "@/lib/complexes";
 import { type Booking, fetchBookings, shortName } from "@/lib/bookings";
+import { groupHotelRooms } from "@/lib/hotel";
+import { listHotelCategories } from "@/lib/hotel.functions";
+import { useServerFn } from "@tanstack/react-start";
 import {
   MONTHS,
   WEEKDAYS_SHORT,
@@ -45,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/calendar")({
       {
         name: "description",
         content:
-          "Шахматка занятости объектов долгосрочной аренды: периоды аренды по дням, выбор диапазона дат и месяцев.",
+          "Шахматка занятости двух проектов: сверху Н11 Резиденция, ниже Резиденция Море.",
       },
       { property: "og:title", content: "Календарь занятости — RM OS" },
       {
@@ -78,6 +81,7 @@ function CalendarPage() {
     [from, to],
   );
 
+  const loadCategories = useServerFn(listHotelCategories);
   const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
     queryFn: fetchProperties,
@@ -91,9 +95,14 @@ function CalendarPage() {
     queryFn: () => fetchBookings(from, to),
     refetchInterval: 30_000,
   });
+  const { data: hotelCategories = [] } = useQuery({
+    queryKey: ["hotel-categories"],
+    queryFn: () => loadCategories(undefined as never),
+  });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
+  const [portfolioFilter, setPortfolioFilter] = useState<"all" | "n11" | "rm">("all");
 
   const complexMap = useMemo(
     () => new Map(complexes.map((c) => [c.id, c.name])),
@@ -107,9 +116,23 @@ function CalendarPage() {
     setNamesCollapsed(isMobile);
   }, [isMobile]);
 
+  const hotelRooms = useMemo(() => {
+    return properties.filter(
+      (p) => p.portfolio === "n11" && p.service_type !== "commission_only" && p.status !== "archived",
+    );
+  }, [properties]);
+
+  const hotelGroups = useMemo(
+    () => groupHotelRooms(hotelRooms, hotelCategories),
+    [hotelRooms, hotelCategories],
+  );
+
   const baseRows = useMemo(() => {
     const list = properties.filter(
-      (p) => p.service_type !== "commission_only" && p.status !== "archived",
+      (p) =>
+        p.portfolio !== "n11" &&
+        p.service_type !== "commission_only" &&
+        p.status !== "archived",
     );
     return [...list].sort((a, b) => {
       const ao = a.sort_order ?? Number.MAX_SAFE_INTEGER;
@@ -206,7 +229,7 @@ function CalendarPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Календарь</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Шахматка занятости объектов по дням.
+            Два проекта в одной шахматке: сверху Н11 Резиденция, ниже Резиденция Море.
           </p>
         </div>
         <Button
@@ -225,6 +248,29 @@ function CalendarPage() {
 
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["all", "Все"],
+              ["n11", "Н11"],
+              ["rm", "РМ"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setPortfolioFilter(key)}
+              className={cn(
+                "rounded-md border px-3 py-1.5 text-sm font-medium",
+                portfolioFilter === key
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <Button variant="outline" size="sm" onClick={goToday}>
           Сегодня
         </Button>
@@ -364,8 +410,62 @@ function CalendarPage() {
             </div>
           </div>
 
-          {/* Строки объектов */}
-          {rows.map((property, rowIndex) => {
+          {portfolioFilter !== "rm" &&
+            hotelGroups.map((group) => (
+              <div key={group.category?.id ?? "n11-none"}>
+                <div className="flex">
+                  <div
+                    style={{ width: nameWidth }}
+                    className="sticky left-0 z-20 shrink-0 border-b border-r border-border bg-muted px-3 py-2 text-xs font-semibold uppercase tracking-wide"
+                  >
+                    {namesCollapsed ? "Н11" : `Н11 · ${group.category?.name ?? "Без категории"}`}
+                  </div>
+                  <div
+                    style={{ width: gridWidth }}
+                    className="shrink-0 border-b border-border bg-muted/60"
+                  />
+                </div>
+                {group.rooms.map((property) => {
+                  const list = bookingsByProperty.get(property.id) ?? [];
+                  return (
+                    <CalendarPropertyRow
+                      key={property.id}
+                      property={property}
+                      subtitle={group.category?.name ?? "Н11"}
+                      nameWidth={nameWidth}
+                      namesCollapsed={namesCollapsed}
+                      gridWidth={gridWidth}
+                      days={days}
+                      todayIso={todayIso}
+                      from={from}
+                      to={to}
+                      fromDate={fromDate}
+                      list={list}
+                      onOpen={(booking) => {
+                        setActiveBooking(booking);
+                        setDialogOpen(true);
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+
+          {portfolioFilter !== "n11" && portfolioFilter === "all" && rows.length > 0 ? (
+            <div className="flex">
+              <div
+                style={{ width: nameWidth }}
+                className="sticky left-0 z-20 shrink-0 border-b border-r border-border bg-muted px-3 py-2 text-xs font-semibold uppercase tracking-wide"
+              >
+                {namesCollapsed ? "РМ" : "Резиденция Море"}
+              </div>
+              <div style={{ width: gridWidth }} className="shrink-0 border-b border-border bg-muted/60" />
+            </div>
+          ) : null}
+
+          {/* Строки объектов РМ */}
+          {portfolioFilter !== "n11" &&
+            rows.map((property, rowIndex) => {
             const list = bookingsByProperty.get(property.id) ?? [];
             const complexName =
               (property.complex_id ? complexMap.get(property.complex_id) : null) ??
@@ -525,12 +625,105 @@ function CalendarPage() {
             );
           })}
 
-          {rows.length === 0 ? (
+          {rows.length === 0 && hotelRooms.length === 0 ? (
             <div className="p-10 text-center text-sm text-muted-foreground">
               Объектов пока нет.
             </div>
           ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CalendarPropertyRow({
+  property,
+  subtitle,
+  nameWidth,
+  namesCollapsed,
+  gridWidth,
+  days,
+  todayIso,
+  from,
+  to,
+  fromDate,
+  list,
+  onOpen,
+}: {
+  property: Property;
+  subtitle: string;
+  nameWidth: number;
+  namesCollapsed: boolean;
+  gridWidth: number;
+  days: Date[];
+  todayIso: string;
+  from: string;
+  to: string;
+  fromDate: Date;
+  list: Booking[];
+  onOpen: (booking: Booking) => void;
+}) {
+  return (
+    <div className="flex">
+      <div
+        style={{ width: nameWidth }}
+        title={internalTitle(property)}
+        className="sticky left-0 z-20 flex shrink-0 items-center gap-2 border-b border-r border-border bg-card px-2 py-3"
+      >
+        {namesCollapsed ? (
+          <span className="line-clamp-2 w-full text-center text-[10px] font-semibold leading-tight">
+            {shortPropertyLabel(property)}
+          </span>
+        ) : (
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium">{internalTitle(property)}</div>
+            <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
+          </div>
+        )}
+      </div>
+      <div style={{ width: gridWidth }} className="relative shrink-0 border-b border-border">
+        <div className="flex h-full">
+          {days.map((d) => {
+            const weekend = d.getDay() === 0 || d.getDay() === 6;
+            const isToday = toISODate(d) === todayIso;
+            return (
+              <div
+                key={d.toISOString()}
+                style={{ width: DAY_WIDTH }}
+                className={cn(
+                  "relative h-[68px] shrink-0 border-r border-border",
+                  weekend && "bg-muted/40",
+                  isToday && "bg-sky-100",
+                )}
+              />
+            );
+          })}
+        </div>
+        {list.map((booking) => {
+          const start = parseISODate(booking.start_date < from ? from : booking.start_date);
+          const end = parseISODate(booking.end_date > to ? to : booking.end_date);
+          const offset = Math.round((start.getTime() - fromDate.getTime()) / 86400000);
+          const length = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+          if (length <= 0) return null;
+          const past = booking.end_date < todayIso;
+          return (
+            <button
+              type="button"
+              key={booking.id}
+              onClick={() => onOpen(booking)}
+              title={`${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
+              style={{ left: offset * DAY_WIDTH + 2, width: length * DAY_WIDTH - 4 }}
+              className={cn(
+                "absolute top-1/2 flex h-8 -translate-y-1/2 items-center overflow-hidden rounded-md border px-2.5 text-left transition-opacity hover:opacity-90",
+                past ? "border-border bg-muted" : "border-sky-200 bg-sky-50",
+              )}
+            >
+              <span className={cn("truncate text-xs font-medium", past ? "text-muted-foreground" : "text-sky-800")}>
+                {booking.client ? shortName(booking.client.full_name) : "Занято"}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

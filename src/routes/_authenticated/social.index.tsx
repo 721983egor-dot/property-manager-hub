@@ -6,30 +6,30 @@ import {
   CalendarClock,
   Copy,
   Loader2,
+  Pencil,
   Send,
   Share2,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminOnly } from "@/components/AdminOnly";
-import { ChatText } from "@/components/ChatText";
+import { SocialMediaPicker } from "@/components/SocialMediaPicker";
+import { SocialPostCalendar } from "@/components/SocialPostCalendar";
+import { SocialPostPreview } from "@/components/SocialPostPreview";
+import { SochiPulseAiBlock } from "@/components/SochiPulseAiBlock";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { AssistantChatMessage } from "@/lib/assistant.functions";
 import {
-  askSocialAssistant,
   cancelSocialPost,
   deleteSocialPost,
   getSocialBoard,
   listPostmypostProjects,
   mapSocialChannel,
   publishSocialPost,
-  runSocialAssistantAction,
   saveSocialBrand,
   saveSocialConnection,
   saveSocialPost,
@@ -44,6 +44,12 @@ import {
   type SocialPlatform,
   type SocialPost,
 } from "@/lib/social";
+import { toInstagramOrganic, objectUrlFromPost as objectUrlFromBodies } from "@/lib/social-adapt";
+import {
+  MESSENGER_CAPTION_LIMIT,
+  socialMediaDisplayUrl,
+  type SocialMediaItem,
+} from "@/lib/social-media";
 
 export const Route = createFileRoute("/_authenticated/social/")({
   head: () => ({
@@ -64,12 +70,13 @@ export const Route = createFileRoute("/_authenticated/social/")({
   ),
 });
 
-type Tab = "posts" | "compose" | "ai" | "brand" | "connect";
+type Tab = "posts" | "calendar" | "pulse" | "compose" | "brand" | "connect";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "posts", label: "Лента" },
+  { key: "calendar", label: "Календарь" },
+  { key: "pulse", label: "Пульс Сочи" },
   { key: "compose", label: "Пост" },
-  { key: "ai", label: "ИИ" },
   { key: "brand", label: "Голос" },
   { key: "connect", label: "Подключение" },
 ];
@@ -82,6 +89,10 @@ function toLocalInput(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function objectUrlFromPost(post: SocialPost) {
+  return objectUrlFromBodies(post.body, post.targets);
+}
+
 function fromLocalInput(value: string) {
   if (!value) return null;
   const d = new Date(value);
@@ -92,6 +103,7 @@ function SocialPage() {
   const queryClient = useQueryClient();
   const loadBoard = useServerFn(getSocialBoard);
   const [tab, setTab] = useState<Tab>("posts");
+  const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
 
   const boardQuery = useQuery({
     queryKey: ["social-board"],
@@ -100,9 +112,13 @@ function SocialPage() {
   const board = boardQuery.data;
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["social-board"] });
+  const editPost = (post: SocialPost) => {
+    setEditingPost(post);
+    setTab("compose");
+  };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -111,7 +127,8 @@ function SocialPage() {
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Instagram, ВКонтакте, Telegram и Макс. Публикация и статистика — через Postmypost.
-            ИИ здесь тот же Ассистент RM OS, только в режиме редактора.
+            Перед отправкой смотрите, как пост выглядит в каждой сети. В Instagram — обычный пост без цен.
+            Пульс Сочи — новости, погода и события, из них сразу пишется черновик.
           </p>
         </div>
       </header>
@@ -155,7 +172,10 @@ function SocialPage() {
               <button
                 key={item.key}
                 type="button"
-                onClick={() => setTab(item.key)}
+                onClick={() => {
+                  if (item.key === "compose" && tab !== "compose") setEditingPost(null);
+                  setTab(item.key);
+                }}
                 className={`rounded-full px-3 py-1.5 text-sm font-medium ${
                   tab === item.key
                     ? "bg-primary text-primary-foreground"
@@ -168,17 +188,33 @@ function SocialPage() {
           </div>
 
           <div className="mt-6">
-            {tab === "posts" && <PostsTab boardPosts={board.posts} onChange={refresh} />}
+            {tab === "posts" && (
+              <PostsTab boardPosts={board.posts} onChange={refresh} onEdit={editPost} />
+            )}
+            {tab === "calendar" && (
+              <SocialPostCalendar posts={board.posts} onEdit={editPost} />
+            )}
+            {tab === "pulse" && <SochiPulseAiBlock onChange={refresh} />}
             {tab === "compose" && (
               <ComposeTab
+                key={editingPost?.id ?? "new"}
+                initial={editingPost}
                 defaultPlatforms={board.channels.filter((c) => c.enabled).map((c) => c.platform)}
-                onSaved={() => {
+                onPublished={() => {
+                  setEditingPost(null);
                   refresh();
+                  setTab("posts");
+                }}
+                onDraftSaved={(post) => {
+                  setEditingPost(post);
+                  refresh();
+                }}
+                onCancelEdit={() => {
+                  setEditingPost(null);
                   setTab("posts");
                 }}
               />
             )}
-            {tab === "ai" && <AiTab onChange={refresh} />}
             {tab === "brand" && (
               <BrandTab
                 initial={board.brand}
@@ -197,9 +233,11 @@ function SocialPage() {
 function PostsTab({
   boardPosts,
   onChange,
+  onEdit,
 }: {
   boardPosts: SocialPost[];
   onChange: () => void;
+  onEdit: (post: SocialPost) => void;
 }) {
   const publishFn = useServerFn(publishSocialPost);
   const cancelFn = useServerFn(cancelSocialPost);
@@ -300,8 +338,50 @@ function PostsTab({
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="whitespace-pre-wrap text-sm">{post.body}</p>
+                {post.media?.length ? (
+                  <div className="flex gap-2 overflow-x-auto">
+                    {post.media.map((item) =>
+                      item.kind === "video" ? (
+                        <video
+                          key={item.path}
+                          src={item.url || socialMediaDisplayUrl(item.path)}
+                          className="h-20 w-16 shrink-0 rounded-md bg-muted object-cover"
+                          muted
+                        />
+                      ) : (
+                        <img
+                          key={item.path}
+                          src={item.url || socialMediaDisplayUrl(item.path)}
+                          alt=""
+                          className="h-20 w-16 shrink-0 rounded-md bg-muted object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ),
+                    )}
+                  </div>
+                ) : null}
                 {post.last_error ? <p className="text-sm text-destructive">{post.last_error}</p> : null}
+                <details className="rounded-lg border border-border bg-muted/30 p-3">
+                  <summary className="cursor-pointer text-sm font-medium">Как будет выглядеть в сетях</summary>
+                  <div className="mt-4">
+                    <SocialPostPreview
+                      body={post.body}
+                      topic={post.topic}
+                      platforms={post.targets.map((t) => t.platform)}
+                      media={post.media}
+                      variants={Object.fromEntries(
+                        post.targets.filter((t) => t.body).map((t) => [t.platform, t.body]),
+                      )}
+                    />
+                  </div>
+                </details>
                 <div className="flex flex-wrap gap-2">
+                  {(post.status === "draft" || post.status === "failed") && (
+                    <Button size="sm" variant="outline" onClick={() => onEdit(post)}>
+                      <Pencil className="size-4" />
+                      Править
+                    </Button>
+                  )}
                   {(post.status === "draft" || post.status === "failed") && (
                     <Button size="sm" onClick={() => publishMut.mutate(post.id)} disabled={publishMut.isPending}>
                       Опубликовать
@@ -322,7 +402,9 @@ function PostsTab({
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        void navigator.clipboard.writeText(post.body);
+                        const maxBody =
+                          post.targets.find((t) => t.platform === "max")?.body || post.body;
+                        void navigator.clipboard.writeText(maxBody);
                         toast.success("Текст скопирован для Макс");
                       }}
                     >
@@ -349,19 +431,40 @@ function PostsTab({
 }
 
 function ComposeTab({
+  initial,
   defaultPlatforms,
-  onSaved,
+  onPublished,
+  onDraftSaved,
+  onCancelEdit,
 }: {
+  initial?: SocialPost | null;
   defaultPlatforms: SocialPlatform[];
-  onSaved: () => void;
+  onPublished: () => void;
+  onDraftSaved: (post: SocialPost) => void;
+  onCancelEdit: () => void;
 }) {
   const saveFn = useServerFn(saveSocialPost);
-  const [topic, setTopic] = useState("");
-  const [body, setBody] = useState("");
+  const igTarget = initial?.targets.find((t) => t.platform === "instagram")?.body ?? "";
+  const [postId, setPostId] = useState(initial?.id ?? "");
+  const [topic, setTopic] = useState(initial?.topic ?? "");
+  const [body, setBody] = useState(initial?.body ?? "");
+  const [instagramBody, setInstagramBody] = useState(igTarget);
+  const [instagramTouched, setInstagramTouched] = useState(Boolean(igTarget));
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(
-    defaultPlatforms.length ? defaultPlatforms : [...SOCIAL_PLATFORMS],
+    initial?.targets.length
+      ? initial.targets.map((t) => t.platform)
+      : defaultPlatforms.length
+        ? defaultPlatforms
+        : [...SOCIAL_PLATFORMS],
   );
-  const [scheduled, setScheduled] = useState("");
+  const [scheduled, setScheduled] = useState(toLocalInput(initial?.scheduled_at ?? null));
+  const [media, setMedia] = useState<SocialMediaItem[]>(initial?.media ?? []);
+  const [objectUrl, setObjectUrl] = useState(initial ? objectUrlFromPost(initial) : "");
+
+  const autoInstagram = toInstagramOrganic(body);
+  const instagramValue = instagramTouched ? instagramBody : autoInstagram;
+  const variants = platforms.includes("instagram") ? { instagram: instagramValue } : undefined;
+  const editing = Boolean(postId);
 
   const toggle = (platform: SocialPlatform) => {
     setPlatforms((cur) =>
@@ -373,193 +476,173 @@ function ComposeTab({
     mutationFn: (publish: boolean) =>
       saveFn({
         data: {
+          id: postId || undefined,
           topic,
           body,
           platforms,
           scheduledAt: fromLocalInput(scheduled),
           publish,
+          variants,
+          objectUrl,
+          media: media.map((item) => ({
+            path: item.path,
+            kind: item.kind,
+            mime: item.mime,
+            bytes: item.bytes,
+            width: item.width,
+            height: item.height,
+            durationSec: item.durationSec,
+          })),
         },
       }),
-    onSuccess: () => {
-      toast.success("Сохранено");
-      setTopic("");
-      setBody("");
-      setScheduled("");
-      onSaved();
+    onSuccess: (saved, publish) => {
+      if (publish) {
+        toast.success(saved.scheduled_at ? "В очереди Postmypost" : "Опубликовано");
+        onPublished();
+        return;
+      }
+      toast.success("Черновик сохранён — можно править дальше");
+      setPostId(saved.id);
+      onDraftSaved(saved);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Новый пост</CardTitle>
-        <CardDescription>
-          Один текст на все сети. ИИ в соседней вкладке поможет сформулировать и адаптировать.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Тема</Label>
-          <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Свободная квартира у моря" />
-        </div>
-        <div className="space-y-2">
-          <Label>Текст</Label>
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={10}
-            placeholder="Напишите пост или попросите ИИ…"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {SOCIAL_PLATFORMS.map((platform) => (
-            <button
-              key={platform}
-              type="button"
-              onClick={() => toggle(platform)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-                platforms.includes(platform)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {PLATFORM_LABEL[platform]}
-            </button>
-          ))}
-        </div>
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            <CalendarClock className="size-4" />
-            Отложить (необязательно)
-          </Label>
-          <Input type="datetime-local" value={scheduled} onChange={(e) => setScheduled(e.target.value)} />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => saveMut.mutate(false)} disabled={saveMut.isPending}>
-            Черновик
-          </Button>
-          <Button onClick={() => saveMut.mutate(true)} disabled={saveMut.isPending}>
-            {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            {scheduled ? "В очередь Postmypost" : "Опубликовать"}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function AiTab({ onChange }: { onChange: () => void }) {
-  const askFn = useServerFn(askSocialAssistant);
-  const runFn = useServerFn(runSocialAssistantAction);
-  const [draft, setDraft] = useState("");
-  const [messages, setMessages] = useState<AssistantChatMessage[]>([]);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const [actions, setActions] = useState<{ id: string; tool: string; summary: string; input: string }[]>([]);
-
-  const send = async () => {
-    const text = draft.trim();
-    if (!text || pending) return;
-    const next = [...messages, { role: "user" as const, content: text }];
-    setDraft("");
-    setPending(true);
-    setError("");
-    setMessages(next);
-    try {
-      const reply = await askFn({ data: { messages: next } });
-      if (reply.error) setError(reply.error);
-      if (reply.text) setMessages([...next, { role: "assistant", content: reply.text }]);
-      setActions(reply.actions ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось спросить ИИ");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const confirmMut = useMutation({
-    mutationFn: (action: { id: string; tool: string; summary: string; input: string }) =>
-      runFn({ data: { action } }),
-    onSuccess: (r) => {
-      toast[r.ok ? "success" : "error"](r.message);
-      setActions([]);
-      onChange();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,28rem)_1fr]">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="size-4 text-primary" />
-            Редактор соцсетей
-          </CardTitle>
+          <CardTitle>{editing ? "Черновик" : "Новый пост"}</CardTitle>
           <CardDescription>
-            Не отдельный бот: тот же Ассистент RM OS, но с голосом бренда, лентой постов и объектами.
-            Попросите рубрики на месяц, текст про объект или адаптацию под Instagram и Макс.
+            {editing
+              ? "Меняйте текст, фото и дату — сохраните снова, чтобы обновить черновик."
+              : "Пишете полный текст с ценой — для ВКонтакте, Telegram и Макс. Instagram сам собирается как обычный пост без цен, телефона и оферты."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="max-h-[28rem] space-y-3 overflow-y-auto rounded-md border border-border p-3">
-            {!messages.length && (
-              <p className="text-sm text-muted-foreground">
-                Например: «Придумай 8 тем на неделю про долгосрочную аренду в Сочи» или «Пост про Карат 1802 для Instagram и VK».
-              </p>
-            )}
-            {messages.map((m, i) => (
-              <div key={`${m.role}-${i}`} className={m.role === "user" ? "text-right" : ""}>
-                <div
-                  className={`inline-block max-w-[90%] rounded-2xl px-3 py-2 text-sm ${
-                    m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                  }`}
-                >
-                  <ChatText text={m.content} />
-                </div>
-              </div>
-            ))}
-            {pending ? <p className="text-xs text-muted-foreground">Думаю…</p> : null}
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Тема</Label>
+            <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Свободная квартира у моря" />
           </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {actions.map((action) => (
-            <div key={action.id} className="flex flex-wrap items-center gap-2 rounded-md border border-border p-3">
-              <p className="min-w-0 flex-1 text-sm">{action.summary}</p>
-              <Button size="sm" onClick={() => confirmMut.mutate(action)} disabled={confirmMut.isPending}>
-                Подтвердить
-              </Button>
-            </div>
-          ))}
-          <div className="flex gap-2">
+          <div className="space-y-2">
+            <Label>Текст для VK, Telegram и Макс</Label>
             <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={3}
-              placeholder="Напишите задачу редактору…"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={10}
+              placeholder="Можно цену и условия. Ссылку на объект вставьте в поле ниже."
             />
-            <Button className="self-end" onClick={() => void send()} disabled={pending}>
-              {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            {media.length && body.trim().length >= MESSENGER_CAPTION_LIMIT ? (
+              <p className="text-[11px] text-muted-foreground">
+                В Telegram и Макс альбом уйдёт отдельно, текст — следующим сообщением (подпись к медиа до{" "}
+                {MESSENGER_CAPTION_LIMIT} символов, как в Postmypost).
+              </p>
+            ) : media.length ? (
+              <p className="text-[11px] text-muted-foreground">
+                {body.trim().length}/{MESSENGER_CAPTION_LIMIT} символов подписи к альбому в Telegram и Макс
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label>Ссылка на объект</Label>
+            <Input
+              value={objectUrl}
+              onChange={(e) => setObjectUrl(e.target.value)}
+              placeholder="https://residence-more.ru/rent/…"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Вставьте карточку сами. В VK, Telegram и Макс будет видно https://residence-more.ru/, переход — сюда.
+              Instagram ссылку не ставит.
+            </p>
+          </div>
+          {platforms.includes("instagram") ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Instagram — без рекламы</Label>
+                {instagramTouched ? (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline"
+                    onClick={() => {
+                      setInstagramTouched(false);
+                      setInstagramBody("");
+                    }}
+                  >
+                    Вернуть автоверсию
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">Цены и телефон уберём сами</span>
+                )}
+              </div>
+              <Textarea
+                value={instagramValue}
+                onChange={(e) => {
+                  setInstagramTouched(true);
+                  setInstagramBody(e.target.value);
+                }}
+                rows={8}
+                placeholder="Живой пост про место и ощущение, без цен"
+              />
+            </div>
+          ) : null}
+          <SocialMediaPicker items={media} onChange={setMedia} />
+          <div className="flex flex-wrap gap-2">
+            {SOCIAL_PLATFORMS.map((platform) => (
+              <button
+                key={platform}
+                type="button"
+                onClick={() => toggle(platform)}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                  platforms.includes(platform)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {PLATFORM_LABEL[platform]}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <CalendarClock className="size-4" />
+              Отложить (необязательно)
+            </Label>
+            <Input type="datetime-local" value={scheduled} onChange={(e) => setScheduled(e.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => saveMut.mutate(false)} disabled={saveMut.isPending}>
+              {editing ? "Сохранить черновик" : "Черновик"}
             </Button>
+            <Button onClick={() => saveMut.mutate(true)} disabled={saveMut.isPending}>
+              {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              {scheduled ? "В очередь Postmypost" : "Опубликовать"}
+            </Button>
+            {editing ? (
+              <Button type="button" variant="ghost" onClick={onCancelEdit}>
+                К ленте
+              </Button>
+            ) : null}
           </div>
         </CardContent>
       </Card>
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle className="text-base">Как учится</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>Напишите «запомни: в Instagram не ставим ссылки в текст» — правило сохранится.</p>
-          <p>Голос бренда задаётся во вкладке «Голос» и подставляется в каждый ответ.</p>
-          <p>Статистика Postmypost подтягивается в ленту, чтобы следующие тексты опирались на то, что уже выходило.</p>
-        </CardContent>
-      </Card>
+
+      <div className="min-w-0 space-y-3">
+        <div>
+          <h2 className="text-base font-semibold">Как будет выглядеть</h2>
+          <p className="text-sm text-muted-foreground">
+            Instagram — карусель. Telegram и Макс — как в Postmypost: несколько фото уходят
+            альбомом, длинный текст отдельным сообщением.
+          </p>
+        </div>
+        <SocialPostPreview
+          body={body}
+          topic={topic}
+          platforms={platforms}
+          variants={variants}
+          media={media}
+          objectUrl={objectUrl}
+        />
+      </div>
     </div>
   );
 }
@@ -716,8 +799,8 @@ function ConnectTab({
         <CardHeader>
           <CardTitle>Postmypost</CardTitle>
           <CardDescription>
-            Токен берётся в кабинете Postmypost → Access Tokens. Проект — тот, где подключены Instagram,
-            VK и Telegram. Макс в API Postmypost пока нет: текст копируется в группу, либо привяжите webhook-аккаунт.
+            Токен берётся в кабинете Postmypost → Access Tokens. Проект — «Резиденция - Море», где
+            подключены Instagram, VK, Telegram и Макс.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

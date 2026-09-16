@@ -17,6 +17,7 @@ export function useAccess() {
     profile: query.data?.profile ?? null,
     isAdmin: role === "admin",
     isManager: role === "manager",
+    isOwner: role === "owner",
     loading: query.isLoading,
   };
 }

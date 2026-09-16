@@ -44,6 +44,7 @@ services:
       - LOVABLE_CRON_SECRET=${LOVABLE_CRON_SECRET}
       - LOVABLE_API_KEY=${LOVABLE_API_KEY}
       - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-${TELEGRAM_API_KEY}}
       - CIAN_API_KEY=${CIAN_API_KEY:-}
       - YANDEX_REALTY_TOKEN=${YANDEX_REALTY_TOKEN:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -96,6 +97,7 @@ services:
       - LOVABLE_CRON_SECRET=${LOVABLE_CRON_SECRET}
       - LOVABLE_API_KEY=${LOVABLE_API_KEY}
       - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-${TELEGRAM_API_KEY}}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
@@ -161,12 +163,15 @@ services:
       - GOTRUE_DB_DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@supabase-db:5432/postgres?search_path=auth
       - GOTRUE_JWT_SECRET=${JWT_SECRET}
       - GOTRUE_JWT_AUD=authenticated
-      - GOTRUE_JWT_EXP=3600
+      # Access JWT на сутки; refresh без ротации — иначе параллельные вкладки/iPhone выбивают из входа.
+      - GOTRUE_JWT_EXP=86400
+      - GOTRUE_REFRESH_TOKEN_ROTATION_ENABLED=false
+      - GOTRUE_REFRESH_TOKEN_REUSE_INTERVAL=86400
       - GOTRUE_EXTERNAL_EMAIL_ENABLED=true
       - GOTRUE_MAILER_AUTOCONFIRM=true
       - GOTRUE_DISABLE_SIGNUP=true
-      - GOTRUE_SITE_URL=https://${DOMAIN}
-      - GOTRUE_URI_ALLOW_LIST=
+      - GOTRUE_SITE_URL=https://rm-os.${DOMAIN}
+      - GOTRUE_URI_ALLOW_LIST=https://${DOMAIN},https://www.${DOMAIN},https://rm-os.${DOMAIN},https://preview.${DOMAIN},https://preview-rm-os.${DOMAIN}
     depends_on:
       supabase-db:
         condition: service_healthy
@@ -229,6 +234,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - LOVABLE_API_KEY=${LOVABLE_API_KEY}
       - TELEGRAM_API_KEY=${TELEGRAM_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-${TELEGRAM_API_KEY}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - deploy_data:/data
@@ -256,6 +262,21 @@ services:
             -H "x-cron-secret: $$SECRET" || true
           sleep 900
         done
+    depends_on:
+      - app
+    networks:
+      - rm-os
+
+  # Telegram не достучаться входящим HTTPS до Бегета — бот сам забирает сообщения.
+  telegram-poller:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-${TELEGRAM_API_KEY}}
+      - TELEGRAM_FORWARD_URL=http://app:3000/api/public/telegram/webhook
+    volumes:
+      - ./telegram-poller.py:/poller.py:ro
+    command: ["python", "/poller.py"]
     depends_on:
       - app
     networks:

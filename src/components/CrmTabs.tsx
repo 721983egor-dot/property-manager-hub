@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useAccess } from "@/hooks/useAccess";
 
 const ITEMS = [
+  { to: "/crm/tasks", label: "Задачи", key: "tasks", adminOnly: false },
   { to: "/crm/deals", label: "Сделки", key: "deals", adminOnly: true },
   { to: "/crm/clients", label: "Клиенты", key: "clients", adminOnly: false },
   { to: "/crm/leads", label: "Заявки", key: "leads", adminOnly: true },
@@ -10,7 +11,7 @@ const ITEMS = [
 
 
 /** Вкладки верхнего уровня раздела «CRM». */
-export function CrmTabs({ active }: { active: "clients" | "leads" | "deals" }) {
+export function CrmTabs({ active }: { active: "clients" | "leads" | "deals" | "tasks" }) {
   const { isAdmin } = useAccess();
   return (
     <div className="mt-6 border-b border-border">

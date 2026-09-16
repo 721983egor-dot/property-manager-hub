@@ -47,7 +47,19 @@ async function callDeployAgent(path: string, body?: unknown) {
   if (body) {
     init.body = JSON.stringify(body);
   }
-  const res = await fetch(`${agentUrl.replace(/\/$/, "")}${path}`, init);
+
+  let res: Response;
+  try {
+    res = await fetch(`${agentUrl.replace(/\/$/, "")}${path}`, init);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error ?? "");
+    // Сохраняем "fetch failed" в тексте — UI обновления распознаёт обрыв связи при перезапуске.
+    throw new Error(
+      detail.trim()
+        ? `fetch failed: нет связи с deploy-агентом (${detail})`
+        : "fetch failed: нет связи с deploy-агентом",
+    );
+  }
 
   const text = await res.text();
   let json: unknown = null;

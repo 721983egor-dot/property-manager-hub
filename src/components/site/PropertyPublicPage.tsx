@@ -639,11 +639,11 @@ export function PropertyPublicPage({
             </div>
 
             {/* Для вас доступно */}
-            {complex.infrastructure.length > 0 ? (
+            {(complex.infrastructure ?? []).length > 0 ? (
               <div className="mt-10">
                 <h3 className="text-[16px] font-semibold text-site-navy">Для вас доступно</h3>
                 <ul className="mt-4 grid gap-x-10 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                  {complex.infrastructure.map((i) => (
+                  {(complex.infrastructure ?? []).map((i) => (
                     <Bullet key={i}>{infrastructureLabel(i)}</Bullet>
                   ))}
                 </ul>

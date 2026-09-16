@@ -63,7 +63,7 @@ export async function computeFeedSelection(): Promise<FeedSelection> {
   const autoPublish = Boolean((cred as { auto_publish?: boolean } | null)?.auto_publish);
 
   const [{ data: properties }, { data: listings }] = await Promise.all([
-    supabaseAdmin.from("properties").select("*").neq("status", "archived"),
+    supabaseAdmin.from("properties").select("*").neq("status", "archived").neq("portfolio", "n11" as never),
     supabaseAdmin.from("property_listings").select("*").eq("platform", "cian"),
   ]);
 

@@ -3,6 +3,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import {
+  rememberStaffSession,
+  startStaffSessionKeeper,
+} from "@/integrations/supabase/staff-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +34,13 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    try {
+      return window.localStorage.getItem("rm-os-last-email") ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,7 +49,8 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    startStaffSessionKeeper();
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -47,6 +58,12 @@ function AuthPage() {
     if (signInError) {
       setError("Не удалось войти. Проверьте почту и пароль.");
       return;
+    }
+    rememberStaffSession(data.session);
+    try {
+      window.localStorage.setItem("rm-os-last-email", email.trim());
+    } catch {
+      // private mode
     }
     void navigate({ to: "/objects" });
   }
