@@ -197,22 +197,16 @@ def update_env_values(values: dict[str, str | None]) -> None:
     ENV_FILE.write_text("\n".join(output) + "\n")
 
 
+PRODUCTION_JOB = threading.Lock()
+PREVIEW_JOB = threading.Lock()
+
+
 def update_deploy_agent() -> None:
-    """Пересобирает агент после ответа, чтобы следующий запуск использовал новый код."""
-    time.sleep(2)
-    try:
-        subprocess.Popen(
-            [
-                "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
-                "up", "-d", "--build", "--no-deps", "deploy-agent",
-            ],
-            cwd=REPO_DIR,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-    except Exception:
-        pass
+    """Раньше агент пересобирал сам себя после деплоя — при сбое сборки
+    обновления навсегда отвечали 502, пока кто-то не зайдёт по SSH.
+    Больше себя не трогаем: новый код подхватывается с volume при restart.
+    """
+    return
 
 
 @APP.get("/status")
@@ -231,14 +225,14 @@ def status(authorization: str | None = Header(None)):
         "preview_url": f"https://preview.{DOMAIN}",
         "preview_rm_os_url": f"https://preview-rm-os.{DOMAIN}",
         "deployments": state.get("deployments", [])[-12:],
+        "production_busy": PRODUCTION_JOB.locked(),
+        "preview_busy": PREVIEW_JOB.locked(),
     }
 
 
-@APP.post("/deploy")
-def deploy(req: DeployRequest, authorization: str | None = Header(None)):
-    verify_token(authorization)
+def run_production_job(req: DeployRequest) -> None:
+    """Долгое обновление рабочей системы — только в фоне."""
     state = load_state()
-
     try:
         update_env_values({
             "TELEGRAM_API_KEY": req.telegram_api_key,
@@ -248,11 +242,8 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             "YANDEX_REALTY_TOKEN": req.yandex_realty_token,
         })
 
-        # 1. Резервная копия
         backup_path = backup_database()
 
-        # 2. На рабочий сервер ставим ту версию, которую уже смотрели на тесте (preview),
-        # либо main — пока отдельной тестовой ветки ещё нет.
         if not REPO_DIR.exists():
             REPO_DIR.parent.mkdir(parents=True, exist_ok=True)
             run(["git", "clone", GITHUB_REPO, str(REPO_DIR)])
@@ -260,21 +251,14 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
         version = sync_git(REPO_DIR, source_branch)
         maybe_fast_forward_github_main()
 
-        # 3. Сначала применяем миграции отдельным одноразовым контейнером.
-        # При ошибке текущая версия приложения остаётся запущенной.
         run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "run", "--rm", "migrator"],
             timeout=600,
         )
-
-        # API базы кеширует структуру и права. После миграций обновляем этот кеш,
-        # не останавливая текущую рабочую версию приложения.
         run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "restart", "supabase-rest"],
             timeout=120,
         )
-
-        # 4. Только после успешных миграций собираем и переключаем приложение.
         run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "build", "app"],
             timeout=600,
@@ -283,29 +267,20 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "app"],
             timeout=120,
         )
-
-        # Новые фоновые сервисы тоже должны создаваться при обновлении. Раньше
-        # запускался только app, поэтому сборщик статистики не появлялся.
         run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "stats-cron"],
             timeout=180,
         )
-
-        # Пересоздаём Caddy: новый Caddyfile, пароль теста и сертификаты preview.
         run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "up", "-d", "--no-deps", "caddy"],
             timeout=120,
         )
 
-        # Один Telegram-бот может иметь только один адрес. После каждого
-        # обновления возвращаем его на рабочий сервер и рабочую базу.
         register_telegram_webhook()
-
-        # 5. Проверка здоровья
         time.sleep(5)
-        health = run(["docker", "compose", "-f", str(COMPOSE_FILE), "ps", "--format", "json"])
+        run(["docker", "compose", "-f", str(COMPOSE_FILE), "ps", "--format", "json"])
 
-        # 6. Сохраняем состояние
+        state = load_state()
         state["deployments"].append({
             "version": version,
             "at": datetime.now(timezone.utc).isoformat(),
@@ -316,28 +291,59 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
         })
         state["current_version"] = version
         save_state(state)
-
-        threading.Thread(target=update_deploy_agent, daemon=True).start()
-
-        return {
-            "ok": True,
-            "version": version,
-            "preview_version": state.get("preview_version", "—"),
-            "message": f"Рабочая система обновлена до {version}. Сайт: https://{DOMAIN}, RM OS: https://rm-os.{DOMAIN}",
-        }
     except Exception as e:
+        state = load_state()
         state["deployments"].append({
             "version": "unknown",
             "at": datetime.now(timezone.utc).isoformat(),
             "source": req.source,
+            "target": "production",
             "status": "failed",
             "error": str(e),
         })
         save_state(state)
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-PREVIEW_JOB = threading.Lock()
+@APP.post("/deploy")
+def deploy(req: DeployRequest, authorization: str | None = Header(None)):
+    """Запускает обновление рабочей системы в фоне — иначе браузер рвёт связь (fetch failed)."""
+    verify_token(authorization)
+    state = load_state()
+    if not PRODUCTION_JOB.acquire(blocking=False):
+        return {
+            "ok": True,
+            "version": state.get("current_version", "unknown"),
+            "preview_version": state.get("preview_version", "—"),
+            "message": (
+                "Рабочая система уже обновляется. Подождите 5–15 минут и нажмите «Обновить статус»."
+            ),
+        }
+
+    state["deployments"].append({
+        "version": state.get("current_version", "unknown"),
+        "at": datetime.now(timezone.utc).isoformat(),
+        "source": req.source,
+        "target": "production",
+        "status": "started",
+    })
+    save_state(state)
+
+    def job() -> None:
+        try:
+            run_production_job(req)
+        finally:
+            PRODUCTION_JOB.release()
+
+    threading.Thread(target=job, daemon=True).start()
+    return {
+        "ok": True,
+        "version": state.get("current_version", "unknown"),
+        "preview_version": state.get("preview_version", "—"),
+        "message": (
+            f"Обновление рабочей системы запущено. Через 5–15 минут откройте "
+            f"https://{DOMAIN} и https://rm-os.{DOMAIN}."
+        ),
+    }
 
 
 def run_preview_job(source: str) -> None:
