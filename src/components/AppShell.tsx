@@ -213,9 +213,19 @@ function SignOutButton() {
     <button
       type="button"
       onClick={() => {
-        void supabase.auth.signOut().then(() => {
+        void (async () => {
+          const { writeRefreshCookie } = await import(
+            "@/integrations/supabase/staff-auth-storage"
+          );
+          writeRefreshCookie(null);
+          try {
+            window.localStorage.removeItem("rm-os-auth");
+          } catch {
+            // private mode
+          }
+          await supabase.auth.signOut();
           window.location.href = "/auth";
-        });
+        })();
       }}
       className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
     >

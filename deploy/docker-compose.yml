@@ -163,9 +163,10 @@ services:
       - GOTRUE_DB_DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@supabase-db:5432/postgres?search_path=auth
       - GOTRUE_JWT_SECRET=${JWT_SECRET}
       - GOTRUE_JWT_AUD=authenticated
+      # Access JWT на сутки; refresh без ротации — иначе параллельные вкладки/iPhone выбивают из входа.
       - GOTRUE_JWT_EXP=86400
-      - GOTRUE_REFRESH_TOKEN_ROTATION_ENABLED=true
-      - GOTRUE_REFRESH_TOKEN_REUSE_INTERVAL=30
+      - GOTRUE_REFRESH_TOKEN_ROTATION_ENABLED=false
+      - GOTRUE_REFRESH_TOKEN_REUSE_INTERVAL=86400
       - GOTRUE_EXTERNAL_EMAIL_ENABLED=true
       - GOTRUE_MAILER_AUTOCONFIRM=true
       - GOTRUE_DISABLE_SIGNUP=true
