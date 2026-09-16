@@ -64,7 +64,8 @@ const PROGRESS_STEPS = {
 function isRestartError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err ?? "");
   if (!message.trim()) return true;
-  return /invariant failed|failed to fetch|networkerror|load failed|network request failed|502|503|504|aborted|terminated/i.test(
+  // Node undici: "fetch failed"; браузер: "Failed to fetch" / "Load failed"
+  return /invariant failed|failed to fetch|fetch failed|networkerror|load failed|network request failed|502|503|504|aborted|terminated|econnrefused|econnreset|etimedout|socket hang up/i.test(
     message,
   );
 }

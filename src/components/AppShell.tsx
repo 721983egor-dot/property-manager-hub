@@ -250,7 +250,6 @@ type NavItem = {
 
 
 const MOBILE_NAV: NavItem[] = [
-  { to: "/hotel", label: "Н11", icon: Hotel },
   { to: "/objects", label: "Объекты", icon: Building2 },
   { to: "/calendar", label: "Календарь", icon: CalendarDays, managerOnly: true },
   { to: "/chats", label: "Чаты", icon: MessagesSquare, adminOnly: true },
