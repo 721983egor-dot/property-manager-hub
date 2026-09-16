@@ -25,6 +25,24 @@ export function leadTopicLabel(value: string) {
   return LEAD_TOPICS.find((t) => t.value === value)?.label ?? value;
 }
 
+/**
+ * Публичный сайт для клиентских ссылок (подборки и т.п.).
+ * Никогда не возвращает домен RM OS — только сайт.
+ */
+export function publicSiteOrigin(): string {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname.toLowerCase();
+    if (host === "preview-rm-os.residence-more.ru" || host === "preview.residence-more.ru") {
+      return "https://preview.residence-more.ru";
+    }
+    if (host === "rm-os.residence-more.ru" || host === "residence-more.ru") {
+      return "https://residence-more.ru";
+    }
+  }
+  return SITE_ORIGIN;
+}
+
+/** Ссылка на подборку на публичном сайте (не в RM OS). */
 export function selectionPublicUrl(code: string): string {
-  return `${SITE_ORIGIN}/p/${String(code).trim()}`;
+  return `${publicSiteOrigin()}/p/${String(code).trim()}`;
 }
