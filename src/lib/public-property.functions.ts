@@ -26,7 +26,7 @@ export const getPublicProperty = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const published = () =>
-      supabaseAdmin.from("properties").select("*").eq("published", true).neq("status", "archived");
+      supabaseAdmin.from("properties").select("*").eq("published", true).neq("status", "archived").neq("portfolio", "n11" as never);
 
     if (UUID_RE.test(key)) {
       const { data, error } = await published().eq("id", key).maybeSingle();

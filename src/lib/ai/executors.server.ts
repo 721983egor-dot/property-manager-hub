@@ -379,25 +379,32 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (input["adults"] != null) patch["adults"] = input["adults"];
     if (input["children"] != null) patch["children"] = input["children"];
     if (input["comment"] != null) patch["comment"] = input["comment"];
-    if (input["telegram"] != null) patch["telegram"] = input["telegram"];
-    if (input["preferredMessenger"] != null) patch["preferred_messenger"] = input["preferredMessenger"];
-    if (input["custom"] != null) patch["custom"] = input["custom"];
-    if (dealId) {
-      const { error } = await supabaseAdmin
-        .from("deals")
-        .update(patch as never)
-        .eq("id", dealId);
-      if (error) throw new Error(error.message);
-      return "Сделка обновлена";
+    if (input["telegram"] != null) {
+      patch["telegram"] = input["telegram"];
+      const custom = (patch["custom"] as Record<string, unknown> | undefined) ?? {};
+      patch["custom"] = { ...custom, telegram: input["telegram"] };
     }
-    const stageId = must(patch["stage_id"] as string, "Не указана стадия сделки");
-    const { error } = await supabaseAdmin.from("deals").insert({
-      ...patch,
-      stage_id: stageId,
-      title: (patch["title"] as string) ?? "Новая сделка",
-    } as never);
+    if (input["preferredMessenger"] != null) {
+      patch["preferred_messenger"] = input["preferredMessenger"];
+      const custom = (patch["custom"] as Record<string, unknown> | undefined) ?? {};
+      patch["custom"] = { ...custom, preferred_messenger: input["preferredMessenger"] };
+    }
+    if (input["custom"] != null) patch["custom"] = { ...(patch["custom"] as object), ...(input["custom"] as object) };
+    const writeDeal = async (row: Record<string, unknown>) =>
+      dealId
+        ? supabaseAdmin.from("deals").update(row as never).eq("id", dealId)
+        : supabaseAdmin.from("deals").insert({
+            ...row,
+            stage_id: must(row["stage_id"] as string, "Не указана стадия сделки"),
+            title: (row["title"] as string) ?? "Новая сделка",
+          } as never);
+    let { error } = await writeDeal(patch);
+    if (error && /telegram|preferred_messenger|schema cache|could not find/i.test(error.message)) {
+      const { telegram: _t, preferred_messenger: _m, ...rest } = patch;
+      ({ error } = await writeDeal(rest));
+    }
     if (error) throw new Error(error.message);
-    return "Сделка создана";
+    return dealId ? "Сделка обновлена" : "Сделка создана";
   },
 
   createSocialPost: async (input) => {
@@ -410,11 +417,58 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       body: String(input["body"] ?? ""),
       platforms: platforms as ("instagram" | "vk" | "telegram" | "max")[],
       propertyId: (input["propertyId"] as string | null) ?? null,
+      pulseItemId: (input["pulseItemId"] as string | null) ?? null,
+      objectUrl: String(input["objectUrl"] ?? "").trim() || undefined,
       scheduledAt: (input["scheduledAt"] as string | null) ?? null,
       publish: Boolean(input["publish"]),
       source: "assistant",
+      variants:
+        (input["variants"] as
+          | Partial<Record<"instagram" | "vk" | "telegram" | "max", string>>
+          | undefined) ?? undefined,
     });
     return post.status === "draft" ? "Черновик поста сохранён" : "Пост отправлен в очередь публикации";
+  },
+
+  updateSocialPost: async (input) => {
+    const { loadSocialPosts, saveSocialPost } = await import("@/lib/social.server");
+    const { objectUrlFromPost } = await import("@/lib/social-adapt");
+    const postId = must(input["postId"] as string, "Не указан пост");
+    const posts = await loadSocialPosts(80);
+    const post = posts.find((p) => p.id === postId);
+    if (!post) throw new Error("Пост не найден");
+    if (post.status !== "draft" && post.status !== "failed") {
+      throw new Error("Править можно только черновик. Запланированный пост сначала снимите с очереди.");
+    }
+    const platforms = Array.isArray(input["platforms"])
+      ? (input["platforms"] as ("instagram" | "vk" | "telegram" | "max")[])
+      : post.targets.map((t) => t.platform);
+    const nextBody = input["body"] != null ? String(input["body"]) : post.body;
+    const instagramBody =
+      input["instagramBody"] != null
+        ? String(input["instagramBody"])
+        : (post.targets.find((t) => t.platform === "instagram")?.body ?? "");
+    const objectUrl =
+      input["objectUrl"] != null
+        ? String(input["objectUrl"]).trim()
+        : objectUrlFromPost(post.body, post.targets);
+    const saved = await saveSocialPost({
+      id: postId,
+      topic: input["topic"] != null ? String(input["topic"]) : post.topic,
+      body: nextBody,
+      platforms,
+      propertyId: post.property_id,
+      pulseItemId: post.pulse_item_id,
+      objectUrl: objectUrl || undefined,
+      scheduledAt:
+        input["scheduledAt"] !== undefined
+          ? ((input["scheduledAt"] as string | null) ?? null)
+          : post.scheduled_at,
+      publish: Boolean(input["publish"]),
+      source: "assistant",
+      variants: platforms.includes("instagram") && instagramBody.trim() ? { instagram: instagramBody } : undefined,
+    });
+    return saved.status === "draft" ? "Черновик обновлён" : "Пост отправлен в очередь публикации";
   },
 
   publishSocialPost: async (input) => {
@@ -440,6 +494,246 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       examples: String(input["examples"] ?? ""),
     });
     return "Голос бренда для соцсетей обновлён";
+  },
+
+  saveHotelRoom: async (input) => {
+    const name = must(String(input["name"] ?? "").trim(), "Не указан номер");
+    const row = {
+      title: name.startsWith("N-11") || name.startsWith("Н11") ? name : `Н11 ${name}`,
+      internal_name: name,
+      type: "aparts",
+      portfolio: "n11",
+      published: false,
+      service_type: "management",
+      address: "Сочи, улица Навагинская",
+      complex_name: "Н11 Резиденция",
+      room_category_id: (input["category"] as string) || null,
+      bnovo_room_id: String(input["bnovoRoomId"] ?? "").trim() || null,
+      price_night: (input["priceNight"] as number) ?? null,
+      guests_max: (input["guests"] as number) ?? null,
+      floor: (input["floor"] as number) ?? null,
+      status: "free",
+      rooms: 1,
+      bathrooms: 1,
+    };
+    const roomId = (input["roomId"] as string) || "";
+    if (roomId) {
+      const { error } = await supabaseAdmin.from("properties").update(row as never).eq("id", roomId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin.from("properties").insert(row as never);
+      if (error) throw new Error(error.message);
+    }
+    return "Номер Н11 сохранён";
+  },
+
+  saveHotelCategory: async (input) => {
+    const code = must(String(input["code"] ?? "").trim().toLowerCase(), "Не указан код категории");
+    const name = must(String(input["name"] ?? "").trim(), "Не указано название категории");
+    const row = {
+      code,
+      name,
+      description: String(input["description"] ?? "").trim(),
+      guests: Number(input["guests"] ?? 2) || 2,
+      bnovo_room_type_id: String(input["bnovoRoomTypeId"] ?? "").trim() || null,
+    };
+    const categoryId = String(input["categoryId"] ?? "");
+    if (categoryId) {
+      const { error } = await supabaseAdmin.from("hotel_room_categories").update(row as never).eq("id", categoryId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin.from("hotel_room_categories").insert(row as never);
+      if (error) throw new Error(error.message);
+    }
+    return "Категория Н11 сохранена";
+  },
+
+  saveHotelOwner: async (input) => {
+    const fullName = must(String(input["fullName"] ?? "").trim(), "Не указан собственник");
+    const ownerId = (input["ownerId"] as string) || "";
+    const row = {
+      full_name: fullName,
+      phone: String(input["phone"] ?? ""),
+      email: String(input["email"] ?? ""),
+    };
+    let id = ownerId;
+    if (id) {
+      const { error } = await supabaseAdmin.from("owners").update(row as never).eq("id", id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data, error } = await supabaseAdmin.from("owners").insert(row as never).select("id").single();
+      if (error || !data) throw new Error(error?.message ?? "Не удалось сохранить собственника");
+      id = (data as { id: string }).id;
+    }
+    const rooms = (input["rooms"] as string[]) ?? [];
+    if (rooms.length) {
+      await supabaseAdmin.from("property_owners").delete().eq("owner_id", id);
+      const { error } = await supabaseAdmin.from("property_owners").insert(
+        rooms.map((propertyId) => ({ owner_id: id, property_id: propertyId })) as never,
+      );
+      if (error) throw new Error(error.message);
+    }
+    return "Собственник Н11 сохранён";
+  },
+
+  runBnovoSync: async (input) => {
+    const { syncBnovoBookings } = await import("@/lib/bnovo-sync.server");
+    const result = await syncBnovoBookings({
+      from: input["fromDate"] as string | undefined,
+      to: input["toDate"] as string | undefined,
+    });
+    return result.summary;
+  },
+
+  upsertTask: async (input) => {
+    const taskId = (input["taskId"] as string | null) || null;
+    const patch: Record<string, unknown> = {};
+    if (input["title"] != null) patch["title"] = input["title"];
+    if (input["description"] != null) patch["description"] = input["description"];
+    if (input["clearDue"]) {
+      patch["due_date"] = null;
+      patch["due_start"] = "";
+      patch["due_end"] = "";
+    } else {
+      if (input["dueDate"] != null) patch["due_date"] = input["dueDate"] || null;
+      if (input["dueStart"] != null) patch["due_start"] = input["dueStart"];
+      if (input["dueEnd"] != null) patch["due_end"] = input["dueEnd"];
+    }
+    if (input["assigneeId"] != null) patch["assignee_id"] = input["assigneeId"];
+    if (input["propertyId"] != null) patch["property_id"] = input["propertyId"];
+    if (input["typeId"] != null) patch["task_type_id"] = input["typeId"];
+    if (input["status"] != null) {
+      patch["status"] = input["status"];
+      patch["completed_at"] = input["status"] === "done" ? new Date().toISOString() : null;
+    }
+    let savedId = taskId;
+    if (taskId) {
+      const { error } = await supabaseAdmin.from("tasks").update(patch as never).eq("id", taskId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data, error } = await supabaseAdmin
+        .from("tasks")
+        .insert({
+          title: (patch["title"] as string) || "Новая задача",
+          description: (patch["description"] as string) ?? "",
+          due_date: (patch["due_date"] as string | null) ?? null,
+          due_start: (patch["due_start"] as string) ?? "",
+          due_end: (patch["due_end"] as string) ?? "",
+          assignee_id: (patch["assignee_id"] as string | null) ?? null,
+          property_id: (patch["property_id"] as string | null) ?? null,
+          task_type_id: (patch["task_type_id"] as string | null) ?? null,
+          status: (patch["status"] as string) ?? "open",
+          completed_at: (patch["completed_at"] as string | null) ?? null,
+        } as never)
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      savedId = (data as { id: string }).id;
+    }
+    const items = input["items"];
+    if (Array.isArray(items) && savedId && !taskId) {
+      const rows = items
+        .map((title) => String(title ?? "").trim())
+        .filter(Boolean)
+        .map((title, position) => ({ task_id: savedId, title, done: false, position }));
+      if (rows.length) {
+        const { error } = await supabaseAdmin.from("task_items").insert(rows as never);
+        if (error) throw new Error(error.message);
+      }
+    }
+    return taskId ? "Задача обновлена" : "Задача создана";
+  },
+
+  completeTask: async (input) => {
+    const taskId = must(input["taskId"] as string, "Не указана задача");
+    const { error } = await supabaseAdmin
+      .from("tasks")
+      .update({ status: "done", completed_at: new Date().toISOString() } as never)
+      .eq("id", taskId);
+    if (error) throw new Error(error.message);
+    return "Задача отмечена выполненной";
+  },
+
+  postponeTask: async (input) => {
+    const taskId = must(input["taskId"] as string, "Не указана задача");
+    const dueDate = (input["dueDate"] as string | null) ?? null;
+    const patch: Record<string, unknown> = {
+      due_date: dueDate,
+      status: "open",
+      completed_at: null,
+    };
+    if (!dueDate) {
+      patch["due_start"] = "";
+      patch["due_end"] = "";
+    }
+    const { error } = await supabaseAdmin.from("tasks").update(patch as never).eq("id", taskId);
+    if (error) throw new Error(error.message);
+    return dueDate ? `Задача отложена на ${dueDate}` : "Срок задачи убран";
+  },
+
+  upsertTaskItem: async (input) => {
+    const taskId = must(input["taskId"] as string, "Не указана задача");
+    const itemId = (input["itemId"] as string | null) || null;
+    if (input["remove"] && itemId) {
+      const { error } = await supabaseAdmin.from("task_items").delete().eq("id", itemId);
+      if (error) throw new Error(error.message);
+      return "Пункт чеклиста удалён";
+    }
+    if (itemId) {
+      const patch: Record<string, unknown> = {};
+      if (input["title"] != null) patch["title"] = input["title"];
+      if (input["done"] != null) patch["done"] = Boolean(input["done"]);
+      const { error } = await supabaseAdmin.from("task_items").update(patch as never).eq("id", itemId);
+      if (error) throw new Error(error.message);
+      return "Пункт чеклиста обновлён";
+    }
+    const { count } = await supabaseAdmin
+      .from("task_items")
+      .select("id", { count: "exact", head: true })
+      .eq("task_id", taskId);
+    const { error } = await supabaseAdmin.from("task_items").insert({
+      task_id: taskId,
+      title: String(input["title"] ?? "Пункт"),
+      done: Boolean(input["done"]),
+      position: count ?? 0,
+    } as never);
+    if (error) throw new Error(error.message);
+    return "Пункт чеклиста добавлен";
+  },
+
+  deleteTask: async (input) => {
+    const taskId = must(input["taskId"] as string, "Не указана задача");
+    const { error } = await supabaseAdmin.from("tasks").delete().eq("id", taskId);
+    if (error) throw new Error(error.message);
+    return "Задача удалена";
+  },
+
+  upsertTaskType: async (input) => {
+    const typeId = (input["typeId"] as string | null) || null;
+    const row = {
+      name: String(input["name"] ?? "Тип").trim() || "Тип",
+      color: String(input["color"] ?? "#3b82f6"),
+    };
+    if (typeId) {
+      const { error } = await supabaseAdmin.from("task_types").update(row as never).eq("id", typeId);
+      if (error) throw new Error(error.message);
+      return "Тип задачи обновлён";
+    }
+    const { count } = await supabaseAdmin
+      .from("task_types")
+      .select("id", { count: "exact", head: true });
+    const { error } = await supabaseAdmin
+      .from("task_types")
+      .insert({ ...row, position: count ?? 0 } as never);
+    if (error) throw new Error(error.message);
+    return "Тип задачи создан";
+  },
+
+  deleteTaskType: async (input) => {
+    const typeId = must(input["typeId"] as string, "Не указан тип");
+    const { error } = await supabaseAdmin.from("task_types").delete().eq("id", typeId);
+    if (error) throw new Error(error.message);
+    return "Тип задачи удалён";
   },
 };
 

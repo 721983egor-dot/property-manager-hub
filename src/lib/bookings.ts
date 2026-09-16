@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { asPortfolios } from "@/lib/portfolios";
 import {
   getStaffCurrentBooking,
   listStaffBookings,
@@ -7,7 +8,17 @@ import {
 } from "@/lib/staff-data.functions";
 
 export type BookingStatus = "active" | "cancelled" | "completed";
-export type BookingSource = "avito" | "cian" | "website" | "social" | "referral";
+export type BookingSource =
+  | "avito"
+  | "cian"
+  | "website"
+  | "social"
+  | "referral"
+  | "bnovo"
+  | "booking_com"
+  | "ostrovok"
+  | "walkin";
+export type StayKind = "long_term" | "short_stay";
 export type BookingPriceType = "fixed" | "periodic";
 
 export type Client = {
@@ -36,6 +47,9 @@ export type Booking = {
   source: BookingSource | null;
   status: BookingStatus;
   comment: string;
+  stay_kind: StayKind;
+  price_night: number | null;
+  bnovo_id: string | null;
   client: Client | null;
   periods: BookingPricePeriod[];
 };
@@ -46,6 +60,10 @@ export const BOOKING_SOURCES: { value: BookingSource; label: string }[] = [
   { value: "website", label: "Сайт" },
   { value: "social", label: "Социальные сети" },
   { value: "referral", label: "Рекомендация" },
+  { value: "bnovo", label: "Bnovo" },
+  { value: "booking_com", label: "Booking.com" },
+  { value: "ostrovok", label: "Ostrovok" },
+  { value: "walkin", label: "Прямое обращение" },
 ];
 
 export const BOOKING_STATUSES: { value: BookingStatus; label: string }[] = [
@@ -88,7 +106,7 @@ export function priceOn(booking: Booking, iso: string): number | null {
 }
 
 const SELECT =
-  "id, property_id, client_id, start_date, end_date, price_type, price_month, payment_day, deposit, source, status, comment, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
+  "id, property_id, client_id, start_date, end_date, price_type, price_month, price_night, payment_day, deposit, source, status, comment, stay_kind, bnovo_id, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
 
 function normalize(row: Record<string, unknown>): Booking {
   const client = (row['clients'] ?? null) as Client | null;
@@ -100,7 +118,10 @@ function normalize(row: Record<string, unknown>): Booking {
       .map((p) => ({ ...p, price_month: Number(p.price_month) }))
       .sort((a, b) => a.start_date.localeCompare(b.start_date)),
     price_month: row['price_month'] == null ? null : Number(row['price_month']),
+    price_night: row['price_night'] == null ? null : Number(row['price_night']),
     deposit: row['deposit'] == null ? null : Number(row['deposit']),
+    stay_kind: row['stay_kind'] === "short_stay" ? "short_stay" : "long_term",
+    bnovo_id: typeof row['bnovo_id'] === "string" ? row['bnovo_id'] : null,
   };
 }
 
@@ -187,6 +208,8 @@ export type BookingInput = {
   source: BookingSource | null;
   status: BookingStatus;
   comment: string;
+  stay_kind?: StayKind;
+  price_night?: number | null;
   periods: BookingPricePeriod[];
 };
 
@@ -218,6 +241,25 @@ export async function saveBooking(id: string | null, input: BookingInput) {
       })) as never,
     );
     if (error) throw error;
+  }
+  const { data: property } = await supabase
+    .from("properties")
+    .select("portfolio")
+    .eq("id", input.property_id)
+    .maybeSingle();
+  if ((property as { portfolio?: string } | null)?.portfolio === "n11") {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("portfolios")
+      .eq("id", input.client_id)
+      .maybeSingle();
+    const current = asPortfolios((client as { portfolios?: unknown } | null)?.portfolios);
+    if (!current.includes("n11")) {
+      await supabase
+        .from("clients")
+        .update({ portfolios: [...current, "n11"] } as never)
+        .eq("id", input.client_id);
+    }
   }
   return bookingId;
 }

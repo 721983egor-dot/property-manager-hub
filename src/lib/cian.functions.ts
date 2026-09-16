@@ -181,59 +181,12 @@ export type PlatformMessage = {
 export const syncCianMessages = createServerFn({ method: "POST" })
   .inputValidator(validateProperty)
   .handler(async ({ data }): Promise<{ messages: PlatformMessage[]; error: string }> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: listing } = await supabaseAdmin
-      .from("property_listings")
-      .select("external_id")
-      .eq("property_id", data.propertyId)
-      .eq("platform", "cian")
-      .maybeSingle();
-    const externalId = (listing as { external_id?: string } | null)?.external_id ?? "";
-    const offerId = Number(externalId);
-
-    let error = "";
-    if (!externalId || !Number.isFinite(offerId)) {
-      error = "Объект не связан с объявлением на ЦИАН";
-    } else {
-      try {
-        const { fetchChats, fetchChatMessages } = await import("@/lib/cian.server");
-        const chats = (await fetchChats()).filter((c) => c.offerId === offerId);
-
-        for (const chat of chats.slice(0, 5)) {
-          const messages = await fetchChatMessages(chat.chatId);
-          const upserts = messages
-            .filter((m) => m.messageId)
-            .map((m) => ({
-              property_id: data.propertyId,
-              platform: "cian" as const,
-              external_chat_id: String(m.chatId),
-              external_message_id: m.messageId,
-              author: m.author,
-              direction: m.direction,
-              body: m.text,
-              sent_at: m.createdAt || new Date().toISOString(),
-            }));
-          if (upserts.length > 0) {
-            await supabaseAdmin
-              .from("listing_messages")
-              .upsert(upserts, { onConflict: "platform,external_message_id" });
-          }
-        }
-      } catch (e) {
-        error = e instanceof Error ? e.message : "Не удалось получить сообщения ЦИАН";
-      }
-    }
-
-    const { data: stored } = await supabaseAdmin
-      .from("listing_messages")
-      .select("id, author, direction, body, sent_at")
-      .eq("property_id", data.propertyId)
-      .eq("platform", "cian")
-      .order("sent_at", { ascending: false })
-      .limit(50);
-
-    return { messages: (stored ?? []) as PlatformMessage[], error };
+    const { pullCianListingMessages, loadMergedPropertyMessages } = await import(
+      "@/lib/listing-messages.server"
+    );
+    const pulled = await pullCianListingMessages(data.propertyId);
+    const stored = await loadMergedPropertyMessages(data.propertyId, { limit: 50 });
+    return { messages: stored.cian, error: pulled.error };
   });
 
 /** Публикация или снятие объекта на ЦИАН (включение/выключение в фиде). */

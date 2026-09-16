@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffProperty, listStaffProperties } from "@/lib/staff-data.functions";
+import { asPortfolio, type Portfolio } from "@/lib/portfolios";
 
 export type PropertyType = "apartment" | "aparts" | "house" | "villa" | "townhouse";
 
@@ -71,6 +72,11 @@ export type Property = {
   is_apartments: boolean | null;
   sort_order: number | null;
   source_url?: string | null;
+  portfolio: Portfolio;
+  room_category_id: string | null;
+  bnovo_room_id: string | null;
+  price_night: number | null;
+  guests_max: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -383,6 +389,11 @@ function normalize(row: Record<string, unknown>): Property {
     availability_note:
       typeof row['availability_note'] === "string" ? (row['availability_note'] as string) : "",
     sort_order: num(row['sort_order']),
+    portfolio: asPortfolio(row['portfolio']),
+    room_category_id: typeof row['room_category_id'] === "string" ? row['room_category_id'] : null,
+    bnovo_room_id: typeof row['bnovo_room_id'] === "string" ? row['bnovo_room_id'] : null,
+    price_night: num(row['price_night']),
+    guests_max: num(row['guests_max']),
   };
 }
 
@@ -409,6 +420,7 @@ export async function fetchPublishedProperties(): Promise<Property[]> {
     .from("properties")
     .select("*")
     .eq("published", true)
+    .neq("portfolio", "n11" as never)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((r) => normalize(r as Record<string, unknown>));

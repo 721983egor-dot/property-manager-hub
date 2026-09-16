@@ -26,6 +26,7 @@ import { useAccess } from "@/hooks/useAccess";
 import { fetchCrmClients } from "@/lib/clients";
 import { createDefaultDealStages } from "@/lib/deals.functions";
 import { fetchProperties, internalTitle } from "@/lib/properties";
+import { listStaff } from "@/lib/staff.functions";
 import {
   customValueLabel,
 
@@ -72,8 +73,9 @@ function DealsRoute() {
 
 function DealsPage() {
   const queryClient = useQueryClient();
-  const { isAdmin } = useAccess();
+  const { isAdmin, profile } = useAccess();
   const initializeStages = useServerFn(createDefaultDealStages);
+  const loadStaff = useServerFn(listStaff);
 
   const {
     data: stages = [],
@@ -84,8 +86,13 @@ function DealsPage() {
   const { data: deals = [], isLoading } = useQuery({ queryKey: ["deals"], queryFn: fetchDeals });
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
   const { data: properties = [] } = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
+  const { data: staffData } = useQuery({
+    queryKey: ["staff"],
+    queryFn: () => loadStaff(undefined as never),
+  });
 
   const [search, setSearch] = useState("");
+  const [scope, setScope] = useState<"all" | "mine">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editing, setEditing] = useState<Deal | null>(null);
@@ -103,8 +110,6 @@ function DealsPage() {
     () => new Set(stages.filter((s) => s.kind === "lost").map((s) => s.id)),
     [stages],
   );
-  const wonDeals = useMemo(() => deals.filter((d) => wonStageIds.has(d.stage_id)), [deals, wonStageIds]);
-  const lostDeals = useMemo(() => deals.filter((d) => lostStageIds.has(d.stage_id)), [deals, lostStageIds]);
 
   const clientName = useMemo(
     () => new Map(clients.map((c) => [c.id, c.full_name])),
@@ -115,6 +120,21 @@ function DealsPage() {
     [properties],
   );
 
+  const staffName = useMemo(
+    () => new Map((staffData?.staff ?? []).map((s) => [s.id, s.full_name || s.email])),
+    [staffData],
+  );
+
+  const scopedDeals = useMemo(() => {
+    if (!isAdmin || scope === "mine") {
+      return deals.filter((d) => d.responsible_id === profile?.id);
+    }
+    return deals;
+  }, [deals, isAdmin, scope, profile?.id]);
+
+  const wonDeals = useMemo(() => scopedDeals.filter((d) => wonStageIds.has(d.stage_id)), [scopedDeals, wonStageIds]);
+  const lostDeals = useMemo(() => scopedDeals.filter((d) => lostStageIds.has(d.stage_id)), [scopedDeals, lostStageIds]);
+
   const cardFields = useMemo(
     () => fields.filter((f) => !f.archived && f.show_in_card),
     [fields],
@@ -122,14 +142,21 @@ function DealsPage() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return deals;
-    return deals.filter((d) =>
-      [d.title, d.source, d.comment, clientName.get(d.client_id ?? "") ?? "", propertyName.get(d.property_id ?? "") ?? ""]
+    if (!q) return scopedDeals;
+    return scopedDeals.filter((d) =>
+      [
+        d.title,
+        d.source,
+        d.comment,
+        staffName.get(d.responsible_id ?? "") ?? "",
+        clientName.get(d.client_id ?? "") ?? "",
+        propertyName.get(d.property_id ?? "") ?? "",
+      ]
         .join(" ")
         .toLowerCase()
         .includes(q),
     );
-  }, [deals, search, clientName, propertyName]);
+  }, [scopedDeals, search, clientName, propertyName, staffName]);
 
   const moveMutation = useMutation({
     mutationFn: ({ id, stageId, position }: { id: string; stageId: string; position: number }) =>
@@ -188,14 +215,34 @@ function DealsPage() {
 
       <CrmTabs active="deals" />
 
-      <div className="relative mt-5 max-w-sm">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Поиск по сделкам"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm min-w-[220px] flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Поиск по сделкам"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex rounded-md border border-border p-0.5">
+          <Button
+            size="sm"
+            variant={scope === "all" ? "default" : "ghost"}
+            className="h-8 px-3"
+            onClick={() => setScope("all")}
+          >
+            Все
+          </Button>
+          <Button
+            size="sm"
+            variant={scope === "mine" ? "default" : "ghost"}
+            className="h-8 px-3"
+            onClick={() => setScope("mine")}
+          >
+            Только свои
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -314,6 +361,11 @@ function DealsPage() {
                           {clientName.get(deal.client_id) ?? "Клиент"}
                         </p>
                       )}
+                      {deal.responsible_id ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Ведёт: {staffName.get(deal.responsible_id) ?? "менеджер"}
+                        </p>
+                      ) : null}
                       {deal.property_id && (
                         <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                           {propertyName.get(deal.property_id)}

@@ -1,6 +1,10 @@
 import type { AssistantAction, AssistantChatMessage, AssistantReply } from "@/lib/ai/types";
 
-export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентства долгосрочной аренды недвижимости «Residence More» в системе RM OS.
+export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент RM OS, системы управления компанией.
+В RM OS для удобства два отдельных проекта:
+- Резиденция Море — долгосрочная аренда и управление недвижимостью (сайт residence-more.ru относится только к нему);
+- Н11 Резиденция — апарт-отель на Навагинской в Сочи, отдельный проект (сайт n11-residence.ru, его здесь не ведём).
+Календарь общий: номера Н11 сверху, объекты Резиденция Море ниже. Клиенты в одной базе, папки «Клиенты Н11» и «Клиенты РМ».
 Отвечай всегда по-русски, коротко и по делу.
 
 Данные читаешь НАПРЯМУЮ из базы RM OS через инструменты (Supabase на стороне Бегета). Модель OpenAI только формулирует ответ — факты только из инструментов и снимка ниже. Серверы Lovable не используются.
@@ -9,7 +13,9 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентс
 - Объект по внутреннему названию («Карат 1802», «ЛБ2 35к16, кв 12») — searchProperties.
 - Свободные для подборки — searchProperties(status=free) и/или getCalendar (freeProperties). Для домов: type=house (также villa/townhouse). Не говори «нет свободных», пока инструмент не вернул count=0 / пустой freeProperties.
 - Клиент забронировал или уже живёт (часто БЕЗ сделки CRM) — getClientHistory(ref) или getBookings(clientQuery) / getCurrentRentals / getCalendar(clientQuery). Смотри calendar.currentRentals и calendarBookings.
+- Гости и загрузка апарт-отеля — getHotelOverview / getHotelOccupancy / getHotelOwners / getClients(portfolio=n11). Синхронизация PMS — getBnovoSync; выгрузку предлагай proposeBnovoSync. Брони Bnovo садятся на категорию (Стандарт Плюс: 546 и 567, Делюкс: 526 и 530), конкретный номер менеджер выбирает при заселении. Если бронь удалили или отменили в Bnovo, выгрузка снимает её и в календаре RM OS.
 - CRM-сделки отдельно — getCrmDeals(clientQuery=…). Пустые сделки при наличии брони — нормально для жильцов до CRM; не говори «клиента нет» и не путай с отсутствием аренды.
+- Задачи сотрудников — getTasks / getTask / getTaskTypes. Канбан по дате: сегодня, просроченные, эта/следующая неделя, без срока. Календарь показывает только задачи с датой и временем, цвет — по типу. Чеклист — отдельные пункты (proposeTaskItem). Создание и перенос — proposeTask / proposeCompleteTask / proposePostponeTask. Типы — proposeTaskType.
 - getDeals = синоним getBookings (календарь), НЕ CRM.
 - Сколько объектов — сводка в снимке или searchProperties / getCalendar.summary.
 - Прежде чем сказать «не нашёл» — вызови инструмент.
@@ -17,11 +23,12 @@ export const ASSISTANT_SYSTEM_PROMPT = `Ты — Ассистент агентс
 Правила:
 - Факты только из инструментов/снимка.
 - Объекты — внутреннее название + №ref_id; статус словами.
-- В ответе по клиенту разделяй: «Календарь / текущая аренда» и «Сделки CRM».
+- В ответе по клиенту разделяй: «Календарь / текущая аренда» и «Сделки CRM». Н11 Резиденция называй отдельно от Резиденция Море.
 - Изменения только propose*. Подборка — proposeSelection; после подтверждения полная https-ссылка.
 - Статусы объектов: free, soon_free, booked, rented, archived. Брони: active, cancelled, completed.
 - rememberSkill / forgetSkill / listSkills по просьбе.
-- Соцсети компании (Instagram, VK, Telegram, Макс) — getSocialPosts / proposeSocialPost. Тексты и публикации — в разделе «Соцсети»; отсюда тоже можно предложить пост.`;
+- Публикация и реклама — getListings / getListingStats. Только объекты Резиденции Море, без номеров Н11. Сообщения Авито и ЦИАН видны в карточке объекта.
+- Пульс Сочи (погода, новости, события) — getSochiPulse. Пост по городу пиши только из фактов пульса и привязывай pulseItemId. Если по теме уже есть пост — скажи.`;
 
 const STATUS_LABEL: Record<string, string> = {
   free: "Свободен",
@@ -63,7 +70,7 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
     const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     const until = new Date(Date.now() + 120 * 86400000).toISOString().slice(0, 10);
 
-    const [skills, properties, profileRows, roleRows, bookingsRes] = await Promise.all([
+    const [skills, properties, profileRows, roleRows, bookingsRes, openTasksRes] = await Promise.all([
       loadAssistantSkills(),
       ctx.allProperties(),
       ctx.admin
@@ -83,6 +90,12 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
         .gte("end_date", from)
         .order("start_date", { ascending: true })
         .limit(250),
+      ctx.admin
+        .from("tasks")
+        .select("id, title, due_date, due_start, due_end, status, assignee_id")
+        .eq("status", "open")
+        .order("due_date", { ascending: true })
+        .limit(80),
     ]);
 
     allProperties = properties;
@@ -93,6 +106,16 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
     staffLines = (profileRows.data ?? []).map((profile) => {
       const role = roleMap.get(profile.id) === "admin" ? "Администратор" : "Менеджер";
       return `- ${profile.full_name || "без ФИО"} | ${profile.email || "—"} | ${role}`;
+    });
+    const staffNameById = new Map(
+      (profileRows.data ?? []).map((profile) => [profile.id, profile.full_name || profile.email || "сотрудник"]),
+    );
+    const openTaskLines = (openTasksRes.data ?? []).slice(0, 40).map((task) => {
+      const when = task.due_date
+        ? `${task.due_date}${task.due_start ? ` ${String(task.due_start).slice(0, 5)}${task.due_end ? `–${String(task.due_end).slice(0, 5)}` : ""}` : ""}`
+        : "без срока";
+      const who = task.assignee_id ? staffNameById.get(task.assignee_id) ?? "" : "";
+      return `- ${task.title || "Без названия"} | ${when}${who ? ` | ${who}` : ""}`;
     });
 
     const byStatus: Record<string, number> = {};
@@ -147,7 +170,11 @@ export async function askAssistantCore(messages: AssistantChatMessage[]): Promis
     const bookingLines = calendarBookings.slice(0, 60).map(formatBookingLine);
     const currentLines = currentLiving.slice(0, 40).map(formatBookingLine);
 
+    const n11Rooms = allProperties.filter((p) => p["portfolio"] === "n11");
+    const rmRooms = allProperties.filter((p) => p["portfolio"] !== "n11");
+
     const liveContext = `\n\nСнимок базы RM OS (компактно; детали — через инструменты):
+Два проекта в RM OS: Резиденция Море (${rmRooms.length} объектов, долгосрочная аренда) и Н11 Резиденция (${n11Rooms.length} номеров, апарт-отель). Календарь общий, Н11 сверху.
 Всего объектов: ${allProperties.length}
 По типу: ${Object.entries(byType)
       .map(([k, v]) => `${k}=${v}`)
@@ -175,7 +202,10 @@ ${currentLines.join("\n") || "- (нет)"}
 ${bookingLines.join("\n") || "- (нет броней в периоде)"}
 
 Сотрудники:
-${staffLines.join("\n") || "- (нет)"}`;
+${staffLines.join("\n") || "- (нет)"}
+
+Открытые задачи (до 40 из ${openTasksRes.data?.length ?? 0}):
+${openTaskLines.join("\n") || "- (нет)"}`;
 
     try {
       const result = streamText({

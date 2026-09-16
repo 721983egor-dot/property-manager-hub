@@ -23,6 +23,8 @@ import {
   saveClient,
   type CrmClient,
 } from "@/lib/clients";
+import { asPortfolios, PORTFOLIOS, type Portfolio } from "@/lib/portfolios";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Props = {
   open: boolean;
@@ -40,6 +42,7 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
   const [comment, setComment] = useState("");
   const [blacklisted, setBlacklisted] = useState(false);
   const [reason, setReason] = useState("");
+  const [portfolios, setPortfolios] = useState<Portfolio[]>(["rm"]);
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +51,7 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
     setComment(client?.comment ?? "");
     setBlacklisted(client?.blacklisted ?? false);
     setReason(client?.blacklist_reason ?? "");
+    setPortfolios(asPortfolios(client?.portfolios));
   }, [open, client?.id]);
 
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
@@ -67,6 +71,7 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
         comment: comment.trim(),
         blacklisted,
         blacklist_reason: blacklisted ? reason.trim() : "",
+        portfolios: portfolios.length ? portfolios : ["rm"],
       });
     },
     onSuccess: async (id: string) => {
@@ -123,6 +128,27 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
               Возможный дубль: клиент «{duplicate.full_name}» уже есть с таким номером.
             </p>
           ) : null}
+
+          <div>
+            <Label>Папка</Label>
+            <div className="mt-2 flex gap-4">
+              {PORTFOLIOS.map((item) => (
+                <label key={item.value} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={portfolios.includes(item.value)}
+                    onCheckedChange={(checked) =>
+                      setPortfolios((current) => {
+                        if (checked) return [...new Set([...current, item.value])];
+                        const next = current.filter((v) => v !== item.value);
+                        return next.length ? next : current;
+                      })
+                    }
+                  />
+                  {item.short}
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div>
             <Label>Комментарий</Label>

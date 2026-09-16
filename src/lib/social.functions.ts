@@ -94,8 +94,20 @@ export const saveSocialPost = createServerFn({ method: "POST" })
       body: string;
       platforms: SocialPlatform[];
       propertyId?: string | null;
+      pulseItemId?: string | null;
+      objectUrl?: string;
       scheduledAt?: string | null;
       publish?: boolean;
+      variants?: Partial<Record<SocialPlatform, string>>;
+      media?: {
+        path: string;
+        kind: "photo" | "video";
+        mime: string;
+        bytes: number;
+        width?: number | null;
+        height?: number | null;
+        durationSec?: number | null;
+      }[];
     }) => ({
       ...input,
       topic: String(input.topic ?? "").trim(),
@@ -103,6 +115,21 @@ export const saveSocialPost = createServerFn({ method: "POST" })
       platforms: platformsOf(input.platforms),
       scheduledAt: input.scheduledAt || null,
       propertyId: input.propertyId || null,
+      objectUrl: String(input.objectUrl ?? "").trim(),
+      media: Array.isArray(input.media)
+        ? input.media
+            .slice(0, 10)
+            .map((item) => ({
+              path: String(item.path ?? "").trim(),
+              kind: item.kind === "video" ? ("video" as const) : ("photo" as const),
+              mime: String(item.mime ?? ""),
+              bytes: Number(item.bytes ?? 0),
+              width: item.width ?? null,
+              height: item.height ?? null,
+              durationSec: item.durationSec ?? null,
+            }))
+            .filter((item) => item.path)
+        : undefined,
     }),
   )
   .handler(async ({ context, data }): Promise<SocialPost> => {
@@ -180,4 +207,13 @@ export const runSocialAssistantAction = createServerFn({ method: "POST" })
     } catch (e) {
       return { ok: false, message: e instanceof Error ? e.message : "Не удалось выполнить" };
     }
+  });
+
+export const getSochiPulse = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { force?: boolean } | undefined) => input ?? {})
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context.userId);
+    const { loadSochiPulse } = await import("@/lib/sochi-pulse.server");
+    return loadSochiPulse({ force: Boolean(data.force) });
   });

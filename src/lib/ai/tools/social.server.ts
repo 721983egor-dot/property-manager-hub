@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { propertyLabel } from "@/lib/ai/context.server";
+import { socialMediaRulesText } from "@/lib/social-media";
+import { objectUrlFromPost } from "@/lib/social-adapt";
 import {
   addSocialSkill,
   loadSocialBrand,
@@ -48,7 +50,7 @@ export function createSocialTools(ctx: AssistantToolContext) {
 
     getSocialPosts: tool({
       description:
-        "Лента постов соцсетей: черновики, очередь, опубликованные. Можно фильтровать по статусу.",
+        "Лента и календарь постов: черновики, очередь Postmypost, опубликованные. Смотри scheduledAt — это дата в календаре раздела «Соцсети». Черновик правится через proposeUpdateSocialPost.",
       inputSchema: z.object({
         status: z
           .enum(["draft", "scheduled", "publishing", "published", "failed", "cancelled"])
@@ -66,7 +68,9 @@ export function createSocialTools(ctx: AssistantToolContext) {
           platforms: p.targets.map((t) => t.platform),
           scheduledAt: p.scheduled_at,
           publishedAt: p.published_at,
+          objectUrl: objectUrlFromPost(p.body, p.targets) || undefined,
           property: p.property_title,
+          media: (p.media ?? []).map((m) => ({ kind: m.kind, bytes: m.bytes })),
           error: p.last_error || undefined,
         }));
       },
@@ -106,6 +110,42 @@ export function createSocialTools(ctx: AssistantToolContext) {
       }),
     }),
 
+    getSochiPulse: tool({
+      description:
+        "Пульс Сочи: текущая погода, свежие новости и ближайшие события. Показывает, по каким темам уже есть пост. Вызывай перед текстом про город, погоду или афишу.",
+      inputSchema: z.object({
+        force: z.boolean().optional().describe("true — обновить источники, а не брать кэш"),
+      }),
+      execute: async ({ force }) => {
+        const { loadSochiPulse } = await import("@/lib/sochi-pulse.server");
+        const board = await loadSochiPulse({ force: Boolean(force) });
+        const compact = (item: {
+          id: string;
+          title: string;
+          summary: string;
+          source: string;
+          url: string;
+          startsAt: string | null;
+          relatedPosts: { status: string; topic: string }[];
+        }) => ({
+          id: item.id,
+          title: item.title,
+          summary: item.summary.slice(0, 280),
+          source: item.source,
+          url: item.url,
+          when: item.startsAt,
+          alreadyPosted: item.relatedPosts.map((p) => `${p.status}: ${p.topic}`),
+        });
+        return {
+          fetchedAt: board.fetchedAt,
+          weather: board.weather ? compact(board.weather) : null,
+          news: board.news.slice(0, 12).map(compact),
+          events: board.events.slice(0, 10).map(compact),
+          errors: board.errors,
+        };
+      },
+    }),
+
     rememberSocialSkill: tool({
       description:
         "Запомнить правило именно для соцсетей (тон, хештеги, что не писать, как адаптировать текст под Instagram/VK/Telegram/Макс). Вызывай, когда менеджер просит «запомни», «всегда так», «больше так не пиши» в контексте постов.",
@@ -131,21 +171,42 @@ export function createSocialTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getSocialMediaRules: tool({
+      description:
+        "Правила фото и видео для постов через Postmypost: JPEG до 4 МБ, кадр 4:5–1.91:1, видео MP4 до 45 МБ. Файлы добавляет менеджер во вкладке «Пост».",
+      inputSchema: z.object({}),
+      execute: async () => ({ rules: socialMediaRulesText() }),
+    }),
+
     proposeSocialPost: tool({
       description:
-        "Предложить черновик или публикацию поста в соцсети. Текст уже напиши в голосе бренда. Требует подтверждения менеджера. Макс Postmypost пока не публикует — для него сохранится текст для копирования.",
+        "Предложить черновик или публикацию. body — полная версия с ценой для VK/Telegram/Макс. instagramBody — обычный пост БЕЗ цен, телефона и оферты. Если instagramBody не передан, система сама уберёт рекламу.",
       inputSchema: z.object({
         topic: z.string().describe("Короткая тема поста"),
-        body: z.string().describe("Готовый текст поста"),
+        body: z.string().describe("Полный текст с ценой и условиями для VK, Telegram и Макс"),
+        instagramBody: z
+          .string()
+          .optional()
+          .describe("Версия для Instagram без цен и рекламы. Если пусто — система соберёт сама."),
+        objectUrl: z
+          .string()
+          .optional()
+          .describe(
+            "Адрес карточки объекта. В VK/Telegram/Макс будет видно https://residence-more.ru/, переход на этот адрес. Не вставляй ссылку в body.",
+          ),
         platforms: platformsSchema,
         ref: z.string().optional().describe("Объект, если пост про конкретную квартиру/дом"),
+        pulseItemId: z
+          .string()
+          .optional()
+          .describe("id пункта Пульса Сочи, если пост по погоде, новости или событию"),
         scheduledAt: z
           .string()
           .optional()
           .describe("ISO-дата публикации, если это не «прямо сейчас»"),
         publishNow: z.boolean().optional(),
       }),
-      execute: async ({ topic, body, platforms, ref, scheduledAt, publishNow }) => {
+      execute: async ({ topic, body, instagramBody, platforms, ref, pulseItemId, scheduledAt, publishNow, objectUrl }) => {
         let propertyId: string | undefined;
         let propertyText = "";
         if (ref) {
@@ -156,7 +217,8 @@ export function createSocialTools(ctx: AssistantToolContext) {
         }
         const when = publishNow ? "опубликовать сейчас" : scheduledAt ? `запланировать на ${scheduledAt}` : "сохранить черновик";
         const nets = platforms.join(", ");
-        const summary = `${when[0].toUpperCase()}${when.slice(1)} пост «${topic || body.slice(0, 40)}» → ${nets}${propertyText ? ` (${propertyText})` : ""}`;
+        const igNote = platforms.includes("instagram") ? "; Instagram — без цен и оферты" : "";
+        const summary = `${when[0].toUpperCase()}${when.slice(1)} пост «${topic || body.slice(0, 40)}» → ${nets}${igNote}${propertyText ? ` (${propertyText})` : ""}`;
         ctx.propose({
           tool: "createSocialPost",
           summary,
@@ -165,11 +227,65 @@ export function createSocialTools(ctx: AssistantToolContext) {
             body,
             platforms,
             propertyId: propertyId ?? null,
+            pulseItemId: pulseItemId?.trim() || null,
             scheduledAt: scheduledAt || null,
             publish: Boolean(publishNow || scheduledAt),
+            objectUrl: objectUrl?.trim() || undefined,
+            variants: instagramBody?.trim() ? { instagram: instagramBody.trim() } : undefined,
           },
         });
         return { proposed: true, summary, body };
+      },
+    }),
+
+    proposeUpdateSocialPost: tool({
+      description:
+        "Предложить правки черновика или поста с ошибкой. Запланированный в Postmypost не трогай — сначала proposeCancelSocialPost. Передавай только поля, которые меняются. Фото не затираются.",
+      inputSchema: z.object({
+        postId: z.string(),
+        topic: z.string().optional(),
+        body: z.string().optional().describe("Полный текст для VK/Telegram/Макс"),
+        instagramBody: z.string().optional(),
+        objectUrl: z.string().optional().describe("Адрес карточки объекта"),
+        platforms: platformsSchema.optional(),
+        scheduledAt: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("ISO-дата или null, чтобы убрать расписание"),
+        publishNow: z.boolean().optional(),
+      }),
+      execute: async ({ postId, topic, body, instagramBody, objectUrl, platforms, scheduledAt, publishNow }) => {
+        const posts = await loadSocialPosts(80);
+        const post = posts.find((p) => p.id === postId);
+        if (!post) return { error: "Пост не найден" };
+        if (post.status !== "draft" && post.status !== "failed") {
+          return { error: "Править можно только черновик. Запланированный сначала снимите с очереди." };
+        }
+        const bits: string[] = [];
+        if (topic != null) bits.push("тему");
+        if (body != null) bits.push("текст");
+        if (instagramBody != null) bits.push("Instagram");
+        if (objectUrl != null) bits.push("ссылку");
+        if (platforms) bits.push("сети");
+        if (scheduledAt !== undefined) bits.push("дату");
+        if (publishNow) bits.push("публикацию");
+        const summary = `Править черновик «${post.topic || post.body.slice(0, 40)}»${bits.length ? `: ${bits.join(", ")}` : ""}`;
+        ctx.propose({
+          tool: "updateSocialPost",
+          summary,
+          input: {
+            postId,
+            topic,
+            body,
+            instagramBody,
+            objectUrl,
+            platforms,
+            scheduledAt,
+            publish: Boolean(publishNow),
+          },
+        });
+        return { proposed: true, summary };
       },
     }),
 

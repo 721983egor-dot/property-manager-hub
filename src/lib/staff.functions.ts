@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/lib/auth-user-middleware";
 
-export type StaffRole = "admin" | "manager";
+export type StaffRole = "admin" | "manager" | "owner";
 
 export type StaffMember = {
   id: string;
@@ -29,11 +29,14 @@ async function adminClient() {
   return supabaseAdmin;
 }
 
-async function roleOf(userId: string): Promise<StaffRole> {
+async function roleOf(userId: string): Promise<StaffRole | null> {
   const admin = await adminClient();
   const { data } = await admin.from("user_roles").select("role").eq("user_id", userId);
   const roles = (data ?? []).map((r) => r.role as StaffRole);
-  return roles.includes("admin") ? "admin" : "manager";
+  if (roles.includes("admin")) return "admin";
+  if (roles.includes("manager")) return "manager";
+  if (roles.includes("owner")) return "owner";
+  return null;
 }
 
 async function requireAdmin(userId: string) {
@@ -48,7 +51,7 @@ export const getMyAccess = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .handler(async ({ context }): Promise<{ role: StaffRole; profile: StaffMember | null }> => {
     const admin = await adminClient();
-    const role = await roleOf(context.userId);
+    const role = (await roleOf(context.userId)) ?? "manager";
     const { data } = await admin
       .from("profiles")
       .select(PROFILE_COLUMNS)
@@ -86,10 +89,14 @@ export const listStaff = createServerFn({ method: "POST" })
     const roleMap = new Map<string, StaffRole>();
     for (const r of roles ?? []) {
       if (r.role === "admin") roleMap.set(r.user_id, "admin");
-      else if (!roleMap.has(r.user_id)) roleMap.set(r.user_id, "manager");
+      else if (r.role === "owner") {
+        if (!roleMap.has(r.user_id)) roleMap.set(r.user_id, "owner");
+      } else if (!roleMap.has(r.user_id)) roleMap.set(r.user_id, "manager");
     }
     return {
-      staff: (profiles ?? []).map((p) => ({
+      staff: (profiles ?? [])
+        .filter((p) => roleMap.get(p.id) !== "owner")
+        .map((p) => ({
         ...(p as Omit<StaffMember, "role">),
         role: roleMap.get(p.id) ?? "manager",
       })),

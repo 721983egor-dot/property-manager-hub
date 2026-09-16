@@ -17,7 +17,7 @@ async function requireStaff(userId: string) {
 }
 
 const BOOKING_COLUMNS =
-  "id, property_id, client_id, start_date, end_date, price_type, price_month, payment_day, deposit, source, status, comment, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
+  "id, property_id, client_id, start_date, end_date, price_type, price_month, price_night, payment_day, deposit, source, status, comment, stay_kind, bnovo_id, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
 
 /** Бронирования календаря с клиентами и периодами цены для всех сотрудников. */
 export const listStaffBookings = createServerFn({ method: "POST" })
@@ -124,7 +124,7 @@ export const getStaffProperty = createServerFn({ method: "POST" })
     return data;
   });
 
-const CLIENT_COLUMNS = "id, full_name, phone, comment, blacklisted, blacklist_reason";
+const CLIENT_COLUMNS = "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios";
 
 /** Клиенты для вошедших сотрудников. Менеджер получает только чтение. */
 export const listStaffClients = createServerFn({ method: "POST" })
