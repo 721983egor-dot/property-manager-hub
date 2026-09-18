@@ -70,6 +70,18 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       const { sendAvitoMessage } = await import("@/lib/avito.server");
       externalMessageId = (await sendAvitoMessage(chatId, body)) || null;
     }
+    if (thread.source === "telegram") {
+      const chatId = String(thread.external_id ?? "");
+      if (!chatId) throw new Error("Некорректный чат Telegram");
+      const { sendTelegramChatMessage } = await import("@/lib/messengers/telegram-chat.server");
+      externalMessageId = (await sendTelegramChatMessage(chatId, body)) || null;
+    }
+    if (thread.source === "max") {
+      const userId = String(thread.external_id ?? "");
+      if (!userId) throw new Error("Некорректный чат MAX");
+      const { sendMaxMessage } = await import("@/lib/messengers/max.server");
+      externalMessageId = (await sendMaxMessage(userId, body)) || null;
+    }
 
     const { data: row, error } = await supabaseAdmin
       .from("chat_messages")

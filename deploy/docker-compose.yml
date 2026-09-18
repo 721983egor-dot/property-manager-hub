@@ -290,6 +290,29 @@ services:
     networks:
       - rm-os
 
+  # Клиентские боты Telegram и MAX → раздел «Чаты» RM OS.
+  messenger-poller:
+    image: alpine:3.20
+    restart: unless-stopped
+    environment:
+      - CRON_SECRET=${LOVABLE_CRON_SECRET:-}
+      - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
+    command:
+      - sh
+      - -c
+      - |
+        apk add --no-cache curl >/dev/null
+        while true; do
+          SECRET="$${CRON_SECRET:-$$DEPLOY_AGENT_TOKEN}"
+          curl -fsS -X POST http://app:3000/api/public/cron/messenger-poll \
+            -H "x-cron-secret: $$SECRET" || true
+          sleep 5
+        done
+    depends_on:
+      - app
+    networks:
+      - rm-os
+
 volumes:
   caddy_data:
   caddy_config:

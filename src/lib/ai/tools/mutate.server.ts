@@ -129,7 +129,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeChatReply: tool({
       description:
-        "Предложить ответ в чат RM OS (сайт, ЦИАН или Авито) по id диалога. Требует подтверждения.",
+        "Предложить ответ в чат RM OS (сайт, ЦИАН, Авито, Telegram или MAX) по id диалога. Требует подтверждения.",
       inputSchema: z.object({
         threadId: z.string(),
         body: z.string().min(1).max(2000),
@@ -142,7 +142,15 @@ export function createMutateTools(ctx: AssistantToolContext) {
           .maybeSingle();
         if (!thread) return { error: "Диалог не найден" };
         const source =
-          thread.source === "cian" ? "ЦИАН" : thread.source === "avito" ? "Авито" : "Сайт";
+          thread.source === "cian"
+            ? "ЦИАН"
+            : thread.source === "avito"
+              ? "Авито"
+              : thread.source === "telegram"
+                ? "Telegram"
+                : thread.source === "max"
+                  ? "MAX"
+                  : "Сайт";
         const summary = `Ответить в чат ${source}${thread.name ? ` («${thread.name}»)` : ""}: «${body.slice(0, 80)}${body.length > 80 ? "…" : ""}»`;
         ctx.propose({
           tool: "sendChatMessage",
