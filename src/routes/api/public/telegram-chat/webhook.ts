@@ -4,9 +4,8 @@ export const Route = createFileRoute("/api/public/telegram-chat/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { telegramChatWebhookSecret, getTelegramChatBotToken } = await import(
-          "@/lib/messengers/telegram-chat.server"
-        );
+        const { telegramChatWebhookSecret, getTelegramChatBotToken } =
+          await import("@/lib/messengers/telegram-chat.server");
         const token = await getTelegramChatBotToken();
         if (!token) return new Response("Not configured", { status: 503 });
 
@@ -20,9 +19,8 @@ export const Route = createFileRoute("/api/public/telegram-chat/webhook")({
         if (typeof update.update_id !== "number") return Response.json({ ok: true });
 
         try {
-          const { handleTelegramChatUpdate } = await import(
-            "@/lib/messengers/telegram-chat.server"
-          );
+          const { handleTelegramChatUpdate } =
+            await import("@/lib/messengers/telegram-chat.server");
           await handleTelegramChatUpdate(update as never);
         } catch (e) {
           console.error("telegram-chat update failed", e);

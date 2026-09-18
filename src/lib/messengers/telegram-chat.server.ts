@@ -160,9 +160,7 @@ export async function handleTelegramChatUpdate(update: TelegramChatUpdate): Prom
       ...(msg.from.username ? { username: msg.from.username } : {}),
     });
 
-    const createdAt = msg.date
-      ? new Date(msg.date * 1000).toISOString()
-      : new Date().toISOString();
+    const createdAt = msg.date ? new Date(msg.date * 1000).toISOString() : new Date().toISOString();
 
     await appendInboundMessengerMessage({
       threadId,

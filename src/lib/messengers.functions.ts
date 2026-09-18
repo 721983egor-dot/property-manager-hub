@@ -30,9 +30,8 @@ export type MessengerStatus = {
 export const getMessengerStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async (): Promise<MessengerStatus> => {
-    const { getTelegramChatBotToken, telegramChatCall } = await import(
-      "@/lib/messengers/telegram-chat.server"
-    );
+    const { getTelegramChatBotToken, telegramChatCall } =
+      await import("@/lib/messengers/telegram-chat.server");
     const { getMaxBotToken, getMaxBotMe } = await import("@/lib/messengers/max.server");
 
     const telegramToken = await getTelegramChatBotToken();
@@ -142,7 +141,7 @@ export const saveMaxBotToken = createServerFn({ method: "POST" })
     }
     return {
       ok: true as const,
-      botName: String(me.username ? `@${me.username}` : me.name ?? "бот MAX"),
+      botName: String(me.username ? `@${me.username}` : (me.name ?? "бот MAX")),
       webhookUrl: `${osBaseUrl()}/api/public/max/webhook`,
     };
   });

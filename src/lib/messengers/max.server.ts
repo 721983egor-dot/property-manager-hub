@@ -129,11 +129,13 @@ export type MaxUpdate = {
   };
 };
 
-function maxDisplayName(sender: MaxUpdate["message"] extends infer M
-  ? M extends { sender?: infer S }
-    ? S
-    : never
-  : never): string {
+function maxDisplayName(
+  sender: MaxUpdate["message"] extends infer M
+    ? M extends { sender?: infer S }
+      ? S
+      : never
+    : never,
+): string {
   if (!sender) return "";
   const name =
     String(sender.name ?? "").trim() ||

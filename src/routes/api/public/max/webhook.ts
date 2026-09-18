@@ -4,9 +4,8 @@ export const Route = createFileRoute("/api/public/max/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { getMaxBotToken, getMaxWebhookSecret, handleMaxUpdate } = await import(
-          "@/lib/messengers/max.server"
-        );
+        const { getMaxBotToken, getMaxWebhookSecret, handleMaxUpdate } =
+          await import("@/lib/messengers/max.server");
         const token = await getMaxBotToken();
         if (!token) return new Response("Not configured", { status: 503 });
 

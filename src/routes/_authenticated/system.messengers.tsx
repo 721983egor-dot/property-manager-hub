@@ -147,8 +147,8 @@ function MessengersSettingsPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Сообщения забирает серверный опрос (как у Ассистента). После «Обновить систему»
-            опрос запустится автоматически.
+            Сообщения забирает серверный опрос (как у Ассистента). После «Обновить систему» опрос
+            запустится автоматически.
           </p>
         </CardContent>
       </Card>
@@ -170,7 +170,11 @@ function MessengersSettingsPage() {
           {data?.max.clientLink ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input value={data.max.clientLink} readOnly />
-              <Button type="button" variant="outline" onClick={() => void copy(data.max.clientLink)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void copy(data.max.clientLink)}
+              >
                 <Copy className="size-4" />
                 Ссылка для клиентов
               </Button>
@@ -197,8 +201,8 @@ function MessengersSettingsPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            По умолчанию сообщения забираются опросом. Webhook нужен только если сервер
-            принимает входящий HTTPS снаружи.
+            По умолчанию сообщения забираются опросом. Webhook нужен только если сервер принимает
+            входящий HTTPS снаружи.
           </p>
           <Button
             variant="outline"

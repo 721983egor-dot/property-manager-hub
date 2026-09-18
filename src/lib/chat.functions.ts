@@ -208,7 +208,7 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
       ...t,
       last_body: last.get(t.id)?.body ?? "",
       last_direction: last.get(t.id)?.direction ?? null,
-      property_title: t.property_id ? propertyTitle.get(t.property_id) ?? null : null,
+      property_title: t.property_id ? (propertyTitle.get(t.property_id) ?? null) : null,
     })) as ChatThread[],
   };
 });
@@ -221,9 +221,8 @@ export const syncCianChatThreads = createServerFn({ method: "POST" }).handler(as
 
 /** Оператор: вручную обновить чаты и статистику Авито. */
 export const syncAvitoChatThreads = createServerFn({ method: "POST" }).handler(async () => {
-  const { syncAvitoChats, syncAvitoListingIds, syncAvitoStats } = await import(
-    "@/lib/avito-chats.server"
-  );
+  const { syncAvitoChats, syncAvitoListingIds, syncAvitoStats } =
+    await import("@/lib/avito-chats.server");
   try {
     await syncAvitoListingIds();
   } catch {
@@ -265,30 +264,30 @@ export const sendOperatorMessage = createServerFn({ method: "POST" })
     if (!thread) throw new Error("Диалог не найден");
 
     let externalMessageId: string | null = null;
-  if (thread.source === "cian") {
-    const chatId = Number(thread.external_id);
-    if (!Number.isFinite(chatId)) throw new Error("Некорректный номер чата ЦИАН");
-    const { sendChatMessage } = await import("@/lib/cian.server");
-    externalMessageId = (await sendChatMessage(chatId, data.body)) || null;
-  }
-  if (thread.source === "avito") {
-    const chatId = String(thread.external_id ?? "");
-    if (!chatId) throw new Error("Некорректный чат Авито");
-    const { sendAvitoMessage } = await import("@/lib/avito.server");
-    externalMessageId = (await sendAvitoMessage(chatId, data.body)) || null;
-  }
-  if (thread.source === "telegram") {
-    const chatId = String(thread.external_id ?? "");
-    if (!chatId) throw new Error("Некорректный чат Telegram");
-    const { sendTelegramChatMessage } = await import("@/lib/messengers/telegram-chat.server");
-    externalMessageId = (await sendTelegramChatMessage(chatId, data.body)) || null;
-  }
-  if (thread.source === "max") {
-    const userId = String(thread.external_id ?? "");
-    if (!userId) throw new Error("Некорректный чат MAX");
-    const { sendMaxMessage } = await import("@/lib/messengers/max.server");
-    externalMessageId = (await sendMaxMessage(userId, data.body)) || null;
-  }
+    if (thread.source === "cian") {
+      const chatId = Number(thread.external_id);
+      if (!Number.isFinite(chatId)) throw new Error("Некорректный номер чата ЦИАН");
+      const { sendChatMessage } = await import("@/lib/cian.server");
+      externalMessageId = (await sendChatMessage(chatId, data.body)) || null;
+    }
+    if (thread.source === "avito") {
+      const chatId = String(thread.external_id ?? "");
+      if (!chatId) throw new Error("Некорректный чат Авито");
+      const { sendAvitoMessage } = await import("@/lib/avito.server");
+      externalMessageId = (await sendAvitoMessage(chatId, data.body)) || null;
+    }
+    if (thread.source === "telegram") {
+      const chatId = String(thread.external_id ?? "");
+      if (!chatId) throw new Error("Некорректный чат Telegram");
+      const { sendTelegramChatMessage } = await import("@/lib/messengers/telegram-chat.server");
+      externalMessageId = (await sendTelegramChatMessage(chatId, data.body)) || null;
+    }
+    if (thread.source === "max") {
+      const userId = String(thread.external_id ?? "");
+      if (!userId) throw new Error("Некорректный чат MAX");
+      const { sendMaxMessage } = await import("@/lib/messengers/max.server");
+      externalMessageId = (await sendMaxMessage(userId, data.body)) || null;
+    }
     const { data: row, error } = await db
       .from("chat_messages")
       .insert({
@@ -341,9 +340,7 @@ export const markAllThreadsRead = createServerFn({ method: "POST" }).handler(asy
 /** Оператор: закрыть или снова открыть диалог. */
 export const setThreadStatus = createServerFn({ method: "POST" })
   .inputValidator((input: { threadId: string; status: "open" | "closed" }) =>
-    z
-      .object({ threadId: z.string().uuid(), status: z.enum(["open", "closed"]) })
-      .parse(input),
+    z.object({ threadId: z.string().uuid(), status: z.enum(["open", "closed"]) }).parse(input),
   )
   .handler(async ({ data }) => {
     const db = await admin();
@@ -384,16 +381,15 @@ export const updateThreadContact = createServerFn({ method: "POST" })
 
 /** Оператор: создать клиента из переписки. */
 export const createClientFromThread = createServerFn({ method: "POST" })
-  .inputValidator(
-    (input: { threadId: string; name: string; phone?: string; comment?: string }) =>
-      z
-        .object({
-          threadId: z.string().uuid(),
-          name: z.string().trim().min(1, "Укажите имя").max(120),
-          phone: z.string().trim().max(32).optional().default(""),
-          comment: z.string().trim().max(4000).optional().default(""),
-        })
-        .parse(input),
+  .inputValidator((input: { threadId: string; name: string; phone?: string; comment?: string }) =>
+    z
+      .object({
+        threadId: z.string().uuid(),
+        name: z.string().trim().min(1, "Укажите имя").max(120),
+        phone: z.string().trim().max(32).optional().default(""),
+        comment: z.string().trim().max(4000).optional().default(""),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
     const db = await admin();
@@ -423,10 +419,7 @@ export const createClientFromThread = createServerFn({ method: "POST" })
     }
 
     const source = chatSourceToDealSource((thread.source as ChatThread["source"]) || "site");
-    const commentParts = [
-      data.comment.trim(),
-      data.comment.trim() ? "" : `Чат ${source}`,
-    ]
+    const commentParts = [data.comment.trim(), data.comment.trim() ? "" : `Чат ${source}`]
       .filter(Boolean)
       .join("\n");
 
@@ -496,8 +489,7 @@ export const createDealFromThread = createServerFn({ method: "POST" })
       .from("deal_stages")
       .select("id, kind, position")
       .order("position", { ascending: true });
-    const stage =
-      (stages ?? []).find((s) => s.kind === "open") ?? (stages ?? [])[0] ?? null;
+    const stage = (stages ?? []).find((s) => s.kind === "open") ?? (stages ?? [])[0] ?? null;
     if (!stage) throw new Error("Сначала настройте стадии сделок в CRM");
 
     const phoneTail = data.phone.replace(/\D/g, "").slice(-10);
@@ -511,9 +503,7 @@ export const createDealFromThread = createServerFn({ method: "POST" })
       clientId = (clients ?? [])[0]?.id ?? null;
     }
     if (!clientId) {
-      const sourceLabel = chatSourceToDealSource(
-        (thread.source as ChatThread["source"]) || "site",
-      );
+      const sourceLabel = chatSourceToDealSource((thread.source as ChatThread["source"]) || "site");
       const telegramNote = formatTelegramHandle(data.telegram)
         ? `Telegram: ${formatTelegramHandle(data.telegram)}`
         : "";
@@ -531,9 +521,7 @@ export const createDealFromThread = createServerFn({ method: "POST" })
     }
 
     const propertyId = data.propertyId === undefined ? thread.property_id : data.propertyId;
-    const source = chatSourceToDealSource(
-      (thread.source as ChatThread["source"]) || "site",
-    );
+    const source = chatSourceToDealSource((thread.source as ChatThread["source"]) || "site");
 
     const { data: msgs } = await db
       .from("chat_messages")
@@ -575,7 +563,11 @@ export const createDealFromThread = createServerFn({ method: "POST" })
     let deal: { id: string } | null = null;
     let lastError = "";
     for (const payload of attempts) {
-      const inserted = await db.from("deals").insert(payload as never).select("id").single();
+      const inserted = await db
+        .from("deals")
+        .insert(payload as never)
+        .select("id")
+        .single();
       if (!inserted.error && inserted.data) {
         deal = inserted.data as { id: string };
         break;
@@ -599,16 +591,15 @@ export const fetchQuickReplies = createServerFn({ method: "POST" }).handler(asyn
 });
 
 export const saveQuickReply = createServerFn({ method: "POST" })
-  .inputValidator(
-    (input: { id?: string | null; title: string; body: string; position?: number }) =>
-      z
-        .object({
-          id: z.string().uuid().nullable().optional(),
-          title: z.string().trim().min(1, "Укажите название").max(120),
-          body: z.string().trim().min(1, "Укажите текст").max(2000),
-          position: z.number().int().min(0).max(9999).optional().default(0),
-        })
-        .parse(input),
+  .inputValidator((input: { id?: string | null; title: string; body: string; position?: number }) =>
+    z
+      .object({
+        id: z.string().uuid().nullable().optional(),
+        title: z.string().trim().min(1, "Укажите название").max(120),
+        body: z.string().trim().min(1, "Укажите текст").max(2000),
+        position: z.number().int().min(0).max(9999).optional().default(0),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
     const db = await admin();

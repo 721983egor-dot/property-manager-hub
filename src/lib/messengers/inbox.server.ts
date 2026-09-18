@@ -37,9 +37,7 @@ export async function upsertMessengerThread(input: {
 
   if (existing?.id) {
     const nextName =
-      display && display !== defaultName(input.source)
-        ? display
-        : existing.name || display;
+      display && display !== defaultName(input.source) ? display : existing.name || display;
     await supabaseAdmin
       .from("chat_threads")
       .update({

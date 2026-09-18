@@ -9,9 +9,8 @@ const TG_OFFSET_KEY = "TELEGRAM_CHAT_UPDATES_OFFSET";
 const MAX_MARKER_KEY = "MAX_UPDATES_MARKER";
 
 export async function pollTelegramChatUpdates(): Promise<{ updates: number }> {
-  const { getTelegramChatBotToken, telegramChatCall, handleTelegramChatUpdate } = await import(
-    "@/lib/messengers/telegram-chat.server"
-  );
+  const { getTelegramChatBotToken, telegramChatCall, handleTelegramChatUpdate } =
+    await import("@/lib/messengers/telegram-chat.server");
   const token = await getTelegramChatBotToken();
   if (!token) return { updates: 0 };
 
@@ -53,7 +52,11 @@ export async function pollMaxUpdates(): Promise<{ updates: number }> {
 
   const markerRaw = (await getPlatformSecret(MAX_MARKER_KEY)).trim();
   const marker = markerRaw ? Number(markerRaw) : undefined;
-  const qs = new URLSearchParams({ limit: "50", timeout: "0", types: "message_created,bot_started" });
+  const qs = new URLSearchParams({
+    limit: "50",
+    timeout: "0",
+    types: "message_created,bot_started",
+  });
   if (Number.isFinite(marker)) qs.set("marker", String(marker));
 
   const result = await maxCall<{
