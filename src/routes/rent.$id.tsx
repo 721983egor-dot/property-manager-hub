@@ -5,11 +5,11 @@ import { useEffect } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { SITE_ORIGIN } from "@/lib/site";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
-import { fetchComplex } from "@/lib/complexes";
 import { type Property } from "@/lib/properties";
 import { propertyJsonLd, propertyMetaDescription, propertyMetaTitle, propertySlug, propertyUrl, jsonLdScript, publicPhotoUrl } from "@/lib/seo";
 import { fetchCurrentBooking } from "@/lib/bookings";
 import { publicPropertyQueryOptions } from "@/lib/public-property.functions";
+import { publicComplexQueryOptions } from "@/lib/public-catalog.functions";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 
 export const Route = createFileRoute("/rent/$id")({
@@ -30,7 +30,11 @@ export const Route = createFileRoute("/rent/$id")({
         statusCode: 301,
       });
     }
-    return property as Property;
+    const typed = property as Property;
+    if (typed.complex_id) {
+      await context.queryClient.ensureQueryData(publicComplexQueryOptions(typed.complex_id)).catch(() => null);
+    }
+    return typed;
   },
   head: ({ loaderData }) => {
     const p = loaderData as Property;
@@ -96,8 +100,7 @@ function RentDetailPage() {
 
   const complexId = data.complex_id ?? null;
   const { data: complex } = useQuery({
-    queryKey: ["complexes", complexId],
-    queryFn: () => fetchComplex(complexId!),
+    ...publicComplexQueryOptions(complexId ?? ""),
     enabled: Boolean(complexId),
   });
 

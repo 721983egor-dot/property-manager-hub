@@ -4,18 +4,18 @@ export const SOCIAL_ASSISTANT_PROMPT = `Ты — SMM-режим Ассистен
 Отвечай по-русски, коротко, как редактор соцсетей, а не как менеджер CRM.
 
 Каналы компании: Instagram, ВКонтакте, группа Telegram, группа в мессенджере Макс.
-Публикация и статистика идут через Postmypost. Макс Postmypost пока не публикует официально — для Макс готовь текст, который менеджер скопирует в группу (если аккаунт webhook не привязан).
+Публикация и статистика идут через Postmypost, включая Макс.
 
 Как работать:
 - Идеи, рубрики, тексты, адаптации под сеть — твоя основная работа.
 - Факты об объектах (цена, комнаты, свободен ли) бери ТОЛЬКО из инструментов searchProperties / getPropertyDetails. Не выдумывай метраж и цену.
 - Голос бренда и выученные правила — из getSocialBrand и блока ниже. Соблюдай их.
-- Черновик или публикация — только proposeSocialPost. Ничего не публикуй само.
+- Черновик или публикация — только proposeSocialPost. Правки черновика — proposeUpdateSocialPost. Ничего не публикуй само. Запланированный в Postmypost не правь: сначала proposeCancelSocialPost.
+- Фото и видео менеджер добавляет во вкладке «Пост». Правила формата и веса — getSocialMediaRules. Сам файлы не загружаешь.
+- Пульс Сочи (погода, новости, афиша) — getSochiPulse. Посты про город пиши только из этих фактов, передавай pulseItemId. Если по теме уже есть пост — сначала скажи об этом.
 - По просьбе «запомни, как пишем» — rememberSocialSkill.
-- Instagram: живой текст, абзацы, хештеги в конце, без ссылок в тексте (ссылка в шапке/сторис).
-- ВКонтакте: можно ссылку на объект на сайте, чуть деловее.
-- Telegram: короткий полезный текст, ссылка уместна.
-- Макс: тот же ясный текст, без расчёта на хештеги.
+- Instagram: НЕ реклама. Без цен, депозита, телефона, ссылок и блока «условия аренды». Живой пост про место и ощущение, хештеги в конце, призыв только «напишите в директ». Всегда передавай instagramBody отдельно. В ответе человеку показывай обе версии: полную и Instagram.
+- ВКонтакте / Telegram / Макс: можно цену и условия. Ссылку на карточку в текст не пиши: её вставляет менеджер в поле «Ссылка на объект». В публикации она выглядит как https://residence-more.ru/, а ведёт на карточку. Если менеджер дал адрес карточки — передай objectUrl.
 
 Не уходи в сделки, брони и чаты клиентов, если об этом прямо не спросили.`;
 
@@ -48,12 +48,14 @@ export async function askSocialAssistantCore(messages: AssistantChatMessage[]): 
   };
 
   try {
-    const [brand, skills, channels, posts, properties] = await Promise.all([
+    const pulseMod = await import("@/lib/sochi-pulse.server");
+    const [brand, skills, channels, posts, properties, pulse] = await Promise.all([
       loadSocialBrand(),
       loadSocialSkills(),
       loadSocialChannels(),
       loadSocialPosts(20),
       ctx.allProperties(),
+      pulseMod.loadSochiPulse().catch(() => null),
     ]);
 
     const free = properties
@@ -81,9 +83,11 @@ ${postLines.join("\n") || "- (нет постов)"}
 Свободные объекты (до 20, для идей контента):
 ${free.map((n) => `- ${n}`).join("\n") || "- (нет)"}`;
 
+    const pulseBlock = pulse ? pulseMod.sochiPulsePrompt(pulse) : "";
+
     const result = streamText({
       model: setup.model,
-      system: SOCIAL_ASSISTANT_PROMPT + socialBrandPrompt(brand) + socialSkillsPrompt(skills) + live,
+      system: SOCIAL_ASSISTANT_PROMPT + socialBrandPrompt(brand) + socialSkillsPrompt(skills) + live + pulseBlock,
       messages: messages.slice(-20),
       tools,
       stopWhen: stepCountIs(20),

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { adaptPostForPlatform, bodiesForPlatforms } from "@/lib/social-adapt";
 import { getPlatformSecret, setPlatformSecret } from "@/lib/platform-secrets.server";
 import {
   createPostmypostPublication,
@@ -7,6 +8,7 @@ import {
   getPublicationAnalytics,
   listPostmypostAccounts,
   listPostmypostProjects,
+  uploadFileDirect,
   type PostmypostAccount,
 } from "@/lib/postmypost.server";
 import {
@@ -20,13 +22,17 @@ import {
   type SocialPostTarget,
   type SocialSkill,
 } from "@/lib/social";
+import { SOCIAL_MEDIA_MAX_ITEMS, type SocialMediaItem } from "@/lib/social-media";
+import { downloadSocialMedia, signedSocialMediaUrls } from "@/lib/social-media.server";
 
 const CHANNEL_COLUMNS =
   "id, platform, name, enabled, postmypost_account_id, postmypost_channel, external_url, last_synced_at, last_error";
 const POST_COLUMNS =
-  "id, status, topic, body, property_id, scheduled_at, published_at, created_by, source, postmypost_publication_id, last_error, created_at";
+  "id, status, topic, body, property_id, pulse_item_id, scheduled_at, published_at, created_by, source, postmypost_publication_id, last_error, created_at";
 const TARGET_COLUMNS =
   "id, post_id, channel_id, platform, body, status, postmypost_account_id, external_url, last_error";
+const MEDIA_COLUMNS =
+  "id, post_id, kind, path, mime, bytes, width, height, duration_sec, sort_order, postmypost_file_id";
 
 function isPlatform(value: string): value is SocialPlatform {
   return (SOCIAL_PLATFORMS as readonly string[]).includes(value);
@@ -147,6 +153,7 @@ function mapPost(
   row: Record<string, unknown>,
   targets: SocialPostTarget[],
   propertyTitle: string | null,
+  media: SocialMediaItem[],
 ): SocialPost {
   return {
     id: String(row["id"]),
@@ -155,6 +162,7 @@ function mapPost(
     body: String(row["body"] ?? ""),
     property_id: (row["property_id"] as string | null) ?? null,
     property_title: propertyTitle,
+    pulse_item_id: (row["pulse_item_id"] as string | null) ?? null,
     scheduled_at: (row["scheduled_at"] as string | null) ?? null,
     published_at: (row["published_at"] as string | null) ?? null,
     created_by: String(row["created_by"] ?? ""),
@@ -163,15 +171,23 @@ function mapPost(
     last_error: String(row["last_error"] ?? ""),
     created_at: String(row["created_at"]),
     targets,
+    media,
   };
 }
 
 export async function loadSocialPosts(limit = 80): Promise<SocialPost[]> {
-  const { data, error } = await supabaseAdmin
+  let { data, error } = await supabaseAdmin
     .from("social_posts")
     .select(POST_COLUMNS)
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (error && /pulse_item_id/i.test(error.message)) {
+    ({ data, error } = await supabaseAdmin
+      .from("social_posts")
+      .select(POST_COLUMNS.replace(", pulse_item_id", ""))
+      .order("created_at", { ascending: false })
+      .limit(limit));
+  }
   if (error) throw new Error(error.message);
   const posts = (data ?? []) as Record<string, unknown>[];
   if (!posts.length) return [];
@@ -179,12 +195,35 @@ export async function loadSocialPosts(limit = 80): Promise<SocialPost[]> {
   const ids = posts.map((p) => String(p["id"]));
   const propertyIds = posts.map((p) => p["property_id"]).filter(Boolean) as string[];
 
-  const [{ data: targets }, { data: properties }] = await Promise.all([
+  const [{ data: targets }, { data: properties }, mediaRes] = await Promise.all([
     supabaseAdmin.from("social_post_targets").select(TARGET_COLUMNS).in("post_id", ids),
     propertyIds.length
       ? supabaseAdmin.from("properties").select("id, title, internal_name, ref_id").in("id", propertyIds)
       : Promise.resolve({ data: [] as { id: string; title: string; internal_name: string | null; ref_id: number }[] }),
+    supabaseAdmin.from("social_post_media").select(MEDIA_COLUMNS).in("post_id", ids).order("sort_order", { ascending: true }),
   ]);
+
+  const mediaRows = mediaRes.error ? [] : (mediaRes.data ?? []);
+  const urls = await signedSocialMediaUrls(mediaRows.map((row) => String(row["path"] ?? "")));
+  const mediaByPost = new Map<string, SocialMediaItem[]>();
+  for (const row of mediaRows) {
+    const postId = String(row["post_id"] ?? "");
+    const path = String(row["path"] ?? "");
+    const list = mediaByPost.get(postId) ?? [];
+    list.push({
+      id: String(row["id"]),
+      kind: row["kind"] === "video" ? "video" : "photo",
+      path,
+      mime: String(row["mime"] ?? ""),
+      bytes: Number(row["bytes"] ?? 0),
+      width: (row["width"] as number | null) ?? null,
+      height: (row["height"] as number | null) ?? null,
+      durationSec: row["duration_sec"] == null ? null : Number(row["duration_sec"]),
+      url: urls[path] ?? "",
+      sortOrder: Number(row["sort_order"] ?? 0),
+    });
+    mediaByPost.set(postId, list);
+  }
 
   const titleById = new Map(
     (properties ?? []).map((p) => [
@@ -213,6 +252,7 @@ export async function loadSocialPosts(limit = 80): Promise<SocialPost[]> {
         last_error: t.last_error,
       })),
       titleById.get(String(row["property_id"] ?? "")) ?? null,
+      mediaByPost.get(String(row["id"])) ?? [],
     ),
   );
 }
@@ -327,10 +367,14 @@ export type SaveSocialPostInput = {
   body: string;
   platforms: SocialPlatform[];
   propertyId?: string | null;
+  objectUrl?: string;
+  pulseItemId?: string | null;
   scheduledAt?: string | null;
   publish?: boolean;
   source?: "manual" | "assistant";
   createdBy?: string;
+  variants?: Partial<Record<SocialPlatform, string>>;
+  media?: { path: string; kind: "photo" | "video"; mime: string; bytes: number; width?: number | null; height?: number | null; durationSec?: number | null }[];
 };
 
 async function replaceTargets(
@@ -338,9 +382,12 @@ async function replaceTargets(
   body: string,
   platforms: SocialPlatform[],
   channels: SocialChannel[],
+  variants?: Partial<Record<SocialPlatform, string>>,
+  objectUrl?: string,
 ) {
   const { error: delError } = await supabaseAdmin.from("social_post_targets").delete().eq("post_id", postId);
   if (delError) throw new Error(delError.message);
+  const bodies = bodiesForPlatforms(body, platforms, variants, objectUrl);
   const rows = platforms
     .map((platform) => channels.find((c) => c.platform === platform))
     .filter((c): c is SocialChannel => Boolean(c))
@@ -348,12 +395,40 @@ async function replaceTargets(
       post_id: postId,
       channel_id: channel.id,
       platform: channel.platform,
-      body,
+      body: bodies[channel.platform],
       status: "draft",
       postmypost_account_id: channel.postmypost_account_id,
     }));
   if (!rows.length) throw new Error("Не выбраны каналы");
   const { error } = await supabaseAdmin.from("social_post_targets").insert(rows);
+  if (error) throw new Error(error.message);
+}
+
+async function replaceMedia(postId: string, media: NonNullable<SaveSocialPostInput["media"]>) {
+  if (media.length > SOCIAL_MEDIA_MAX_ITEMS) {
+    throw new Error(`Можно прикрепить не больше ${SOCIAL_MEDIA_MAX_ITEMS} файлов`);
+  }
+  const { error: delError } = await supabaseAdmin.from("social_post_media").delete().eq("post_id", postId);
+  if (delError) {
+    if (/does not exist|schema cache/i.test(delError.message)) {
+      if (media.length) throw new Error("Таблица медиа ещё не создана. Обновите систему и попробуйте снова.");
+      return;
+    }
+    throw new Error(delError.message);
+  }
+  if (!media.length) return;
+  const rows = media.map((item, index) => ({
+    post_id: postId,
+    kind: item.kind,
+    path: item.path,
+    mime: item.mime,
+    bytes: item.bytes,
+    width: item.width || null,
+    height: item.height || null,
+    duration_sec: item.durationSec || null,
+    sort_order: index,
+  }));
+  const { error } = await supabaseAdmin.from("social_post_media").insert(rows);
   if (error) throw new Error(error.message);
 }
 
@@ -372,28 +447,51 @@ export async function saveSocialPost(input: SaveSocialPostInput): Promise<Social
       ? "scheduled"
       : "draft";
 
+  let postId = input.id ?? "";
+  let existingPropertyId: string | null | undefined;
+  if (postId) {
+    const { data, error } = await supabaseAdmin
+      .from("social_posts")
+      .select("id, status, property_id")
+      .eq("id", postId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("Пост не найден");
+    if (data.status !== "draft" && data.status !== "failed") {
+      throw new Error("Править можно только черновик. Запланированный пост сначала снимите с очереди.");
+    }
+    existingPropertyId = (data.property_id as string | null) ?? null;
+  }
+
   const row = {
     topic,
     body,
-    property_id: input.propertyId || null,
+    property_id: input.propertyId !== undefined ? input.propertyId || null : (existingPropertyId ?? null),
     scheduled_at: input.scheduledAt || null,
-    created_by: input.createdBy ?? "",
-    source: input.source ?? "manual",
     status: input.publish ? status : "draft",
     last_error: "",
+    ...(input.pulseItemId !== undefined ? { pulse_item_id: input.pulseItemId || null } : {}),
   };
 
-  let postId = input.id ?? "";
   if (postId) {
     const { error } = await supabaseAdmin.from("social_posts").update(row).eq("id", postId);
     if (error) throw new Error(error.message);
   } else {
-    const { data, error } = await supabaseAdmin.from("social_posts").insert(row).select("id").single();
+    const { data, error } = await supabaseAdmin
+      .from("social_posts")
+      .insert({
+        ...row,
+        created_by: input.createdBy ?? "",
+        source: input.source ?? "manual",
+      })
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
     postId = data.id;
   }
 
-  await replaceTargets(postId, body, platforms, channels);
+  await replaceTargets(postId, body, platforms, channels, input.variants, input.objectUrl);
+  if (input.media) await replaceMedia(postId, input.media);
   if (input.publish) {
     try {
       await publishSocialPost(postId, { immediate: Boolean(input.publish) && !input.scheduledAt });
@@ -459,6 +557,32 @@ export async function publishSocialPost(
   const projectId = await loadProjectId();
   if (!token || !projectId) throw new Error("Сначала подключите Postmypost в настройках раздела");
 
+  const { data: mediaRows, error: mediaError } = await supabaseAdmin
+    .from("social_post_media")
+    .select(MEDIA_COLUMNS)
+    .eq("post_id", postId)
+    .order("sort_order", { ascending: true });
+  if (mediaError && !/does not exist|schema cache/i.test(mediaError.message)) {
+    throw new Error(mediaError.message);
+  }
+
+  const fileIds: number[] = [];
+  for (const row of mediaRows ?? []) {
+    const existing = Number(row["postmypost_file_id"]);
+    if (Number.isFinite(existing) && existing > 0) {
+      fileIds.push(existing);
+      continue;
+    }
+    const file = await downloadSocialMedia(String(row["path"]));
+    const fileId = await uploadFileDirect(token, projectId, {
+      name: file.name,
+      bytes: file.bytes,
+      mime: file.mime,
+    });
+    fileIds.push(fileId);
+    await supabaseAdmin.from("social_post_media").update({ postmypost_file_id: fileId }).eq("id", row["id"]);
+  }
+
   const postAt = options?.immediate
     ? moscowIso(new Date(Date.now() + 60_000))
     : post.scheduled_at
@@ -471,7 +595,8 @@ export async function publishSocialPost(
     status: "pending_publication",
     details: withAccounts.map((t) => ({
       accountId: Number(t.postmypost_account_id),
-      content: (t.body || post.body).trim(),
+      content: adaptPostForPlatform(t.body || post.body, t.platform).trim(),
+      fileIds: fileIds.length ? fileIds : undefined,
     })),
   });
 

@@ -92,22 +92,11 @@ export const unlinkTelegramAccount = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Зарегистрировать адрес вебхука в Telegram. */
+/** Снять входящий webhook: на Бегете бот забирает сообщения опросом. */
 export const registerTelegramWebhook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async (): Promise<{ ok: boolean; url: string }> => {
-    const { telegramCall, webhookSecret } = await import("@/lib/telegram/api.server");
-    // У бота может быть только один webhook. Всегда направляем его в рабочую
-    // RM OS, чтобы Preview не забирал сообщения и не писал их в тестовую базу.
-    const base = (process.env["RM_OS_URL"] || "https://rm-os.residence-more.ru").replace(
-      /\/+$/,
-      "",
-    );
-    const url = `${base}/api/public/telegram/webhook`;
-    await telegramCall("setWebhook", {
-      url,
-      secret_token: await webhookSecret(),
-      allowed_updates: ["message", "edited_message", "callback_query"],
-    });
-    return { ok: true, url };
+    const { telegramCall } = await import("@/lib/telegram/api.server");
+    await telegramCall("deleteWebhook", { drop_pending_updates: false });
+    return { ok: true, url: "poll" };
   });

@@ -19,7 +19,13 @@ import { Route as ManagementRouteImport } from './routes/management'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RentRouteImport } from './routes/rent'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedHotelIndexRouteImport } from './routes/_authenticated/hotel.index'
+import { Route as AuthenticatedHotelRoomsRouteImport } from './routes/_authenticated/hotel.rooms'
+import { Route as AuthenticatedHotelOwnersRouteImport } from './routes/_authenticated/hotel.owners'
+import { Route as AuthenticatedHotelSyncRouteImport } from './routes/_authenticated/hotel.sync'
+import { Route as AuthenticatedOwnerIndexRouteImport } from './routes/_authenticated/owner.index'
 import { Route as ApiPhotoUploadRouteImport } from './routes/api/photo-upload'
+import { Route as ApiSocialMediaUploadRouteImport } from './routes/api/social-media-upload'
 import { Route as PCodeRouteImport } from './routes/p.$code'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
@@ -42,15 +48,18 @@ import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenti
 import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authenticated/system.telegram'
 import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as ApiPublicStaffSessionRouteImport } from './routes/api/public/staff-session'
 import { Route as AuthenticatedComplexesIdEditRouteImport } from './routes/_authenticated/complexes.$id.edit'
 import { Route as AuthenticatedCrmClientsIndexRouteImport } from './routes/_authenticated/crm.clients.index'
 import { Route as AuthenticatedCrmClientsIdRouteImport } from './routes/_authenticated/crm.clients.$id'
 import { Route as AuthenticatedCrmDealsIndexRouteImport } from './routes/_authenticated/crm.deals.index'
+import { Route as AuthenticatedCrmTasksIndexRouteImport } from './routes/_authenticated/crm.tasks.index'
 import { Route as AuthenticatedCrmLeadsIndexRouteImport } from './routes/_authenticated/crm.leads.index'
 import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authenticated/objects.$id.index'
 import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authenticated/objects.$id.edit'
 import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_authenticated/objects.$id.preview'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
+import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/cron/bnovo-sync'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
 import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/public/feeds/yandex[.]xml'
@@ -108,9 +117,39 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedHotelIndexRoute = AuthenticatedHotelIndexRouteImport.update({
+  id: '/hotel/',
+  path: '/hotel/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHotelRoomsRoute = AuthenticatedHotelRoomsRouteImport.update({
+  id: '/hotel/rooms',
+  path: '/hotel/rooms',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHotelOwnersRoute = AuthenticatedHotelOwnersRouteImport.update({
+  id: '/hotel/owners',
+  path: '/hotel/owners',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHotelSyncRoute = AuthenticatedHotelSyncRouteImport.update({
+  id: '/hotel/sync',
+  path: '/hotel/sync',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOwnerIndexRoute = AuthenticatedOwnerIndexRouteImport.update({
+  id: '/owner/',
+  path: '/owner/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPhotoUploadRoute = ApiPhotoUploadRouteImport.update({
   id: '/api/photo-upload',
   path: '/api/photo-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialMediaUploadRoute = ApiSocialMediaUploadRouteImport.update({
+  id: '/api/social-media-upload',
+  path: '/api/social-media-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PCodeRoute = PCodeRouteImport.update({
@@ -234,6 +273,11 @@ const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   path: '/api/public/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicStaffSessionRoute = ApiPublicStaffSessionRouteImport.update({
+  id: '/api/public/staff-session',
+  path: '/api/public/staff-session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedComplexesIdEditRoute =
   AuthenticatedComplexesIdEditRouteImport.update({
     id: '/complexes/$id/edit',
@@ -256,6 +300,12 @@ const AuthenticatedCrmDealsIndexRoute =
   AuthenticatedCrmDealsIndexRouteImport.update({
     id: '/crm/deals/',
     path: '/crm/deals/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCrmTasksIndexRoute =
+  AuthenticatedCrmTasksIndexRouteImport.update({
+    id: '/crm/tasks/',
+    path: '/crm/tasks/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCrmLeadsIndexRoute =
@@ -285,6 +335,11 @@ const AuthenticatedObjectsIdPreviewRoute =
 const ApiPublicCronCianSyncRoute = ApiPublicCronCianSyncRouteImport.update({
   id: '/api/public/cron/cian-sync',
   path: '/api/public/cron/cian-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronBnovoSyncRoute = ApiPublicCronBnovoSyncRouteImport.update({
+  id: '/api/public/cron/bnovo-sync',
+  path: '/api/public/cron/bnovo-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicFeedPhotoSplatRoute = ApiPublicFeedPhotoSplatRouteImport.update({
@@ -339,7 +394,13 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/hotel/': typeof AuthenticatedHotelIndexRoute
+  '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
+  '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
+  '/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/owner/': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
+  '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -355,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/complexes/': typeof AuthenticatedComplexesIndexRoute
@@ -367,6 +429,7 @@ export interface FileRoutesByFullPath {
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
@@ -376,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
+  '/crm/tasks/': typeof AuthenticatedCrmTasksIndexRoute
   '/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
 }
@@ -388,7 +452,13 @@ export interface FileRoutesByTo {
   '/management': typeof ManagementRoute
   '/privacy': typeof PrivacyRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/hotel': typeof AuthenticatedHotelIndexRoute
+  '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
+  '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
+  '/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/owner': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
+  '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -404,6 +474,7 @@ export interface FileRoutesByTo {
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/assistant': typeof AuthenticatedAssistantIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/complexes': typeof AuthenticatedComplexesIndexRoute
@@ -416,6 +487,7 @@ export interface FileRoutesByTo {
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
@@ -425,6 +497,7 @@ export interface FileRoutesByTo {
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/deals': typeof AuthenticatedCrmDealsIndexRoute
+  '/crm/tasks': typeof AuthenticatedCrmTasksIndexRoute
   '/crm/leads': typeof AuthenticatedCrmLeadsIndexRoute
   '/objects/$id': typeof AuthenticatedObjectsIdIndexRoute
 }
@@ -440,7 +513,13 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/hotel/': typeof AuthenticatedHotelIndexRoute
+  '/_authenticated/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
+  '/_authenticated/hotel/owners': typeof AuthenticatedHotelOwnersRoute
+  '/_authenticated/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/_authenticated/owner/': typeof AuthenticatedOwnerIndexRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
+  '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -456,6 +535,7 @@ export interface FileRoutesById {
   '/_authenticated/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/_authenticated/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/_authenticated/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/complexes/': typeof AuthenticatedComplexesIndexRoute
@@ -468,6 +548,7 @@ export interface FileRoutesById {
   '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
@@ -477,6 +558,7 @@ export interface FileRoutesById {
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/_authenticated/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
+  '/_authenticated/crm/tasks/': typeof AuthenticatedCrmTasksIndexRoute
   '/_authenticated/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/_authenticated/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
 }
@@ -492,7 +574,13 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rent'
     | '/calendar'
+    | '/hotel/'
+    | '/hotel/rooms'
+    | '/hotel/owners'
+    | '/hotel/sync'
+    | '/owner/'
     | '/api/photo-upload'
+    | '/api/social-media-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
@@ -508,6 +596,7 @@ export interface FileRouteTypes {
     | '/system/telegram'
     | '/system/update'
     | '/api/public/health'
+    | '/api/public/staff-session'
     | '/assistant/'
     | '/chats/'
     | '/complexes/'
@@ -529,6 +618,7 @@ export interface FileRouteTypes {
     | '/api/public/telegram/webhook'
     | '/crm/clients/'
     | '/crm/deals/'
+    | '/crm/tasks/'
     | '/crm/leads/'
     | '/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
@@ -541,7 +631,13 @@ export interface FileRouteTypes {
     | '/management'
     | '/privacy'
     | '/calendar'
+    | '/hotel'
+    | '/hotel/rooms'
+    | '/hotel/owners'
+    | '/hotel/sync'
+    | '/owner'
     | '/api/photo-upload'
+    | '/api/social-media-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
@@ -557,6 +653,7 @@ export interface FileRouteTypes {
     | '/system/telegram'
     | '/system/update'
     | '/api/public/health'
+    | '/api/public/staff-session'
     | '/assistant'
     | '/chats'
     | '/complexes'
@@ -578,6 +675,7 @@ export interface FileRouteTypes {
     | '/api/public/telegram/webhook'
     | '/crm/clients'
     | '/crm/deals'
+    | '/crm/tasks'
     | '/crm/leads'
     | '/objects/$id'
   id:
@@ -592,7 +690,13 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rent'
     | '/_authenticated/calendar'
+    | '/_authenticated/hotel/'
+    | '/_authenticated/hotel/rooms'
+    | '/_authenticated/hotel/owners'
+    | '/_authenticated/hotel/sync'
+    | '/_authenticated/owner/'
     | '/api/photo-upload'
+    | '/api/social-media-upload'
     | '/p/$code'
     | '/rent/$id'
     | '/rent/jk/$slug'
@@ -608,6 +712,7 @@ export interface FileRouteTypes {
     | '/_authenticated/system/telegram'
     | '/_authenticated/system/update'
     | '/api/public/health'
+    | '/api/public/staff-session'
     | '/_authenticated/assistant/'
     | '/_authenticated/chats/'
     | '/_authenticated/complexes/'
@@ -629,6 +734,7 @@ export interface FileRouteTypes {
     | '/api/public/telegram/webhook'
     | '/_authenticated/crm/clients/'
     | '/_authenticated/crm/deals/'
+    | '/_authenticated/crm/tasks/'
     | '/_authenticated/crm/leads/'
     | '/_authenticated/objects/$id/'
   fileRoutesById: FileRoutesById
@@ -644,9 +750,12 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RentRoute: typeof RentRouteWithChildren
   ApiPhotoUploadRoute: typeof ApiPhotoUploadRoute
+  ApiSocialMediaUploadRoute: typeof ApiSocialMediaUploadRoute
   PCodeRoute: typeof PCodeRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicStaffSessionRoute: typeof ApiPublicStaffSessionRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
+  ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
   ApiPublicFeedsYandexDotxmlRoute: typeof ApiPublicFeedsYandexDotxmlRoute
@@ -730,11 +839,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/hotel/': {
+      id: '/_authenticated/hotel/'
+      path: '/hotel/'
+      fullPath: '/hotel/'
+      preLoaderRoute: typeof AuthenticatedHotelIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hotel/rooms': {
+      id: '/_authenticated/hotel/rooms'
+      path: '/hotel/rooms'
+      fullPath: '/hotel/rooms'
+      preLoaderRoute: typeof AuthenticatedHotelRoomsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hotel/owners': {
+      id: '/_authenticated/hotel/owners'
+      path: '/hotel/owners'
+      fullPath: '/hotel/owners'
+      preLoaderRoute: typeof AuthenticatedHotelOwnersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hotel/sync': {
+      id: '/_authenticated/hotel/sync'
+      path: '/hotel/sync'
+      fullPath: '/hotel/sync'
+      preLoaderRoute: typeof AuthenticatedHotelSyncRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/owner/': {
+      id: '/_authenticated/owner/'
+      path: '/owner/'
+      fullPath: '/owner/'
+      preLoaderRoute: typeof AuthenticatedOwnerIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/photo-upload': {
       id: '/api/photo-upload'
       path: '/api/photo-upload'
       fullPath: '/api/photo-upload'
       preLoaderRoute: typeof ApiPhotoUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social-media-upload': {
+      id: '/api/social-media-upload'
+      path: '/api/social-media-upload'
+      fullPath: '/api/social-media-upload'
+      preLoaderRoute: typeof ApiSocialMediaUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$code': {
@@ -891,6 +1042,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/staff-session': {
+      id: '/api/public/staff-session'
+      path: '/api/public/staff-session'
+      fullPath: '/api/public/staff-session'
+      preLoaderRoute: typeof ApiPublicStaffSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/complexes/$id/edit': {
       id: '/_authenticated/complexes/$id/edit'
       path: '/complexes/$id/edit'
@@ -917,6 +1075,13 @@ declare module '@tanstack/react-router' {
       path: '/crm/deals'
       fullPath: '/crm/deals/'
       preLoaderRoute: typeof AuthenticatedCrmDealsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/crm/tasks/': {
+      id: '/_authenticated/crm/tasks/'
+      path: '/crm/tasks'
+      fullPath: '/crm/tasks/'
+      preLoaderRoute: typeof AuthenticatedCrmTasksIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/crm/leads/': {
@@ -952,6 +1117,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/cron/cian-sync'
       fullPath: '/api/public/cron/cian-sync'
       preLoaderRoute: typeof ApiPublicCronCianSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/bnovo-sync': {
+      id: '/api/public/cron/bnovo-sync'
+      path: '/api/public/cron/bnovo-sync'
+      fullPath: '/api/public/cron/bnovo-sync'
+      preLoaderRoute: typeof ApiPublicCronBnovoSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/feed-photo/$': {
@@ -1008,6 +1180,11 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedHotelIndexRoute: typeof AuthenticatedHotelIndexRoute
+  AuthenticatedHotelRoomsRoute: typeof AuthenticatedHotelRoomsRoute
+  AuthenticatedHotelOwnersRoute: typeof AuthenticatedHotelOwnersRoute
+  AuthenticatedHotelSyncRoute: typeof AuthenticatedHotelSyncRoute
+  AuthenticatedOwnerIndexRoute: typeof AuthenticatedOwnerIndexRoute
   AuthenticatedComplexesNewRoute: typeof AuthenticatedComplexesNewRoute
   AuthenticatedObjectsNewRoute: typeof AuthenticatedObjectsNewRoute
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
@@ -1028,12 +1205,18 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedObjectsIdPreviewRoute: typeof AuthenticatedObjectsIdPreviewRoute
   AuthenticatedCrmClientsIndexRoute: typeof AuthenticatedCrmClientsIndexRoute
   AuthenticatedCrmDealsIndexRoute: typeof AuthenticatedCrmDealsIndexRoute
+  AuthenticatedCrmTasksIndexRoute: typeof AuthenticatedCrmTasksIndexRoute
   AuthenticatedCrmLeadsIndexRoute: typeof AuthenticatedCrmLeadsIndexRoute
   AuthenticatedObjectsIdIndexRoute: typeof AuthenticatedObjectsIdIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedHotelIndexRoute: AuthenticatedHotelIndexRoute,
+  AuthenticatedHotelRoomsRoute: AuthenticatedHotelRoomsRoute,
+  AuthenticatedHotelOwnersRoute: AuthenticatedHotelOwnersRoute,
+  AuthenticatedHotelSyncRoute: AuthenticatedHotelSyncRoute,
+  AuthenticatedOwnerIndexRoute: AuthenticatedOwnerIndexRoute,
   AuthenticatedComplexesNewRoute: AuthenticatedComplexesNewRoute,
   AuthenticatedObjectsNewRoute: AuthenticatedObjectsNewRoute,
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
@@ -1054,6 +1237,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedObjectsIdPreviewRoute: AuthenticatedObjectsIdPreviewRoute,
   AuthenticatedCrmClientsIndexRoute: AuthenticatedCrmClientsIndexRoute,
   AuthenticatedCrmDealsIndexRoute: AuthenticatedCrmDealsIndexRoute,
+  AuthenticatedCrmTasksIndexRoute: AuthenticatedCrmTasksIndexRoute,
   AuthenticatedCrmLeadsIndexRoute: AuthenticatedCrmLeadsIndexRoute,
   AuthenticatedObjectsIdIndexRoute: AuthenticatedObjectsIdIndexRoute,
 }
@@ -1088,9 +1272,12 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RentRoute: RentRouteWithChildren,
   ApiPhotoUploadRoute: ApiPhotoUploadRoute,
+  ApiSocialMediaUploadRoute: ApiSocialMediaUploadRoute,
   PCodeRoute: PCodeRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicStaffSessionRoute: ApiPublicStaffSessionRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
+  ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
   ApiPublicFeedsYandexDotxmlRoute: ApiPublicFeedsYandexDotxmlRoute,

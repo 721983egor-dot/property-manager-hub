@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAccess } from "@/hooks/useAccess";
 import {
   formatTelegramHandle,
   PREFERRED_MESSENGERS,
@@ -33,6 +34,7 @@ import {
   type ChatMessage,
   type ChatThread,
 } from "@/lib/chat.functions";
+import { listStaff } from "@/lib/staff.functions";
 
 const NONE = "__none__";
 
@@ -47,12 +49,20 @@ type Props = {
 /** Создание сделки из чата: источник уже заполнен, имя/телефон, Telegram и комментарий — вручную. */
 export function CreateDealFromChatDialog({ open, onOpenChange, thread, messages, onCreated }: Props) {
   const createDeal = useServerFn(createDealFromThread);
+  const loadStaff = useServerFn(listStaff);
+  const { profile, isAdmin } = useAccess();
+  const { data: staffData } = useQuery({
+    queryKey: ["staff"],
+    queryFn: () => loadStaff(undefined as never),
+    enabled: isAdmin && open,
+  });
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [telegram, setTelegram] = useState("");
   const [messenger, setMessenger] = useState("");
   const [comment, setComment] = useState("");
   const [budget, setBudget] = useState("");
+  const [responsibleId, setResponsibleId] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +73,8 @@ export function CreateDealFromChatDialog({ open, onOpenChange, thread, messages,
     setMessenger("");
     setComment("");
     setBudget("");
-  }, [open, thread.id, thread.name, thread.phone]);
+    setResponsibleId(profile?.id ?? "");
+  }, [open, thread.id, thread.name, thread.phone, profile?.id]);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -77,6 +88,7 @@ export function CreateDealFromChatDialog({ open, onOpenChange, thread, messages,
           comment: comment.trim(),
           budget: budget.trim() === "" ? null : Number(budget),
           propertyId: thread.property_id,
+          responsibleId: responsibleId || profile?.id || null,
         },
       }),
     onSuccess: (result) => {
@@ -87,7 +99,10 @@ export function CreateDealFromChatDialog({ open, onOpenChange, thread, messages,
     onError: (e: Error) => toast.error(e.message || "Не удалось создать сделку"),
   });
 
-  const canSubmit = name.trim() && (phone.trim().length >= 5 || telegram.trim().length >= 3);
+  const canSubmit =
+    name.trim() &&
+    (phone.trim().length >= 5 || telegram.trim().length >= 3) &&
+    Boolean(responsibleId || profile?.id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -149,6 +164,27 @@ export function CreateDealFromChatDialog({ open, onOpenChange, thread, messages,
                 {PREFERRED_MESSENGERS.map((item) => (
                   <SelectItem key={item} value={item}>
                     {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Кто ведёт сделку</Label>
+            <Select value={responsibleId || NONE} onValueChange={(v) => setResponsibleId(v === NONE ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Менеджер" />
+              </SelectTrigger>
+              <SelectContent>
+                {(staffData?.staff?.length
+                  ? staffData.staff
+                  : profile
+                    ? [{ id: profile.id, full_name: profile.full_name, email: profile.email, role: "admin" as const }]
+                    : []
+                ).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.full_name || s.email}
+                    {"role" in s && s.role === "admin" ? " · админ" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

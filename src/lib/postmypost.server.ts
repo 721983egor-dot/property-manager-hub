@@ -7,6 +7,15 @@ export type PostmypostAccount = {
   id: number;
   name: string;
   channel: string;
+  channelId: number | null;
+};
+
+/** Номера каналов Postmypost, которые мы ведём в RM OS. */
+const CHANNEL_ID_MAP: Record<number, string> = {
+  1: "instagram",
+  2: "vk",
+  6: "telegram",
+  27: "max",
 };
 
 type Json = Record<string, unknown>;
@@ -68,6 +77,8 @@ async function request<T>(
 
 export function guessAccountChannel(account: unknown): string {
   const rec = asRecord(account);
+  const channelId = Number(rec["chanel_id"] ?? rec["channel_id"]);
+  if (Number.isFinite(channelId) && CHANNEL_ID_MAP[channelId]) return CHANNEL_ID_MAP[channelId];
   const nested = asRecord(rec["channel"] ?? rec["social_network"] ?? rec["network"]);
   const raw = [
     rec["channel"],
@@ -96,7 +107,13 @@ function mapAccount(row: unknown): PostmypostAccount | null {
   const name =
     String(rec["name"] ?? rec["title"] ?? rec["username"] ?? rec["login"] ?? "").trim() ||
     `Аккаунт ${id}`;
-  return { id, name, channel: guessAccountChannel(row) };
+  const channelIdRaw = Number(rec["chanel_id"] ?? rec["channel_id"]);
+  return {
+    id,
+    name,
+    channel: guessAccountChannel(row),
+    channelId: Number.isFinite(channelIdRaw) && channelIdRaw > 0 ? channelIdRaw : null,
+  };
 }
 
 function mapProject(row: unknown): PostmypostProject | null {
@@ -185,6 +202,50 @@ export async function getPublicationAnalytics(
     },
   });
   return asList(json).map(asRecord);
+}
+
+export async function uploadFileDirect(
+  token: string,
+  projectId: number,
+  file: { name: string; bytes: Uint8Array; mime?: string },
+): Promise<number> {
+  const init = await request<unknown>(token, "/upload/init", {
+    method: "POST",
+    body: { project_id: projectId, name: file.name, size: file.bytes.byteLength },
+  });
+  const rec = asRecord(asRecord(init)["data"] ?? init);
+  const uploadId = Number(rec["id"]);
+  const action = String(rec["action"] ?? "");
+  const fields = Array.isArray(rec["fields"]) ? rec["fields"] : [];
+  if (!Number.isFinite(uploadId) || !action) {
+    throw new Error("Postmypost не выдал параметры загрузки файла");
+  }
+
+  const form = new FormData();
+  for (const field of fields) {
+    const row = asRecord(field);
+    const key = String(row["key"] ?? "");
+    if (key) form.append(key, String(row["value"] ?? ""));
+  }
+  form.append("file", new Blob([new Uint8Array(file.bytes)], { type: file.mime || "application/octet-stream" }), file.name);
+  const sent = await fetch(action, { method: "POST", body: form });
+  if (!sent.ok && sent.status !== 204 && sent.status !== 201) {
+    const text = await sent.text().catch(() => "");
+    throw new Error(text.slice(0, 180) || `S3 Postmypost ${sent.status}`);
+  }
+
+  await request(token, "/upload/complete", { method: "POST", query: { id: uploadId } });
+
+  for (let i = 0; i < 40; i++) {
+    const status = await request<unknown>(token, "/upload/status", { query: { id: uploadId } });
+    const row = asRecord(asRecord(status)["data"] ?? status);
+    const code = Number(row["status"]);
+    const fileId = Number(row["file_id"]);
+    if (code === 1 && Number.isFinite(fileId) && fileId > 0) return fileId;
+    if (code === 2) throw new Error("Postmypost не смог обработать файл");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error("Postmypost слишком долго обрабатывает файл");
 }
 
 export async function uploadFileByUrl(

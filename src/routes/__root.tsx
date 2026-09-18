@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import { YandexMetrika } from "@/components/site/YandexMetrika";
+import { startStaffSessionKeeper } from "@/integrations/supabase/staff-session";
 
 
 function NotFoundComponent() {
@@ -122,6 +123,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    startStaffSessionKeeper();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

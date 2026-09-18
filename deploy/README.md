@@ -30,6 +30,16 @@ DNS для теста (A-записи на IP сервера): `preview`, `previ
 
 Секрет GitHub `DEPLOY_AGENT_TOKEN` включает автовыкладку теста при push в `preview`.
 
+Если кнопка «Обновить систему» пишет ошибку / `fetch failed`, а `https://deploy.residence-more.ru/status` отвечает 502 — перезапустите агент по SSH:
+
+```bash
+cd /opt/rm-os/repo
+git fetch origin preview && git checkout preview && git pull
+cd deploy
+docker compose up -d --build --force-recreate deploy-agent
+docker compose ps deploy-agent
+```
+
 ## Пошаговая установка
 
 ### 1. Подготовка

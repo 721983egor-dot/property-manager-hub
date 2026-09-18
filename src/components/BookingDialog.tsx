@@ -18,7 +18,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -167,6 +169,8 @@ export function BookingDialog({
       if (!form.property_id) throw new Error("Выберите объект");
       if (!clientId) throw new Error("Выберите клиента");
       if (form.end_date < form.start_date) throw new Error("Дата окончания раньше даты начала");
+      const selected = properties.find((p) => p.id === form.property_id);
+      const hotel = selected?.portfolio === "n11";
 
       const bookingId = await saveBooking(booking?.id ?? null, {
         property_id: form.property_id,
@@ -174,12 +178,14 @@ export function BookingDialog({
         start_date: form.start_date,
         end_date: form.end_date,
         price_type: form.price_type,
-        price_month: form.price_month === "" ? null : Number(form.price_month),
+        price_month: hotel ? null : form.price_month === "" ? null : Number(form.price_month),
+        price_night: hotel ? (form.price_month === "" ? null : Number(form.price_month)) : null,
         payment_day: Math.min(31, Math.max(1, Number(form.payment_day) || 1)),
         deposit: form.deposit === "" ? null : Number(form.deposit),
         source: form.source === "" ? null : form.source,
         status: form.status,
         comment: form.comment,
+        stay_kind: hotel ? "short_stay" : "long_term",
         periods: form.periods.filter((p) => p.start_date && p.end_date),
       });
       if (form.status === "active") {
@@ -308,11 +314,26 @@ export function BookingDialog({
                     <SelectValue placeholder="Выберите объект" />
                   </SelectTrigger>
                   <SelectContent>
-                    {properties.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {internalTitle(p)}
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      <SelectLabel>Н11 Резиденция</SelectLabel>
+                      {properties
+                        .filter((p) => p.portfolio === "n11")
+                        .map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {internalTitle(p)}
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel>Резиденция Море</SelectLabel>
+                      {properties
+                        .filter((p) => p.portfolio !== "n11")
+                        .map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {internalTitle(p)}
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>

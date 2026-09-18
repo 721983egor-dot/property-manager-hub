@@ -12,7 +12,7 @@ try {
 const TELEGRAM_API_URL = "https://api.telegram.org";
 
 function botToken(): string {
-  const token = (process.env["TELEGRAM_BOT_TOKEN"] ?? "").trim();
+  const token = (process.env["TELEGRAM_BOT_TOKEN"] ?? process.env["TELEGRAM_API_KEY"] ?? "").trim();
   if (!token.includes(":")) {
     throw new Error(
       "Telegram не настроен: задайте TELEGRAM_BOT_TOKEN на сервере Бегета (токен от @BotFather).",

@@ -20,6 +20,8 @@ const deployResponseSchema = z.object({
   production_url: z.string().optional(),
   preview_url: z.string().optional(),
   preview_rm_os_url: z.string().optional(),
+  production_busy: z.boolean().optional(),
+  preview_busy: z.boolean().optional(),
   deployments: z.array(deploymentSchema).optional(),
 });
 
@@ -47,7 +49,19 @@ async function callDeployAgent(path: string, body?: unknown) {
   if (body) {
     init.body = JSON.stringify(body);
   }
-  const res = await fetch(`${agentUrl.replace(/\/$/, "")}${path}`, init);
+
+  let res: Response;
+  try {
+    res = await fetch(`${agentUrl.replace(/\/$/, "")}${path}`, init);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error ?? "");
+    // Сохраняем "fetch failed" в тексте — UI обновления распознаёт обрыв связи при перезапуске.
+    throw new Error(
+      detail.trim()
+        ? `fetch failed: нет связи с deploy-агентом (${detail})`
+        : "fetch failed: нет связи с deploy-агентом",
+    );
+  }
 
   const text = await res.text();
   let json: unknown = null;
@@ -175,16 +189,13 @@ export const triggerDeploy = createServerFn({ method: "POST" })
       getPlatformSecret("CIAN_API_KEY").catch(() => ""),
       getPlatformSecret("YANDEX_REALTY_TOKEN").catch(() => ""),
     ]);
-    const result = await callDeployAgent("/deploy", {
+    // Агент отвечает сразу и собирает в фоне — не ждём Telegram/ключи здесь,
+    // иначе serverFn рвётся по таймауту (fetch failed), пока Docker ещё работает.
+    return callDeployAgent("/deploy", {
       source: "rm-os-ui",
       cian_api_key: cianApiKey || undefined,
       yandex_realty_token: yandexRealtyToken || undefined,
     });
-    await Promise.all([
-      waitForProductionTelegramEndpoint(),
-      waitForProductionPlatformKeysEndpoint(),
-    ]);
-    return result;
   });
 
 /** Выкладывает ветку preview на тестовые адреса. Рабочий сайт не трогает. */
