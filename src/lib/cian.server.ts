@@ -562,8 +562,8 @@ export async function fetchChatMessages(chatId: number, pageSize = 50): Promise<
 /** Отправляет текстовый ответ в существующий чат ЦИАН. */
 export async function sendChatMessage(chatId: number, text: string): Promise<string> {
   const payload = await cianPost<{ result?: { messageId?: string | number } }>(
-    "/v1/add-message",
-    { chatId, text },
+    "/v1/send-message",
+    { chatId, content: { text } },
   );
   return String(payload.result?.messageId ?? "");
 }
