@@ -48,6 +48,7 @@ import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenti
 import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authenticated/system.telegram'
 import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as ApiPublicStaffSessionRouteImport } from './routes/api/public/staff-session'
 import { Route as AuthenticatedComplexesIdEditRouteImport } from './routes/_authenticated/complexes.$id.edit'
 import { Route as AuthenticatedCrmClientsIndexRouteImport } from './routes/_authenticated/crm.clients.index'
 import { Route as AuthenticatedCrmClientsIdRouteImport } from './routes/_authenticated/crm.clients.$id'
@@ -272,6 +273,11 @@ const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   path: '/api/public/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicStaffSessionRoute = ApiPublicStaffSessionRouteImport.update({
+  id: '/api/public/staff-session',
+  path: '/api/public/staff-session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedComplexesIdEditRoute =
   AuthenticatedComplexesIdEditRouteImport.update({
     id: '/complexes/$id/edit',
@@ -410,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/complexes/': typeof AuthenticatedComplexesIndexRoute
@@ -467,6 +474,7 @@ export interface FileRoutesByTo {
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/assistant': typeof AuthenticatedAssistantIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/complexes': typeof AuthenticatedComplexesIndexRoute
@@ -527,6 +535,7 @@ export interface FileRoutesById {
   '/_authenticated/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/_authenticated/system/update': typeof AuthenticatedSystemUpdateRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/_authenticated/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/complexes/': typeof AuthenticatedComplexesIndexRoute
@@ -587,6 +596,7 @@ export interface FileRouteTypes {
     | '/system/telegram'
     | '/system/update'
     | '/api/public/health'
+    | '/api/public/staff-session'
     | '/assistant/'
     | '/chats/'
     | '/complexes/'
@@ -643,6 +653,7 @@ export interface FileRouteTypes {
     | '/system/telegram'
     | '/system/update'
     | '/api/public/health'
+    | '/api/public/staff-session'
     | '/assistant'
     | '/chats'
     | '/complexes'
@@ -701,6 +712,7 @@ export interface FileRouteTypes {
     | '/_authenticated/system/telegram'
     | '/_authenticated/system/update'
     | '/api/public/health'
+    | '/api/public/staff-session'
     | '/_authenticated/assistant/'
     | '/_authenticated/chats/'
     | '/_authenticated/complexes/'
@@ -741,6 +753,7 @@ export interface RootRouteChildren {
   ApiSocialMediaUploadRoute: typeof ApiSocialMediaUploadRoute
   PCodeRoute: typeof PCodeRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicStaffSessionRoute: typeof ApiPublicStaffSessionRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
   ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
@@ -1029,6 +1042,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/staff-session': {
+      id: '/api/public/staff-session'
+      path: '/api/public/staff-session'
+      fullPath: '/api/public/staff-session'
+      preLoaderRoute: typeof ApiPublicStaffSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/complexes/$id/edit': {
       id: '/_authenticated/complexes/$id/edit'
       path: '/complexes/$id/edit'
@@ -1255,6 +1275,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialMediaUploadRoute: ApiSocialMediaUploadRoute,
   PCodeRoute: PCodeRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicStaffSessionRoute: ApiPublicStaffSessionRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
   ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,

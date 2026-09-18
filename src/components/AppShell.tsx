@@ -214,11 +214,12 @@ function SignOutButton() {
       type="button"
       onClick={() => {
         void (async () => {
-          const { writeRefreshCookie } = await import(
-            "@/integrations/supabase/staff-auth-storage"
-          );
+          const { persistRefreshOnServer, writeRefreshCookie, STAFF_AUTH_STORAGE_KEY } =
+            await import("@/integrations/supabase/staff-auth-storage");
           writeRefreshCookie(null);
+          await persistRefreshOnServer(null);
           try {
+            window.localStorage.removeItem(STAFF_AUTH_STORAGE_KEY);
             window.localStorage.removeItem("rm-os-auth");
           } catch {
             // private mode
