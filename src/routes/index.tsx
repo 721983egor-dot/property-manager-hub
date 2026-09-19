@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { addDays } from "date-fns";
 import { ArrowRight, MessageCircle, Phone, Send } from "lucide-react";
 
+import { HeroSearchBar } from "@/components/site/HeroSearchBar";
+
 import { publicStatusView } from "@/lib/properties";
 import { publishedPropertiesQueryOptions, publicComplexesQueryOptions } from "@/lib/public-catalog.functions";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
@@ -182,15 +184,7 @@ function HomePage() {
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
             Апартаменты, дома премиум и бизнес класса
           </p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            <Link
-              to="/rent"
-              className="inline-flex items-center gap-2 rounded-md bg-site-gold px-7 py-3.5 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
-            >
-              Выбрать объекты
-              <ArrowRight className="size-4" />
-            </Link>
-          </div>
+          <HeroSearchBar />
           <div className="mt-12 flex flex-col gap-4 border-l-2 border-site-gold/60 pl-5">
             {ADVANTAGES.map((item) => (
               <p

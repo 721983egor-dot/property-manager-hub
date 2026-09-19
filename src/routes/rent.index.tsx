@@ -1,8 +1,9 @@
-import { createFileRoute, Link, stripSearchParams, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, ClientOnly, Link, stripSearchParams, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { Heart } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Heart, LayoutGrid, Map } from "lucide-react";
 
+import { PropertiesMap } from "@/components/site/PropertiesMap";
 import { PropertyCard } from "@/components/site/PropertyCard";
 import {
   Select,
@@ -22,24 +23,18 @@ import {
   publicStatusView,
   roomsLabel,
   ROOM_OPTIONS,
-  type PropertyType,
 } from "@/lib/properties";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
+import { matchesRentFilters, RENT_SEARCH_DEFAULTS, rentSearchSchema } from "@/lib/rent-search";
 import { complexSlug, publicPhotoUrl } from "@/lib/seo";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { cn } from "@/lib/utils";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-
-const rentSearchSchema = z.object({
-  type: fallback(z.string(), "").default(""),
-  complex: fallback(z.string(), "").default(""),
-  rooms: fallback(z.string(), "").default(""),
-  sort: fallback(z.string(), "price_asc").default("price_asc"),
-});
 
 export const Route = createFileRoute("/rent/")({
   validateSearch: zodValidator(rentSearchSchema),
   search: {
-    middlewares: [stripSearchParams({ type: "", complex: "", rooms: "", sort: "price_asc" })],
+    middlewares: [stripSearchParams(RENT_SEARCH_DEFAULTS)],
   },
   loader: async ({ context }) => {
     await Promise.all([
@@ -85,15 +80,10 @@ const SORT_OPTIONS = [
   { value: "price_desc", label: "Сначала дороже" },
 ];
 
-function normalizeType(type: PropertyType) {
-  if (type === "villa") return "house";
-  if (type === "aparts") return "apartment";
-  return type;
-}
-
 function RentPage() {
   const navigate = useNavigate({ from: "/rent/" });
-  const { type, complex, rooms, sort } = Route.useSearch();
+  const { type, complex, rooms, sort, priceFrom, priceTo, view } = Route.useSearch();
+  const mapView = view === "map";
 
   const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
   const { data: complexes = [] } = useSuspenseQuery(publicComplexesQueryOptions());
@@ -122,19 +112,15 @@ function RentPage() {
   }, [bookingsMap]);
 
   const visible = useMemo(() => {
-    // Показываем только свободные объекты и те, что освободятся в ближайшие 30 дней.
     const available = allProperties.filter((p) => {
       const freeFromIso = freeFromMap[p.id] ?? null;
-      const view = publicStatusView(p, freeFromIso);
-      return view && (view.tone === "green" || view.tone === "gold");
+      const statusView = publicStatusView(p, freeFromIso);
+      return statusView && (statusView.tone === "green" || statusView.tone === "gold");
     });
 
-    const filtered = available.filter((p) => {
-      if (type && normalizeType(p.type) !== type) return false;
-      if (complex && p.complex_id !== complex) return false;
-      if (rooms && String(p.rooms) !== rooms) return false;
-      return true;
-    });
+    const filtered = available.filter((p) =>
+      matchesRentFilters(p, { type, complex, rooms, priceFrom, priceTo }),
+    );
 
     const sorted = [...filtered];
     if (sort === "price_asc" || sort === "price_desc") {
@@ -150,7 +136,7 @@ function RentPage() {
     }
 
     return sorted;
-  }, [allProperties, freeFromMap, type, complex, rooms, sort]);
+  }, [allProperties, freeFromMap, type, complex, rooms, sort, priceFrom, priceTo]);
 
   const updateSearch = (key: keyof z.infer<typeof rentSearchSchema>, value: string) => {
     navigate({
@@ -160,11 +146,17 @@ function RentPage() {
 
   const resetFilters = () => {
     navigate({
-      search: () => ({ sort: "price_asc" }),
+      search: () => ({ sort: "price_asc", view: mapView ? "map" : "" }),
     });
   };
 
-  const hasFilters = type !== "" || complex !== "" || rooms !== "" || sort !== "price_asc";
+  const hasFilters =
+    type !== "" ||
+    complex !== "" ||
+    rooms !== "" ||
+    priceFrom !== "" ||
+    priceTo !== "" ||
+    sort !== "price_asc";
 
   return (
     <div className="min-h-screen bg-background">
@@ -196,7 +188,7 @@ function RentPage() {
           <Heart className="size-4 shrink-0 fill-site-gold text-site-gold" />
           Нажимайте на сердечко у понравившихся объектов — соберём их в вашу подборку, чтобы записаться на просмотр всех сразу или поделиться с близкими.
         </p>
-        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <header className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
             <FilterSelect
               value={type}
@@ -218,6 +210,11 @@ function RentPage() {
               placeholder="Планировка"
               options={ROOM_OPTIONS.map((r) => ({ value: String(r), label: roomsLabel(r) }))}
             />
+            <PriceRangeFilter
+              priceFrom={priceFrom}
+              priceTo={priceTo}
+              onChange={(key, value) => updateSearch(key, value)}
+            />
             <FilterSelect
               value={sort}
               onChange={(v) => updateSearch("sort", v)}
@@ -235,6 +232,20 @@ function RentPage() {
               </button>
             )}
           </div>
+          <div className="flex w-full rounded-xl border border-site-line p-1 sm:w-fit">
+            <ViewToggle
+              active={!mapView}
+              onClick={() => updateSearch("view", "")}
+              icon={<LayoutGrid className="size-4" />}
+              label="Список"
+            />
+            <ViewToggle
+              active={mapView}
+              onClick={() => updateSearch("view", "map")}
+              icon={<Map className="size-4" />}
+              label="На карте"
+            />
+          </div>
         </header>
 
         {visible.length === 0 ? (
@@ -243,6 +254,24 @@ function RentPage() {
             <p className="mt-2 text-sm text-site-muted">
               Попробуйте изменить фильтры — на сайте публикуются только свободные объекты.
             </p>
+          </div>
+        ) : mapView ? (
+          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.75fr)]">
+            <ClientOnly fallback={<div className="min-h-[520px] rounded-2xl bg-site-navy-soft" />}>
+              <PropertiesMap properties={visible} className="min-h-[520px] lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]" />
+            </ClientOnly>
+            <div className="grid gap-4 sm:grid-cols-2 lg:max-h-[calc(100vh-8rem)] lg:grid-cols-1 lg:overflow-y-auto">
+              {visible.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  photoUrl={
+                    property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
+                  }
+                  freeFromIso={freeFromMap[property.id] ?? null}
+                />
+              ))}
+            </div>
           </div>
         ) : (
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -263,6 +292,84 @@ function RentPage() {
   );
 }
 
+function ViewToggle({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors sm:flex-none",
+        active ? "bg-site-navy text-white" : "text-site-navy hover:bg-site-navy-soft",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function PriceRangeFilter({
+  priceFrom,
+  priceTo,
+  onChange,
+}: {
+  priceFrom: string;
+  priceTo: string;
+  onChange: (key: "priceFrom" | "priceTo", value: string) => void;
+}) {
+  const [from, setFrom] = useState(priceFrom);
+  const [to, setTo] = useState(priceTo);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    setFrom(priceFrom);
+    setTo(priceTo);
+  }, [priceFrom, priceTo]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (from !== priceFrom) onChangeRef.current("priceFrom", from);
+      if (to !== priceTo) onChangeRef.current("priceTo", to);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [from, to, priceFrom, priceTo]);
+
+  return (
+    <div className="col-span-2 flex h-11 min-w-0 w-full items-center rounded-md border border-input bg-transparent px-3 shadow-sm sm:w-[220px]">
+      <input
+        type="text"
+        inputMode="numeric"
+        value={from}
+        onChange={(e) => setFrom(e.target.value.replace(/[^\d]/g, ""))}
+        placeholder="Цена от"
+        aria-label="Цена от"
+        className="h-full w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+      />
+      <span className="px-1 text-muted-foreground">—</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={to}
+        onChange={(e) => setTo(e.target.value.replace(/[^\d]/g, ""))}
+        placeholder="до"
+        aria-label="Цена до"
+        className="h-full w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+      />
+    </div>
+  );
+}
+
 function FilterSelect({
   value,
   onChange,
@@ -276,7 +383,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-11 w-full sm:w-[180px]">
+      <SelectTrigger className="h-11 min-w-0 w-full sm:w-[180px]">
         <SelectValue placeholder={placeholder}>
           {value
             ? options.find((o) => o.value === value)?.label ?? value

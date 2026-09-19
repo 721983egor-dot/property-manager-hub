@@ -28,6 +28,8 @@ function normalizeProperty(row: Record<string, unknown>): Property {
     rent_terms: typeof row["rent_terms"] === "string" ? (row["rent_terms"] as string) : "",
     complex_name: typeof row["complex_name"] === "string" ? (row["complex_name"] as string) : "",
     service_type: row["service_type"] === "commission_only" ? "commission_only" : "management",
+    latitude: num(row["latitude"]),
+    longitude: num(row["longitude"]),
     price_month: num(row["price_month"]),
     summer_price_month: num(row["summer_price_month"]),
     area: num(row["area"]),
