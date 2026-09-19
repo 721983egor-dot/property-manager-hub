@@ -35,7 +35,12 @@ type GeoEvents = {
   add: (name: string, cb: (e: MapEvent) => void) => void;
 };
 
-type PlacemarkInstance = {
+type GeoObjectLike = {
+  getGeoObjects?: () => GeoObjectLike[];
+  properties?: { get: (name: string) => unknown; set: (name: string, value: unknown) => void };
+};
+
+type PlacemarkInstance = GeoObjectLike & {
   geometry: { getCoordinates: () => [number, number] };
   options: { set: (key: string, value: unknown) => void };
   events: GeoEvents;
@@ -59,13 +64,14 @@ type YMaps = {
   };
   Placemark: new (
     coords: [number, number],
-    props: { hintContent: string; iconContent?: string },
-    opts: { preset: string; hasBalloon: boolean },
+    props: { hintContent: string; iconContent?: string; propertyIds: string[] },
+    opts: { preset: string; hasBalloon: boolean; cursor: string },
   ) => PlacemarkInstance;
   Clusterer: new (opts: {
     preset: string;
     groupByCoordinates: boolean;
     clusterHasBalloon: boolean;
+    clusterDisableClickZoom: boolean;
   }) => ClustererInstance;
   geocode: (
     text: string,
@@ -154,6 +160,16 @@ function objectsCountLabel(count: number) {
 function pinHint(group: PinGroup) {
   if (group.items.length === 1) return group.items[0].title;
   return `${objectsCountLabel(group.items.length)} в этой точке`;
+}
+
+function propertyIdsFromTarget(target: unknown): string[] {
+  if (!target || typeof target !== "object") return [];
+  const geo = target as GeoObjectLike;
+  if (typeof geo.getGeoObjects === "function") {
+    return geo.getGeoObjects().flatMap(propertyIdsFromTarget);
+  }
+  const ids = geo.properties?.get("propertyIds");
+  return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
 }
 
 function widgetSrc(points: MapPoint[]) {
@@ -273,6 +289,7 @@ export function PropertiesMap({
           preset: "islands#invertedNightClusterIcons",
           groupByCoordinates: true,
           clusterHasBalloon: false,
+          clusterDisableClickZoom: true,
         });
         const selectedSet = new Set(selectedIdsRef.current);
         const placemarks = groups.map((group) => {
@@ -282,11 +299,13 @@ export function PropertiesMap({
             group.coords,
             {
               hintContent: pinHint(group),
+              propertyIds: ids,
               ...(group.items.length > 1 ? { iconContent: String(group.items.length) } : {}),
             },
             {
               preset: pinPreset(group.items.length, selected),
               hasBalloon: false,
+              cursor: "pointer",
             },
           );
           placemark.events.add("click", (event) => {
@@ -298,14 +317,10 @@ export function PropertiesMap({
         });
         clusterer.add(placemarks);
         clusterer.events.add("click", (event) => {
-          const target = event.get?.("target");
-          if (!target || typeof (target as { getGeoObjects?: unknown }).getGeoObjects === "function") {
-            return;
-          }
-          const match = groupsRef.current.find((group) => group.placemark === target);
-          if (!match) return;
+          const ids = propertyIdsFromTarget(event.get?.("target"));
+          if (ids.length === 0) return;
           event.preventDefault?.();
-          onSelectRef.current?.(match.ids);
+          onSelectRef.current?.(ids);
         });
         map.geoObjects.add(clusterer);
         const bounds = clusterer.getBounds();
