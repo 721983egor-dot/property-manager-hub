@@ -96,15 +96,21 @@ function RentPage() {
 
   const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
   const { data: complexes = [] } = useSuspenseQuery(publicComplexesQueryOptions());
-  const { data: freeFromMap = {} } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const { data: availability } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const freeFromMap = availability?.freeFrom ?? {};
+  const nextStartMap = availability?.nextStart ?? {};
   const complexLinks = complexes.filter((c) => c.show_in_site_filter);
 
   const available = useMemo(() => {
     return allProperties.filter((p) => {
-      const statusView = publicStatusView(p, freeFromMap[p.id] ?? null);
+      const statusView = publicStatusView(
+        p,
+        freeFromMap[p.id] ?? null,
+        nextStartMap[p.id] ?? null,
+      );
       return isPublicListingStatus(statusView);
     });
-  }, [allProperties, freeFromMap]);
+  }, [allProperties, freeFromMap, nextStartMap]);
 
   const roomCounts = useMemo(() => {
     const values = catalogRoomOptions(available);
@@ -309,6 +315,7 @@ function RentPage() {
                           property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
                         }
                         freeFromIso={freeFromMap[property.id] ?? null}
+                        nextStartIso={nextStartMap[property.id] ?? null}
                       />
                     </div>
                   ))}
@@ -326,6 +333,7 @@ function RentPage() {
                   property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
                 }
                 freeFromIso={freeFromMap[property.id] ?? null}
+                nextStartIso={nextStartMap[property.id] ?? null}
               />
             ))}
           </div>

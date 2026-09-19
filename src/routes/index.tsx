@@ -145,16 +145,18 @@ const ABOUT_TEXT = [
 function HomePage() {
   const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
   const { data: complexes = [] } = useSuspenseQuery(publicComplexesQueryOptions());
-  const { data: freeFrom = {} } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const { data: availability } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const freeFrom = availability?.freeFrom ?? {};
+  const nextStart = availability?.nextStart ?? {};
   const complexLinks = complexes.filter((c) => c.show_in_site_filter);
 
   const activeProperties = useMemo(
     () =>
       allProperties.filter((p) => {
-        const view = publicStatusView(p, freeFrom[p.id] ?? null);
+        const view = publicStatusView(p, freeFrom[p.id] ?? null, nextStart[p.id] ?? null);
         return isPublicListingStatus(view);
       }),
-    [allProperties, freeFrom],
+    [allProperties, freeFrom, nextStart],
   );
 
   const popular = useMemo(
@@ -162,8 +164,9 @@ function HomePage() {
       activeProperties.slice(0, 6).map((p) => ({
         property: p,
         freeFromIso: freeFrom[p.id] ?? null,
+        nextStartIso: nextStart[p.id] ?? null,
       })),
-    [activeProperties, freeFrom],
+    [activeProperties, freeFrom, nextStart],
   );
 
   const roomCounts = useMemo(() => catalogRoomOptions(activeProperties), [activeProperties]);
@@ -230,11 +233,12 @@ function HomePage() {
           {popular.length > 0 && (
             <>
               <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {popular.map(({ property, freeFromIso }) => (
+                {popular.map(({ property, freeFromIso, nextStartIso }) => (
                   <PropertyCard
                     key={property.id}
                     property={property}
                     freeFromIso={freeFromIso}
+                    nextStartIso={nextStartIso}
                     photoUrl={
                       property.photos[0]?.path
                         ? publicPhotoUrl(property.photos[0].path)

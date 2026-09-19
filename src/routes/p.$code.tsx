@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/site/PropertyCard";
-import { loadPublicFreeFromDates } from "@/lib/public-catalog.functions";
+import { loadPublicAvailability } from "@/lib/public-catalog.functions";
 import { SITE_ORIGIN } from "@/lib/site";
 import {
   fetchPublishedProperties,
@@ -21,6 +21,7 @@ type LoaderData = {
   count: number;
   properties: Property[];
   freeFromIso: Record<string, string>;
+  nextStartIso: Record<string, string>;
   photoUrls: Record<string, string>;
 };
 
@@ -81,10 +82,12 @@ export const Route = createFileRoute("/p/$code")({
       throw notFound();
     }
 
-    const freeFromAll = await loadPublicFreeFromDates();
+    const availability = await loadPublicAvailability();
     const freeFromIso: Record<string, string> = {};
+    const nextStartIso: Record<string, string> = {};
     for (const p of selectedProperties) {
-      if (freeFromAll[p.id]) freeFromIso[p.id] = freeFromAll[p.id];
+      if (availability.freeFrom[p.id]) freeFromIso[p.id] = availability.freeFrom[p.id];
+      if (availability.nextStart[p.id]) nextStartIso[p.id] = availability.nextStart[p.id];
     }
 
     const photoPaths = selectedProperties
@@ -99,6 +102,7 @@ export const Route = createFileRoute("/p/$code")({
       count: selectedProperties.length,
       properties: selectedProperties,
       freeFromIso,
+      nextStartIso,
       photoUrls,
     };
   },
@@ -167,6 +171,7 @@ function SelectionPublicPage() {
                 property.photos[0]?.path ? data.photoUrls[property.photos[0].path] : undefined
               }
               freeFromIso={data.freeFromIso[property.id] ?? null}
+              nextStartIso={data.nextStartIso[property.id] ?? null}
             />
           ))}
         </div>
