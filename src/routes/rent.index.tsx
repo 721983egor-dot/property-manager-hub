@@ -294,7 +294,7 @@ function RentPage() {
             </p>
           </div>
         ) : mapView ? (
-          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.75fr)]">
+          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.8fr)]">
             <ClientOnly fallback={<div className="min-h-[520px] rounded-2xl bg-site-navy-soft" />}>
               <PropertiesMap
                 properties={visible}
@@ -306,10 +306,10 @@ function RentPage() {
             </ClientOnly>
             <div
               id="map-results"
-              className="grid gap-4 sm:grid-cols-2 lg:max-h-[calc(100vh-8rem)] lg:grid-cols-1 lg:content-start lg:overflow-y-auto"
+              className="flex min-h-0 flex-col gap-4 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1"
             >
               {mapCards.length === 0 ? (
-                <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-site-line bg-white px-6 py-10 text-center sm:col-span-2 lg:col-span-1 lg:min-h-[calc(100vh-8rem)]">
+                <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-2xl border border-dashed border-site-line bg-white px-6 py-10 text-center">
                   <p className="max-w-xs text-sm leading-relaxed text-site-muted">
                     Нажмите на точку на карте — здесь появятся карточки объектов в этом месте.
                     Если в одной точке несколько квартир, покажем все сразу.
@@ -317,20 +317,21 @@ function RentPage() {
                 </div>
               ) : (
                 <>
-                  <p className="sm:col-span-2 text-sm text-site-muted lg:col-span-1">
+                  <p className="shrink-0 text-sm text-site-muted">
                     {mapCards.length === 1
                       ? "Объект в выбранной точке"
                       : `В этой точке: ${mapCards.length}`}
                   </p>
                   {mapCards.map((property) => (
-                    <PropertyCard
-                      key={property.id}
-                      property={property}
-                      photoUrl={
-                        property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
-                      }
-                      freeFromIso={freeFromMap[property.id] ?? null}
-                    />
+                    <div key={property.id} className="shrink-0">
+                      <PropertyCard
+                        property={property}
+                        photoUrl={
+                          property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
+                        }
+                        freeFromIso={freeFromMap[property.id] ?? null}
+                      />
+                    </div>
                   ))}
                 </>
               )}

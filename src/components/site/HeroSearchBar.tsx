@@ -38,7 +38,7 @@ export function HeroSearchBar({ roomCounts }: { roomCounts: number[] }) {
       onSubmit={submit}
       className="mt-9 w-full max-w-5xl overflow-hidden rounded-2xl bg-white/95 shadow-[0_24px_60px_-28px_rgba(8,16,32,0.55)] backdrop-blur"
     >
-      <div className="grid grid-cols-1 divide-y divide-site-line sm:grid-cols-2 lg:grid-cols-[1.05fr_0.85fr_1.55fr_auto] lg:divide-x lg:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-site-line sm:grid-cols-2 lg:grid-cols-[1fr_0.85fr_1.05fr_minmax(12rem,0.9fr)] lg:divide-x lg:divide-y-0">
         <Field label="Тип объекта">
           <HeroSelect
             value={type}
@@ -81,7 +81,7 @@ export function HeroSearchBar({ roomCounts }: { roomCounts: number[] }) {
         <div className="flex items-end p-3 sm:col-span-2 lg:col-span-1">
           <button
             type="submit"
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-site-gold px-7 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
+            className="inline-flex h-11 w-full min-w-[12rem] items-center justify-center gap-2 rounded-xl bg-site-gold px-8 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
           >
             <Search className="size-4" />
             Найти
