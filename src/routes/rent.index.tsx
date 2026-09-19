@@ -22,10 +22,16 @@ import {
   PROPERTY_TYPES,
   publicStatusView,
   roomsLabel,
-  ROOM_OPTIONS,
 } from "@/lib/properties";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
-import { matchesRentFilters, RENT_SEARCH_DEFAULTS, rentSearchSchema } from "@/lib/rent-search";
+import {
+  catalogRoomOptions,
+  formatPriceDigits,
+  matchesRentFilters,
+  priceDigits,
+  RENT_SEARCH_DEFAULTS,
+  rentSearchSchema,
+} from "@/lib/rent-search";
 import { complexSlug, publicPhotoUrl } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -111,13 +117,24 @@ function RentPage() {
     return map;
   }, [bookingsMap]);
 
-  const visible = useMemo(() => {
-    const available = allProperties.filter((p) => {
+  const available = useMemo(() => {
+    return allProperties.filter((p) => {
       const freeFromIso = freeFromMap[p.id] ?? null;
       const statusView = publicStatusView(p, freeFromIso);
       return statusView && (statusView.tone === "green" || statusView.tone === "gold");
     });
+  }, [allProperties, freeFromMap]);
 
+  const roomCounts = useMemo(() => {
+    const values = catalogRoomOptions(available);
+    if (rooms && !values.some((value) => String(value) === rooms)) {
+      const extra = Number(rooms);
+      if (Number.isFinite(extra)) return [...values, extra].sort((a, b) => a - b);
+    }
+    return values;
+  }, [available, rooms]);
+
+  const visible = useMemo(() => {
     const filtered = available.filter((p) =>
       matchesRentFilters(p, { type, complex, rooms, priceFrom, priceTo }),
     );
@@ -136,7 +153,7 @@ function RentPage() {
     }
 
     return sorted;
-  }, [allProperties, freeFromMap, type, complex, rooms, sort, priceFrom, priceTo]);
+  }, [available, type, complex, rooms, sort, priceFrom, priceTo]);
 
   const updateSearch = (key: keyof z.infer<typeof rentSearchSchema>, value: string) => {
     navigate({
@@ -208,7 +225,7 @@ function RentPage() {
               value={rooms}
               onChange={(v) => updateSearch("rooms", v)}
               placeholder="Планировка"
-              options={ROOM_OPTIONS.map((r) => ({ value: String(r), label: roomsLabel(r) }))}
+              options={roomCounts.map((r) => ({ value: String(r), label: roomsLabel(r) }))}
             />
             <PriceRangeFilter
               priceFrom={priceFrom}
@@ -346,26 +363,32 @@ function PriceRangeFilter({
   }, [from, to, priceFrom, priceTo]);
 
   return (
-    <div className="col-span-2 flex h-11 min-w-0 w-full items-center rounded-md border border-input bg-transparent px-3 shadow-sm sm:w-[220px]">
-      <input
-        type="text"
-        inputMode="numeric"
-        value={from}
-        onChange={(e) => setFrom(e.target.value.replace(/[^\d]/g, ""))}
-        placeholder="Цена от"
-        aria-label="Цена от"
-        className="h-full w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-      />
-      <span className="px-1 text-muted-foreground">—</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        value={to}
-        onChange={(e) => setTo(e.target.value.replace(/[^\d]/g, ""))}
-        placeholder="до"
-        aria-label="Цена до"
-        className="h-full w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-      />
+    <div className="col-span-2 flex h-11 min-w-0 w-full items-stretch overflow-hidden rounded-md border border-input bg-transparent shadow-sm sm:w-[260px]">
+      <div className="flex min-w-0 flex-1 items-center gap-1 px-2.5">
+        <span className="shrink-0 text-xs text-muted-foreground">от</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={formatPriceDigits(from)}
+          onChange={(e) => setFrom(priceDigits(e.target.value))}
+          placeholder="0 ₽"
+          aria-label="Цена от"
+          className="h-full w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      <span className="w-px shrink-0 self-stretch bg-input" aria-hidden />
+      <div className="flex min-w-0 flex-1 items-center gap-1 px-2.5">
+        <span className="shrink-0 text-xs text-muted-foreground">до</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={formatPriceDigits(to)}
+          onChange={(e) => setTo(priceDigits(e.target.value))}
+          placeholder="0 ₽"
+          aria-label="Цена до"
+          className="h-full w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
     </div>
   );
 }

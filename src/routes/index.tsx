@@ -7,6 +7,7 @@ import { ArrowRight, MessageCircle, Phone, Send } from "lucide-react";
 import { HeroSearchBar } from "@/components/site/HeroSearchBar";
 
 import { publicStatusView } from "@/lib/properties";
+import { catalogRoomOptions } from "@/lib/rent-search";
 import { publishedPropertiesQueryOptions, publicComplexesQueryOptions } from "@/lib/public-catalog.functions";
 import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import { parseISODate, toISODate } from "@/lib/rentals";
@@ -153,19 +154,33 @@ function HomePage() {
     enabled: propertyIds.length > 0,
   });
 
-  const popular = useMemo(() => {
-    const freeFrom: Record<string, string> = {};
+  const freeFrom = useMemo(() => {
+    const map: Record<string, string> = {};
     for (const [pid, b] of Object.entries(bookingsMap)) {
-      freeFrom[pid] = toISODate(addDays(parseISODate(b.end_date), 1));
+      map[pid] = toISODate(addDays(parseISODate(b.end_date), 1));
     }
-    return allProperties
-      .filter((p) => {
+    return map;
+  }, [bookingsMap]);
+
+  const activeProperties = useMemo(
+    () =>
+      allProperties.filter((p) => {
         const view = publicStatusView(p, freeFrom[p.id] ?? null);
         return view && (view.tone === "green" || view.tone === "gold");
-      })
-      .slice(0, 6)
-      .map((p) => ({ property: p, freeFromIso: freeFrom[p.id] ?? null }));
-  }, [allProperties, bookingsMap]);
+      }),
+    [allProperties, freeFrom],
+  );
+
+  const popular = useMemo(
+    () =>
+      activeProperties.slice(0, 6).map((p) => ({
+        property: p,
+        freeFromIso: freeFrom[p.id] ?? null,
+      })),
+    [activeProperties, freeFrom],
+  );
+
+  const roomCounts = useMemo(() => catalogRoomOptions(activeProperties), [activeProperties]);
 
   return (
     <div className="font-site">
@@ -184,7 +199,7 @@ function HomePage() {
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
             Апартаменты, дома премиум и бизнес класса
           </p>
-          <HeroSearchBar />
+          <HeroSearchBar roomCounts={roomCounts} />
           <div className="mt-12 flex flex-col gap-4 border-l-2 border-site-gold/60 pl-5">
             {ADVANTAGES.map((item) => (
               <p

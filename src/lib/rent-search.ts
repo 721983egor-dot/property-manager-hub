@@ -37,6 +37,22 @@ export function parsePriceParam(value: string): number | null {
   return n;
 }
 
+export function priceDigits(value: string) {
+  return value.replace(/[^\d]/g, "");
+}
+
+export function formatPriceDigits(digits: string) {
+  const raw = priceDigits(digits);
+  if (!raw) return "";
+  return `${new Intl.NumberFormat("ru-RU").format(Number(raw))} ₽`;
+}
+
+/** Планировки, которые есть у активных объектов на сайте. */
+export function catalogRoomOptions(properties: Pick<Property, "rooms">[]) {
+  const values = [...new Set(properties.map((property) => property.rooms).filter((rooms) => Number.isFinite(rooms)))];
+  return values.sort((a, b) => a - b);
+}
+
 export function matchesRentFilters(
   property: Property,
   filters: Pick<RentSearch, "type" | "complex" | "rooms" | "priceFrom" | "priceTo">,
