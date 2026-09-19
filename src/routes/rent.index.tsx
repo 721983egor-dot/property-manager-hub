@@ -90,6 +90,8 @@ function RentPage() {
   const navigate = useNavigate({ from: "/rent/" });
   const { type, complex, rooms, sort, priceFrom, priceTo, view } = Route.useSearch();
   const mapView = view === "map";
+  const [selectedMapIds, setSelectedMapIds] = useState<string[]>([]);
+  const [mapInteractive, setMapInteractive] = useState(true);
 
   const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
   const { data: complexes = [] } = useSuspenseQuery(publicComplexesQueryOptions());
@@ -154,6 +156,25 @@ function RentPage() {
 
     return sorted;
   }, [available, type, complex, rooms, sort, priceFrom, priceTo]);
+
+  const visibleIds = useMemo(() => visible.map((property) => property.id).join("|"), [visible]);
+
+  useEffect(() => {
+    setSelectedMapIds([]);
+  }, [visibleIds]);
+
+  useEffect(() => {
+    if (selectedMapIds.length === 0) return;
+    if (typeof window === "undefined" || window.matchMedia("(min-width: 1024px)").matches) return;
+    document.getElementById("map-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedMapIds]);
+
+  const mapCards = useMemo(() => {
+    if (!mapInteractive) return visible;
+    if (selectedMapIds.length === 0) return [];
+    const selected = new Set(selectedMapIds);
+    return visible.filter((property) => selected.has(property.id));
+  }, [mapInteractive, selectedMapIds, visible]);
 
   const updateSearch = (key: keyof z.infer<typeof rentSearchSchema>, value: string) => {
     navigate({
@@ -275,19 +296,44 @@ function RentPage() {
         ) : mapView ? (
           <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.75fr)]">
             <ClientOnly fallback={<div className="min-h-[520px] rounded-2xl bg-site-navy-soft" />}>
-              <PropertiesMap properties={visible} className="min-h-[520px] lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]" />
+              <PropertiesMap
+                properties={visible}
+                selectedIds={selectedMapIds}
+                onSelect={setSelectedMapIds}
+                onInteractiveChange={setMapInteractive}
+                className="min-h-[520px] lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]"
+              />
             </ClientOnly>
-            <div className="grid gap-4 sm:grid-cols-2 lg:max-h-[calc(100vh-8rem)] lg:grid-cols-1 lg:overflow-y-auto">
-              {visible.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  photoUrl={
-                    property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
-                  }
-                  freeFromIso={freeFromMap[property.id] ?? null}
-                />
-              ))}
+            <div
+              id="map-results"
+              className="grid gap-4 sm:grid-cols-2 lg:max-h-[calc(100vh-8rem)] lg:grid-cols-1 lg:content-start lg:overflow-y-auto"
+            >
+              {mapCards.length === 0 ? (
+                <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-site-line bg-white px-6 py-10 text-center sm:col-span-2 lg:col-span-1 lg:min-h-[calc(100vh-8rem)]">
+                  <p className="max-w-xs text-sm leading-relaxed text-site-muted">
+                    Нажмите на точку на карте — здесь появятся карточки объектов в этом месте.
+                    Если в одной точке несколько квартир, покажем все сразу.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="sm:col-span-2 text-sm text-site-muted lg:col-span-1">
+                    {mapCards.length === 1
+                      ? "Объект в выбранной точке"
+                      : `В этой точке: ${mapCards.length}`}
+                  </p>
+                  {mapCards.map((property) => (
+                    <PropertyCard
+                      key={property.id}
+                      property={property}
+                      photoUrl={
+                        property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
+                      }
+                      freeFromIso={freeFromMap[property.id] ?? null}
+                    />
+                  ))}
+                </>
+              )}
             </div>
           </div>
         ) : (

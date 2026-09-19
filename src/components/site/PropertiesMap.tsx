@@ -18,6 +18,35 @@ type MapPoint = {
   lon: number | null;
 };
 
+type LocatedPoint = MapPoint & { coords: [number, number] };
+
+type PinGroup = {
+  key: string;
+  coords: [number, number];
+  items: LocatedPoint[];
+};
+
+type MapEvent = {
+  preventDefault?: () => void;
+  get?: (key: string) => unknown;
+};
+
+type GeoEvents = {
+  add: (name: string, cb: (e: MapEvent) => void) => void;
+};
+
+type PlacemarkInstance = {
+  geometry: { getCoordinates: () => [number, number] };
+  options: { set: (key: string, value: unknown) => void };
+  events: GeoEvents;
+};
+
+type ClustererInstance = {
+  add: (items: unknown[]) => void;
+  getBounds: () => number[][] | null;
+  events: GeoEvents;
+};
+
 type YMaps = {
   ready: (cb: () => void) => void;
   Map: new (
@@ -30,13 +59,14 @@ type YMaps = {
   };
   Placemark: new (
     coords: [number, number],
-    props: { balloonContentHeader: string; balloonContentBody: string; hintContent: string },
-    opts: { preset: string },
-  ) => { geometry: { getCoordinates: () => [number, number] } };
-  Clusterer: new (opts: { preset: string; groupByCoordinates: boolean }) => {
-    add: (items: unknown[]) => void;
-    getBounds: () => number[][] | null;
-  };
+    props: { hintContent: string; iconContent?: string },
+    opts: { preset: string; hasBalloon: boolean },
+  ) => PlacemarkInstance;
+  Clusterer: new (opts: {
+    preset: string;
+    groupByCoordinates: boolean;
+    clusterHasBalloon: boolean;
+  }) => ClustererInstance;
   geocode: (
     text: string,
     opts: { results: number },
@@ -90,12 +120,40 @@ function toPoint(property: Property): MapPoint {
   };
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+function coordKey(coords: [number, number]) {
+  return `${coords[0].toFixed(4)},${coords[1].toFixed(4)}`;
+}
+
+function groupByCoords(points: LocatedPoint[]): PinGroup[] {
+  const groups = new Map<string, PinGroup>();
+  for (const point of points) {
+    const key = coordKey(point.coords);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.items.push(point);
+    } else {
+      groups.set(key, { key, coords: point.coords, items: [point] });
+    }
+  }
+  return [...groups.values()];
+}
+
+function pinPreset(count: number, selected: boolean) {
+  if (count > 1) return selected ? "islands#yellowCircleIcon" : "islands#nightCircleIcon";
+  return selected ? "islands#yellowCircleDotIcon" : "islands#nightCircleDotIcon";
+}
+
+function objectsCountLabel(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} объект`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} объекта`;
+  return `${count} объектов`;
+}
+
+function pinHint(group: PinGroup) {
+  if (group.items.length === 1) return group.items[0].title;
+  return `${objectsCountLabel(group.items.length)} в этой точке`;
 }
 
 function widgetSrc(points: MapPoint[]) {
@@ -117,12 +175,22 @@ function widgetSrc(points: MapPoint[]) {
 
 export function PropertiesMap({
   properties,
+  selectedIds = [],
+  onSelect,
+  onInteractiveChange,
   className,
 }: {
   properties: Property[];
+  selectedIds?: string[];
+  onSelect?: (propertyIds: string[]) => void;
+  onInteractiveChange?: (interactive: boolean) => void;
   className?: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const groupsRef = useRef<Array<{ ids: string[]; placemark: PlacemarkInstance }>>([]);
+  const onSelectRef = useRef(onSelect);
+  const onInteractiveChangeRef = useRef(onInteractiveChange);
+  const selectedIdsRef = useRef(selectedIds);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [widget, setWidget] = useState(false);
@@ -132,12 +200,21 @@ export function PropertiesMap({
     queryFn: () => loadKey(),
   });
 
+  onSelectRef.current = onSelect;
+  onInteractiveChangeRef.current = onInteractiveChange;
+  selectedIdsRef.current = selectedIds;
+
   const points = useMemo(() => properties.map(toPoint), [properties]);
   const fingerprint = points.map((point) => point.id).join("|");
+  const selectedKey = selectedIds.join("|");
 
   useEffect(() => {
     if (isError) setWidget(true);
   }, [isError]);
+
+  useEffect(() => {
+    onInteractiveChangeRef.current?.(!widget);
+  }, [widget]);
 
   useEffect(() => {
     const el = hostRef.current;
@@ -146,6 +223,7 @@ export function PropertiesMap({
     let map: InstanceType<YMaps["Map"]> | null = null;
     setReady(false);
     setError(null);
+    groupsRef.current = [];
 
     void (async () => {
       try {
@@ -177,12 +255,13 @@ export function PropertiesMap({
         if (cancelled || !hostRef.current) return;
 
         const located = resolved.filter(
-          (item): item is MapPoint & { coords: [number, number] } => Boolean(item),
+          (item): item is LocatedPoint => Boolean(item),
         );
+        const groups = groupByCoords(located);
 
         map = new ymaps.Map(hostRef.current, {
-          center: located[0]?.coords ?? SOCHI,
-          zoom: located.length > 1 ? 11 : 14,
+          center: groups[0]?.coords ?? SOCHI,
+          zoom: groups.length > 1 ? 11 : 14,
           controls: ["zoomControl", "fullscreenControl"],
         });
         if (cancelled) {
@@ -192,24 +271,45 @@ export function PropertiesMap({
 
         const clusterer = new ymaps.Clusterer({
           preset: "islands#invertedNightClusterIcons",
-          groupByCoordinates: false,
+          groupByCoordinates: true,
+          clusterHasBalloon: false,
         });
-        const placemarks = located.map(
-          (item) =>
-            new ymaps.Placemark(
-              item.coords,
-              {
-                balloonContentHeader: `<a href="${escapeHtml(item.href)}" style="color:#1f2a44;font-weight:600">${escapeHtml(item.title)}</a>`,
-                balloonContentBody: `<p style="margin:6px 0 0;color:#64748b">${escapeHtml(item.rooms)} · ${escapeHtml(item.price)} / мес</p>`,
-                hintContent: item.title,
-              },
-              { preset: "islands#nightCircleDotIcon" },
-            ),
-        );
+        const selectedSet = new Set(selectedIdsRef.current);
+        const placemarks = groups.map((group) => {
+          const ids = group.items.map((item) => item.id);
+          const selected = ids.some((id) => selectedSet.has(id));
+          const placemark = new ymaps.Placemark(
+            group.coords,
+            {
+              hintContent: pinHint(group),
+              ...(group.items.length > 1 ? { iconContent: String(group.items.length) } : {}),
+            },
+            {
+              preset: pinPreset(group.items.length, selected),
+              hasBalloon: false,
+            },
+          );
+          placemark.events.add("click", (event) => {
+            event.preventDefault?.();
+            onSelectRef.current?.(ids);
+          });
+          groupsRef.current.push({ ids, placemark });
+          return placemark;
+        });
         clusterer.add(placemarks);
+        clusterer.events.add("click", (event) => {
+          const target = event.get?.("target");
+          if (!target || typeof (target as { getGeoObjects?: unknown }).getGeoObjects === "function") {
+            return;
+          }
+          const match = groupsRef.current.find((group) => group.placemark === target);
+          if (!match) return;
+          event.preventDefault?.();
+          onSelectRef.current?.(match.ids);
+        });
         map.geoObjects.add(clusterer);
         const bounds = clusterer.getBounds();
-        if (bounds && located.length > 1) {
+        if (bounds && groups.length > 1) {
           map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 48 });
         }
         setReady(true);
@@ -225,9 +325,19 @@ export function PropertiesMap({
 
     return () => {
       cancelled = true;
+      groupsRef.current = [];
       map?.destroy();
     };
-  }, [data, fingerprint, points]);
+    // selectedIds are applied in a separate effect so the map is not rebuilt on every pin click
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, fingerprint, points, widget]);
+
+  useEffect(() => {
+    const selectedSet = new Set(selectedIds);
+    for (const group of groupsRef.current) {
+      group.placemark.options.set("preset", pinPreset(group.ids.length, group.ids.some((id) => selectedSet.has(id))));
+    }
+  }, [selectedIds, selectedKey, ready]);
 
   return (
     <div className={cn("relative overflow-hidden rounded-2xl border border-site-line bg-site-navy-soft", className)}>
