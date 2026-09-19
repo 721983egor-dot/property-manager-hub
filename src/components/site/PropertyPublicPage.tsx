@@ -84,9 +84,12 @@ type Props = {
   photoUrls: Record<string, string>;
   /** Первый свободный день (ISO) — из календаря аренды. */
   freeFromIso?: string | null;
+  /** Дата следующего заезда после выезда (ISO), если есть. */
+  nextStartIso?: string | null;
   /** Объекты того же ценового сегмента для блока внизу карточки. */
   similar?: Property[];
   similarFreeFrom?: Record<string, string | null>;
+  similarNextStart?: Record<string, string | null>;
   /** Клик по кнопке «Связаться» — используется для статистики. */
   onContact?: () => void;
 };
@@ -175,11 +178,13 @@ export function PropertyPublicPage({
   complex,
   photoUrls,
   freeFromIso,
+  nextStartIso,
   similar = [],
   similarFreeFrom = {},
+  similarNextStart = {},
   onContact,
 }: Props) {
-  const statusView = publicStatusView(property, freeFromIso);
+  const statusView = publicStatusView(property, freeFromIso, nextStartIso);
   const [active, setActive] = useState(0);
   const [complexActive, setComplexActive] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -757,6 +762,7 @@ export function PropertyPublicPage({
                     item.photos[0]?.path ? photoSrc(item.photos[0].path, photoUrls) : undefined
                   }
                   freeFromIso={similarFreeFrom[item.id] ?? null}
+                  nextStartIso={similarNextStart[item.id] ?? null}
                 />
               ))}
             </div>

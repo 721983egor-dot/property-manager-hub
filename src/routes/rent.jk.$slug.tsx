@@ -66,7 +66,9 @@ function ComplexLandingPage() {
   const { slug } = Route.useParams();
   const { data } = useSuspenseQuery(publicComplexBySlugQueryOptions(slug));
   const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
-  const { data: freeFromMap = {} } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const { data: availability } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const freeFromMap = availability?.freeFrom ?? {};
+  const nextStartMap = availability?.nextStart ?? {};
   const { complex, complexes } = data;
   const canonicalSlug = complexSlug(complex, complexes);
 
@@ -78,10 +80,14 @@ function ComplexLandingPage() {
   const visible = useMemo(
     () =>
       inComplex.filter((p) => {
-        const view = publicStatusView(p, freeFromMap[p.id] ?? null);
+        const view = publicStatusView(
+          p,
+          freeFromMap[p.id] ?? null,
+          nextStartMap[p.id] ?? null,
+        );
         return isPublicListingStatus(view);
       }),
-    [inComplex, freeFromMap],
+    [inComplex, freeFromMap, nextStartMap],
   );
 
   const jsonLd = complexJsonLd({
@@ -99,7 +105,12 @@ function ComplexLandingPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
-      <ComplexPublicPage complex={complex} properties={visible} freeFromMap={freeFromMap} />
+      <ComplexPublicPage
+        complex={complex}
+        properties={visible}
+        freeFromMap={freeFromMap}
+        nextStartMap={nextStartMap}
+      />
     </>
   );
 }

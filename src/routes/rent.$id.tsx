@@ -5,7 +5,7 @@ import { useEffect, useMemo } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { SITE_ORIGIN } from "@/lib/site";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
-import { type Property } from "@/lib/properties";
+import { type Property, isPublicListingStatus, publicStatusView } from "@/lib/properties";
 import { propertyJsonLd, propertyMetaDescription, propertyMetaTitle, propertySlug, propertyUrl, jsonLdScript, publicPhotoUrl } from "@/lib/seo";
 import { publicPropertyQueryOptions } from "@/lib/public-property.functions";
 import {
@@ -91,8 +91,11 @@ export const Route = createFileRoute("/rent/$id")({
 function RentDetailPage() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQuery(publicPropertyQueryOptions(id));
-  const { data: freeFromMap = {} } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const { data: availability } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const freeFromMap = availability?.freeFrom ?? {};
+  const nextStartMap = availability?.nextStart ?? {};
   const freeFromIso = freeFromMap[data.id] ?? null;
+  const nextStartIso = nextStartMap[data.id] ?? null;
 
   const complexId = data.complex_id ?? null;
   const { data: complex } = useQuery({
@@ -101,7 +104,20 @@ function RentDetailPage() {
   });
 
   const { data: catalog = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
-  const similar = useMemo(() => pickSimilarProperties(data, catalog, 3), [data, catalog]);
+  const similar = useMemo(() => {
+    const candidates = pickSimilarProperties(data, catalog, 8);
+    return candidates
+      .filter((item) =>
+        isPublicListingStatus(
+          publicStatusView(
+            item,
+            freeFromMap[item.id] ?? null,
+            nextStartMap[item.id] ?? null,
+          ),
+        ),
+      )
+      .slice(0, 3);
+  }, [data, catalog, freeFromMap, nextStartMap]);
   const similarFreeFrom = useMemo(() => {
     const map: Record<string, string | null> = {};
     for (const item of similar) {
@@ -109,6 +125,13 @@ function RentDetailPage() {
     }
     return map;
   }, [similar, freeFromMap]);
+  const similarNextStart = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (const item of similar) {
+      map[item.id] = nextStartMap[item.id] ?? null;
+    }
+    return map;
+  }, [similar, nextStartMap]);
 
   const paths = [
     ...(data.photos ?? []).map((p) => p.path),
@@ -128,8 +151,10 @@ function RentDetailPage() {
       complex={complex}
       photoUrls={urls}
       freeFromIso={freeFromIso}
+      nextStartIso={nextStartIso}
       similar={similar}
       similarFreeFrom={similarFreeFrom}
+      similarNextStart={similarNextStart}
       onContact={() => trackEvent(data.id, "contact_click")}
     />
   );

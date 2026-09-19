@@ -12,6 +12,7 @@ type Props = {
   complex: Complex;
   properties: Property[];
   freeFromMap: Record<string, string | null>;
+  nextStartMap?: Record<string, string | null>;
 };
 
 function objectsWord(count: number) {
@@ -35,7 +36,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ComplexPublicPage({ complex, properties, freeFromMap }: Props) {
+export function ComplexPublicPage({ complex, properties, freeFromMap, nextStartMap = {} }: Props) {
   const [active, setActive] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -256,6 +257,7 @@ export function ComplexPublicPage({ complex, properties, freeFromMap }: Props) {
                     property.photos[0]?.path ? publicPhotoUrl(property.photos[0].path) : undefined
                   }
                   freeFromIso={freeFromMap[property.id] ?? null}
+                  nextStartIso={nextStartMap[property.id] ?? null}
                 />
               ))}
             </div>

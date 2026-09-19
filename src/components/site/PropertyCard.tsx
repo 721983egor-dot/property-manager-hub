@@ -18,6 +18,8 @@ type Props = {
   photoUrl?: string | undefined;
   /** Первый свободный день (ISO) — для объектов на управлении. */
   freeFromIso?: string | null;
+  /** Дата следующего заезда после выезда (ISO), если есть. */
+  nextStartIso?: string | null;
 };
 
 function bedroomsLabel(rooms: number) {
@@ -29,7 +31,7 @@ function bedroomsLabel(rooms: number) {
 
 export function PropertyCard(props: Props) {
   const { property, photoUrl } = props;
-  const statusView = publicStatusView(property, props.freeFromIso);
+  const statusView = publicStatusView(property, props.freeFromIso, props.nextStartIso);
   const isHouse = isHouseType(property.type);
   const highlights = (property.card_highlights ?? []).slice(0, 3).map(highlightLabel);
 

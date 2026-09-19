@@ -603,15 +603,43 @@ export function formatDateLongRu(iso: string) {
 
 export type PublicStatusView = { text: string; tone: "green" | "red" | "yellow" | "gold" } | null;
 
+/** Минимум свободных суток между выездом и следующим заездом, чтобы показывать объект на сайте. */
+export const PUBLIC_MIN_FREE_DAYS = 30;
+
+/** Число суток от freeFrom (первый свободный день) до nextStart (заезд следующей брони). */
+export function freeWindowDays(freeFromIso: string, nextStartIso: string) {
+  return Math.round(
+    (parseISODate(nextStartIso).getTime() - parseISODate(freeFromIso).getTime()) / 86400000,
+  );
+}
+
+/**
+ * Короткое окно между выездом и следующим заездом (< 30 суток) —
+ * такой объект на сайте не показываем как свободный / скоро свободный.
+ */
+export function hasShortPublicFreeWindow(
+  freeFromIso?: string | null,
+  nextStartIso?: string | null,
+) {
+  if (!freeFromIso || !nextStartIso) return false;
+  return freeWindowDays(freeFromIso, nextStartIso) < PUBLIC_MIN_FREE_DAYS;
+}
+
 /**
  * Статус объекта для публичных страниц.
  * freeFromIso — первый свободный день (конец текущей аренды + 1),
- * используется только для объектов на управлении.
+ * nextStartIso — дата следующего заезда (если есть бронь после текущего выезда).
+ * Если окно между выездом и следующим заездом меньше 30 суток — не показываем как «скоро свободно».
  */
 export function publicStatusView(
   p: { status: PropertyStatus; service_type?: ServiceType },
   freeFromIso?: string | null,
+  nextStartIso?: string | null,
 ): PublicStatusView {
+  if (hasShortPublicFreeWindow(freeFromIso, nextStartIso)) {
+    if (p.status === "booked") return { text: "Объект забронирован", tone: "yellow" };
+    return { text: "Объект сдан", tone: "red" };
+  }
   if (p.status === "free") return { text: "Сейчас свободно", tone: "green" };
   if (p.status === "soon_free") {
     if (freeFromIso) {
@@ -626,7 +654,7 @@ export function publicStatusView(
       const days = Math.round(
         (parseISODate(freeFromIso).getTime() - parseISODate(today).getTime()) / 86400000,
       );
-      if (days >= 0 && days < 30) {
+      if (days >= 0 && days < PUBLIC_MIN_FREE_DAYS) {
         return { text: `Освободится с ${formatDateLongRu(freeFromIso)}`, tone: "gold" };
       }
     }

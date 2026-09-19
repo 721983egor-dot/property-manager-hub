@@ -114,8 +114,19 @@ export function publicComplexesQueryOptions() {
   });
 }
 
-/** Даты «свободно с» для опубликованных объектов: конец текущей аренды + 1 день. Без персональных данных. */
-export async function loadPublicFreeFromDates(): Promise<Record<string, string>> {
+export type PublicAvailabilityMaps = {
+  /** Первый свободный день = конец текущей аренды + 1. */
+  freeFrom: Record<string, string>;
+  /** Дата следующего заезда после текущего выезда (если есть). */
+  nextStart: Record<string, string>;
+};
+
+/**
+ * Даты «свободно с» и следующего заезда для опубликованных объектов.
+ * Без персональных данных. Нужны, чтобы не показывать объект, если окно
+ * между выездом и следующим заездом меньше 30 суток.
+ */
+export async function loadPublicAvailability(): Promise<PublicAvailabilityMaps> {
   const today = toISODate(new Date());
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
@@ -125,20 +136,49 @@ export async function loadPublicFreeFromDates(): Promise<Record<string, string>>
     .lte("start_date", today)
     .gte("end_date", today);
   if (error) throw new Error(error.message);
-  const map: Record<string, string> = {};
+
+  const freeFrom: Record<string, string> = {};
   for (const row of data ?? []) {
     if (!row.property_id || !row.end_date) continue;
-    map[row.property_id] = toISODate(addDays(parseISODate(row.end_date), 1));
+    freeFrom[row.property_id] = toISODate(addDays(parseISODate(row.end_date), 1));
   }
-  return map;
+
+  const nextStart: Record<string, string> = {};
+  const propertyIds = Object.keys(freeFrom);
+  if (propertyIds.length > 0) {
+    const { data: upcoming, error: upcomingError } = await supabaseAdmin
+      .from("bookings")
+      .select("property_id, start_date")
+      .neq("status", "cancelled")
+      .in("property_id", propertyIds)
+      .gt("start_date", today)
+      .order("start_date", { ascending: true });
+    if (upcomingError) throw new Error(upcomingError.message);
+
+    for (const row of upcoming ?? []) {
+      if (!row.property_id || !row.start_date) continue;
+      if (nextStart[row.property_id]) continue;
+      const freeFromIso = freeFrom[row.property_id];
+      if (!freeFromIso || row.start_date < freeFromIso) continue;
+      nextStart[row.property_id] = row.start_date;
+    }
+  }
+
+  return { freeFrom, nextStart };
 }
 
-export const listPublicFreeFromDates = createServerFn({ method: "POST" }).handler(loadPublicFreeFromDates);
+/** @deprecated Используйте loadPublicAvailability — оставлен для совместимости. */
+export async function loadPublicFreeFromDates(): Promise<Record<string, string>> {
+  const { freeFrom } = await loadPublicAvailability();
+  return freeFrom;
+}
+
+export const listPublicAvailability = createServerFn({ method: "POST" }).handler(loadPublicAvailability);
 
 export function publicFreeFromQueryOptions() {
   return queryOptions({
-    queryKey: ["public-free-from"],
-    queryFn: () => listPublicFreeFromDates(),
+    queryKey: ["public-availability"],
+    queryFn: () => listPublicAvailability(),
   });
 }
 
