@@ -613,6 +613,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     }
     if (input["assigneeId"] != null) patch["assignee_id"] = input["assigneeId"];
     if (input["propertyId"] != null) patch["property_id"] = input["propertyId"];
+    if (input["dealId"] != null) patch["deal_id"] = input["dealId"];
     if (input["typeId"] != null) patch["task_type_id"] = input["typeId"];
     if (input["status"] != null) {
       patch["status"] = input["status"];
@@ -633,6 +634,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
           due_end: (patch["due_end"] as string) ?? "",
           assignee_id: (patch["assignee_id"] as string | null) ?? null,
           property_id: (patch["property_id"] as string | null) ?? null,
+          deal_id: (patch["deal_id"] as string | null) ?? null,
           task_type_id: (patch["task_type_id"] as string | null) ?? null,
           status: (patch["status"] as string) ?? "open",
           completed_at: (patch["completed_at"] as string | null) ?? null,

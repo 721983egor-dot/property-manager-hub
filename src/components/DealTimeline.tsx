@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, History, MessageSquare, Send, Trash2 } from "lucide-react";
+import { Eye, History, ListTodo, MessageSquare, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   addDealComment,
   deleteDealComment,
   describeDealChanges,
+  describeTaskHistory,
   fetchDealComments,
   fetchDealHistory,
   fetchDealShowings,
@@ -102,6 +103,18 @@ export function DealTimeline({ dealId, resolve, propertyLabel }: Props) {
       });
     }
     for (const entry of history.data ?? []) {
+      if (entry.source === "task") {
+        const taskEvent = describeTaskHistory(entry);
+        list.push({
+          id: `h-${entry.id}`,
+          kind: "history",
+          at: entry.created_at,
+          title: taskEvent.title,
+          author: entry.actor_email || "Система",
+          body: taskEvent.body,
+        });
+        continue;
+      }
       list.push({
         id: `h-${entry.id}`,
         kind: "history",
@@ -175,6 +188,8 @@ export function DealTimeline({ dealId, resolve, propertyLabel }: Props) {
                     <MessageSquare className="size-3.5 text-muted-foreground" />
                   ) : item.kind === "showing" ? (
                     <Eye className="size-3.5 text-muted-foreground" />
+                  ) : item.title.startsWith("Задача") || item.title.startsWith("Создана задача") ? (
+                    <ListTodo className="size-3.5 text-muted-foreground" />
                   ) : (
                     <History className="size-3.5 text-muted-foreground" />
                   )}

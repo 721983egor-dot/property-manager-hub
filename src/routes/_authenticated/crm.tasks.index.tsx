@@ -13,6 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAccess } from "@/hooks/useAccess";
+import { fetchDeals } from "@/lib/deals";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { formatDateRu, parseISODate, toISODate } from "@/lib/rentals";
 import {
@@ -50,6 +51,7 @@ function TasksPage() {
   const { data: tasks = [], isLoading, error } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
   const { data: types = [] } = useQuery({ queryKey: ["task-types"], queryFn: fetchTaskTypes });
   const { data: properties = [] } = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
+  const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: fetchDeals });
   const { data: staff = [] } = useQuery({ queryKey: ["staff-directory"], queryFn: fetchStaffDirectory });
 
   const [view, setView] = useState<"board" | "calendar">("board");
@@ -72,6 +74,10 @@ function TasksPage() {
     () => new Map(properties.map((property) => [property.id, internalTitle(property)])),
     [properties],
   );
+  const dealName = useMemo(
+    () => new Map(deals.map((deal) => [deal.id, deal.title || "Сделка"])),
+    [deals],
+  );
   const typeById = useMemo(() => new Map(types.map((type) => [type.id, type])), [types]);
 
   const scoped = useMemo(() => {
@@ -89,6 +95,7 @@ function TasksPage() {
         task.description,
         staffName.get(task.assignee_id ?? "") ?? "",
         propertyName.get(task.property_id ?? "") ?? "",
+        dealName.get(task.deal_id ?? "") ?? "",
         typeById.get(task.task_type_id ?? "")?.name ?? "",
         ...task.items.map((item) => item.title),
       ]
@@ -96,13 +103,14 @@ function TasksPage() {
         .toLowerCase()
         .includes(query),
     );
-  }, [scoped, search, showDone, staffName, propertyName, typeById]);
+  }, [scoped, search, showDone, staffName, propertyName, dealName, typeById]);
 
   const doneCount = scoped.filter((task) => task.status === "done").length;
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["tasks"] });
     void queryClient.invalidateQueries({ queryKey: ["property-tasks"] });
+    void queryClient.invalidateQueries({ queryKey: ["deal-history"] });
   };
 
   const moveMutation = useMutation({
@@ -275,6 +283,11 @@ function TasksPage() {
                     ? `Выполнена ${new Date(task.completed_at).toLocaleString("ru-RU")}`
                     : "Выполнена"}
                 </p>
+                {task.deal_id ? (
+                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                    Сделка: {dealName.get(task.deal_id) ?? "привязана"}
+                  </p>
+                ) : null}
               </button>
             );
           })}
@@ -340,6 +353,11 @@ function TasksPage() {
                         {task.property_id ? (
                           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                             {propertyName.get(task.property_id)}
+                          </p>
+                        ) : null}
+                        {task.deal_id ? (
+                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                            Сделка: {dealName.get(task.deal_id) ?? "привязана"}
                           </p>
                         ) : null}
                         {task.items.length > 0 ? (

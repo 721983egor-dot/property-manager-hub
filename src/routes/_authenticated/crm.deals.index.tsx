@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Search, Settings2, Trash2, Users } from "lucide-react";
+import { BarChart3, Columns3, Plus, Search, Settings2, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { AdminOnly } from "@/components/AdminOnly";
 import { CrmTabs } from "@/components/CrmTabs";
 
 import { DealDialog } from "@/components/DealDialog";
+import { DealAnalytics } from "@/components/DealAnalytics";
 import { DealSettingsDialog } from "@/components/DealSettingsDialog";
 import {
   AlertDialog,
@@ -41,6 +42,9 @@ import {
 } from "@/lib/deals";
 
 export const Route = createFileRoute("/_authenticated/crm/deals/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    deal: typeof search.deal === "string" && search.deal ? search.deal : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Сделки — CRM RM OS" },
@@ -73,6 +77,8 @@ function DealsRoute() {
 
 function DealsPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const searchParams = Route.useSearch();
   const { isAdmin, profile } = useAccess();
   const initializeStages = useServerFn(createDefaultDealStages);
   const loadStaff = useServerFn(listStaff);
@@ -100,6 +106,7 @@ function DealsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [closedView, setClosedView] = useState<"won" | "lost" | null>(null);
+  const [pageView, setPageView] = useState<"board" | "analytics">("board");
 
   const boardStages = useMemo(() => stages.filter((s) => s.kind === "open"), [stages]);
   const wonStageIds = useMemo(
@@ -197,6 +204,20 @@ function DealsPage() {
     setDialogOpen(true);
   };
 
+  useEffect(() => {
+    const dealId = searchParams.deal;
+    if (!dealId || deals.length === 0) return;
+    const found = deals.find((item) => item.id === dealId);
+    if (found && editing?.id !== found.id) openDeal(found);
+  }, [searchParams.deal, deals]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const closeDialog = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open && searchParams.deal) {
+      void navigate({ search: { deal: undefined } });
+    }
+  };
+
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center gap-3">
@@ -228,6 +249,29 @@ function DealsPage() {
         <div className="flex rounded-md border border-border p-0.5">
           <Button
             size="sm"
+            variant={pageView === "board" ? "default" : "ghost"}
+            className="h-8 px-3"
+            onClick={() => setPageView("board")}
+          >
+            <Columns3 className="mr-1.5 size-3.5" />
+            Доска
+          </Button>
+          <Button
+            size="sm"
+            variant={pageView === "analytics" ? "default" : "ghost"}
+            className="h-8 px-3"
+            onClick={() => {
+              setPageView("analytics");
+              setClosedView(null);
+            }}
+          >
+            <BarChart3 className="mr-1.5 size-3.5" />
+            Аналитика
+          </Button>
+        </div>
+        <div className="flex rounded-md border border-border p-0.5">
+          <Button
+            size="sm"
             variant={scope === "all" ? "default" : "ghost"}
             className="h-8 px-3"
             onClick={() => setScope("all")}
@@ -245,6 +289,10 @@ function DealsPage() {
         </div>
       </div>
 
+      {pageView === "analytics" ? (
+        <DealAnalytics deals={visible} stages={stages} staffName={staffName} />
+      ) : (
+        <>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
           variant="outline"
@@ -429,10 +477,12 @@ function DealsPage() {
           )}
         </div>
       )}
+        </>
+      )}
 
       <DealDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={closeDialog}
         deal={editing}
         stages={stages}
         fields={fields}

@@ -753,7 +753,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getChats: tool({
       description:
-        "Все чаты RM OS: сайт, ЦИАН, Авито, Telegram и MAX. Без threadId — список диалогов; с threadId — история сообщений.",
+        "Все чаты RM OS: сайт, ЦИАН, Авито, Telegram и MAX. Без threadId — список диалогов; с threadId — история сообщений. Если из чата создали клиента или сделку, в списке будут clientId и dealId.",
       inputSchema: z.object({ threadId: z.string().optional(), days: z.number().optional() }),
       execute: async ({ threadId, days }) => {
         if (threadId) {
@@ -768,12 +768,23 @@ export function createReadTools(ctx: AssistantToolContext) {
         const { data, error } = await admin
           .from("chat_threads")
           .select(
-            "id, source, name, phone, status, unread_count, last_message_at, property_id, external_offer_id, first_page",
+            "id, source, name, phone, status, unread_count, last_message_at, property_id, client_id, deal_id, external_offer_id, first_page",
           )
           .gte("last_message_at", daysAgoISO(period))
           .order("last_message_at", { ascending: false })
           .limit(120);
-        if (error) return { error: error.message };
+        const fallback =
+          error && /client_id|deal_id|schema cache|could not find/i.test(error.message)
+            ? await admin
+                .from("chat_threads")
+                .select(
+                  "id, source, name, phone, status, unread_count, last_message_at, property_id, external_offer_id, first_page",
+                )
+                .gte("last_message_at", daysAgoISO(period))
+                .order("last_message_at", { ascending: false })
+                .limit(120)
+            : null;
+        if ((fallback?.error ?? error) && !fallback?.data) return { error: (fallback?.error ?? error)!.message };
         const sourceLabel = (source: string) => {
           if (source === "cian") return "ЦИАН";
           if (source === "avito") return "Авито";
@@ -781,7 +792,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           if (source === "max") return "MAX";
           return "Сайт";
         };
-        return (data ?? []).map((t) => ({
+        return ((fallback?.data ?? data) ?? []).map((t) => ({
           ...t,
           sourceLabel: sourceLabel(String(t.source ?? "site")),
         }));
@@ -1190,7 +1201,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getCrmDeals: tool({
       description:
-        "Только сделки CRM (канбан). НЕ календарь и НЕ текущая аренда. query ищет по названию, источнику, комментарию, Telegram и удобному мессенджеру. Для броней/кто живёт — getBookings / getCurrentRentals / getClientHistory.",
+        "Только сделки CRM (канбан). НЕ календарь и НЕ текущая аренда. query ищет по названию, источнику, комментарию, Telegram и удобному мессенджеру. Для броней/кто живёт — getBookings / getCurrentRentals / getClientHistory. Сводка по открытым/закрытым и источникам — getCrmDealAnalytics.",
       inputSchema: z.object({
         query: z.string().optional(),
         clientQuery: z.string().optional().describe("ФИО или телефон клиента"),
@@ -1310,24 +1321,97 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getCrmDealAnalytics: tool({
+      description:
+        "Аналитика CRM-сделок: сколько открытых, успешных и отказов, конверсия, источники открытых и закрытых. Фильтры: период в днях, источник, ответственный.",
+      inputSchema: z.object({
+        days: z.number().optional().describe("Период от сегодня, 0 или пусто — всё время"),
+        source: z.string().optional(),
+        assigneeQuery: z.string().optional().describe("ФИО или почта ответственного"),
+        status: z.enum(["all", "open", "closed"]).optional(),
+      }),
+      execute: async ({ days, source, assigneeQuery, status }) => {
+        const [{ data: stages }, { data: deals, error }, { data: profiles }] = await Promise.all([
+          admin.from("deal_stages").select("id, name, kind"),
+          admin
+            .from("deals")
+            .select("id, title, stage_id, source, responsible_id, created_at, updated_at, budget")
+            .limit(2000),
+          admin.from("profiles").select("id, full_name, email"),
+        ]);
+        if (error) return { error: error.message };
+        const kindByStage = new Map((stages ?? []).map((s) => [s.id, s.kind as string]));
+        let responsibleId: string | null = null;
+        if (assigneeQuery) {
+          const term = assigneeQuery.toLowerCase();
+          const found = (profiles ?? []).find((p) =>
+            `${p.full_name} ${p.email}`.toLowerCase().includes(term),
+          );
+          if (!found) return { count: 0, hint: "Сотрудник не найден" };
+          responsibleId = found.id;
+        }
+        const from =
+          days && days > 0
+            ? new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10)
+            : null;
+        const wanted = status ?? "all";
+        const rows = (deals ?? []).filter((d) => {
+          const kind = kindByStage.get(d.stage_id) ?? "open";
+          if (wanted === "open" && kind !== "open") return false;
+          if (wanted === "closed" && kind === "open") return false;
+          if (source && String(d.source || "") !== source) return false;
+          if (responsibleId && d.responsible_id !== responsibleId) return false;
+          const stamp = kind === "open" ? d.created_at : d.updated_at || d.created_at;
+          if (from && String(stamp).slice(0, 10) < from) return false;
+          return true;
+        });
+        const bucket = (list: typeof rows) => {
+          const map = new Map<string, number>();
+          for (const row of list) {
+            const name = String(row.source || "").trim() || "Не указан";
+            map.set(name, (map.get(name) ?? 0) + 1);
+          }
+          return [...map.entries()]
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+        };
+        const open = rows.filter((d) => (kindByStage.get(d.stage_id) ?? "open") === "open");
+        const won = rows.filter((d) => kindByStage.get(d.stage_id) === "won");
+        const lost = rows.filter((d) => kindByStage.get(d.stage_id) === "lost");
+        const closed = won.length + lost.length;
+        return {
+          source: "crm.deals.analytics",
+          periodDays: days && days > 0 ? days : "all",
+          open: open.length,
+          won: won.length,
+          lost: lost.length,
+          closed,
+          conversionPercent: closed ? Math.round((won.length / closed) * 100) : 0,
+          openSources: bucket(open),
+          closedSources: bucket([...won, ...lost]),
+        };
+      },
+    }),
+
     getTasks: tool({
       description:
-        "Канбан и календарь задач RM OS: открытые и выполненные. Фильтры: текст, исполнитель, объект, тип, статус (open/done), колонка (overdue/today/this_week/next_week/later/none). Задачи с датой и временем видны в календаре.",
+        "Канбан и календарь задач RM OS: открытые и выполненные. Фильтры: текст, исполнитель, объект, сделка, тип, статус (open/done), колонка (overdue/today/this_week/next_week/later/none). Задачи с датой и временем видны в календаре.",
       inputSchema: z.object({
         query: z.string().optional(),
         assigneeQuery: z.string().optional().describe("ФИО или почта сотрудника"),
         propertyRef: z.string().optional(),
+        dealQuery: z.string().optional().describe("Название сделки CRM"),
         typeName: z.string().optional().describe("Название типа задачи"),
         status: z.enum(["open", "done", "all"]).optional(),
         column: z.enum(["overdue", "today", "this_week", "next_week", "later", "none"]).optional(),
       }),
-      execute: async ({ query, assigneeQuery, propertyRef, typeName, status, column }) => {
-        const [{ data: rows, error }, { data: items }, { data: profiles }, { data: types }] =
+      execute: async ({ query, assigneeQuery, propertyRef, dealQuery, typeName, status, column }) => {
+        const [{ data: taskRows, error: tasksError }, { data: items }, { data: profiles }, { data: types }] =
           await Promise.all([
             admin
               .from("tasks")
               .select(
-                "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, task_type_id, position, completed_at, created_at, updated_at",
+                "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, deal_id, task_type_id, position, completed_at, created_at, updated_at",
               )
               .order("due_date", { ascending: true })
               .limit(300),
@@ -1335,6 +1419,19 @@ export function createReadTools(ctx: AssistantToolContext) {
             admin.from("profiles").select("id, full_name, email"),
             admin.from("task_types").select("id, name, color, position").order("position"),
           ]);
+        let rows = taskRows;
+        let error = tasksError;
+        if (error && /deal_id|schema cache|could not find/i.test(error.message)) {
+          const retry = await admin
+            .from("tasks")
+            .select(
+              "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, task_type_id, position, completed_at, created_at, updated_at",
+            )
+            .order("due_date", { ascending: true })
+            .limit(300);
+          rows = retry.data;
+          error = retry.error;
+        }
         if (error) return { error: error.message };
         const typeMap = new Map((types ?? []).map((t) => [t.id, t]));
         let typeId: string | null = null;
@@ -1362,6 +1459,29 @@ export function createReadTools(ctx: AssistantToolContext) {
           ...new Set((rows ?? []).map((row) => row.property_id).filter(Boolean)),
         ] as string[];
         const names = await nameMap(propertyIds);
+        const dealIds = [...new Set((rows ?? []).map((row) => row.deal_id).filter(Boolean))] as string[];
+        const { data: dealRows } = dealIds.length
+          ? await admin.from("deals").select("id, title").in("id", dealIds)
+          : { data: [] as { id: string; title: string }[] };
+        const dealTitles = new Map((dealRows ?? []).map((d) => [d.id, d.title]));
+        let dealId: string | null = null;
+        if (dealQuery) {
+          const term = dealQuery.toLowerCase();
+          const found = (dealRows ?? []).find((d) => d.title.toLowerCase().includes(term));
+          if (!found) {
+            const { data: more } = await admin
+              .from("deals")
+              .select("id, title")
+              .ilike("title", `%${dealQuery}%`)
+              .limit(5);
+            const match = (more ?? [])[0];
+            if (!match) return { count: 0, hint: "Сделка не найдена", tasks: [] };
+            dealId = match.id;
+            dealTitles.set(match.id, match.title);
+          } else {
+            dealId = found.id;
+          }
+        }
         const itemsByTask = new Map<string, { id: string; title: string; done: boolean }[]>();
         for (const item of items ?? []) {
           const list = itemsByTask.get(item.task_id) ?? [];
@@ -1389,6 +1509,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const mapped = (rows ?? [])
           .filter((row) => (assigneeId ? row.assignee_id === assigneeId : true))
           .filter((row) => (propertyId ? row.property_id === propertyId : true))
+          .filter((row) => (dealId ? row.deal_id === dealId : true))
           .filter((row) => (typeId ? row.task_type_id === typeId : true))
           .filter((row) => (wantedStatus === "all" ? true : row.status === wantedStatus))
           .map((row) => {
@@ -1409,6 +1530,8 @@ export function createReadTools(ctx: AssistantToolContext) {
               assigneeId: row.assignee_id,
               property: row.property_id ? (names.get(row.property_id) ?? "") : "",
               propertyId: row.property_id,
+              deal: row.deal_id ? (dealTitles.get(row.deal_id) ?? "") : "",
+              dealId: row.deal_id,
               completedAt: row.completed_at,
               createdAt: row.created_at,
               items: itemsByTask.get(row.id) ?? [],
@@ -1418,7 +1541,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           .filter((row) => {
             if (!query) return true;
             const term = query.toLowerCase();
-            return `${row.title} ${row.description} ${row.assignee} ${row.property} ${row.type} ${row.items.map((i) => i.title).join(" ")}`
+            return `${row.title} ${row.description} ${row.assignee} ${row.property} ${row.deal} ${row.type} ${row.items.map((i) => i.title).join(" ")}`
               .toLowerCase()
               .includes(term);
           });
@@ -1455,16 +1578,20 @@ export function createReadTools(ctx: AssistantToolContext) {
         ]);
         if (error) return { error: error.message };
         if (!row) return { error: "Задача не найдена" };
-        const [{ data: profile }, names] = await Promise.all([
+        const [{ data: profile }, names, { data: deal }] = await Promise.all([
           row.assignee_id
             ? admin.from("profiles").select("full_name, email").eq("id", row.assignee_id).maybeSingle()
             : Promise.resolve({ data: null }),
           nameMap(row.property_id ? [row.property_id] : []),
+          row.deal_id
+            ? admin.from("deals").select("id, title").eq("id", row.deal_id).maybeSingle()
+            : Promise.resolve({ data: null }),
         ]);
         return {
           ...row,
           assigneeName: profile ? profile.full_name || profile.email : null,
           propertyName: row.property_id ? (names.get(row.property_id) ?? null) : null,
+          dealTitle: deal?.title ?? null,
           items: items ?? [],
         };
       },

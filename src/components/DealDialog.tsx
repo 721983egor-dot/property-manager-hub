@@ -30,6 +30,8 @@ import { ClientDialog } from "@/components/ClientDialog";
 import { DealTimeline } from "@/components/DealTimeline";
 import { DealShowings } from "@/components/DealShowings";
 import { DealWonDialog } from "@/components/DealWonDialog";
+import { TaskDialog } from "@/components/TaskDialog";
+import { ListTodo } from "lucide-react";
 
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { DEAL_SOURCES, deleteDeal, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
@@ -78,6 +80,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   const [custom, setCustom] = useState<Record<string, unknown>>({});
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [wonOpen, setWonOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
   const [savedDealId, setSavedDealId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
 
@@ -246,6 +249,12 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
                   }}
                 >
                   Отказ
+                </Button>
+              ) : null}
+              {deal ? (
+                <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
+                  <ListTodo className="mr-1.5 size-4" />
+                  Задача
                 </Button>
               ) : null}
               <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
@@ -520,6 +529,16 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
         stageId={wonStage.id}
         properties={properties}
         onClosed={() => setSavedDealId(null)}
+      />
+    ) : null}
+
+    {deal ? (
+      <TaskDialog
+        open={taskOpen}
+        onOpenChange={setTaskOpen}
+        task={null}
+        defaultDealId={deal.id}
+        defaultPropertyId={deal.property_id}
       />
     ) : null}
     </>

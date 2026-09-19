@@ -51,6 +51,7 @@ export type Deal = {
   custom: Record<string, unknown>;
   position: number;
   created_at: string;
+  updated_at: string;
   start_date: string | null;
   end_date: string | null;
   closed_property_id: string | null;
@@ -73,7 +74,7 @@ export const DEAL_SOURCES = [
 ];
 
 const DEAL_COLUMNS_CORE =
-  "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, custom, position, created_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
+  "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, custom, position, created_at, updated_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
 
 const DEAL_COLUMNS = `${DEAL_COLUMNS_CORE}, telegram, preferred_messenger`;
 
@@ -88,6 +89,7 @@ function mapDealRow(d: Record<string, unknown>): Deal {
     telegram: String(d.telegram || custom.telegram || ""),
     preferred_messenger: String(d.preferred_messenger || custom.preferred_messenger || ""),
     custom,
+    updated_at: String(d.updated_at ?? d.created_at ?? ""),
   };
 }
 
@@ -371,7 +373,16 @@ export type DealHistoryEntry = {
   actor_email: string;
   created_at: string;
   changes: Record<string, unknown>;
+  source: "deal" | "task";
+  taskTitle: string;
 };
+
+function taskTitleFromLog(changes: Record<string, unknown>, fallback: string) {
+  const fromNew = (changes["new"] as { title?: unknown } | undefined)?.title;
+  const fromOld = (changes["old"] as { title?: unknown } | undefined)?.title;
+  const fromTitle = (changes["title"] as { to?: unknown } | undefined)?.to;
+  return String(fromNew || fromOld || fromTitle || fallback || "Задача");
+}
 
 export async function fetchDealHistory(dealId: string): Promise<DealHistoryEntry[]> {
   const { data, error } = await supabase
@@ -382,7 +393,45 @@ export async function fetchDealHistory(dealId: string): Promise<DealHistoryEntry
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw error;
-  return (data ?? []) as DealHistoryEntry[];
+
+  const dealEntries: DealHistoryEntry[] = (data ?? []).map((row) => ({
+    ...(row as Omit<DealHistoryEntry, "source" | "taskTitle">),
+    source: "deal",
+    taskTitle: "",
+  }));
+
+  const tasksQuery = await supabase.from("tasks").select("id, title").eq("deal_id", dealId);
+  if (tasksQuery.error && /deal_id|schema cache|could not find/i.test(tasksQuery.error.message)) {
+    return dealEntries;
+  }
+  if (tasksQuery.error) throw tasksQuery.error;
+  const tasks = tasksQuery.data ?? [];
+  if (tasks.length === 0) return dealEntries;
+
+  const titles = new Map(tasks.map((task) => [task.id, task.title]));
+  const { data: taskLogs, error: taskError } = await supabase
+    .from("activity_log")
+    .select("id, action, actor_email, created_at, changes, record_id")
+    .eq("table_name", "tasks")
+    .in("record_id", tasks.map((task) => task.id))
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (taskError) throw taskError;
+
+  const taskEntries: DealHistoryEntry[] = (taskLogs ?? []).map((row) => {
+    const changes = (row.changes ?? {}) as Record<string, unknown>;
+    return {
+      id: row.id,
+      action: row.action,
+      actor_email: row.actor_email,
+      created_at: row.created_at,
+      changes,
+      source: "task",
+      taskTitle: taskTitleFromLog(changes, titles.get(row.record_id ?? "") ?? ""),
+    };
+  });
+
+  return [...dealEntries, ...taskEntries].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
 const DEAL_FIELD_LABELS: Record<string, string> = {
@@ -411,6 +460,24 @@ const DEAL_FIELD_LABELS: Record<string, string> = {
 
 
 export type ChangeLine = { label: string; from: string; to: string };
+
+export function describeTaskHistory(entry: DealHistoryEntry): { title: string; body: string } {
+  const title = entry.taskTitle || "Задача";
+  if (entry.action === "insert") return { title: "Создана задача", body: title };
+  if (entry.action === "delete") return { title: "Задача удалена", body: title };
+  const status = entry.changes["status"] as { from?: unknown; to?: unknown } | undefined;
+  if (status?.to === "done") return { title: "Задача выполнена", body: title };
+  if (status?.to === "open" && status.from === "done") return { title: "Задача возвращена в работу", body: title };
+  if (entry.changes["due_date"] || entry.changes["due_start"] || entry.changes["due_end"] || entry.changes["position"]) {
+    const due = entry.changes["due_date"] as { to?: unknown } | undefined;
+    const nextDue = due && due.to ? String(due.to) : "";
+    return {
+      title: "Задача перенесена",
+      body: nextDue ? `${title} → ${new Date(nextDue).toLocaleDateString("ru-RU")}` : title,
+    };
+  }
+  return { title: "Задача изменена", body: title };
+}
 
 /** Человеко-понятное описание записи журнала по сделке. */
 export function describeDealChanges(

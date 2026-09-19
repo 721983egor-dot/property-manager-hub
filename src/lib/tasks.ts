@@ -32,6 +32,7 @@ export type StaffTask = {
   assignee_id: string | null;
   created_by: string | null;
   property_id: string | null;
+  deal_id: string | null;
   task_type_id: string | null;
   position: number;
   completed_at: string | null;
@@ -55,6 +56,7 @@ export type TaskInput = {
   due_end: string;
   assignee_id: string | null;
   property_id: string | null;
+  deal_id: string | null;
   task_type_id: string | null;
   position?: number;
 };
@@ -89,8 +91,14 @@ export const TASK_COLUMNS: { id: TaskColumnId; name: string; color: string }[] =
   { id: "none", name: "Без срока", color: "#94a3b8" },
 ];
 
-const TASK_COLUMNS_SQL =
+const TASK_COLUMNS_CORE =
   "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, task_type_id, position, completed_at, created_at, updated_at";
+
+const TASK_COLUMNS_SQL = `${TASK_COLUMNS_CORE}, deal_id`;
+
+function missingDealColumn(message: string) {
+  return /deal_id|schema cache|could not find/i.test(message);
+}
 
 export function timeSlots(stepMin = 30, from = "07:00", to = "22:00"): string[] {
   const [fromH, fromM] = from.split(":").map(Number);
@@ -191,6 +199,7 @@ function mapTask(row: Record<string, unknown>, items: StaffTaskItem[]): StaffTas
     assignee_id: (row.assignee_id as string | null) ?? null,
     created_by: (row.created_by as string | null) ?? null,
     property_id: (row.property_id as string | null) ?? null,
+    deal_id: (row.deal_id as string | null) ?? null,
     task_type_id: (row.task_type_id as string | null) ?? null,
     position: Number(row.position ?? 0),
     completed_at: (row.completed_at as string | null) ?? null,
@@ -253,24 +262,23 @@ export async function deleteTaskType(id: string) {
   if (error) throw error;
 }
 
+async function selectTasks(run: (columns: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }>) {
+  const first = await run(TASK_COLUMNS_SQL);
+  const result = missingDealColumn(first.error?.message ?? "") ? await run(TASK_COLUMNS_CORE) : first;
+  if (result.error) throw result.error;
+  return attachItems((result.data ?? []) as Record<string, unknown>[]);
+}
+
 export async function fetchTasks(): Promise<StaffTask[]> {
-  const { data, error } = await supabase
-    .from("tasks")
-    .select(TASK_COLUMNS_SQL)
-    .order("position", { ascending: true })
-    .order("due_date", { ascending: true });
-  if (error) throw error;
-  return attachItems((data ?? []) as Record<string, unknown>[]);
+  return selectTasks(async (columns) =>
+    supabase.from("tasks").select(columns).order("position", { ascending: true }).order("due_date", { ascending: true }),
+  );
 }
 
 export async function fetchPropertyTasks(propertyId: string): Promise<StaffTask[]> {
-  const { data, error } = await supabase
-    .from("tasks")
-    .select(TASK_COLUMNS_SQL)
-    .eq("property_id", propertyId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return attachItems((data ?? []) as Record<string, unknown>[]);
+  return selectTasks(async (columns) =>
+    supabase.from("tasks").select(columns).eq("property_id", propertyId).order("created_at", { ascending: false }),
+  );
 }
 
 export async function fetchStaffDirectory(): Promise<StaffDirectoryMember[]> {
@@ -299,22 +307,28 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
     due_end: normalizeTime(input.due_end),
     assignee_id: input.assignee_id,
     property_id: input.property_id,
+    deal_id: input.deal_id,
     task_type_id: input.task_type_id,
     position: input.position ?? 0,
     completed_at: input.status === "done" ? new Date().toISOString() : null,
   };
-  if (id) {
-    const { error } = await supabase.from("tasks").update(row as never).eq("id", id);
-    if (error) throw error;
-    return id;
+  const write = async (payload: Record<string, unknown>) =>
+    id
+      ? supabase.from("tasks").update(payload as never).eq("id", id)
+      : supabase
+          .from("tasks")
+          .insert({ ...payload, created_by: session?.user?.id ?? null } as never)
+          .select("id")
+          .single();
+
+  let result = await write(row);
+  if (result.error && missingDealColumn(result.error.message)) {
+    const { deal_id: _dealId, ...rest } = row;
+    result = await write(rest);
   }
-  const { data, error } = await supabase
-    .from("tasks")
-    .insert({ ...row, created_by: session?.user?.id ?? null } as never)
-    .select("id")
-    .single();
-  if (error) throw error;
-  return (data as { id: string }).id;
+  if (result.error) throw result.error;
+  if (id) return id;
+  return (result.data as { id: string }).id;
 }
 
 export async function completeTask(id: string) {

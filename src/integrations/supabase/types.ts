@@ -300,6 +300,8 @@ export type Database = {
           name: string
           phone: string
           property_id: string | null
+          client_id: string | null
+          deal_id: string | null
           source: string
           status: string
           unread_count: number
@@ -317,6 +319,8 @@ export type Database = {
           name?: string
           phone?: string
           property_id?: string | null
+          client_id?: string | null
+          deal_id?: string | null
           source?: string
           status?: string
           unread_count?: number
@@ -334,6 +338,8 @@ export type Database = {
           name?: string
           phone?: string
           property_id?: string | null
+          client_id?: string | null
+          deal_id?: string | null
           source?: string
           status?: string
           unread_count?: number
@@ -346,6 +352,20 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_threads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_threads_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
@@ -1707,6 +1727,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           created_by: string | null
+          deal_id: string | null
           description: string
           due_date: string | null
           due_end: string
@@ -1724,6 +1745,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          deal_id?: string | null
           description?: string
           due_date?: string | null
           due_end?: string
@@ -1741,6 +1763,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          deal_id?: string | null
           description?: string
           due_date?: string | null
           due_end?: string
@@ -1759,6 +1782,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
           {

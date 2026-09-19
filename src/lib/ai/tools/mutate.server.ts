@@ -543,7 +543,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeTask: tool({
       description:
-        "Предложить создание или изменение задачи RM OS: название, тип, дата, интервал времени (например 10:00–10:30), исполнитель, объект, комментарий, пункты чеклиста. С датой и временем задача видна в календаре. Требует подтверждения менеджера.",
+        "Предложить создание или изменение задачи RM OS: название, тип, дата, интервал времени (например 10:00–10:30), исполнитель, объект, сделка CRM, комментарий, пункты чеклиста. С датой и временем задача видна в календаре. Требует подтверждения менеджера.",
       inputSchema: z.object({
         taskId: z.string().optional(),
         title: z.string().optional(),
@@ -554,6 +554,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         dueEnd: z.string().optional().describe("Конец интервала ЧЧ:ММ"),
         assigneeQuery: z.string().optional().describe("ФИО или почта исполнителя"),
         propertyRef: z.string().optional(),
+        dealQuery: z.string().optional().describe("Название сделки CRM, к которой привязать задачу"),
         status: z.enum(["open", "done"]).optional(),
         items: z.array(z.string()).optional().describe("Пункты чеклиста при создании"),
       }),
@@ -599,6 +600,18 @@ export function createMutateTools(ctx: AssistantToolContext) {
         }
         if (assigneeName) parts.push(`исполнитель ${assigneeName}`);
         if (property) parts.push(`объект ${property.text}`);
+        let dealId: string | null = null;
+        if (input.dealQuery) {
+          const { data: deals } = await ctx.admin
+            .from("deals")
+            .select("id, title")
+            .ilike("title", `%${input.dealQuery}%`)
+            .limit(5);
+          const found = (deals ?? [])[0];
+          if (!found) return { error: "Сделка не найдена" };
+          dealId = found.id;
+          parts.push(`сделка «${found.title}»`);
+        }
         if (input.items?.length) parts.push(`чеклист: ${input.items.join(", ")}`);
         if (input.status === "done") parts.push("выполнена");
         const summary = `${input.taskId ? "Изменить" : "Создать"} задачу: ${parts.join(", ") || "поля задачи"}`;
@@ -615,6 +628,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
             dueEnd: input.dueEnd ?? null,
             assigneeId,
             propertyId: property?.id ?? null,
+            dealId,
             status: input.status ?? null,
             items: input.items ?? null,
             clearDue: input.dueDate === "",

@@ -26,6 +26,8 @@ export type ChatThread = {
   external_offer_id: string | null;
   property_id: string | null;
   property_title: string | null;
+  client_id: string | null;
+  deal_id: string | null;
 };
 
 export type ChatQuickReply = {
@@ -160,15 +162,26 @@ export const sendVisitorMessage = createServerFn({ method: "POST" })
 /** Оператор: список диалогов. */
 export const fetchThreads = createServerFn({ method: "POST" }).handler(async () => {
   const db = await admin();
-  const { data: threads } = await db
+  const { data: threads, error: threadsError } = await db
     .from("chat_threads")
     .select(
-      "id, visitor_key, name, phone, first_page, status, unread_count, last_message_at, created_at, source, external_id, external_offer_id, property_id",
+      "id, visitor_key, name, phone, first_page, status, unread_count, last_message_at, created_at, source, external_id, external_offer_id, property_id, client_id, deal_id",
     )
     .order("last_message_at", { ascending: false })
     .limit(200);
 
-  const list = threads ?? [];
+  const fallback =
+    threadsError && /client_id|deal_id|schema cache|could not find/i.test(threadsError.message)
+      ? await db
+          .from("chat_threads")
+          .select(
+            "id, visitor_key, name, phone, first_page, status, unread_count, last_message_at, created_at, source, external_id, external_offer_id, property_id",
+          )
+          .order("last_message_at", { ascending: false })
+          .limit(200)
+      : null;
+
+  const list = (fallback?.data ?? threads ?? []) as Array<Record<string, unknown>>;
   if (list.length === 0) return { threads: [] as ChatThread[] };
 
   const propertyIds = [
@@ -191,7 +204,7 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
     .select("thread_id, direction, body, created_at")
     .in(
       "thread_id",
-      list.map((t) => t.id),
+      list.map((t) => String(t.id)),
     )
     .order("created_at", { ascending: false })
     .limit(1000);
@@ -204,12 +217,20 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
   }
 
   return {
-    threads: list.map((t) => ({
-      ...t,
-      last_body: last.get(t.id)?.body ?? "",
-      last_direction: last.get(t.id)?.direction ?? null,
-      property_title: t.property_id ? (propertyTitle.get(t.property_id) ?? null) : null,
-    })) as ChatThread[],
+    threads: list.map((t) => {
+      const id = String(t.id);
+      const propertyId = (t.property_id as string | null) ?? null;
+      return {
+        ...t,
+        id,
+        last_body: last.get(id)?.body ?? "",
+        last_direction: last.get(id)?.direction ?? null,
+        property_id: propertyId,
+        property_title: propertyId ? propertyTitle.get(propertyId) ?? null : null,
+        client_id: (t.client_id as string | null) ?? null,
+        deal_id: (t.deal_id as string | null) ?? null,
+      };
+    }) as ChatThread[],
   };
 });
 
@@ -414,6 +435,7 @@ export const createClientFromThread = createServerFn({ method: "POST" })
         .limit(1);
       const existingId = (clients ?? [])[0]?.id ?? null;
       if (existingId) {
+        await db.from("chat_threads").update({ client_id: existingId } as never).eq("id", data.threadId);
         return { ok: true as const, clientId: existingId, created: false };
       }
     }
@@ -429,6 +451,7 @@ export const createClientFromThread = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error("Не удалось создать клиента");
+    await db.from("chat_threads").update({ client_id: client.id } as never).eq("id", data.threadId);
     return { ok: true as const, clientId: client.id as string, created: true };
   });
 
@@ -575,6 +598,10 @@ export const createDealFromThread = createServerFn({ method: "POST" })
       lastError = inserted.error?.message ?? lastError;
     }
     if (!deal) throw new Error(lastError || "Не удалось создать сделку");
+    await db
+      .from("chat_threads")
+      .update({ deal_id: deal.id, client_id: clientId } as never)
+      .eq("id", data.threadId);
     return { ok: true as const, dealId: deal.id };
   });
 

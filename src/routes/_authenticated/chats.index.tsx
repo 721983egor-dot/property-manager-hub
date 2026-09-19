@@ -13,6 +13,7 @@ import {
   MailOpen,
   SendHorizonal,
   Trash2,
+  User,
   UserPlus,
   Zap,
 } from "lucide-react";
@@ -251,6 +252,22 @@ function ChatsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                  {active.client_id ? (
+                    <Button size="sm" variant="outline" className="w-full sm:w-auto" asChild>
+                      <Link to="/crm/clients/$id" params={{ id: active.client_id }}>
+                        <User className="size-4" />
+                        Клиент
+                      </Link>
+                    </Button>
+                  ) : null}
+                  {active.deal_id ? (
+                    <Button size="sm" variant="outline" className="w-full sm:w-auto" asChild>
+                      <Link to="/crm/deals/" search={{ deal: active.deal_id }}>
+                        <Handshake className="size-4" />
+                        Сделка
+                      </Link>
+                    </Button>
+                  ) : null}
                   <Button size="sm" className="w-full sm:w-auto" onClick={() => setClientOpen(true)}>
                     <UserPlus className="size-4" />
                     Создать клиента

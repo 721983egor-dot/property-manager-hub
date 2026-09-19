@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronsUpDown, Circle, Plus, Trash2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Check, ChevronsUpDown, Circle, Handshake, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccess } from "@/hooks/useAccess";
+import { fetchDeals } from "@/lib/deals";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import {
   TASK_TIME_SLOTS,
@@ -63,6 +65,8 @@ type Props = {
   defaultDueDate?: string;
   defaultDueStart?: string;
   defaultDueEnd?: string;
+  defaultDealId?: string | null;
+  defaultPropertyId?: string | null;
 };
 
 export function TaskDialog({
@@ -73,12 +77,15 @@ export function TaskDialog({
   defaultDueDate,
   defaultDueStart,
   defaultDueEnd,
+  defaultDealId,
+  defaultPropertyId,
 }: Props) {
   const queryClient = useQueryClient();
   const { profile, isAdmin } = useAccess();
   const { data: properties = [] } = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
   const { data: staff = [] } = useQuery({ queryKey: ["staff-directory"], queryFn: fetchStaffDirectory });
   const { data: types = [] } = useQuery({ queryKey: ["task-types"], queryFn: fetchTaskTypes });
+  const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: fetchDeals });
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -87,8 +94,10 @@ export function TaskDialog({
   const [dueEnd, setDueEnd] = useState(NONE);
   const [assigneeId, setAssigneeId] = useState(NONE);
   const [propertyId, setPropertyId] = useState(NONE);
+  const [dealId, setDealId] = useState(NONE);
   const [typeId, setTypeId] = useState(NONE);
   const [propertyOpen, setPropertyOpen] = useState(false);
+  const [dealOpen, setDealOpen] = useState(false);
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [newItem, setNewItem] = useState("");
 
@@ -104,20 +113,27 @@ export function TaskDialog({
     setDueStart(task?.due_start || defaultDueStart || NONE);
     setDueEnd(task?.due_end || defaultDueEnd || NONE);
     setAssigneeId(task?.assignee_id ?? profile?.id ?? NONE);
-    setPropertyId(task?.property_id ?? NONE);
+    setPropertyId(task?.property_id ?? defaultPropertyId ?? NONE);
+    setDealId(task?.deal_id ?? defaultDealId ?? NONE);
     setTypeId(task?.task_type_id ?? types[0]?.id ?? NONE);
     setDraftItems(task ? [] : [{ key: crypto.randomUUID(), title: "", done: false }]);
     setNewItem("");
-  }, [open, task?.id, defaultColumn, defaultDueDate, defaultDueStart, defaultDueEnd, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
+  }, [open, task?.id, defaultColumn, defaultDueDate, defaultDueStart, defaultDueEnd, defaultDealId, defaultPropertyId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
 
   const selectedProperty = useMemo(
     () => properties.find((item) => item.id === (propertyId === NONE ? "" : propertyId)),
     [properties, propertyId],
   );
 
+  const selectedDeal = useMemo(
+    () => deals.find((item) => item.id === (dealId === NONE ? "" : dealId)),
+    [deals, dealId],
+  );
+
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["tasks"] });
     void queryClient.invalidateQueries({ queryKey: ["property-tasks"] });
+    void queryClient.invalidateQueries({ queryKey: ["deal-history"] });
   };
 
   const saveMutation = useMutation({
@@ -137,6 +153,7 @@ export function TaskDialog({
         due_end: dueDate ? end : "",
         assignee_id: assigneeId === NONE ? null : assigneeId,
         property_id: propertyId === NONE ? null : propertyId,
+        deal_id: dealId === NONE ? null : dealId,
         task_type_id: typeId === NONE ? null : typeId,
         position: task?.position ?? 0,
       });
@@ -313,6 +330,72 @@ export function TaskDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Сделка</Label>
+            <Popover open={dealOpen} onOpenChange={setDealOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-between font-normal">
+                  <span className="truncate">
+                    {selectedDeal
+                      ? selectedDeal.title || "Без названия"
+                      : dealId !== NONE
+                        ? "Привязана к сделке"
+                        : "Не привязана"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[min(28rem,90vw)] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Название сделки…" />
+                  <CommandList>
+                    <CommandEmpty>Ничего не найдено.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="Не привязана"
+                        onSelect={() => {
+                          setDealId(NONE);
+                          setDealOpen(false);
+                        }}
+                      >
+                        <Check className={cn("mr-2 size-4", dealId === NONE ? "opacity-100" : "opacity-0")} />
+                        Не привязана
+                      </CommandItem>
+                      {deals.map((deal) => (
+                        <CommandItem
+                          key={deal.id}
+                          value={deal.title || "Без названия"}
+                          onSelect={() => {
+                            setDealId(deal.id);
+                            if (propertyId === NONE && deal.property_id) setPropertyId(deal.property_id);
+                            setDealOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn("mr-2 size-4", dealId === deal.id ? "opacity-100" : "opacity-0")}
+                          />
+                          {deal.title || "Без названия"}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {selectedDeal && isAdmin ? (
+              <Link
+                to="/crm/deals/"
+                search={{ deal: selectedDeal.id }}
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <Handshake className="size-3.5" />
+                Открыть сделку
+              </Link>
+            ) : (
+              <p className="text-xs text-muted-foreground">Задача появится в истории карточки сделки.</p>
+            )}
           </div>
 
           <div className="grid gap-1.5">
