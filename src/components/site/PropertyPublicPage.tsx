@@ -5,6 +5,7 @@ import { Check, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { YandexMap } from "@/components/YandexMap";
 import { CartToggleButton } from "@/components/site/CartToggleButton";
 import { ContactMenu } from "@/components/site/ContactMenu";
+import { PropertyCard } from "@/components/site/PropertyCard";
 
 import {
   APPLIANCE_OPTIONS,
@@ -83,6 +84,9 @@ type Props = {
   photoUrls: Record<string, string>;
   /** Первый свободный день (ISO) — из календаря аренды. */
   freeFromIso?: string | null;
+  /** Объекты того же ценового сегмента для блока внизу карточки. */
+  similar?: Property[];
+  similarFreeFrom?: Record<string, string | null>;
   /** Клик по кнопке «Связаться» — используется для статистики. */
   onContact?: () => void;
 };
@@ -171,6 +175,8 @@ export function PropertyPublicPage({
   complex,
   photoUrls,
   freeFromIso,
+  similar = [],
+  similarFreeFrom = {},
   onContact,
 }: Props) {
   const statusView = publicStatusView(property, freeFromIso);
@@ -732,6 +738,27 @@ export function PropertyPublicPage({
                   <span className="ml-2 text-[17px] font-normal text-site-muted">/ мес</span>
                 </p>
               ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {similar.length > 0 ? (
+          <section className="mt-16">
+            <SectionTitle>Похожее</SectionTitle>
+            <p className="mt-4 text-[15px] leading-relaxed text-site-muted">
+              Другие объекты в том же ценовом сегменте
+            </p>
+            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {similar.map((item) => (
+                <PropertyCard
+                  key={item.id}
+                  property={item}
+                  photoUrl={
+                    item.photos[0]?.path ? photoSrc(item.photos[0].path, photoUrls) : undefined
+                  }
+                  freeFromIso={similarFreeFrom[item.id] ?? null}
+                />
+              ))}
             </div>
           </section>
         ) : null}

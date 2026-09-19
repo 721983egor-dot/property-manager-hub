@@ -1,15 +1,19 @@
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { trackEvent } from "@/lib/analytics";
 import { SITE_ORIGIN } from "@/lib/site";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { type Property } from "@/lib/properties";
 import { propertyJsonLd, propertyMetaDescription, propertyMetaTitle, propertySlug, propertyUrl, jsonLdScript, publicPhotoUrl } from "@/lib/seo";
-import { fetchCurrentBooking } from "@/lib/bookings";
+import { fetchCurrentBooking, fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import { publicPropertyQueryOptions } from "@/lib/public-property.functions";
-import { publicComplexQueryOptions } from "@/lib/public-catalog.functions";
+import {
+  publicComplexQueryOptions,
+  publishedPropertiesQueryOptions,
+} from "@/lib/public-catalog.functions";
+import { pickSimilarProperties } from "@/lib/rent-search";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 
 export const Route = createFileRoute("/rent/$id")({
@@ -31,9 +35,12 @@ export const Route = createFileRoute("/rent/$id")({
       });
     }
     const typed = property as Property;
-    if (typed.complex_id) {
-      await context.queryClient.ensureQueryData(publicComplexQueryOptions(typed.complex_id)).catch(() => null);
-    }
+    await Promise.all([
+      typed.complex_id
+        ? context.queryClient.ensureQueryData(publicComplexQueryOptions(typed.complex_id)).catch(() => null)
+        : Promise.resolve(null),
+      context.queryClient.ensureQueryData(publishedPropertiesQueryOptions()),
+    ]);
     return typed;
   },
   head: ({ loaderData }) => {
@@ -104,10 +111,30 @@ function RentDetailPage() {
     enabled: Boolean(complexId),
   });
 
+  const { data: catalog = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
+  const similar = useMemo(() => pickSimilarProperties(data, catalog, 3), [data, catalog]);
+  const similarIds = useMemo(() => similar.map((item) => item.id), [similar]);
+  const { data: similarBookings = {} } = useQuery({
+    queryKey: ["current-bookings", similarIds.join("|"), todayIso],
+    queryFn: () => fetchCurrentBookingsForProperties(similarIds, todayIso),
+    enabled: similarIds.length > 0,
+  });
+  const similarFreeFrom = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (const item of similar) {
+      const booking = similarBookings[item.id];
+      map[item.id] = booking
+        ? toISODate(addDays(parseISODate(booking.end_date), 1))
+        : null;
+    }
+    return map;
+  }, [similar, similarBookings]);
+
   const paths = [
     ...(data.photos ?? []).map((p) => p.path),
     ...(complex?.photos ?? []).map((p) => p.path),
     ...(complex?.main_photo ? [complex.main_photo] : []),
+    ...similar.flatMap((item) => (item.photos[0]?.path ? [item.photos[0].path] : [])),
   ];
   const urls = Object.fromEntries(paths.map((path) => [path, publicPhotoUrl(path)]));
 
@@ -121,6 +148,8 @@ function RentDetailPage() {
       complex={complex}
       photoUrls={urls}
       freeFromIso={freeFromIso}
+      similar={similar}
+      similarFreeFrom={similarFreeFrom}
       onContact={() => trackEvent(data.id, "contact_click")}
     />
   );

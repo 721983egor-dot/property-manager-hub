@@ -70,3 +70,47 @@ export function matchesRentFilters(
   }
   return true;
 }
+
+/** Полоса цены для блока «Похожее»: ±25%, но не уже 15 000 ₽. */
+export function similarPriceBand(price: number) {
+  const delta = Math.max(Math.round(price * 0.25), 15_000);
+  return {
+    from: Math.max(0, price - delta),
+    to: price + delta,
+  };
+}
+
+type SimilarSource = Pick<Property, "id" | "price_month" | "type" | "rooms">;
+
+/**
+ * Другие опубликованные объекты в том же ценовом сегменте.
+ * Ближе по цене, того же типа и планировки — выше.
+ */
+export function pickSimilarProperties(
+  current: SimilarSource,
+  all: Property[],
+  limit = 3,
+): Property[] {
+  const price = Number(current.price_month);
+  if (!Number.isFinite(price) || price <= 0 || limit <= 0) return [];
+
+  const { from, to } = similarPriceBand(price);
+  const currentType = normalizeCatalogType(current.type);
+
+  return all
+    .filter((property) => {
+      if (property.id === current.id) return false;
+      if (property.price_month == null) return false;
+      return property.price_month >= from && property.price_month <= to;
+    })
+    .sort((a, b) => {
+      const aType = normalizeCatalogType(a.type) === currentType ? 0 : 1;
+      const bType = normalizeCatalogType(b.type) === currentType ? 0 : 1;
+      if (aType !== bType) return aType - bType;
+      const aRooms = a.rooms === current.rooms ? 0 : 1;
+      const bRooms = b.rooms === current.rooms ? 0 : 1;
+      if (aRooms !== bRooms) return aRooms - bRooms;
+      return Math.abs((a.price_month ?? 0) - price) - Math.abs((b.price_month ?? 0) - price);
+    })
+    .slice(0, limit);
+}
