@@ -1,5 +1,5 @@
 import { createFileRoute, ClientOnly, Link, stripSearchParams, useNavigate } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, LayoutGrid, Map } from "lucide-react";
 
@@ -12,18 +12,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import {
   publicComplexesQueryOptions,
+  publicFreeFromQueryOptions,
   publishedPropertiesQueryOptions,
 } from "@/lib/public-catalog.functions";
 import { SITE_ORIGIN } from "@/lib/site";
 import {
   PROPERTY_TYPES,
   publicStatusView,
+  isPublicListingStatus,
   roomsLabel,
 } from "@/lib/properties";
-import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 import {
   catalogRoomOptions,
   formatPriceDigits,
@@ -46,6 +46,7 @@ export const Route = createFileRoute("/rent/")({
     await Promise.all([
       context.queryClient.ensureQueryData(publishedPropertiesQueryOptions()),
       context.queryClient.ensureQueryData(publicComplexesQueryOptions()),
+      context.queryClient.ensureQueryData(publicFreeFromQueryOptions()),
     ]);
   },
   head: () => {
@@ -95,35 +96,13 @@ function RentPage() {
 
   const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
   const { data: complexes = [] } = useSuspenseQuery(publicComplexesQueryOptions());
+  const { data: freeFromMap = {} } = useSuspenseQuery(publicFreeFromQueryOptions());
   const complexLinks = complexes.filter((c) => c.show_in_site_filter);
-
-  const todayIso = useMemo(() => toISODate(new Date()), []);
-  const propertyIds = useMemo(
-    () => allProperties.map((p) => p.id),
-    [allProperties],
-  );
-
-  const { data: bookingsMap = {} } = useQuery({
-    queryKey: ["current-bookings", propertyIds.join("|"), todayIso],
-    queryFn: () => fetchCurrentBookingsForProperties(propertyIds, todayIso),
-    enabled: propertyIds.length > 0,
-  });
-
-  const freeFromMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const [propertyId, booking] of Object.entries(bookingsMap)) {
-      map[propertyId] = toISODate(
-        addDays(parseISODate(booking.end_date), 1),
-      );
-    }
-    return map;
-  }, [bookingsMap]);
 
   const available = useMemo(() => {
     return allProperties.filter((p) => {
-      const freeFromIso = freeFromMap[p.id] ?? null;
-      const statusView = publicStatusView(p, freeFromIso);
-      return statusView && (statusView.tone === "green" || statusView.tone === "gold");
+      const statusView = publicStatusView(p, freeFromMap[p.id] ?? null);
+      return isPublicListingStatus(statusView);
     });
   }, [allProperties, freeFromMap]);
 
@@ -205,7 +184,7 @@ function RentPage() {
           </h1>
           <p className="mt-3 text-base leading-relaxed text-site-muted">
             Актуальные квартиры, апартаменты, дома и виллы в долгосрочную аренду. Подберём объект в нужном
-            комплексе и районе, покажем и сопровождим на весь срок.
+            комплексе и районе, покажем и сопроводим на весь срок аренды.
           </p>
         </header>
         {complexLinks.length > 0 ? (

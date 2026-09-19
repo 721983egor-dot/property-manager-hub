@@ -1,15 +1,14 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { ComplexPublicPage } from "@/components/site/ComplexPublicPage";
-import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import {
   publicComplexBySlugQueryOptions,
+  publicFreeFromQueryOptions,
   publishedPropertiesQueryOptions,
 } from "@/lib/public-catalog.functions";
-import { publicStatusView } from "@/lib/properties";
-import { addDays, parseISODate, toISODate } from "@/lib/rentals";
+import { isPublicListingStatus, publicStatusView } from "@/lib/properties";
 import {
   complexJsonLd,
   complexMetaDescription,
@@ -28,6 +27,7 @@ export const Route = createFileRoute("/rent/jk/$slug")({
       .catch(() => null);
     if (!payload) throw notFound();
     const properties = await context.queryClient.ensureQueryData(publishedPropertiesQueryOptions());
+    await context.queryClient.ensureQueryData(publicFreeFromQueryOptions());
     const count = properties.filter((p) => p.complex_id === payload.complex.id).length;
     return { complex: payload.complex, count };
   },
@@ -66,35 +66,20 @@ function ComplexLandingPage() {
   const { slug } = Route.useParams();
   const { data } = useSuspenseQuery(publicComplexBySlugQueryOptions(slug));
   const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
+  const { data: freeFromMap = {} } = useSuspenseQuery(publicFreeFromQueryOptions());
   const { complex, complexes } = data;
   const canonicalSlug = complexSlug(complex, complexes);
 
-  const todayIso = useMemo(() => toISODate(new Date()), []);
   const inComplex = useMemo(
     () => allProperties.filter((p) => p.complex_id === complex.id),
     [allProperties, complex.id],
   );
-  const propertyIds = useMemo(() => inComplex.map((p) => p.id), [inComplex]);
-
-  const { data: bookingsMap = {} } = useQuery({
-    queryKey: ["current-bookings", propertyIds.join("|"), todayIso],
-    queryFn: () => fetchCurrentBookingsForProperties(propertyIds, todayIso),
-    enabled: propertyIds.length > 0,
-  });
-
-  const freeFromMap = useMemo(() => {
-    const map: Record<string, string | null> = {};
-    for (const [propertyId, booking] of Object.entries(bookingsMap)) {
-      map[propertyId] = toISODate(addDays(parseISODate(booking.end_date), 1));
-    }
-    return map;
-  }, [bookingsMap]);
 
   const visible = useMemo(
     () =>
       inComplex.filter((p) => {
         const view = publicStatusView(p, freeFromMap[p.id] ?? null);
-        return view && (view.tone === "green" || view.tone === "gold");
+        return isPublicListingStatus(view);
       }),
     [inComplex, freeFromMap],
   );

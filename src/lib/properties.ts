@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getStaffProperty, listStaffProperties } from "@/lib/staff-data.functions";
 import { asPortfolio, type Portfolio } from "@/lib/portfolios";
+import { parseISODate, toISODate } from "@/lib/rentals";
 
 export type PropertyType = "apartment" | "aparts" | "house" | "villa" | "townhouse";
 
@@ -621,9 +622,9 @@ export function publicStatusView(
   if (p.status === "booked") return { text: "Объект забронирован", tone: "yellow" };
   if (p.status === "rented") {
     if ((p.service_type ?? "management") === "management" && freeFromIso) {
-      const days = Math.ceil(
-        (new Date(`${freeFromIso}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) /
-          86400000,
+      const today = toISODate(new Date());
+      const days = Math.round(
+        (parseISODate(freeFromIso).getTime() - parseISODate(today).getTime()) / 86400000,
       );
       if (days >= 0 && days < 30) {
         return { text: `Освободится с ${formatDateLongRu(freeFromIso)}`, tone: "gold" };
@@ -632,6 +633,10 @@ export function publicStatusView(
     return { text: "Объект сдан", tone: "red" };
   }
   return null;
+}
+
+export function isPublicListingStatus(view: PublicStatusView) {
+  return view?.tone === "green" || view?.tone === "gold";
 }
 
 export const STATUS_TONE_CLASS: Record<"green" | "red" | "yellow" | "gold", string> = {

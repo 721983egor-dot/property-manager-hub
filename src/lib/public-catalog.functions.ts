@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type { Complex } from "@/lib/complexes";
 import type { Property, PropertyPhoto } from "@/lib/properties";
+import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 import { complexSlug } from "@/lib/seo";
 
 function num(value: unknown): number | null {
@@ -110,6 +111,34 @@ export function publicComplexesQueryOptions() {
   return queryOptions({
     queryKey: ["public-complexes"],
     queryFn: () => listPublicComplexes(),
+  });
+}
+
+/** Даты «свободно с» для опубликованных объектов: конец текущей аренды + 1 день. Без персональных данных. */
+export async function loadPublicFreeFromDates(): Promise<Record<string, string>> {
+  const today = toISODate(new Date());
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("bookings")
+    .select("property_id, end_date")
+    .neq("status", "cancelled")
+    .lte("start_date", today)
+    .gte("end_date", today);
+  if (error) throw new Error(error.message);
+  const map: Record<string, string> = {};
+  for (const row of data ?? []) {
+    if (!row.property_id || !row.end_date) continue;
+    map[row.property_id] = toISODate(addDays(parseISODate(row.end_date), 1));
+  }
+  return map;
+}
+
+export const listPublicFreeFromDates = createServerFn({ method: "POST" }).handler(loadPublicFreeFromDates);
+
+export function publicFreeFromQueryOptions() {
+  return queryOptions({
+    queryKey: ["public-free-from"],
+    queryFn: () => listPublicFreeFromDates(),
   });
 }
 

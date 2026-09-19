@@ -7,14 +7,13 @@ import { SITE_ORIGIN } from "@/lib/site";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { type Property } from "@/lib/properties";
 import { propertyJsonLd, propertyMetaDescription, propertyMetaTitle, propertySlug, propertyUrl, jsonLdScript, publicPhotoUrl } from "@/lib/seo";
-import { fetchCurrentBooking, fetchCurrentBookingsForProperties } from "@/lib/bookings";
 import { publicPropertyQueryOptions } from "@/lib/public-property.functions";
 import {
   publicComplexQueryOptions,
+  publicFreeFromQueryOptions,
   publishedPropertiesQueryOptions,
 } from "@/lib/public-catalog.functions";
 import { pickSimilarProperties } from "@/lib/rent-search";
-import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 
 export const Route = createFileRoute("/rent/$id")({
   loader: async ({ params, context }) => {
@@ -40,6 +39,7 @@ export const Route = createFileRoute("/rent/$id")({
         ? context.queryClient.ensureQueryData(publicComplexQueryOptions(typed.complex_id)).catch(() => null)
         : Promise.resolve(null),
       context.queryClient.ensureQueryData(publishedPropertiesQueryOptions()),
+      context.queryClient.ensureQueryData(publicFreeFromQueryOptions()),
     ]);
     return typed;
   },
@@ -91,19 +91,8 @@ export const Route = createFileRoute("/rent/$id")({
 function RentDetailPage() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQuery(publicPropertyQueryOptions(id));
-
-  const todayIso = toISODate(new Date());
-  const needsBooking =
-    (data.status === "rented" || data.status === "soon_free") &&
-    (data.service_type ?? "management") === "management";
-  const { data: currentBooking } = useQuery({
-    queryKey: ["current-booking", data.id, todayIso],
-    queryFn: () => fetchCurrentBooking(data.id, todayIso),
-    enabled: Boolean(needsBooking),
-  });
-  const freeFromIso = currentBooking
-    ? toISODate(addDays(parseISODate(currentBooking.end_date), 1))
-    : null;
+  const { data: freeFromMap = {} } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const freeFromIso = freeFromMap[data.id] ?? null;
 
   const complexId = data.complex_id ?? null;
   const { data: complex } = useQuery({
@@ -113,22 +102,13 @@ function RentDetailPage() {
 
   const { data: catalog = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
   const similar = useMemo(() => pickSimilarProperties(data, catalog, 3), [data, catalog]);
-  const similarIds = useMemo(() => similar.map((item) => item.id), [similar]);
-  const { data: similarBookings = {} } = useQuery({
-    queryKey: ["current-bookings", similarIds.join("|"), todayIso],
-    queryFn: () => fetchCurrentBookingsForProperties(similarIds, todayIso),
-    enabled: similarIds.length > 0,
-  });
   const similarFreeFrom = useMemo(() => {
     const map: Record<string, string | null> = {};
     for (const item of similar) {
-      const booking = similarBookings[item.id];
-      map[item.id] = booking
-        ? toISODate(addDays(parseISODate(booking.end_date), 1))
-        : null;
+      map[item.id] = freeFromMap[item.id] ?? null;
     }
     return map;
-  }, [similar, similarBookings]);
+  }, [similar, freeFromMap]);
 
   const paths = [
     ...(data.photos ?? []).map((p) => p.path),

@@ -1323,7 +1323,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getCrmDealAnalytics: tool({
       description:
-        "Аналитика CRM-сделок: сколько открытых, успешных и отказов, конверсия, источники открытых и закрытых. Фильтры: период в днях, источник, ответственный.",
+        "Аналитика CRM-сделок: сколько открытых, успешных и отказов, конверсия, общая сумма открытых и закрытых, источники закрытых. Фильтры: период в днях, источник, ответственный.",
       inputSchema: z.object({
         days: z.number().optional().describe("Период от сегодня, 0 или пусто — всё время"),
         source: z.string().optional(),
@@ -1335,7 +1335,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           admin.from("deal_stages").select("id, name, kind"),
           admin
             .from("deals")
-            .select("id, title, stage_id, source, responsible_id, created_at, updated_at, budget")
+            .select("id, title, stage_id, source, responsible_id, created_at, updated_at, budget, price_month")
             .limit(2000),
           admin.from("profiles").select("id, full_name, email"),
         ]);
@@ -1379,6 +1379,8 @@ export function createReadTools(ctx: AssistantToolContext) {
         const won = rows.filter((d) => kindByStage.get(d.stage_id) === "won");
         const lost = rows.filter((d) => kindByStage.get(d.stage_id) === "lost");
         const closed = won.length + lost.length;
+        const amount = (d: (typeof rows)[number], kind: string) =>
+          kind === "won" ? Number(d.price_month ?? d.budget ?? 0) : Number(d.budget ?? 0);
         return {
           source: "crm.deals.analytics",
           periodDays: days && days > 0 ? days : "all",
@@ -1387,7 +1389,10 @@ export function createReadTools(ctx: AssistantToolContext) {
           lost: lost.length,
           closed,
           conversionPercent: closed ? Math.round((won.length / closed) * 100) : 0,
-          openSources: bucket(open),
+          openSum: open.reduce((sum, d) => sum + amount(d, "open"), 0),
+          closedSum:
+            won.reduce((sum, d) => sum + amount(d, "won"), 0) +
+            lost.reduce((sum, d) => sum + amount(d, "lost"), 0),
           closedSources: bucket([...won, ...lost]),
         };
       },

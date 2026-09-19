@@ -5,14 +5,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/site/PropertyCard";
-import { fetchCurrentBookingsForProperties } from "@/lib/bookings";
+import { loadPublicFreeFromDates } from "@/lib/public-catalog.functions";
 import { SITE_ORIGIN } from "@/lib/site";
 import {
   fetchPublishedProperties,
   signedUrls,
   type Property,
 } from "@/lib/properties";
-import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 import { fetchSelectionByCode } from "@/lib/selections";
 
 type LoaderData = {
@@ -63,7 +62,6 @@ export const Route = createFileRoute("/p/$code")({
     };
   },
   loader: async ({ params, context }) => {
-    const todayIso = toISODate(new Date());
     const selection = await context.queryClient.ensureQueryData(selectionQueryOptions(params.code));
     if (!selection || selection.items.length === 0) {
       throw notFound();
@@ -83,17 +81,10 @@ export const Route = createFileRoute("/p/$code")({
       throw notFound();
     }
 
-    const bookings = await fetchCurrentBookingsForProperties(
-      selectedProperties.map((p) => p.id),
-      todayIso,
-    );
-
+    const freeFromAll = await loadPublicFreeFromDates();
     const freeFromIso: Record<string, string> = {};
     for (const p of selectedProperties) {
-      const booking = bookings[p.id];
-      if (booking) {
-        freeFromIso[p.id] = toISODate(addDays(parseISODate(booking.end_date), 1));
-      }
+      if (freeFromAll[p.id]) freeFromIso[p.id] = freeFromAll[p.id];
     }
 
     const photoPaths = selectedProperties

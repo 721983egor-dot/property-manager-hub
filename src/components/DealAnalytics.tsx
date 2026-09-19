@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DEAL_SOURCES, type Deal, type DealStage } from "@/lib/deals";
+import { DEAL_SOURCES, formatBudget, type Deal, type DealStage } from "@/lib/deals";
 import { toISODate } from "@/lib/rentals";
 
 type Period = "all" | "7" | "30" | "90" | "365";
@@ -69,6 +69,11 @@ function sourceOf(deal: Deal) {
   return deal.source.trim() || "Не указан";
 }
 
+function dealAmount(deal: Deal, kind: "open" | "won" | "lost") {
+  if (kind === "won") return deal.price_month ?? deal.budget ?? 0;
+  return deal.budget ?? 0;
+}
+
 /** Сводка по открытым и закрытым сделкам: график, фильтры и источники. */
 export function DealAnalytics({ deals, stages, staffName }: Props) {
   const [period, setPeriod] = useState<Period>("90");
@@ -102,8 +107,14 @@ export function DealAnalytics({ deals, stages, staffName }: Props) {
   const open = filtered.filter((deal) => kindOf(deal, kindByStage) === "open");
   const won = filtered.filter((deal) => kindOf(deal, kindByStage) === "won");
   const lost = filtered.filter((deal) => kindOf(deal, kindByStage) === "lost");
-  const closed = won.length + lost.length;
+  const closedDeals = [...won, ...lost];
+  const closed = closedDeals.length;
   const conversion = closed > 0 ? Math.round((won.length / closed) * 100) : 0;
+  const openSum = open.reduce((sum, deal) => sum + dealAmount(deal, "open"), 0);
+  const closedSum = closedDeals.reduce(
+    (sum, deal) => sum + dealAmount(deal, kindOf(deal, kindByStage)),
+    0,
+  );
 
   const chart = useMemo(() => {
     const weeks = new Map<string, { week: string; open: number; won: number; lost: number }>();
@@ -118,20 +129,7 @@ export function DealAnalytics({ deals, stages, staffName }: Props) {
       .map((row) => ({ ...row, label: formatWeek(row.week) }));
   }, [filtered, kindByStage]);
 
-  const sourcesOpen = useMemo(() => countSources(open), [open]);
-  const sourcesClosed = useMemo(() => countSources([...won, ...lost]), [won, lost]);
-  const sourceRows = useMemo(() => {
-    const names = [...new Set([...sourcesOpen.map((item) => item.name), ...sourcesClosed.map((item) => item.name)])];
-    const openMap = new Map(sourcesOpen.map((item) => [item.name, item.count]));
-    const closedMap = new Map(sourcesClosed.map((item) => [item.name, item.count]));
-    return names
-      .map((name) => ({
-        name,
-        open: openMap.get(name) ?? 0,
-        closed: closedMap.get(name) ?? 0,
-      }))
-      .sort((a, b) => b.open + b.closed - (a.open + a.closed));
-  }, [sourcesOpen, sourcesClosed]);
+  const sourcesClosed = useMemo(() => countSources(closedDeals), [closedDeals]);
 
   const staffOptions = useMemo(() => {
     const ids = [...new Set(deals.map((deal) => deal.responsible_id).filter(Boolean))] as string[];
@@ -203,10 +201,12 @@ export function DealAnalytics({ deals, stages, staffName }: Props) {
         </Select>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Открытые" value={open.length} hint="сейчас в работе" />
+        <StatCard label="Сумма открытых" value={formatBudget(openSum)} hint="бюджет клиентов в работе" />
         <StatCard label="Успешные" value={won.length} hint="закрыты с договором" />
         <StatCard label="Отказы" value={lost.length} hint="закрыты без сделки" />
+        <StatCard label="Сумма закрытых" value={formatBudget(closedSum)} hint="успешные — цена в месяц, отказы — бюджет" />
         <StatCard label="Конверсия" value={`${conversion}%`} hint="успешные среди закрытых" />
       </div>
 
@@ -236,29 +236,25 @@ export function DealAnalytics({ deals, stages, staffName }: Props) {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <SourceTable title="Источники открытых сделок" rows={sourcesOpen} />
         <SourceTable title="Источники закрытых сделок" rows={sourcesClosed} />
-      </div>
-
-      <div className="rounded-lg border border-border bg-background p-4">
-        <h2 className="text-sm font-semibold">Источники: открытые и закрытые</h2>
-        {sourceRows.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Источников пока нет.</p>
-        ) : (
-          <div className="mt-3 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sourceRows}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="open" name="Открытые" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="closed" name="Закрытые" fill="#0f766e" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <div className="rounded-lg border border-border bg-background p-4">
+          <h2 className="text-sm font-semibold">График по источникам</h2>
+          {sourcesClosed.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">Источников пока нет.</p>
+          ) : (
+            <div className="mt-3 h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sourcesClosed}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="count" name="Закрытые" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
