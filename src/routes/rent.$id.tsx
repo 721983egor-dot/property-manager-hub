@@ -7,6 +7,7 @@ import { SITE_ORIGIN } from "@/lib/site";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { type Property, isPublicListingStatus, publicStatusView } from "@/lib/properties";
 import { propertyJsonLd, propertyMetaDescription, propertyMetaTitle, propertySlug, propertyUrl, jsonLdScript, publicPhotoUrl } from "@/lib/seo";
+import { storedVideoPath } from "@/lib/property-video";
 import { publicPropertyQueryOptions } from "@/lib/public-property.functions";
 import {
   publicComplexQueryOptions,
@@ -135,6 +136,8 @@ function RentDetailPage() {
 
   const paths = [
     ...(data.photos ?? []).map((p) => p.path),
+    ...(storedVideoPath(data.video_file_path) ? [storedVideoPath(data.video_file_path)!] : []),
+    ...(storedVideoPath(data.video_url) ? [storedVideoPath(data.video_url)!] : []),
     ...(complex?.photos ?? []).map((p) => p.path),
     ...(complex?.main_photo ? [complex.main_photo] : []),
     ...similar.flatMap((item) => (item.photos[0]?.path ? [item.photos[0].path] : [])),

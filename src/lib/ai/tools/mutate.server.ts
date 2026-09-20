@@ -49,7 +49,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposePropertyUpdate: tool({
       description:
-        "Предложить изменение полей объекта: публичное название, ВНУТРЕННЕЕ название, адрес, тип, комнаты, площадь, этаж, цена, статус, депозит, комиссия (%), коммунальные, описание, условия аренды, заметка о доступности, комплекс.",
+        "Предложить изменение полей объекта: публичное название, ВНУТРЕННЕЕ название, адрес, тип, комнаты, площадь, этаж, цена, статус, депозит, комиссия (%), коммунальные, описание, условия аренды, заметка о доступности, комплекс, ссылка на видео (лучше Rutube — его принимают ЦИАН, Авито и Яндекс).",
       inputSchema: z.object({
         ref: z.string(),
         title: z.string().optional(),
@@ -70,6 +70,10 @@ export function createMutateTools(ctx: AssistantToolContext) {
         description: z.string().optional(),
         rentTerms: z.string().optional(),
         availabilityNote: z.string().optional(),
+        videoUrl: z
+          .string()
+          .optional()
+          .describe("Ссылка Rutube / VK / YouTube или пустая строка, чтобы убрать видео"),
       }),
       execute: async ({ ref, ...fields }) => {
         const p = await label(ref);
@@ -94,9 +98,24 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (fields.description) parts.push("новое описание");
         if (fields.rentTerms) parts.push("новые условия аренды");
         if (fields.availabilityNote) parts.push("заметка о доступности");
+        if (fields.videoUrl != null)
+          parts.push(fields.videoUrl.trim() ? "ссылка на видео" : "убрать видео");
         if (!parts.length) return { error: "Не указано ни одного изменения" };
         const summary = `Изменить «${p.text}»: ${parts.join(", ")}`;
         ctx.propose({ tool: "updateProperty", summary, input: { propertyId: p.id, fields } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposePublishPropertyVideo: tool({
+      description:
+        "Предложить повторную выгрузку видео объекта на Rutube, VK Видео и YouTube. Ссылка Rutube затем идёт в фиды ЦИАН, Авито и Яндекс.",
+      inputSchema: z.object({ ref: z.string() }),
+      execute: async ({ ref }) => {
+        const p = await label(ref);
+        if (!p) return { error: "Объект не найден" };
+        const summary = `Выгрузить видео «${p.text}» на Rutube, VK и YouTube`;
+        ctx.propose({ tool: "publishPropertyVideo", summary, input: { propertyId: p.id } });
         return { proposed: true, summary };
       },
     }),

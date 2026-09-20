@@ -1,11 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { PropertyForm } from "@/components/PropertyForm";
 import { fetchProperty, updateProperty, type PropertyInput } from "@/lib/properties";
+import { storedVideoPath } from "@/lib/property-video";
+import { publishPropertyVideoFn } from "@/lib/video-hosts.functions";
 
 export const Route = createFileRoute("/_authenticated/objects/$id/edit")({
   head: () => ({
@@ -42,8 +45,21 @@ function EditObjectPage() {
     queryFn: () => fetchProperty(id),
   });
 
+  const publishVideo = useServerFn(publishPropertyVideoFn);
+
   const mutation = useMutation({
-    mutationFn: (input: PropertyInput) => updateProperty(id, input),
+    mutationFn: async (input: PropertyInput) => {
+      await updateProperty(id, input);
+      const path = storedVideoPath(input.video_url) || storedVideoPath(input.video_file_path);
+      const sameFile = Boolean(data && path && data.video_file_path === path);
+      const already = sameFile && data?.video_publish_status === "published";
+      if (path && !already) {
+        toast.message("Видео уходит на Rutube, VK и YouTube");
+        void publishVideo({ data: { propertyId: id, filePath: path } }).catch((e: Error) =>
+          toast.error(e.message),
+        );
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       toast.success("Изменения сохранены");

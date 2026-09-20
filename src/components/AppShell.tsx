@@ -200,6 +200,10 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
                 <MessageCircle className="size-4 shrink-0" />
                 Мессенджеры
               </Link>
+              <Link to="/system/video" onClick={onNavigate} className={NAV_LINK_CLASS}>
+                <Share2 className="size-4 shrink-0" />
+                Видеоканалы
+              </Link>
               <Link to="/system/quick-replies" onClick={onNavigate} className={NAV_LINK_CLASS}>
                 <Zap className="size-4 shrink-0" />
                 Быстрые ответы

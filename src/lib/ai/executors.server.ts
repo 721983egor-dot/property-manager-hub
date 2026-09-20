@@ -156,6 +156,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (f["description"] != null) patch["description"] = f["description"];
     if (f["rentTerms"] != null) patch["rent_terms"] = f["rentTerms"];
     if (f["availabilityNote"] != null) patch["availability_note"] = f["availabilityNote"];
+    if (f["videoUrl"] != null) patch["video_url"] = String(f["videoUrl"]).trim();
     if (!Object.keys(patch).length) throw new Error("Нет изменений");
     const { error } = await supabaseAdmin
       .from("properties")
@@ -163,6 +164,19 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       .eq("id", propertyId);
     if (error) throw new Error(error.message);
     return "Объект обновлён";
+  },
+
+  publishPropertyVideo: async (input) => {
+    const propertyId = must(input["propertyId"] as string, "Не указан объект");
+    const { publishPropertyVideoToHosts } = await import("@/lib/video-hosts.server");
+    const result = await publishPropertyVideoToHosts(propertyId);
+    const parts = [
+      result.rutubeUrl ? `Rutube ${result.rutubeUrl}` : "",
+      result.vkUrl ? `VK ${result.vkUrl}` : "",
+      result.youtubeUrl ? `YouTube ${result.youtubeUrl}` : "",
+    ].filter(Boolean);
+    if (result.errors.length) parts.push(`ошибки: ${result.errors.join("; ")}`);
+    return parts.length ? parts.join(". ") : "Выгрузка завершена";
   },
 
   createProperty: async (input) => {

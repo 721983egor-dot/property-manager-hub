@@ -153,6 +153,7 @@ export function createReadTools(ctx: AssistantToolContext) {
             priceMonth: r["price_month"],
             commission: r["commission"],
             published: r["published"],
+            hasVideo: Boolean(String(r["video_url"] ?? "").trim()),
             portfolio: r["portfolio"] ?? "rm",
             createdAt: r["created_at"],
           });
@@ -225,6 +226,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           label: propertyLabel(p as { ref_id: number; title: string; internal_name?: string | null }),
           ...p,
           photosCount: Array.isArray(p["photos"]) ? (p["photos"] as unknown[]).length : 0,
+          hasVideo: Boolean(String(p["video_url"] ?? "").trim()),
           photos: undefined,
           listings: listings ?? [],
           bookings: (bookings ?? []).map((b) => ({
@@ -235,6 +237,29 @@ export function createReadTools(ctx: AssistantToolContext) {
           rentals: rentals ?? [],
           missingForCian: missingCianFields(p as never),
           missingForYandex: missingYandexFields(p as never),
+        };
+      },
+    }),
+
+    getVideoHostStatus: tool({
+      description:
+        "Статус видеоканалов объекта и подключены ли Rutube, VK, YouTube. Ролик с карточки выгружается туда с описанием и контактами, ссылка Rutube идёт на ЦИАН/Авито/Яндекс.",
+      inputSchema: z.object({ ref: z.string().optional() }),
+      execute: async ({ ref }) => {
+        const { loadVideoHostSettings, publicVideoHostStatus } = await import("@/lib/video-hosts.server");
+        const hosts = publicVideoHostStatus(await loadVideoHostSettings());
+        if (!ref) return { hosts };
+        const p = await ctx.findProperty(ref);
+        if (!p) return { hosts, error: "Объект не найден" };
+        return {
+          hosts,
+          property: propertyLabel(p as { ref_id: number; title: string; internal_name?: string | null }),
+          videoUrl: p["video_url"],
+          file: Boolean(String(p["video_file_path"] ?? "").trim()),
+          vkUrl: p["video_vk_url"],
+          youtubeUrl: p["video_youtube_url"],
+          status: p["video_publish_status"],
+          error: p["video_publish_error"],
         };
       },
     }),

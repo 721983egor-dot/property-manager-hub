@@ -6,6 +6,7 @@
 import { missingYandexFields } from "@/lib/yandex";
 import type { Property } from "@/lib/properties";
 import { feedPhotoUrl } from "@/lib/cian-feed.server";
+import { yandexFeedVideoReview } from "@/lib/property-video";
 import { propertyPath } from "@/lib/seo";
 
 type Row = Record<string, unknown>;
@@ -104,6 +105,11 @@ function offerXml(property: Property, externalId: string, origin: string): strin
     .map((path) => tag("image", feedPhotoUrl(origin, path)))
     .join("");
 
+  const review = yandexFeedVideoReview(property.video_url);
+  const videoReview = review
+    ? `<video-review>${tag(review.tag, review.url)}${tag("online-show", 1)}</video-review>`
+    : "";
+
   const coordinates =
     property.latitude != null && property.longitude != null
       ? tag("latitude", property.latitude) + tag("longitude", property.longitude)
@@ -140,7 +146,7 @@ function offerXml(property: Property, externalId: string, origin: string): strin
 
   const creationDate = new Date(property.created_at || Date.now()).toISOString();
 
-  return `<offer internal-id="${esc(externalId)}">${tag("type", "аренда")}${tag("property-type", "жилая")}${tag("category", yandexCategory(property.type))}${tag("creation-date", creationDate)}${tag("url", `${origin}${propertyPath(property)}`)}${location}${salesAgent}${price}${tag("deal-status", "аренда")}${deposit}${utilitiesIncluded}${area}${rooms}${floors}${lotArea}${images}${tag("description", property.description)}</offer>`;
+  return `<offer internal-id="${esc(externalId)}">${tag("type", "аренда")}${tag("property-type", "жилая")}${tag("category", yandexCategory(property.type))}${tag("creation-date", creationDate)}${tag("url", `${origin}${propertyPath(property)}`)}${location}${salesAgent}${price}${tag("deal-status", "аренда")}${deposit}${utilitiesIncluded}${area}${rooms}${floors}${lotArea}${images}${videoReview}${tag("description", property.description)}</offer>`;
 }
 
 /** Полный XML фида. */

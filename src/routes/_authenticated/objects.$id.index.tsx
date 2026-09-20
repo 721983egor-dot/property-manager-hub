@@ -11,6 +11,8 @@ import { YandexMap } from "@/components/YandexMap";
 import { fetchStaffCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib/bookings";
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchStaffComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
+import { PropertyVideoPlayer } from "@/components/PropertyVideoPlayer";
+import { storedVideoPath } from "@/lib/property-video";
 import {
   APPLIANCE_OPTIONS,
   BATHROOM_FEATURE_OPTIONS,
@@ -71,9 +73,12 @@ function ObjectViewPage() {
     enabled: Boolean(complexId),
   });
 
+  const videoPath =
+    storedVideoPath(data?.video_file_path) || storedVideoPath(data?.video_url);
   const complexMain = complex ? mainPhotoPath(complex) : null;
   const paths = [
     ...(data?.photos ?? []).map((p) => p.path),
+    ...(videoPath ? [videoPath] : []),
     ...(complexMain ? [complexMain] : []),
   ];
   const { data: urls = {} } = useQuery({
@@ -358,6 +363,33 @@ function ObjectViewPage() {
               </div>
             )}
           </section>
+
+          {data.video_url?.trim() || data.video_file_path ? (
+            <section className="mt-6 rounded-xl border border-border bg-card p-6">
+              <h2 className="text-base font-semibold">Видео</h2>
+              {data.video_publish_status ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {data.video_publish_status === "published"
+                    ? "Выгружено на каналы"
+                    : data.video_publish_status === "publishing" || data.video_publish_status === "pending"
+                      ? "Идёт выгрузка на Rutube, VK и YouTube"
+                      : `Ошибка выгрузки: ${data.video_publish_error || data.video_publish_status}`}
+                </p>
+              ) : null}
+              {data.video_url && /^https?:\/\//i.test(data.video_url) ? (
+                <p className="mt-1 truncate text-sm text-muted-foreground">{data.video_url}</p>
+              ) : null}
+              <div className="mt-4 overflow-hidden rounded-lg border border-border bg-muted">
+                <div className="aspect-video">
+                  <PropertyVideoPlayer
+                    videoUrl={data.video_url}
+                    fileSrc={videoPath ? urls[videoPath] : null}
+                    title={`${data.title} — видео`}
+                  />
+                </div>
+              </div>
+            </section>
+          ) : null}
         </>
       )}
     </div>

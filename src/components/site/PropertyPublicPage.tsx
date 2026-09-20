@@ -6,6 +6,8 @@ import { YandexMap } from "@/components/YandexMap";
 import { CartToggleButton } from "@/components/site/CartToggleButton";
 import { ContactMenu } from "@/components/site/ContactMenu";
 import { PropertyCard } from "@/components/site/PropertyCard";
+import { PropertyVideoPlayer } from "@/components/PropertyVideoPlayer";
+import { storedVideoPath, resolvePropertyVideo } from "@/lib/property-video";
 
 import {
   APPLIANCE_OPTIONS,
@@ -68,6 +70,8 @@ export type PublicPropertyView = Pick<
   | "rent_terms"
   | "extra_features"
   | "photos"
+  | "video_url"
+  | "video_file_path"
   | "is_apartments"
 >;
 
@@ -191,6 +195,11 @@ export function PropertyPublicPage({
   const [complexCopied, setComplexCopied] = useState(false);
 
   const photos = property.photos ?? [];
+  const videoPath = storedVideoPath(property.video_file_path) || storedVideoPath(property.video_url);
+  const videoFileSrc = videoPath
+    ? photoUrls[videoPath] || publicPhotoUrl(videoPath)
+    : null;
+  const hasVideo = Boolean(resolvePropertyVideo(property.video_url, videoFileSrc));
   const safeActive = photos.length ? Math.min(active, photos.length - 1) : 0;
   const current = photos[safeActive];
 
@@ -463,6 +472,21 @@ export function PropertyPublicPage({
 
           </div>
         </div>
+
+        {hasVideo ? (
+          <section className="mt-14">
+            <SectionTitle>Видео</SectionTitle>
+            <div className="mt-6 overflow-hidden rounded-3xl bg-site-navy-soft">
+              <div className="aspect-video">
+                <PropertyVideoPlayer
+                  videoUrl={property.video_url}
+                  fileSrc={videoFileSrc}
+                  title={`${propertyPageHeading(property)} — видео`}
+                />
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {/* ===== Характеристики ===== */}
         {hasCharacteristics ? (

@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { fetchStaffComplex } from "@/lib/complexes";
 import { fetchProperty, signedUrls } from "@/lib/properties";
+import { storedVideoPath } from "@/lib/property-video";
 
 export const Route = createFileRoute("/_authenticated/objects/$id/preview")({
   head: () => ({
@@ -45,6 +46,8 @@ function PreviewPage() {
 
   const paths = [
     ...(data?.photos ?? []).map((p) => p.path),
+    ...(storedVideoPath(data?.video_file_path) ? [storedVideoPath(data.video_file_path)!] : []),
+    ...(storedVideoPath(data?.video_url) ? [storedVideoPath(data.video_url)!] : []),
     ...(complex?.photos ?? []).map((p) => p.path),
     ...(complex?.main_photo ? [complex.main_photo] : []),
   ];

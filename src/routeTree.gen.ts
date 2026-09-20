@@ -44,6 +44,7 @@ import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenti
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
 import { Route as AuthenticatedSocialIndexRouteImport } from './routes/_authenticated/social.index'
 import { Route as AuthenticatedSystemMessengersRouteImport } from './routes/_authenticated/system.messengers'
+import { Route as AuthenticatedSystemVideoRouteImport } from './routes/_authenticated/system.video'
 import { Route as AuthenticatedSystemQuickRepliesRouteImport } from './routes/_authenticated/system.quick-replies'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
 import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authenticated/system.telegram'
@@ -64,6 +65,7 @@ import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_aut
 import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/cron/bnovo-sync'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
 import { Route as ApiPublicCronMessengerPollRouteImport } from './routes/api/public/cron/messenger-poll'
+import { Route as ApiPublicCronVideoPublishRouteImport } from './routes/api/public/cron/video-publish'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsAvitoDotxmlRouteImport } from './routes/api/public/feeds/avito[.]xml'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
@@ -258,6 +260,11 @@ const AuthenticatedSystemMessengersRoute =
     path: '/system/messengers',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemVideoRoute = AuthenticatedSystemVideoRouteImport.update({
+  id: '/system/video',
+  path: '/system/video',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSystemQuickRepliesRoute =
   AuthenticatedSystemQuickRepliesRouteImport.update({
     id: '/system/quick-replies',
@@ -372,6 +379,12 @@ const ApiPublicCronMessengerPollRoute =
     path: '/api/public/cron/messenger-poll',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronVideoPublishRoute =
+  ApiPublicCronVideoPublishRouteImport.update({
+    id: '/api/public/cron/video-publish',
+    path: '/api/public/cron/video-publish',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicFeedPhotoSplatRoute = ApiPublicFeedPhotoSplatRouteImport.update({
   id: '/api/public/feed-photo/$',
   path: '/api/public/feed-photo/$',
@@ -457,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
   '/system/messengers': typeof AuthenticatedSystemMessengersRoute
+  '/system/video': typeof AuthenticatedSystemVideoRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -481,6 +495,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/messenger-poll': typeof ApiPublicCronMessengerPollRoute
+  '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
@@ -522,6 +537,7 @@ export interface FileRoutesByTo {
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
   '/system/messengers': typeof AuthenticatedSystemMessengersRoute
+  '/system/video': typeof AuthenticatedSystemVideoRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -546,6 +562,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/messenger-poll': typeof ApiPublicCronMessengerPollRoute
+  '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
@@ -590,6 +607,7 @@ export interface FileRoutesById {
   '/_authenticated/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
   '/_authenticated/system/messengers': typeof AuthenticatedSystemMessengersRoute
+  '/_authenticated/system/video': typeof AuthenticatedSystemVideoRoute
   '/_authenticated/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
   '/_authenticated/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -614,6 +632,7 @@ export interface FileRoutesById {
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/messenger-poll': typeof ApiPublicCronMessengerPollRoute
+  '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
@@ -658,6 +677,7 @@ export interface FileRouteTypes {
     | '/promo/avito'
     | '/promo/import'
     | '/system/messengers'
+    | '/system/video'
     | '/system/quick-replies'
     | '/system/staff'
     | '/system/telegram'
@@ -682,6 +702,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/messenger-poll'
+    | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
@@ -723,6 +744,7 @@ export interface FileRouteTypes {
     | '/promo/avito'
     | '/promo/import'
     | '/system/messengers'
+    | '/system/video'
     | '/system/quick-replies'
     | '/system/staff'
     | '/system/telegram'
@@ -747,6 +769,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/messenger-poll'
+    | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
@@ -790,6 +813,7 @@ export interface FileRouteTypes {
     | '/_authenticated/promo/avito'
     | '/_authenticated/promo/import'
     | '/_authenticated/system/messengers'
+    | '/_authenticated/system/video'
     | '/_authenticated/system/quick-replies'
     | '/_authenticated/system/staff'
     | '/_authenticated/system/telegram'
@@ -814,6 +838,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/messenger-poll'
+    | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
@@ -851,6 +876,7 @@ export interface RootRouteChildren {
   ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
   ApiPublicCronMessengerPollRoute: typeof ApiPublicCronMessengerPollRoute
+  ApiPublicCronVideoPublishRoute: typeof ApiPublicCronVideoPublishRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsAvitoDotxmlRoute: typeof ApiPublicFeedsAvitoDotxmlRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
@@ -1110,6 +1136,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemMessengersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system/video': {
+      id: '/_authenticated/system/video'
+      path: '/system/video'
+      fullPath: '/system/video'
+      preLoaderRoute: typeof AuthenticatedSystemVideoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/system/quick-replies': {
       id: '/_authenticated/system/quick-replies'
       path: '/system/quick-replies'
@@ -1250,6 +1283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronMessengerPollRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/video-publish': {
+      id: '/api/public/cron/video-publish'
+      path: '/api/public/cron/video-publish'
+      fullPath: '/api/public/cron/video-publish'
+      preLoaderRoute: typeof ApiPublicCronVideoPublishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/feed-photo/$': {
       id: '/api/public/feed-photo/$'
       path: '/api/public/feed-photo/$'
@@ -1334,6 +1374,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPromoAvitoRoute: typeof AuthenticatedPromoAvitoRoute
   AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
   AuthenticatedSystemMessengersRoute: typeof AuthenticatedSystemMessengersRoute
+  AuthenticatedSystemVideoRoute: typeof AuthenticatedSystemVideoRoute
   AuthenticatedSystemQuickRepliesRoute: typeof AuthenticatedSystemQuickRepliesRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
   AuthenticatedSystemTelegramRoute: typeof AuthenticatedSystemTelegramRoute
@@ -1369,6 +1410,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPromoAvitoRoute: AuthenticatedPromoAvitoRoute,
   AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
   AuthenticatedSystemMessengersRoute: AuthenticatedSystemMessengersRoute,
+  AuthenticatedSystemVideoRoute: AuthenticatedSystemVideoRoute,
   AuthenticatedSystemQuickRepliesRoute: AuthenticatedSystemQuickRepliesRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
   AuthenticatedSystemTelegramRoute: AuthenticatedSystemTelegramRoute,
@@ -1432,6 +1474,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
   ApiPublicCronMessengerPollRoute: ApiPublicCronMessengerPollRoute,
+  ApiPublicCronVideoPublishRoute: ApiPublicCronVideoPublishRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsAvitoDotxmlRoute: ApiPublicFeedsAvitoDotxmlRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,

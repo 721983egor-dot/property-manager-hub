@@ -994,6 +994,7 @@ export type Database = {
           type: Database["public"]["Enums"]["property_type"]
           updated_at: string
           utilities_month: number | null
+          video_url: string
           wc_location_type: string
         }
         Insert: {
@@ -1043,6 +1044,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
           utilities_month?: number | null
+          video_url?: string
           wc_location_type?: string
         }
         Update: {
@@ -1092,6 +1094,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
           utilities_month?: number | null
+          video_url?: string
           wc_location_type?: string
         }
         Relationships: [

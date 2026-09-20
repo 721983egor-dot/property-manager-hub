@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ImagePlus, Plus, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Film, ImagePlus, Plus, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,11 @@ import {
 import { ComplexForm } from "@/components/ComplexForm";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { YandexMap } from "@/components/YandexMap";
+import { PropertyVideoPlayer } from "@/components/PropertyVideoPlayer";
 import { geocodeAddress } from "@/lib/geo.functions";
 import { createComplex, fetchComplexes } from "@/lib/complexes";
 import { uploadPhotos } from "@/lib/photo-upload";
+import { storedVideoPath, resolvePropertyVideo, videoFeedCoverage } from "@/lib/property-video";
 import {
   Select,
   SelectContent,
@@ -49,6 +51,7 @@ import {
 
 
   signedUrls,
+  uploadPropertyVideo,
   type Property,
   type PropertyInput,
   type PropertyPhoto,
@@ -111,7 +114,12 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [published, setPublished] = useState(Boolean(initial?.published));
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
+  const [videoUrl, setVideoUrl] = useState(initial?.video_url ?? "");
+  const [videoLink, setVideoLink] = useState(
+    initial?.video_url && /^https?:\/\//i.test(initial.video_url) ? initial.video_url : "",
+  );
   const [uploading, setUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [priceMonth, setPriceMonth] = useState(
     initial?.price_month != null ? String(initial.price_month) : "",
   );
@@ -186,9 +194,14 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   useEffect(() => {
     if (!initial) return;
     setPhotos(initial.photos);
+    setVideoUrl(initial.video_url ?? "");
+    setVideoLink(
+      initial.video_url && /^https?:\/\//i.test(initial.video_url) ? initial.video_url : "",
+    );
   }, [initial?.id]);
 
-  const paths = photos.map((p) => p.path);
+  const videoPath = storedVideoPath(videoUrl);
+  const paths = [...photos.map((p) => p.path), ...(videoPath ? [videoPath] : [])];
   const { data: urls = {} } = useQuery({
     queryKey: ["photo-urls", paths.slice().sort().join("|")],
     queryFn: () => signedUrls(paths),
@@ -225,6 +238,41 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     } finally {
       setUploading(false);
     }
+  };
+
+  const applyVideoLink = () => {
+    const value = videoLink.trim();
+    if (!value) {
+      toast.error("Вставьте ссылку на видео");
+      return;
+    }
+    if (!resolvePropertyVideo(value, value)) {
+      toast.error("Нужна ссылка YouTube, VK, Rutube или прямой файл .mp4");
+      return;
+    }
+    setVideoUrl(value);
+    toast.success("Ссылка на видео добавлена");
+  };
+
+  const handleVideoFile = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    setVideoUploading(true);
+    try {
+      const uploaded = await uploadPropertyVideo(file);
+      setVideoUrl(uploaded.path);
+      setVideoLink("");
+      toast.success("Видео загружено с логотипом в углу");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось загрузить видео");
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  const clearVideo = () => {
+    setVideoUrl("");
+    setVideoLink("");
   };
 
   const move = (index: number, dir: -1 | 1) => {
@@ -306,6 +354,10 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       status,
       description,
       photos,
+      video_url: videoUrl.trim(),
+      video_file_path: videoUrl.trim()
+        ? storedVideoPath(videoUrl) || initial?.video_file_path || ""
+        : "",
       published,
       price_month: toNum(priceMonth),
       seasonal_pricing: seasonal,
@@ -1070,6 +1122,77 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
         </div>
       </section>
 
+      <section className="rounded-xl border border-border bg-card p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold">
+              Видео
+              <PlatformBadges platforms={["ЯН", "Авито", "ЦИАН"]} />
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Видео уйдёт на Rutube, VK и YouTube с описанием, хештегами и контактами Residence More.
+              На ролик ставится логотип в правом нижнем углу. Ссылка Rutube подставится в ЦИАН, Авито и
+              Яндекс.Недвижимость. Если видео нет, на сайте пустой плеер не появится. Каналы подключаются
+              в Настройках → Видеоканалы.
+            </p>
+          </div>
+          <Button type="button" variant="outline" asChild disabled={videoUploading}>
+            <label className="cursor-pointer">
+              <Film className="size-4" />
+              {videoUploading ? "Загрузка..." : "Загрузить файл"}
+              <input
+                type="file"
+                accept="video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
+                className="hidden"
+                onChange={(e) => {
+                  void handleVideoFile(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </Button>
+        </div>
+
+        {videoUrl.trim() ? (
+          <div className="mt-5 overflow-hidden rounded-lg border border-border">
+            <div className="aspect-video bg-muted">
+              <PropertyVideoPlayer
+                videoUrl={videoUrl}
+                fileSrc={videoPath ? urls[videoPath] : null}
+                title="Видео объекта"
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+              <p className="min-w-0 truncate text-sm text-muted-foreground">
+                {/^https?:\/\//i.test(videoUrl) ? videoUrl : "Файл загружен в хранилище"}
+              </p>
+              <Button type="button" variant="ghost" size="sm" onClick={clearVideo}>
+                <Trash2 className="size-4 text-destructive" />
+                Удалить
+              </Button>
+            </div>
+            <p className="border-t border-border px-3 py-2 text-sm text-muted-foreground">
+              {videoCoverageHint(videoUrl)}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+            Видео не загружено — пустой плеер на сайте не появится
+          </div>
+        )}
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <Input
+            value={videoLink}
+            onChange={(e) => setVideoLink(e.target.value)}
+            placeholder="Ссылка Rutube, VK или YouTube"
+          />
+          <Button type="button" variant="secondary" onClick={applyVideoLink}>
+            Добавить ссылку
+          </Button>
+        </div>
+      </section>
+
       <Dialog open={complexDialog} onOpenChange={setComplexDialog}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
@@ -1107,6 +1230,20 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       </div>
     </form>
   );
+}
+
+function videoCoverageHint(videoUrl: string) {
+  const cover = videoFeedCoverage(videoUrl);
+  const yes = ["сайт", cover.cian ? "ЦИАН" : "", cover.avito ? "Авито" : "", cover.yandex ? "Яндекс" : ""].filter(
+    Boolean,
+  );
+  const no = [
+    cover.cian ? "" : "ЦИАН",
+    cover.avito ? "" : "Авито",
+    cover.yandex ? "" : "Яндекс",
+  ].filter(Boolean);
+  if (no.length === 0) return `Уйдёт на ${yes.join(", ")}`;
+  return `Покажется на ${yes.join(", ")}. Не уйдёт на ${no.join(", ")} — для всех трёх площадок лучше Rutube.`;
 }
 
 function Field({

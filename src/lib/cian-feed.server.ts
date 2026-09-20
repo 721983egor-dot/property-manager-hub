@@ -5,6 +5,7 @@
  */
 
 import { cianSchemaGaps, missingCianFields } from "@/lib/cian";
+import { cianFeedVideoUrl } from "@/lib/property-video";
 import type { Property } from "@/lib/properties";
 
 type Row = Record<string, unknown>;
@@ -185,6 +186,12 @@ function photosXml(property: Property, origin: string): string {
   return items ? `<Photos>${items}</Photos>` : "";
 }
 
+function videosXml(property: Property): string {
+  const url = cianFeedVideoUrl(property.video_url);
+  if (!url) return "";
+  return `<Videos><VideoSchema>${tag("Url", url)}</VideoSchema></Videos>`;
+}
+
 function applianceFlags(property: Property): string {
   const appliances = property.appliances ?? [];
   const bath = property.bathroom_features ?? [];
@@ -260,6 +267,7 @@ function offerXml(property: Property, externalId: string, origin: string): strin
       tag("TotalArea", property.area),
       property.wc_location_type ? tag("WcLocationType", property.wc_location_type) : tag("WcLocationType", "indoors"),
       photos,
+      videosXml(property),
       tag("RepairType", repairType(property)),
       applianceFlags(property),
       buildingXml(property, true),
@@ -287,6 +295,7 @@ function offerXml(property: Property, externalId: string, origin: string): strin
     jk,
     balconyTags(property),
     photos,
+    videosXml(property),
     tag("RepairType", repairType(property)),
     applianceFlags(property),
     buildingXml(property, false),

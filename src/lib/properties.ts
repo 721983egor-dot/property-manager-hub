@@ -46,6 +46,12 @@ export type Property = {
   status: PropertyStatus;
   description: string;
   photos: PropertyPhoto[];
+  video_url: string;
+  video_file_path: string;
+  video_vk_url: string;
+  video_youtube_url: string;
+  video_publish_status: string;
+  video_publish_error: string;
   price_month: number | null;
   seasonal_pricing: boolean;
   summer_price_month: number | null;
@@ -347,6 +353,15 @@ function normalize(row: Record<string, unknown>): Property {
   return {
     ...(row as unknown as Property),
     photos,
+    video_url: typeof row["video_url"] === "string" ? (row["video_url"] as string) : "",
+    video_file_path: typeof row["video_file_path"] === "string" ? (row["video_file_path"] as string) : "",
+    video_vk_url: typeof row["video_vk_url"] === "string" ? (row["video_vk_url"] as string) : "",
+    video_youtube_url:
+      typeof row["video_youtube_url"] === "string" ? (row["video_youtube_url"] as string) : "",
+    video_publish_status:
+      typeof row["video_publish_status"] === "string" ? (row["video_publish_status"] as string) : "",
+    video_publish_error:
+      typeof row["video_publish_error"] === "string" ? (row["video_publish_error"] as string) : "",
     published: Boolean(row['published']),
     latitude: num(row['latitude']),
     longitude: num(row['longitude']),
@@ -449,6 +464,8 @@ export type PropertyInput = {
   status: PropertyStatus;
   description: string;
   photos: PropertyPhoto[];
+  video_url: string;
+  video_file_path: string;
   published: boolean;
   price_month: number | null;
   seasonal_pricing: boolean;
@@ -530,7 +547,7 @@ function isNetworkFailure(error: unknown): boolean {
 }
 
 /** Запасная загрузка через наш сервер — когда прямой запрос в хранилище не проходит. */
-async function uploadPhotoViaServer(file: File): Promise<PropertyPhoto> {
+async function uploadFileViaServer(file: File): Promise<PropertyPhoto> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Требуется вход в систему");
@@ -548,6 +565,10 @@ async function uploadPhotoViaServer(file: File): Promise<PropertyPhoto> {
     throw new Error(payload?.error || "Не удалось загрузить файл");
   }
   return { path: payload.path };
+}
+
+async function uploadPhotoViaServer(file: File): Promise<PropertyPhoto> {
+  return uploadFileViaServer(file);
 }
 
 export async function uploadPhoto(file: File): Promise<PropertyPhoto> {
@@ -574,6 +595,19 @@ export async function uploadPhoto(file: File): Promise<PropertyPhoto> {
     }
     return uploadPhotoViaServer(file);
   }
+}
+
+const VIDEO_MAX_BYTES = 80 * 1024 * 1024;
+
+/** Загружает видеообзор объекта через сервер — там ставится водяной знак. */
+export async function uploadPropertyVideo(file: File): Promise<PropertyPhoto> {
+  if (!file.type.startsWith("video/") && !/\.(mp4|m4v|mov|webm)$/i.test(file.name)) {
+    throw new Error("Нужен видеофайл MP4, MOV или WebM");
+  }
+  if (file.size > VIDEO_MAX_BYTES) {
+    throw new Error("Файл больше 80 МБ — загрузите короче или вставьте ссылку Rutube");
+  }
+  return uploadFileViaServer(file);
 }
 
 export async function signedUrls(paths: string[]): Promise<Record<string, string>> {

@@ -2,20 +2,27 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Запасной путь загрузки фото: браузер отправляет файл на наш же адрес,
- * а сервер кладёт его в хранилище. Нужен, когда прямой запрос в хранилище
- * не проходит (блокировщики, прокси, нестабильная сеть) и падает с «Failed to fetch».
+ * Запасной путь загрузки фото и видео объекта: браузер отправляет файл
+ * на наш адрес, сервер кладёт его в хранилище.
  */
 
 const BUCKET = "property-photos";
-const MAX_BYTES = 25 * 1024 * 1024;
+const PHOTO_MAX_BYTES = 25 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 80 * 1024 * 1024;
 
 const EXT_BY_TYPE: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "image/avif": "avif",
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
+  "video/x-m4v": "m4v",
 };
+
+const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "webp", "avif"]);
+const VIDEO_EXT = new Set(["mp4", "mov", "webm", "m4v"]);
 
 export const Route = createFileRoute("/api/photo-upload")({
   server: {
@@ -50,26 +57,46 @@ export const Route = createFileRoute("/api/photo-upload")({
           file = null;
         }
         if (!file) return Response.json({ error: "Файл не получен" }, { status: 400 });
-        if (file.size > MAX_BYTES) {
-          return Response.json({ error: "Файл больше 25 МБ" }, { status: 413 });
-        }
 
         const contentType = file.type || "image/jpeg";
         const ext =
           EXT_BY_TYPE[contentType] ?? (file.name.split(".").pop() || "jpg").toLowerCase();
-        if (!Object.values(EXT_BY_TYPE).includes(ext)) {
+        const isVideo = VIDEO_EXT.has(ext);
+        if (!IMAGE_EXT.has(ext) && !isVideo) {
           return Response.json({ error: "Неподдерживаемый формат" }, { status: 400 });
         }
+        const maxBytes = isVideo ? VIDEO_MAX_BYTES : PHOTO_MAX_BYTES;
+        if (file.size > maxBytes) {
+          return Response.json(
+            { error: isVideo ? "Файл больше 80 МБ" : "Файл больше 25 МБ" },
+            { status: 413 },
+          );
+        }
 
-        const path = `uploads/${crypto.randomUUID()}.${ext}`;
+        let body: ArrayBuffer | Buffer = await file.arrayBuffer();
+        let outType = contentType;
+        let outExt = ext;
+        let watermarked = false;
+        if (isVideo) {
+          try {
+            const { watermarkVideoBytes } = await import("@/lib/video-watermark.server");
+            const marked = await watermarkVideoBytes(body);
+            body = marked.bytes;
+            outType = marked.contentType;
+            outExt = "mp4";
+            watermarked = true;
+          } catch (error) {
+            console.error("video watermark skipped", error);
+          }
+        }
+
+        const path = `uploads/${crypto.randomUUID()}${watermarked ? "-wm" : ""}.${outExt}`;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { error } = await supabaseAdmin.storage
-          .from(BUCKET)
-          .upload(path, await file.arrayBuffer(), {
-            cacheControl: "3600",
-            upsert: false,
-            contentType,
-          });
+        const { error } = await supabaseAdmin.storage.from(BUCKET).upload(path, body, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: outType,
+        });
         if (error) {
           return Response.json({ error: error.message }, { status: 400 });
         }

@@ -16,6 +16,9 @@ const CONTENT_TYPES: Record<string, string> = {
   webp: "image/webp",
   avif: "image/avif",
   mp4: "video/mp4",
+  m4v: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
 };
 
 export const Route = createFileRoute("/api/public/feed-photo/$")({
