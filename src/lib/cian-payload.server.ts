@@ -34,7 +34,9 @@ export async function buildCianOfferPayload(property: Row) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const photos = Array.isArray(property["photos"]) ? (property["photos"] as Row[]) : [];
-  const paths = photos.map((p) => str(p["path"])).filter(Boolean);
+  const paths = photos
+    .map((p) => str(p["path"]))
+    .filter((path) => path && !/\.(mp4|m4v|mov|webm)$/i.test(path));
 
   let photoUrls: string[] = [];
   if (paths.length > 0) {

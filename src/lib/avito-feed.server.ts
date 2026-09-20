@@ -183,7 +183,7 @@ function appliancesXml(property: Property): string {
 function imagesXml(property: Property, origin: string): string {
   const items = (property.photos ?? [])
     .map((photo) => photo.path)
-    .filter(Boolean)
+    .filter((path) => path && !/\.(mp4|m4v|mov|webm)$/i.test(path))
     .slice(0, 40)
     .map((path) => `<Image url="${esc(feedPhotoUrl(origin, path))}"></Image>`)
     .join("");

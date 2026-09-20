@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 
 import type { Complex } from "@/lib/complexes";
-import type { Property, PropertyPhoto } from "@/lib/properties";
+import { splitPropertyMedia, type Property, type PropertyPhoto } from "@/lib/properties";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 import { complexSlug } from "@/lib/seo";
 
@@ -15,7 +15,7 @@ function num(value: unknown): number | null {
 function normalizeProperty(row: Record<string, unknown>): Property {
   return {
     ...(row as unknown as Property),
-    photos: Array.isArray(row["photos"]) ? (row["photos"] as PropertyPhoto[]) : [],
+    photos: Array.isArray(row["photos"]) ? splitPropertyMedia(row["photos"] as PropertyPhoto[]).images : [],
     published: Boolean(row["published"]),
     outdoor_spaces: Array.isArray(row["outdoor_spaces"]) ? (row["outdoor_spaces"] as string[]) : [],
     appliances: Array.isArray(row["appliances"]) ? (row["appliances"] as string[]) : [],
@@ -45,7 +45,7 @@ function normalizeProperty(row: Record<string, unknown>): Property {
 function normalizeComplex(row: Record<string, unknown>): Complex {
   return {
     ...(row as unknown as Complex),
-    photos: Array.isArray(row["photos"]) ? (row["photos"] as PropertyPhoto[]) : [],
+    photos: Array.isArray(row["photos"]) ? splitPropertyMedia(row["photos"] as PropertyPhoto[]).images : [],
     infrastructure: Array.isArray(row["infrastructure"]) ? (row["infrastructure"] as string[]) : [],
     main_photo: typeof row["main_photo"] === "string" ? (row["main_photo"] as string) : null,
     description: typeof row["description"] === "string" ? (row["description"] as string) : "",

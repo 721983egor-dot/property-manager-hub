@@ -12,7 +12,26 @@ export function isHouseType(type: PropertyType) {
 }
 export type PropertyStatus = "free" | "soon_free" | "rented" | "booked" | "archived";
 
-export type PropertyPhoto = { path: string };
+export type PropertyPhoto = { path: string; kind?: "photo" | "video" };
+
+export function isPropertyVideoPath(path: string) {
+  return /\.(mp4|m4v|mov|webm)$/i.test(path) || /-(wm|glass)\./i.test(path);
+}
+
+export function splitPropertyMedia(photos: PropertyPhoto[] | null | undefined) {
+  const list = Array.isArray(photos) ? photos : [];
+  const images: PropertyPhoto[] = [];
+  let videoPath = "";
+  for (const photo of list) {
+    if (!photo?.path) continue;
+    if (photo.kind === "video" || isPropertyVideoPath(photo.path)) {
+      if (!videoPath) videoPath = photo.path;
+      continue;
+    }
+    images.push({ path: photo.path });
+  }
+  return { images, videoPath };
+}
 
 /** Тип услуги — только для внутренних экранов RM OS. */
 export type ServiceType = "management" | "commission_only";
@@ -349,12 +368,15 @@ function num(value: unknown): number | null {
 }
 
 function normalize(row: Record<string, unknown>): Property {
-  const photos = Array.isArray(row['photos']) ? (row['photos'] as PropertyPhoto[]) : [];
+  const split = splitPropertyMedia(Array.isArray(row["photos"]) ? (row["photos"] as PropertyPhoto[]) : []);
+  const videoUrl = typeof row["video_url"] === "string" ? (row["video_url"] as string) : "";
+  const filePath =
+    typeof row["video_file_path"] === "string" ? (row["video_file_path"] as string) : "";
   return {
     ...(row as unknown as Property),
-    photos,
-    video_url: typeof row["video_url"] === "string" ? (row["video_url"] as string) : "",
-    video_file_path: typeof row["video_file_path"] === "string" ? (row["video_file_path"] as string) : "",
+    photos: split.images,
+    video_url: videoUrl || split.videoPath,
+    video_file_path: filePath || split.videoPath,
     video_vk_url: typeof row["video_vk_url"] === "string" ? (row["video_vk_url"] as string) : "",
     video_youtube_url:
       typeof row["video_youtube_url"] === "string" ? (row["video_youtube_url"] as string) : "",
@@ -465,7 +487,7 @@ export type PropertyInput = {
   description: string;
   photos: PropertyPhoto[];
   video_url: string;
-  video_file_path: string;
+  video_file_path?: string;
   published: boolean;
   price_month: number | null;
   seasonal_pricing: boolean;
@@ -504,41 +526,39 @@ export const DEFAULT_RENT_TERMS = [
 
 
 export async function createProperty(input: PropertyInput) {
-  const payload = { ...input } as Record<string, unknown>;
+  const payload = propertyClientPayload(input);
   const first = await supabase.from("properties").insert(payload as never).select("id").single();
   if (!first.error) return first.data;
-  const fallback = withoutMissingVideoColumns(payload, first.error.message);
-  if (!fallback) throw first.error;
-  const retry = await supabase.from("properties").insert(fallback as never).select("id").single();
-  if (retry.error) throw retry.error;
-  return retry.data;
+  if (/video_url/i.test(first.error.message) && "video_url" in payload) {
+    delete payload.video_url;
+    const retry = await supabase.from("properties").insert(payload as never).select("id").single();
+    if (retry.error) throw new Error(retry.error.message);
+    return retry.data;
+  }
+  throw new Error(first.error.message);
 }
 
 export async function updateProperty(id: string, input: Partial<PropertyInput>) {
-  const payload = { ...input } as Record<string, unknown>;
+  const payload = propertyClientPayload(input);
   const first = await supabase.from("properties").update(payload as never).eq("id", id);
   if (!first.error) return;
-  const fallback = withoutMissingVideoColumns(payload, first.error.message);
-  if (!fallback) throw first.error;
-  const retry = await supabase.from("properties").update(fallback as never).eq("id", id);
-  if (retry.error) throw retry.error;
+  if (/video_url/i.test(first.error.message) && "video_url" in payload) {
+    delete payload.video_url;
+    const retry = await supabase.from("properties").update(payload as never).eq("id", id);
+    if (retry.error) throw new Error(retry.error.message);
+    return;
+  }
+  throw new Error(first.error.message);
 }
 
-const EXTRA_VIDEO_COLUMNS = [
-  "video_file_path",
-  "video_vk_url",
-  "video_youtube_url",
-  "video_publish_status",
-  "video_publish_error",
-] as const;
-
-function withoutMissingVideoColumns(payload: Record<string, unknown>, message: string) {
-  const lower = message.toLowerCase();
-  const extraMissing = EXTRA_VIDEO_COLUMNS.some((column) => lower.includes(column));
-  if (!extraMissing && !/schema cache|could not find/i.test(message)) return null;
-  const fallback = { ...payload };
-  for (const column of EXTRA_VIDEO_COLUMNS) delete fallback[column];
-  return fallback;
+function propertyClientPayload(input: Partial<PropertyInput>) {
+  const payload = { ...input } as Record<string, unknown>;
+  delete payload.video_file_path;
+  delete payload.video_vk_url;
+  delete payload.video_youtube_url;
+  delete payload.video_publish_status;
+  delete payload.video_publish_error;
+  return payload;
 }
 
 export async function setPropertyStatus(id: string, status: PropertyStatus) {

@@ -353,11 +353,13 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       bathrooms: Number(bathrooms),
       status,
       description,
-      photos,
+      photos: [
+        ...photos.filter((photo) => photo.kind !== "video"),
+        ...(storedVideoPath(videoUrl.trim())
+          ? [{ path: storedVideoPath(videoUrl.trim()) as string, kind: "video" as const }]
+          : []),
+      ],
       video_url: videoUrl.trim(),
-      video_file_path: videoUrl.trim()
-        ? storedVideoPath(videoUrl) || initial?.video_file_path || ""
-        : "",
       published,
       price_month: toNum(priceMonth),
       seasonal_pricing: seasonal,
