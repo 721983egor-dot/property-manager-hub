@@ -1,4 +1,3 @@
-import { drawCenteredPhotoWatermark } from "@/lib/photo-watermark";
 import { uploadPhoto, type PropertyPhoto } from "@/lib/properties";
 
 /** Длинная сторона после сжатия. */
@@ -33,7 +32,7 @@ function loadViaImage(file: File): Promise<HTMLImageElement> {
 }
 
 /** Уменьшает снимок и пережимает в JPEG, чтобы не упираться в лимит хранилища. */
-async function compressImage(file: File, watermark = false): Promise<File> {
+async function compressImage(file: File): Promise<File> {
   let width = 0;
   let height = 0;
   let source: CanvasImageSource;
@@ -53,8 +52,8 @@ async function compressImage(file: File, watermark = false): Promise<File> {
 
   try {
     const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
-    // Маленький JPEG без масштабирования — грузим как есть, если логотип не нужен.
-    if (!watermark && scale === 1 && file.type === "image/jpeg" && file.size <= 4 * 1024 * 1024) {
+    // Маленький JPEG без масштабирования — грузим как есть.
+    if (scale === 1 && file.type === "image/jpeg" && file.size <= 4 * 1024 * 1024) {
       return file;
     }
     const w = Math.max(1, Math.round(width * scale));
@@ -63,19 +62,12 @@ async function compressImage(file: File, watermark = false): Promise<File> {
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      if (watermark) throw new Error("браузер не смог подготовить фото");
-      return file;
-    }
+    if (!ctx) return file;
     ctx.drawImage(source, 0, 0, w, h);
-    if (watermark) await drawCenteredPhotoWatermark(ctx, w, h);
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
     );
-    if (!blob) {
-      if (watermark) throw new Error("не удалось сохранить фото с водяным знаком");
-      return file;
-    }
+    if (!blob) return file;
     const base = file.name.replace(/\.[^.]+$/, "");
     return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
   } finally {
@@ -115,19 +107,13 @@ export async function uploadPhotos(
     }
     // Сжатие не должно мешать загрузке: если оно не удалось, отправляем исходник.
     let prepared = file;
-    let watermarked = false;
     try {
-      prepared = await compressImage(file, Boolean(options?.watermark));
-      watermarked = Boolean(options?.watermark);
+      prepared = await compressImage(file);
     } catch {
       prepared = file;
     }
     try {
-      uploaded.push(
-        await uploadPhoto(prepared, {
-          watermark: Boolean(options?.watermark) && !watermarked,
-        }),
-      );
+      uploaded.push(await uploadPhoto(prepared, { watermark: Boolean(options?.watermark) }));
     } catch (error) {
       failures.push({ name: file.name, reason: reason(error, "не удалось загрузить файл") });
     }

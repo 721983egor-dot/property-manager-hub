@@ -1,8 +1,6 @@
-import {
-  PHOTO_WATERMARK_OPACITY,
-  PHOTO_WATERMARK_PUBLIC_PATH,
-  PHOTO_WATERMARK_WIDTH_RATIO,
-} from "@/lib/photo-watermark-style";
+import photoWatermarkUrl from "@/assets/site/photo-watermark.png";
+
+import { PHOTO_WATERMARK_OPACITY, PHOTO_WATERMARK_WIDTH_RATIO } from "@/lib/photo-watermark-style";
 
 let markImage: Promise<HTMLImageElement> | null = null;
 
@@ -10,12 +8,19 @@ function loadWatermarkImage() {
   if (!markImage) {
     markImage = new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve(img);
+      img.onload = () => {
+        if (img.naturalWidth < 8 || img.naturalHeight < 8) {
+          markImage = null;
+          reject(new Error("водяной знак пустой"));
+          return;
+        }
+        resolve(img);
+      };
       img.onerror = () => {
         markImage = null;
         reject(new Error("не удалось загрузить водяной знак"));
       };
-      img.src = PHOTO_WATERMARK_PUBLIC_PATH;
+      img.src = photoWatermarkUrl;
     });
   }
   return markImage;

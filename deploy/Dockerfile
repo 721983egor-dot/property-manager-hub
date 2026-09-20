@@ -30,6 +30,7 @@ WORKDIR /app
 COPY --from=builder /app/.output ./.output
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/public/video-watermark.png ./public/video-watermark.png
+COPY --from=builder /app/public/photo-watermark.png ./public/photo-watermark.png
 
 ENV PORT=3000
 ENV NODE_ENV=production

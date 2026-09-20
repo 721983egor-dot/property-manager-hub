@@ -99,7 +99,11 @@ export const Route = createFileRoute("/api/photo-upload")({
             outExt = "jpg";
             watermarked = true;
           } catch (error) {
-            console.error("photo watermark skipped", error);
+            console.error("photo watermark failed", error);
+            return Response.json(
+              { error: "Не удалось поставить водяной знак на фото" },
+              { status: 500 },
+            );
           }
         }
 
