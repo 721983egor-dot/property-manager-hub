@@ -254,7 +254,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getVideoHostStatus: tool({
       description:
-        "Статус видеоканалов объекта и подключены ли VK и YouTube. Выкладка на каналы только по кнопке «Выложить» или после подтверждения у Ассистента.",
+        "Статус видеоканалов объекта и подключены ли VK и YouTube. Файл с карточки при загрузке сжимается примерно до 25 МБ. Выкладка на каналы только по кнопке «Выложить» или после подтверждения у Ассистента.",
       inputSchema: z.object({ ref: z.string().optional() }),
       execute: async ({ ref }) => {
         const { loadVideoHostSettings, publicVideoHostStatus } = await import("@/lib/video-hosts.server");

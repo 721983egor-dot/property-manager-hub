@@ -14,6 +14,10 @@ const exec = promisify(execFile);
 const VIDEO_WATERMARK_WIDTH_RATIO = 0.48;
 const VIDEO_WATERMARK_MARGIN_RATIO = 0.04;
 const VIDEO_WATERMARK_OPACITY = 0.92;
+/** Длинная сторона после сжатия — хватает для сайта и телефона. */
+const VIDEO_MAX_EDGE = 1280;
+/** Целевой размер файла на сайте, чтобы ролик грузился с телефона. */
+const VIDEO_TARGET_BYTES = 25 * 1024 * 1024;
 
 function watermarkPngPath() {
   const candidates = [
@@ -117,6 +121,7 @@ async function probeVideoFile(src: string): Promise<VideoShape> {
  * Без подложки; ширина около половины кадра, чтобы знак читался.
  * Телефонные ролики с метаданными поворота разворачиваются в настоящую вертикаль —
  * иначе YouTube считает их обычным горизонтальным видео, а не Shorts.
+ * Большой исходник ужимаем до Full HD и примерно 25 МБ.
  */
 export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
   const mark = watermarkPngPath();
@@ -133,46 +138,59 @@ export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
     const alpha = VIDEO_WATERMARK_OPACITY.toFixed(2);
     const width = VIDEO_WATERMARK_WIDTH_RATIO.toFixed(2);
     const margin = VIDEO_WATERMARK_MARGIN_RATIO.toFixed(2);
+    const scale = `scale='min(${VIDEO_MAX_EDGE},iw)':'min(${VIDEO_MAX_EDGE},ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2`;
     const filters = [
-      rotate ? `[0:v]${rotate}[v0]` : "",
+      rotate ? `[0:v]${rotate},${scale}[v0]` : `[0:v]${scale}[v0]`,
       `[1:v]format=rgba,colorchannelmixer=aa=${alpha}[logo]`,
-      `[logo][${rotate ? "v0" : "0:v"}]scale2ref=w=ref_w*${width}:h=ow/mdar[wm][main]`,
+      `[logo][v0]scale2ref=w=ref_w*${width}:h=ow/mdar[wm][main]`,
       `[main][wm]overlay=W-w-W*${margin}:H-h-H*${margin}:format=auto`,
-    ].filter(Boolean);
-    await exec(
-      "ffmpeg",
-      [
-        "-y",
-        "-noautorotate",
-        "-i",
-        src,
-        "-i",
-        mark,
-        "-filter_complex",
-        filters.join(";"),
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-profile:v",
-        "main",
-        "-level",
-        "4.0",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "20",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-movflags",
-        "+faststart",
-        dest,
-      ],
-      { timeout: 300_000 },
-    );
-    return await readFile(dest);
+    ];
+    const common = [
+      "-y",
+      "-noautorotate",
+      "-i",
+      src,
+      "-i",
+      mark,
+      "-filter_complex",
+      filters.join(";"),
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "-profile:v",
+      "main",
+      "-level",
+      "4.0",
+      "-preset",
+      "veryfast",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "96k",
+      "-ac",
+      "2",
+      "-movflags",
+      "+faststart",
+    ];
+
+    const run = (extra: string[]) =>
+      exec("ffmpeg", [...common, ...extra, dest], { timeout: 420_000 });
+
+    await run(["-crf", "23", "-maxrate", "2500k", "-bufsize", "5000k"]);
+    let out = await readFile(dest);
+    if (out.byteLength > VIDEO_TARGET_BYTES) {
+      await run(["-crf", "28", "-maxrate", "1600k", "-bufsize", "3200k"]);
+      out = await readFile(dest);
+    }
+    if (out.byteLength > VIDEO_TARGET_BYTES && probed.durationSec > 1) {
+      const audioBits = 96_000 * probed.durationSec;
+      const videoBits = Math.max(400_000, (VIDEO_TARGET_BYTES * 8 * 0.92 - audioBits) / probed.durationSec);
+      const kbps = Math.max(400, Math.min(1800, Math.floor(videoBits / 1000)));
+      await run(["-b:v", `${kbps}k`, "-maxrate", `${kbps}k`, "-bufsize", `${kbps * 2}k`]);
+      out = await readFile(dest);
+    }
+    return out;
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

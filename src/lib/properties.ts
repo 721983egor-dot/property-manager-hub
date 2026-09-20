@@ -689,15 +689,15 @@ export async function uploadPhoto(
   }
 }
 
-const VIDEO_MAX_BYTES = 80 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 
-/** Загружает видеообзор объекта через сервер — там ставится водяной знак. */
+/** Загружает видеообзор объекта через сервер — там ставится водяной знак и сжатие. */
 export async function uploadPropertyVideo(file: File): Promise<PropertyPhoto> {
   if (!file.type.startsWith("video/") && !/\.(mp4|m4v|mov|webm)$/i.test(file.name)) {
     throw new Error("Нужен видеофайл MP4, MOV или WebM");
   }
   if (file.size > VIDEO_MAX_BYTES) {
-    throw new Error("Файл больше 80 МБ — загрузите короче или вставьте ссылку Rutube");
+    throw new Error("Файл больше 200 МБ — обрежьте ролик или вставьте ссылку Rutube");
   }
   return uploadFileViaServer(file);
 }

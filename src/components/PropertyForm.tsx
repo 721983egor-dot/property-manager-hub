@@ -262,7 +262,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       const uploaded = await uploadPropertyVideo(file);
       setVideoUrl(uploaded.path);
       setVideoLink("");
-      toast.success("Видео загружено с логотипом в углу");
+      toast.success("Видео загружено: логотип в углу, файл сжат для сайта");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Не удалось загрузить видео");
     } finally {
@@ -1134,8 +1134,8 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Видеофайл можно выложить на YouTube и VK кнопкой «Выложить» в карточке. На ролик ставится
-              белый логотип справа внизу. Если видео нет, пустой плеер на сайте не появится. Каналы:
-              Настройки → Видеоканалы.
+              белый логотип справа внизу, тяжёлый файл сам сожмётся примерно до 25 МБ. Если видео нет,
+              пустой плеер на сайте не появится. Каналы: Настройки → Видеоканалы.
             </p>
           </div>
           <Button type="button" variant="outline" asChild disabled={videoUploading}>

@@ -8,7 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "property-photos";
 const PHOTO_MAX_BYTES = 25 * 1024 * 1024;
-const VIDEO_MAX_BYTES = 80 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 
 const EXT_BY_TYPE: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -70,7 +70,7 @@ export const Route = createFileRoute("/api/photo-upload")({
         const maxBytes = isVideo ? VIDEO_MAX_BYTES : PHOTO_MAX_BYTES;
         if (file.size > maxBytes) {
           return Response.json(
-            { error: isVideo ? "Файл больше 80 МБ" : "Файл больше 25 МБ" },
+            { error: isVideo ? "Файл больше 200 МБ" : "Файл больше 25 МБ" },
             { status: 413 },
           );
         }
