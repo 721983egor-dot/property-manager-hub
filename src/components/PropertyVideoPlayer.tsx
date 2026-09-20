@@ -8,7 +8,7 @@ type Props = {
   fileSrc?: string | null;
   title: string;
   className?: string;
-  /** На сайте: старт, когда блок попал в экран. */
+  /** На сайте: старт, когда блок попал в экран (только компьютер). */
   autoplayOnView?: boolean;
 };
 
@@ -27,6 +27,10 @@ function withEmbedAutoplay(src: string) {
   }
 }
 
+function isDesktopViewport() {
+  return window.matchMedia("(min-width: 1024px)").matches;
+}
+
 /** Плеер объекта. Если видео нет — ничего не рисует (пустого окна нет). */
 export function PropertyVideoPlayer({
   videoUrl,
@@ -39,9 +43,15 @@ export function PropertyVideoPlayer({
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [inView, setInView] = useState(false);
+  const [autoplay, setAutoplay] = useState(false);
 
   useEffect(() => {
-    if (!autoplayOnView || !rootRef.current) return;
+    if (!autoplayOnView) return;
+    setAutoplay(isDesktopViewport());
+  }, [autoplayOnView]);
+
+  useEffect(() => {
+    if (!autoplay || !rootRef.current) return;
     const node = rootRef.current;
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -51,7 +61,7 @@ export function PropertyVideoPlayer({
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [autoplayOnView]);
+  }, [autoplay]);
 
   useEffect(() => {
     if (!inView || !videoRef.current) return;
@@ -63,8 +73,7 @@ export function PropertyVideoPlayer({
   if (!playback) return null;
 
   if (playback.kind === "embed") {
-    const src =
-      autoplayOnView && inView ? withEmbedAutoplay(playback.src) : playback.src;
+    const src = autoplay && inView ? withEmbedAutoplay(playback.src) : playback.src;
     return (
       <div ref={rootRef} className="size-full">
         <iframe
@@ -86,8 +95,8 @@ export function PropertyVideoPlayer({
         src={playback.src}
         controls
         playsInline
-        muted={autoplayOnView}
-        preload={autoplayOnView ? "auto" : "metadata"}
+        muted={autoplay}
+        preload="metadata"
         className={cn("size-full bg-black object-contain", className)}
       />
     </div>
