@@ -10,9 +10,9 @@ import { PHOTO_BUCKET } from "@/lib/properties";
 
 const exec = promisify(execFile);
 
-/** Белый логотип без подложки, справа внизу — как на примере для роликов. */
-const VIDEO_WATERMARK_WIDTH_RATIO = 0.48;
-const VIDEO_WATERMARK_MARGIN_RATIO = 0.04;
+/** Белый логотип без подложки, справа внизу. После сжатия до Full HD 48% кадра слишком крупные. */
+const VIDEO_WATERMARK_WIDTH_RATIO = 0.22;
+const VIDEO_WATERMARK_MARGIN_RATIO = 0.035;
 const VIDEO_WATERMARK_OPACITY = 0.92;
 /** Длинная сторона после сжатия — хватает для сайта и телефона. */
 const VIDEO_MAX_EDGE = 1280;
@@ -189,7 +189,7 @@ export async function overlayVideoWatermarkFromFile(src: string): Promise<Buffer
 
 /**
  * Накладывает белый логотип Residence More в правом нижнем углу.
- * Без подложки; ширина около половины кадра, чтобы знак читался.
+ * Без подложки; около пятой части ширины кадра — после сжатия большого файла не перекрывает картинку.
  * Телефонные ролики с метаданными поворота разворачиваются в настоящую вертикаль —
  * иначе YouTube считает их обычным горизонтальным видео, а не Shorts.
  * Большой исходник ужимаем до Full HD и примерно 25 МБ.
