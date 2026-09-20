@@ -54,6 +54,9 @@
 {$DOMAIN} {
     tls {$TLS_EMAIL}
     import services
+    request_body {
+        max_size 2GB
+    }
     handle {
         reverse_proxy app:3000
     }
@@ -64,6 +67,9 @@ rm-os.{$DOMAIN} {
     tls {$TLS_EMAIL}
     redir / /objects 302
     import services
+    request_body {
+        max_size 2GB
+    }
     handle {
         reverse_proxy app:3000
     }
@@ -96,6 +102,9 @@ preview.{$DOMAIN} {
     tls {$TLS_EMAIL}
     import preview_lock
     import services
+    request_body {
+        max_size 2GB
+    }
     handle {
         reverse_proxy preview-app:3000
     }
@@ -106,6 +115,9 @@ preview-rm-os.{$DOMAIN} {
     tls {$TLS_EMAIL}
     import preview_headers
     import services
+    request_body {
+        max_size 2GB
+    }
     handle / {
         redir * /objects 302
     }
@@ -128,6 +140,9 @@ deploy.{$DOMAIN} {
 # Доступ по IP до переключения DNS
 :80 {
     import services
+    request_body {
+        max_size 2GB
+    }
     handle {
         reverse_proxy app:3000
     }

@@ -8,7 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "property-photos";
 const PHOTO_MAX_BYTES = 25 * 1024 * 1024;
-const VIDEO_MAX_BYTES = 200 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 
 const EXT_BY_TYPE: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -70,25 +70,29 @@ export const Route = createFileRoute("/api/photo-upload")({
         const maxBytes = isVideo ? VIDEO_MAX_BYTES : PHOTO_MAX_BYTES;
         if (file.size > maxBytes) {
           return Response.json(
-            { error: isVideo ? "Файл больше 200 МБ" : "Файл больше 25 МБ" },
+            { error: isVideo ? "Файл больше 2 ГБ" : "Файл больше 25 МБ" },
             { status: 413 },
           );
         }
 
-        let body: ArrayBuffer | Buffer = await file.arrayBuffer();
+        let body: ArrayBuffer | Buffer = isVideo ? Buffer.alloc(0) : await file.arrayBuffer();
         let outType = contentType;
         let outExt = ext;
         let watermarked = false;
         if (isVideo) {
           try {
-            const { watermarkVideoBytes } = await import("@/lib/video-watermark.server");
-            const marked = await watermarkVideoBytes(body);
+            const { watermarkVideoUpload } = await import("@/lib/video-watermark.server");
+            const marked = await watermarkVideoUpload(file);
             body = marked.bytes;
             outType = marked.contentType;
             outExt = "mp4";
             watermarked = true;
           } catch (error) {
             console.error("video watermark skipped", error);
+            return Response.json(
+              { error: "Не удалось сжать видео. Попробуйте ещё раз или обрежьте ролик." },
+              { status: 500 },
+            );
           }
         } else if (wantPhotoWatermark) {
           try {

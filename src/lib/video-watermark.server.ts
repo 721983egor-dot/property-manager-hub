@@ -116,23 +116,14 @@ async function probeVideoFile(src: string): Promise<VideoShape> {
   return shapeFromSize(Number(stream.width) || 0, Number(stream.height) || 0, durationSec, rotation);
 }
 
-/**
- * Накладывает белый логотип Residence More в правом нижнем углу.
- * Без подложки; ширина около половины кадра, чтобы знак читался.
- * Телефонные ролики с метаданными поворота разворачиваются в настоящую вертикаль —
- * иначе YouTube считает их обычным горизонтальным видео, а не Shorts.
- * Большой исходник ужимаем до Full HD и примерно 25 МБ.
- */
-export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
+export async function overlayVideoWatermarkFromFile(src: string): Promise<Buffer> {
   const mark = watermarkPngPath();
   if (!mark) throw new Error("Файл водяного знака не найден");
   if (!(await hasFfmpeg())) throw new Error("ffmpeg недоступен");
 
   const dir = await mkdtemp(join(tmpdir(), "rm-wm-"));
-  const src = join(dir, "in.mp4");
   const dest = join(dir, "out.mp4");
   try {
-    await writeFile(src, input);
     const probed = await probeVideoFile(src).catch(() => EMPTY_SHAPE);
     const rotate = transposeExpr(probed.rotation);
     const alpha = VIDEO_WATERMARK_OPACITY.toFixed(2);
@@ -175,7 +166,7 @@ export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
     ];
 
     const run = (extra: string[]) =>
-      exec("ffmpeg", [...common, ...extra, dest], { timeout: 420_000 });
+      exec("ffmpeg", [...common, ...extra, dest], { timeout: 900_000 });
 
     await run(["-crf", "23", "-maxrate", "2500k", "-bufsize", "5000k"]);
     let out = await readFile(dest);
@@ -191,6 +182,24 @@ export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
       out = await readFile(dest);
     }
     return out;
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Накладывает белый логотип Residence More в правом нижнем углу.
+ * Без подложки; ширина около половины кадра, чтобы знак читался.
+ * Телефонные ролики с метаданными поворота разворачиваются в настоящую вертикаль —
+ * иначе YouTube считает их обычным горизонтальным видео, а не Shorts.
+ * Большой исходник ужимаем до Full HD и примерно 25 МБ.
+ */
+export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
+  const dir = await mkdtemp(join(tmpdir(), "rm-wm-in-"));
+  const src = join(dir, "in.mp4");
+  try {
+    await writeFile(src, input);
+    return await overlayVideoWatermarkFromFile(src);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -233,4 +242,21 @@ export async function probeVideoShape(input: Buffer): Promise<VideoShape> {
 export async function watermarkVideoBytes(bytes: ArrayBuffer): Promise<{ bytes: Buffer; contentType: string }> {
   const overlayed = await overlayVideoWatermark(Buffer.from(bytes));
   return { bytes: overlayed, contentType: "video/mp4" };
+}
+
+/** Пишет исходник на диск и сжимает с логотипом — так не держим гигабайт в памяти. */
+export async function watermarkVideoUpload(file: File): Promise<{ bytes: Buffer; contentType: string }> {
+  const dir = await mkdtemp(join(tmpdir(), "rm-wm-up-"));
+  const ext = (file.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp4";
+  const src = join(dir, `in.${ext}`);
+  try {
+    const { createWriteStream } = await import("node:fs");
+    const { pipeline } = await import("node:stream/promises");
+    const { Readable } = await import("node:stream");
+    await pipeline(Readable.fromWeb(file.stream() as never), createWriteStream(src));
+    const overlayed = await overlayVideoWatermarkFromFile(src);
+    return { bytes: overlayed, contentType: "video/mp4" };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }

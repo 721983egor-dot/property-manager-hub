@@ -258,6 +258,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     const file = files?.[0];
     if (!file) return;
     setVideoUploading(true);
+    if (file.size > 25 * 1024 * 1024) {
+      toast.message("Большой файл — сжимаем на сервере. Не закрывайте страницу, это может занять несколько минут.");
+    }
     try {
       const uploaded = await uploadPropertyVideo(file);
       setVideoUrl(uploaded.path);
@@ -1134,8 +1137,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Видеофайл можно выложить на YouTube и VK кнопкой «Выложить» в карточке. На ролик ставится
-              белый логотип справа внизу, тяжёлый файл сам сожмётся примерно до 25 МБ. Если видео нет,
-              пустой плеер на сайте не появится. Каналы: Настройки → Видеоканалы.
+              белый логотип справа внизу. Файл до 2 ГБ сам сожмётся примерно до 25 МБ — подождите, пока
+              крутится загрузка. Если видео нет, пустой плеер на сайте не появится. Каналы: Настройки →
+              Видеоканалы.
             </p>
           </div>
           <Button type="button" variant="outline" asChild disabled={videoUploading}>
