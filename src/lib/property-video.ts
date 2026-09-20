@@ -88,13 +88,14 @@ export function resolvePropertyVideo(
   videoUrl: string | null | undefined,
   fileSrc?: string | null,
 ): PropertyVideoPlayback | null {
+  // На сайте свой файл надёжнее YouTube: в iframe часто ошибка 153.
+  const storedFile = (fileSrc ?? "").trim();
+  if (storedFile) return { kind: "file", src: storedFile };
+
   const parsed = parsePropertyVideoValue(videoUrl);
-  if (!parsed) {
-    const src = (fileSrc ?? "").trim();
-    return src ? { kind: "file", src } : null;
-  }
+  if (!parsed) return null;
   if (parsed.host === "file") {
-    const src = (parsed.watchUrl || fileSrc || "").trim();
+    const src = (parsed.watchUrl || "").trim();
     return src ? { kind: "file", src } : null;
   }
   if (parsed.host === "youtube" && parsed.youtubeId) {
