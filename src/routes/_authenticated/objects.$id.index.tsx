@@ -1,7 +1,9 @@
 import { ClientOnly, createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil } from "lucide-react";
+import { ChevronLeft, ExternalLink, ImageIcon, MapPin, Pencil, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -13,6 +15,7 @@ import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchStaffComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
 import { PropertyVideoPlayer } from "@/components/PropertyVideoPlayer";
 import { storedVideoPath } from "@/lib/property-video";
+import { publishPropertyVideoFn } from "@/lib/video-hosts.functions";
 import {
   APPLIANCE_OPTIONS,
   BATHROOM_FEATURE_OPTIONS,
@@ -52,6 +55,8 @@ export const Route = createFileRoute("/_authenticated/objects/$id/")({
 function ObjectViewPage() {
   const { id } = Route.useParams();
   const { isAdmin } = useAccess();
+  const queryClient = useQueryClient();
+  const publishVideo = useServerFn(publishPropertyVideoFn);
   const todayIso = toISODate(new Date());
   const [bookingOpen, setBookingOpen] = useState(false);
   const { data: currentBooking = null } = useQuery({
@@ -85,6 +90,20 @@ function ObjectViewPage() {
     queryKey: ["photo-urls", paths.slice().sort().join("|")],
     queryFn: () => signedUrls(paths),
     enabled: paths.length > 0,
+  });
+
+  const republish = useMutation({
+    mutationFn: async () => {
+      const path = storedVideoPath(data?.video_file_path) || storedVideoPath(data?.video_url);
+      if (!path) throw new Error("Нет видеофайла для выгрузки");
+      return publishVideo({ data: { propertyId: id, filePath: path } });
+    },
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["properties", id] });
+      if (result.errors.length) toast.error(result.errors.join("; "), { duration: 20_000 });
+      else toast.success("Видео выгружено на каналы");
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Не удалось выгрузить видео"),
   });
 
   return (
@@ -366,7 +385,21 @@ function ObjectViewPage() {
 
           {data.video_url?.trim() || data.video_file_path ? (
             <section className="mt-6 rounded-xl border border-border bg-card p-6">
-              <h2 className="text-base font-semibold">Видео</h2>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h2 className="text-base font-semibold">Видео</h2>
+                {isAdmin && videoPath ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={republish.isPending}
+                    onClick={() => republish.mutate()}
+                  >
+                    <Upload className="size-4" />
+                    {republish.isPending ? "Выгружаем..." : "Выгрузить на Rutube и YouTube"}
+                  </Button>
+                ) : null}
+              </div>
               {data.video_publish_status ? (
                 <p className="mt-2 text-sm text-muted-foreground">
                   {data.video_publish_status === "published"
@@ -375,6 +408,16 @@ function ObjectViewPage() {
                       ? "Идёт выгрузка на Rutube, VK и YouTube"
                       : `Ошибка выгрузки: ${data.video_publish_error || data.video_publish_status}`}
                 </p>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  На каналы ещё не ушло — нажмите «Выгрузить на Rutube и YouTube».
+                </p>
+              )}
+              {data.video_publish_error ? (
+                <p className="mt-1 text-sm text-destructive">{data.video_publish_error}</p>
+              ) : null}
+              {data.video_youtube_url ? (
+                <p className="mt-1 truncate text-sm text-muted-foreground">YouTube: {data.video_youtube_url}</p>
               ) : null}
               {data.video_url && /^https?:\/\//i.test(data.video_url) ? (
                 <p className="mt-1 truncate text-sm text-muted-foreground">{data.video_url}</p>

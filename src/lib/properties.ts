@@ -12,7 +12,15 @@ export function isHouseType(type: PropertyType) {
 }
 export type PropertyStatus = "free" | "soon_free" | "rented" | "booked" | "archived";
 
-export type PropertyPhoto = { path: string; kind?: "photo" | "video" };
+export type PropertyPhoto = {
+  path: string;
+  kind?: "photo" | "video";
+  rutubeUrl?: string;
+  youtubeUrl?: string;
+  vkUrl?: string;
+  publishStatus?: string;
+  publishError?: string;
+};
 
 export function isPropertyVideoPath(path: string) {
   return /\.(mp4|m4v|mov|webm)$/i.test(path) || /-(wm|glass)\./i.test(path);
@@ -21,16 +29,16 @@ export function isPropertyVideoPath(path: string) {
 export function splitPropertyMedia(photos: PropertyPhoto[] | null | undefined) {
   const list = Array.isArray(photos) ? photos : [];
   const images: PropertyPhoto[] = [];
-  let videoPath = "";
+  let video: PropertyPhoto | null = null;
   for (const photo of list) {
     if (!photo?.path) continue;
     if (photo.kind === "video" || isPropertyVideoPath(photo.path)) {
-      if (!videoPath) videoPath = photo.path;
+      if (!video) video = photo;
       continue;
     }
     images.push({ path: photo.path });
   }
-  return { images, videoPath };
+  return { images, video, videoPath: video?.path ?? "" };
 }
 
 /** Тип услуги — только для внутренних экранов RM OS. */
@@ -375,15 +383,26 @@ function normalize(row: Record<string, unknown>): Property {
   return {
     ...(row as unknown as Property),
     photos: split.images,
-    video_url: videoUrl || split.videoPath,
+    video_url: /^https?:\/\//i.test(videoUrl)
+      ? videoUrl
+      : split.video?.rutubeUrl || videoUrl || split.videoPath,
     video_file_path: filePath || split.videoPath,
-    video_vk_url: typeof row["video_vk_url"] === "string" ? (row["video_vk_url"] as string) : "",
+    video_vk_url:
+      (typeof row["video_vk_url"] === "string" ? (row["video_vk_url"] as string) : "") ||
+      split.video?.vkUrl ||
+      "",
     video_youtube_url:
-      typeof row["video_youtube_url"] === "string" ? (row["video_youtube_url"] as string) : "",
+      (typeof row["video_youtube_url"] === "string" ? (row["video_youtube_url"] as string) : "") ||
+      split.video?.youtubeUrl ||
+      "",
     video_publish_status:
-      typeof row["video_publish_status"] === "string" ? (row["video_publish_status"] as string) : "",
+      (typeof row["video_publish_status"] === "string" ? (row["video_publish_status"] as string) : "") ||
+      split.video?.publishStatus ||
+      "",
     video_publish_error:
-      typeof row["video_publish_error"] === "string" ? (row["video_publish_error"] as string) : "",
+      (typeof row["video_publish_error"] === "string" ? (row["video_publish_error"] as string) : "") ||
+      split.video?.publishError ||
+      "",
     published: Boolean(row['published']),
     latitude: num(row['latitude']),
     longitude: num(row['longitude']),

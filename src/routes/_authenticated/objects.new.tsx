@@ -35,18 +35,28 @@ function NewObjectPage() {
   const mutation = useMutation({
     mutationFn: async (input: PropertyInput) => {
       const created = await createProperty(input);
-      const path = storedVideoPath(input.video_url) || storedVideoPath(input.video_file_path);
+      const path =
+        storedVideoPath(input.video_url) ||
+        storedVideoPath(input.video_file_path) ||
+        input.photos.find((photo) => photo.kind === "video")?.path;
       if (path && created?.id) {
-        toast.message("Видео уходит на Rutube, VK и YouTube");
-        void publishVideo({ data: { propertyId: created.id, filePath: path } }).catch((e: Error) =>
-          toast.error(e.message),
-        );
+        toast.message("Выгружаем видео на Rutube и YouTube — не закрывайте страницу");
+        try {
+          const result = await publishVideo({ data: { propertyId: created.id, filePath: path } });
+          if (result.errors.length) toast.error(result.errors.join("; "), { duration: 20_000 });
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Не удалось выгрузить видео", {
+            duration: 20_000,
+          });
+        }
       }
+      return created;
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       toast.success("Объект создан");
-      navigate({ to: "/objects" });
+      if (created?.id) navigate({ to: "/objects/$id", params: { id: created.id } });
+      else navigate({ to: "/objects" });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось сохранить объект"),
   });

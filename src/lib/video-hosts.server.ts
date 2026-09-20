@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { PHOTO_BUCKET, type Property } from "@/lib/properties";
+import { PHOTO_BUCKET, splitPropertyMedia, type Property, type PropertyPhoto } from "@/lib/properties";
 import { storedVideoPath } from "@/lib/property-video";
 import { propertyVideoDescription, propertyVideoTags, propertyVideoTitle } from "@/lib/property-video-copy";
 import { feedPhotoUrl } from "@/lib/cian-feed.server";
@@ -114,7 +114,36 @@ export async function saveVideoHostSettings(patch: Partial<VideoHostSettings>) {
 }
 
 function filePathOf(property: Property) {
-  return storedVideoPath(property.video_file_path) || storedVideoPath(property.video_url);
+  return (
+    storedVideoPath(property.video_file_path) ||
+    storedVideoPath(property.video_url) ||
+    splitPropertyMedia(property.photos).videoPath ||
+    null
+  );
+}
+
+function publicFileOrigin() {
+  return (
+    process.env["PUBLIC_SITE_URL"] ||
+    process.env["PUBLIC_BASE_URL"] ||
+    SITE_ORIGIN
+  ).replace(/\/$/, "");
+}
+
+async function persistVideoPhoto(propertyId: string, entry: PropertyPhoto) {
+  const { data } = await supabaseAdmin.from("properties").select("photos").eq("id", propertyId).maybeSingle();
+  const { images } = splitPropertyMedia(
+    Array.isArray(data?.["photos"]) ? (data?.["photos"] as PropertyPhoto[]) : [],
+  );
+  await supabaseAdmin
+    .from("properties")
+    .update({ photos: [...images, { kind: "video", ...entry }] } as never)
+    .eq("id", propertyId);
+}
+
+async function tryUpdateProperty(propertyId: string, patch: Record<string, unknown>) {
+  const { error } = await supabaseAdmin.from("properties").update(patch as never).eq("id", propertyId);
+  if (error) console.error("video property update skipped", error.message);
 }
 
 async function jsonOrText(response: Response) {
@@ -301,16 +330,14 @@ export async function publishPropertyVideoToHosts(propertyId: string): Promise<P
   const title = propertyVideoTitle(property);
   const description = propertyVideoDescription(property, settings.extra_hashtags);
   const tags = propertyVideoTags(settings.extra_hashtags);
-  const fileUrl = feedPhotoUrl(SITE_ORIGIN, publishPath);
+  const fileUrl = feedPhotoUrl(publicFileOrigin(), publishPath);
 
-  await supabaseAdmin
-    .from("properties")
-    .update({
-      video_file_path: publishPath,
-      video_publish_status: "publishing",
-      video_publish_error: "",
-    } as never)
-    .eq("id", propertyId);
+  await persistVideoPhoto(propertyId, { path: publishPath, publishStatus: "publishing" });
+  await tryUpdateProperty(propertyId, {
+    video_file_path: publishPath,
+    video_publish_status: "publishing",
+    video_publish_error: "",
+  });
 
   let rutubeUrl = property.video_url && /rutube\.ru/i.test(property.video_url) ? property.video_url : "";
   let youtubeUrl = property.video_youtube_url || "";
@@ -352,32 +379,34 @@ export async function publishPropertyVideoToHosts(propertyId: string): Promise<P
     errors.push("VK: сначала нужен Rutube или YouTube, чтобы добавить ролик в сообщество");
   }
 
-  const status = rutubeUrl ? (errors.length ? "published" : "published") : errors.length ? "failed" : "failed";
-  await supabaseAdmin
-    .from("properties")
-    .update({
-      video_file_path: publishPath,
-      video_url: rutubeUrl || property.video_url || publishPath,
-      video_vk_url: vkUrl,
-      video_youtube_url: youtubeUrl,
-      video_publish_status: rutubeUrl || youtubeUrl || vkUrl ? "published" : "failed",
-      video_publish_error: errors.join("; "),
-    } as never)
-    .eq("id", propertyId);
+  const status = rutubeUrl || youtubeUrl || vkUrl ? "published" : "failed";
+  await persistVideoPhoto(propertyId, {
+    path: publishPath,
+    rutubeUrl,
+    youtubeUrl,
+    vkUrl,
+    publishStatus: status,
+    publishError: errors.join("; "),
+  });
+  await tryUpdateProperty(propertyId, {
+    video_file_path: publishPath,
+    video_url: rutubeUrl || property.video_url || publishPath,
+    video_vk_url: vkUrl,
+    video_youtube_url: youtubeUrl,
+    video_publish_status: status,
+    video_publish_error: errors.join("; "),
+  });
 
-  void status;
   return { rutubeUrl, vkUrl, youtubeUrl, errors };
 }
 
 export async function queuePropertyVideoPublish(propertyId: string, filePath: string) {
-  await supabaseAdmin
-    .from("properties")
-    .update({
-      video_file_path: filePath,
-      video_publish_status: "pending",
-      video_publish_error: "",
-    } as never)
-    .eq("id", propertyId);
+  await persistVideoPhoto(propertyId, { path: filePath, publishStatus: "pending" });
+  await tryUpdateProperty(propertyId, {
+    video_file_path: filePath,
+    video_publish_status: "pending",
+    video_publish_error: "",
+  });
 }
 
 export async function processPendingPropertyVideos(limit = 3) {

@@ -50,20 +50,37 @@ function EditObjectPage() {
   const mutation = useMutation({
     mutationFn: async (input: PropertyInput) => {
       await updateProperty(id, input);
-      const path = storedVideoPath(input.video_url) || storedVideoPath(input.video_file_path);
-      const sameFile = Boolean(data && path && data.video_file_path === path);
+      const path =
+        storedVideoPath(input.video_url) ||
+        storedVideoPath(input.video_file_path) ||
+        input.photos.find((photo) => photo.kind === "video")?.path;
+      const sameFile = Boolean(data && path && (data.video_file_path === path || data.video_url === path));
       const already = sameFile && data?.video_publish_status === "published";
       if (path && !already) {
-        toast.message("Видео уходит на Rutube, VK и YouTube");
-        void publishVideo({ data: { propertyId: id, filePath: path } }).catch((e: Error) =>
-          toast.error(e.message),
-        );
+        toast.message("Выгружаем видео на Rutube и YouTube — не закрывайте страницу");
+        try {
+          const result = await publishVideo({ data: { propertyId: id, filePath: path } });
+          if (result.errors.length) {
+            toast.error(result.errors.join("; "), { duration: 20_000 });
+          } else {
+            toast.success(
+              [result.rutubeUrl && `Rutube ${result.rutubeUrl}`, result.youtubeUrl && `YouTube ${result.youtubeUrl}`]
+                .filter(Boolean)
+                .join(" · ") || "Видео выгружено",
+              { duration: 12_000 },
+            );
+          }
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Не удалось выгрузить видео", {
+            duration: 20_000,
+          });
+        }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       toast.success("Изменения сохранены");
-      navigate({ to: "/objects" });
+      navigate({ to: "/objects/$id", params: { id } });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось сохранить изменения"),
   });
