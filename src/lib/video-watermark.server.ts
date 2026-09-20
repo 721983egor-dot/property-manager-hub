@@ -136,7 +136,7 @@ export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
     const filters = [
       rotate ? `[0:v]${rotate}[v0]` : "",
       `[1:v]format=rgba,colorchannelmixer=aa=${alpha}[logo]`,
-      `[logo][${rotate ? "v0" : "0:v"}]scale2ref=w=main_w*${width}:h=ow/mdar[wm][main]`,
+      `[logo][${rotate ? "v0" : "0:v"}]scale2ref=w=ref_w*${width}:h=ow/mdar[wm][main]`,
       `[main][wm]overlay=W-w-W*${margin}:H-h-H*${margin}:format=auto`,
     ].filter(Boolean);
     await exec(
