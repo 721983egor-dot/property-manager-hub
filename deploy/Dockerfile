@@ -17,7 +17,8 @@ ENV NODE_ENV=production
 ENV NITRO_PRESET=node-server
 ENV SERVER_PRESET=node-server
 
-RUN bun install && bun run build
+# node_modules нужны только на время vite; иначе слой сборки забивает диск Beget.
+RUN bun install && bun run build && rm -rf node_modules /root/.bun /tmp/*
 
 # Runtime
 FROM node:22-alpine

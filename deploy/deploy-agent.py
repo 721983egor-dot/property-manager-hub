@@ -52,6 +52,16 @@ def verify_token(authorization: str | None) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def docker_free_space() -> None:
+    """Стирает кэш сборки и неиспользуемые образы. Тома с базой не трогает."""
+    for cmd in (
+        ["docker", "builder", "prune", "-af"],
+        ["docker", "image", "prune", "-af"],
+        ["docker", "container", "prune", "-f"],
+    ):
+        subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+
+
 def run(cmd: list[str], cwd: Path | None = None, timeout: int = 600) -> str:
     result = subprocess.run(
         cmd,
@@ -250,6 +260,7 @@ def run_production_job(req: DeployRequest) -> None:
         source_branch = production_source_branch(REPO_DIR)
         version = sync_git(REPO_DIR, source_branch)
         maybe_fast_forward_github_main()
+        docker_free_space()
 
         run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "run", "--rm", "migrator"],
@@ -351,6 +362,7 @@ def run_preview_job(source: str) -> None:
     state = load_state()
     try:
         version = sync_git(PREVIEW_DIR, PREVIEW_BRANCH)
+        docker_free_space()
         run(
             [
                 "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
