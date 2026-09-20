@@ -24,6 +24,7 @@ import {
   isHouseType,
   publicStatusView,
   roomsLabel,
+  splitPropertyMedia,
   STATUS_TONE_CLASS,
   typeLabel,
   type Property,
@@ -196,15 +197,24 @@ export function PropertyPublicPage({
   const [copied, setCopied] = useState(false);
   const [complexCopied, setComplexCopied] = useState(false);
 
-  const photos = property.photos ?? [];
-  const videoPath = storedVideoPath(property.video_file_path) || storedVideoPath(property.video_url);
+  const media = splitPropertyMedia(property.photos);
+  const photos = media.images;
+  const videoPath =
+    storedVideoPath(property.video_file_path) ||
+    storedVideoPath(property.video_url) ||
+    storedVideoPath(media.videoPath);
   const videoFileSrc = videoPath
     ? photoUrls[videoPath] || publicPhotoUrl(videoPath)
     : null;
-  const playback =
-    resolvePropertyVideo(property.video_url, videoFileSrc) ||
-    resolvePropertyVideo(property.video_youtube_url, videoFileSrc) ||
-    resolvePropertyVideo(property.video_vk_url, videoFileSrc);
+  const playbackUrl =
+    property.video_youtube_url ||
+    media.video?.youtubeUrl ||
+    property.video_vk_url ||
+    media.video?.vkUrl ||
+    property.video_url ||
+    media.video?.rutubeUrl ||
+    "";
+  const playback = resolvePropertyVideo(playbackUrl, videoFileSrc);
   const hasVideo = Boolean(playback);
   const safeActive = photos.length ? Math.min(active, photos.length - 1) : 0;
   const current = photos[safeActive];
@@ -485,7 +495,7 @@ export function PropertyPublicPage({
             <div className="mt-6 w-full max-w-[640px] overflow-hidden rounded-3xl bg-site-navy-soft">
               <div className="aspect-video">
                 <PropertyVideoPlayer
-                  videoUrl={property.video_url || property.video_youtube_url || property.video_vk_url}
+                  videoUrl={playbackUrl}
                   fileSrc={videoFileSrc}
                   title={`${propertyPageHeading(property)} — видео`}
                 />
