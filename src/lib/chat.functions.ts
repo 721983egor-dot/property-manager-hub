@@ -21,7 +21,7 @@ export type ChatThread = {
   created_at: string;
   last_body: string;
   last_direction: "in" | "out" | null;
-  source: "site" | "cian" | "avito" | "telegram" | "max";
+  source: "site" | "cian" | "avito";
   external_id: string | null;
   external_offer_id: string | null;
   property_id: string | null;
@@ -40,16 +40,12 @@ export type ChatQuickReply = {
 export function chatSourceLabel(source: ChatThread["source"]) {
   if (source === "cian") return "ЦИАН";
   if (source === "avito") return "Авито";
-  if (source === "telegram") return "Telegram";
-  if (source === "max") return "MAX";
   return "Сайт";
 }
 
 export function chatSourceToDealSource(source: ChatThread["source"]) {
   if (source === "cian") return "ЦИАН";
   if (source === "avito") return "Авито";
-  if (source === "telegram") return "Telegram";
-  if (source === "max") return "MAX";
   return "Сайт";
 }
 
@@ -296,18 +292,6 @@ export const sendOperatorMessage = createServerFn({ method: "POST" })
       if (!chatId) throw new Error("Некорректный чат Авито");
       const { sendAvitoMessage } = await import("@/lib/avito.server");
       externalMessageId = (await sendAvitoMessage(chatId, data.body)) || null;
-    }
-    if (thread.source === "telegram") {
-      const chatId = String(thread.external_id ?? "");
-      if (!chatId) throw new Error("Некорректный чат Telegram");
-      const { sendTelegramChatMessage } = await import("@/lib/messengers/telegram-chat.server");
-      externalMessageId = (await sendTelegramChatMessage(chatId, data.body)) || null;
-    }
-    if (thread.source === "max") {
-      const userId = String(thread.external_id ?? "");
-      if (!userId) throw new Error("Некорректный чат MAX");
-      const { sendMaxMessage } = await import("@/lib/messengers/max.server");
-      externalMessageId = (await sendMaxMessage(userId, data.body)) || null;
     }
     const { data: row, error } = await db
       .from("chat_messages")
@@ -661,7 +645,6 @@ export const syncPlatformChats = createServerFn({ method: "POST" }).handler(asyn
   const errors: string[] = [];
   let cian = { chats: 0, messages: 0 };
   let avito = { chats: 0, messages: 0 };
-  let messengers = { telegram: 0, max: 0, errors: [] as string[] };
   try {
     const { syncCianChats } = await import("@/lib/cian-chats.server");
     cian = await syncCianChats();
@@ -674,12 +657,5 @@ export const syncPlatformChats = createServerFn({ method: "POST" }).handler(asyn
   } catch (e) {
     errors.push(e instanceof Error ? e.message : "Авито");
   }
-  try {
-    const { pollMessengerInboxes } = await import("@/lib/messengers/poll.server");
-    messengers = await pollMessengerInboxes();
-    errors.push(...messengers.errors);
-  } catch (e) {
-    errors.push(e instanceof Error ? e.message : "Мессенджеры");
-  }
-  return { cian, avito, messengers, errors };
+  return { cian, avito, errors };
 });

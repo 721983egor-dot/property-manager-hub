@@ -10,7 +10,6 @@ import {
   ListTodo,
   LogOut,
   Megaphone,
-  MessageCircle,
   MessagesSquare,
   Menu,
   Send,
@@ -195,10 +194,6 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
               <Link to="/system/telegram" onClick={onNavigate} className={NAV_LINK_CLASS}>
                 <Send className="size-4 shrink-0" />
                 Ассистент в Telegram
-              </Link>
-              <Link to="/system/messengers" onClick={onNavigate} className={NAV_LINK_CLASS}>
-                <MessageCircle className="size-4 shrink-0" />
-                Мессенджеры
               </Link>
               <Link to="/system/video" onClick={onNavigate} className={NAV_LINK_CLASS}>
                 <Share2 className="size-4 shrink-0" />

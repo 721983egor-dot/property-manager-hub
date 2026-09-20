@@ -778,7 +778,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getChats: tool({
       description:
-        "Все чаты RM OS: сайт, ЦИАН, Авито, Telegram и MAX. Без threadId — список диалогов; с threadId — история сообщений. Если из чата создали клиента или сделку, в списке будут clientId и dealId.",
+        "Все чаты RM OS: сайт, ЦИАН и Авито. Без threadId — список диалогов; с threadId — история сообщений. Если из чата создали клиента или сделку, в списке будут clientId и dealId.",
       inputSchema: z.object({ threadId: z.string().optional(), days: z.number().optional() }),
       execute: async ({ threadId, days }) => {
         if (threadId) {
@@ -813,33 +813,12 @@ export function createReadTools(ctx: AssistantToolContext) {
         const sourceLabel = (source: string) => {
           if (source === "cian") return "ЦИАН";
           if (source === "avito") return "Авито";
-          if (source === "telegram") return "Telegram";
-          if (source === "max") return "MAX";
           return "Сайт";
         };
         return ((fallback?.data ?? data) ?? []).map((t) => ({
           ...t,
           sourceLabel: sourceLabel(String(t.source ?? "site")),
         }));
-      },
-    }),
-
-    getMessengerStatus: tool({
-      description:
-        "Статус подключения клиентских ботов Telegram и MAX для переписки в разделе «Чаты» (без токенов).",
-      inputSchema: z.object({}),
-      execute: async () => {
-        const { getTelegramChatBotToken } = await import("@/lib/messengers/telegram-chat.server");
-        const { getMaxBotToken } = await import("@/lib/messengers/max.server");
-        const tg = Boolean(await getTelegramChatBotToken());
-        const max = Boolean(await getMaxBotToken());
-        return {
-          telegram: { configured: tg },
-          max: { configured: max },
-          hint: tg || max
-            ? "Клиенты пишут ботам — диалоги в разделе Чаты; ответ менеджера уходит в мессенджер."
-            : "Подключите ботов в Настройки → Мессенджеры.",
-        };
       },
     }),
 

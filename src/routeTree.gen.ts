@@ -43,7 +43,6 @@ import { Route as AuthenticatedPromoAvitoRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
 import { Route as AuthenticatedSocialIndexRouteImport } from './routes/_authenticated/social.index'
-import { Route as AuthenticatedSystemMessengersRouteImport } from './routes/_authenticated/system.messengers'
 import { Route as AuthenticatedSystemVideoRouteImport } from './routes/_authenticated/system.video'
 import { Route as AuthenticatedSystemQuickRepliesRouteImport } from './routes/_authenticated/system.quick-replies'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
@@ -64,17 +63,14 @@ import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authen
 import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_authenticated/objects.$id.preview'
 import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/cron/bnovo-sync'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
-import { Route as ApiPublicCronMessengerPollRouteImport } from './routes/api/public/cron/messenger-poll'
 import { Route as ApiPublicCronVideoPublishRouteImport } from './routes/api/public/cron/video-publish'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsAvitoDotxmlRouteImport } from './routes/api/public/feeds/avito[.]xml'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
 import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/public/feeds/yandex[.]xml'
-import { Route as ApiPublicMaxWebhookRouteImport } from './routes/api/public/max/webhook'
 import { Route as ApiPublicSystemPlatformKeysRouteImport } from './routes/api/public/system/platform-keys'
 import { Route as ApiPublicSystemTelegramBootstrapRouteImport } from './routes/api/public/system/telegram-bootstrap'
 import { Route as ApiPublicSystemTelegramCredentialsRouteImport } from './routes/api/public/system/telegram-credentials'
-import { Route as ApiPublicTelegramChatWebhookRouteImport } from './routes/api/public/telegram-chat/webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -254,12 +250,6 @@ const AuthenticatedSocialIndexRoute =
     path: '/social/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedSystemMessengersRoute =
-  AuthenticatedSystemMessengersRouteImport.update({
-    id: '/system/messengers',
-    path: '/system/messengers',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedSystemVideoRoute = AuthenticatedSystemVideoRouteImport.update({
   id: '/system/video',
   path: '/system/video',
@@ -373,12 +363,6 @@ const ApiPublicCronCianSyncRoute = ApiPublicCronCianSyncRouteImport.update({
   path: '/api/public/cron/cian-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicCronMessengerPollRoute =
-  ApiPublicCronMessengerPollRouteImport.update({
-    id: '/api/public/cron/messenger-poll',
-    path: '/api/public/cron/messenger-poll',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicCronVideoPublishRoute =
   ApiPublicCronVideoPublishRouteImport.update({
     id: '/api/public/cron/video-publish',
@@ -408,11 +392,6 @@ const ApiPublicFeedsYandexDotxmlRoute =
     path: '/api/public/feeds/yandex.xml',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicMaxWebhookRoute = ApiPublicMaxWebhookRouteImport.update({
-  id: '/api/public/max/webhook',
-  path: '/api/public/max/webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicSystemPlatformKeysRoute =
   ApiPublicSystemPlatformKeysRouteImport.update({
     id: '/api/public/system/platform-keys',
@@ -429,12 +408,6 @@ const ApiPublicSystemTelegramCredentialsRoute =
   ApiPublicSystemTelegramCredentialsRouteImport.update({
     id: '/api/public/system/telegram-credentials',
     path: '/api/public/system/telegram-credentials',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicTelegramChatWebhookRoute =
-  ApiPublicTelegramChatWebhookRouteImport.update({
-    id: '/api/public/telegram-chat/webhook',
-    path: '/api/public/telegram-chat/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicTelegramWebhookRoute =
@@ -469,7 +442,6 @@ export interface FileRoutesByFullPath {
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
-  '/system/messengers': typeof AuthenticatedSystemMessengersRoute
   '/system/video': typeof AuthenticatedSystemVideoRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
@@ -494,17 +466,14 @@ export interface FileRoutesByFullPath {
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
-  '/api/public/cron/messenger-poll': typeof ApiPublicCronMessengerPollRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
-  '/api/public/max/webhook': typeof ApiPublicMaxWebhookRoute
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/system/telegram-credentials': typeof ApiPublicSystemTelegramCredentialsRoute
-  '/api/public/telegram-chat/webhook': typeof ApiPublicTelegramChatWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
@@ -536,7 +505,6 @@ export interface FileRoutesByTo {
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
-  '/system/messengers': typeof AuthenticatedSystemMessengersRoute
   '/system/video': typeof AuthenticatedSystemVideoRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
@@ -561,17 +529,14 @@ export interface FileRoutesByTo {
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
-  '/api/public/cron/messenger-poll': typeof ApiPublicCronMessengerPollRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
-  '/api/public/max/webhook': typeof ApiPublicMaxWebhookRoute
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/system/telegram-credentials': typeof ApiPublicSystemTelegramCredentialsRoute
-  '/api/public/telegram-chat/webhook': typeof ApiPublicTelegramChatWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/deals': typeof AuthenticatedCrmDealsIndexRoute
@@ -606,7 +571,6 @@ export interface FileRoutesById {
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
   '/_authenticated/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
-  '/_authenticated/system/messengers': typeof AuthenticatedSystemMessengersRoute
   '/_authenticated/system/video': typeof AuthenticatedSystemVideoRoute
   '/_authenticated/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
@@ -631,17 +595,14 @@ export interface FileRoutesById {
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
-  '/api/public/cron/messenger-poll': typeof ApiPublicCronMessengerPollRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
-  '/api/public/max/webhook': typeof ApiPublicMaxWebhookRoute
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/system/telegram-credentials': typeof ApiPublicSystemTelegramCredentialsRoute
-  '/api/public/telegram-chat/webhook': typeof ApiPublicTelegramChatWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/_authenticated/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
@@ -676,7 +637,6 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/avito'
     | '/promo/import'
-    | '/system/messengers'
     | '/system/video'
     | '/system/quick-replies'
     | '/system/staff'
@@ -701,17 +661,14 @@ export interface FileRouteTypes {
     | '/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
-    | '/api/public/cron/messenger-poll'
     | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
-    | '/api/public/max/webhook'
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
     | '/api/public/system/telegram-credentials'
-    | '/api/public/telegram-chat/webhook'
     | '/api/public/telegram/webhook'
     | '/crm/clients/'
     | '/crm/deals/'
@@ -743,7 +700,6 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/avito'
     | '/promo/import'
-    | '/system/messengers'
     | '/system/video'
     | '/system/quick-replies'
     | '/system/staff'
@@ -768,17 +724,14 @@ export interface FileRouteTypes {
     | '/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
-    | '/api/public/cron/messenger-poll'
     | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
-    | '/api/public/max/webhook'
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
     | '/api/public/system/telegram-credentials'
-    | '/api/public/telegram-chat/webhook'
     | '/api/public/telegram/webhook'
     | '/crm/clients'
     | '/crm/deals'
@@ -812,7 +765,6 @@ export interface FileRouteTypes {
     | '/_authenticated/promo/$id'
     | '/_authenticated/promo/avito'
     | '/_authenticated/promo/import'
-    | '/_authenticated/system/messengers'
     | '/_authenticated/system/video'
     | '/_authenticated/system/quick-replies'
     | '/_authenticated/system/staff'
@@ -837,17 +789,14 @@ export interface FileRouteTypes {
     | '/_authenticated/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
-    | '/api/public/cron/messenger-poll'
     | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
     | '/api/public/feeds/yandex.xml'
-    | '/api/public/max/webhook'
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
     | '/api/public/system/telegram-credentials'
-    | '/api/public/telegram-chat/webhook'
     | '/api/public/telegram/webhook'
     | '/_authenticated/crm/clients/'
     | '/_authenticated/crm/deals/'
@@ -875,17 +824,14 @@ export interface RootRouteChildren {
   ApiPublicStaffSessionRoute: typeof ApiPublicStaffSessionRoute
   ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
-  ApiPublicCronMessengerPollRoute: typeof ApiPublicCronMessengerPollRoute
   ApiPublicCronVideoPublishRoute: typeof ApiPublicCronVideoPublishRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsAvitoDotxmlRoute: typeof ApiPublicFeedsAvitoDotxmlRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
   ApiPublicFeedsYandexDotxmlRoute: typeof ApiPublicFeedsYandexDotxmlRoute
-  ApiPublicMaxWebhookRoute: typeof ApiPublicMaxWebhookRoute
   ApiPublicSystemPlatformKeysRoute: typeof ApiPublicSystemPlatformKeysRoute
   ApiPublicSystemTelegramBootstrapRoute: typeof ApiPublicSystemTelegramBootstrapRoute
   ApiPublicSystemTelegramCredentialsRoute: typeof ApiPublicSystemTelegramCredentialsRoute
-  ApiPublicTelegramChatWebhookRoute: typeof ApiPublicTelegramChatWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -1129,13 +1075,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSocialIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/system/messengers': {
-      id: '/_authenticated/system/messengers'
-      path: '/system/messengers'
-      fullPath: '/system/messengers'
-      preLoaderRoute: typeof AuthenticatedSystemMessengersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/system/video': {
       id: '/_authenticated/system/video'
       path: '/system/video'
@@ -1276,13 +1215,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronCianSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/messenger-poll': {
-      id: '/api/public/cron/messenger-poll'
-      path: '/api/public/cron/messenger-poll'
-      fullPath: '/api/public/cron/messenger-poll'
-      preLoaderRoute: typeof ApiPublicCronMessengerPollRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/cron/video-publish': {
       id: '/api/public/cron/video-publish'
       path: '/api/public/cron/video-publish'
@@ -1318,13 +1250,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFeedsYandexDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/max/webhook': {
-      id: '/api/public/max/webhook'
-      path: '/api/public/max/webhook'
-      fullPath: '/api/public/max/webhook'
-      preLoaderRoute: typeof ApiPublicMaxWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/system/platform-keys': {
       id: '/api/public/system/platform-keys'
       path: '/api/public/system/platform-keys'
@@ -1344,13 +1269,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/system/telegram-credentials'
       fullPath: '/api/public/system/telegram-credentials'
       preLoaderRoute: typeof ApiPublicSystemTelegramCredentialsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/telegram-chat/webhook': {
-      id: '/api/public/telegram-chat/webhook'
-      path: '/api/public/telegram-chat/webhook'
-      fullPath: '/api/public/telegram-chat/webhook'
-      preLoaderRoute: typeof ApiPublicTelegramChatWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/telegram/webhook': {
@@ -1373,7 +1291,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
   AuthenticatedPromoAvitoRoute: typeof AuthenticatedPromoAvitoRoute
   AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
-  AuthenticatedSystemMessengersRoute: typeof AuthenticatedSystemMessengersRoute
   AuthenticatedSystemVideoRoute: typeof AuthenticatedSystemVideoRoute
   AuthenticatedSystemQuickRepliesRoute: typeof AuthenticatedSystemQuickRepliesRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
@@ -1409,7 +1326,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
   AuthenticatedPromoAvitoRoute: AuthenticatedPromoAvitoRoute,
   AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
-  AuthenticatedSystemMessengersRoute: AuthenticatedSystemMessengersRoute,
   AuthenticatedSystemVideoRoute: AuthenticatedSystemVideoRoute,
   AuthenticatedSystemQuickRepliesRoute: AuthenticatedSystemQuickRepliesRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
@@ -1473,18 +1389,15 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicStaffSessionRoute: ApiPublicStaffSessionRoute,
   ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
-  ApiPublicCronMessengerPollRoute: ApiPublicCronMessengerPollRoute,
   ApiPublicCronVideoPublishRoute: ApiPublicCronVideoPublishRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsAvitoDotxmlRoute: ApiPublicFeedsAvitoDotxmlRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
   ApiPublicFeedsYandexDotxmlRoute: ApiPublicFeedsYandexDotxmlRoute,
-  ApiPublicMaxWebhookRoute: ApiPublicMaxWebhookRoute,
   ApiPublicSystemPlatformKeysRoute: ApiPublicSystemPlatformKeysRoute,
   ApiPublicSystemTelegramBootstrapRoute: ApiPublicSystemTelegramBootstrapRoute,
   ApiPublicSystemTelegramCredentialsRoute:
     ApiPublicSystemTelegramCredentialsRoute,
-  ApiPublicTelegramChatWebhookRoute: ApiPublicTelegramChatWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
