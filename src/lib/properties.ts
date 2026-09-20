@@ -758,7 +758,8 @@ export function publicStatusView(
       const days = Math.round(
         (parseISODate(freeFromIso).getTime() - parseISODate(today).getTime()) / 86400000,
       );
-      if (days >= 0 && days < PUBLIC_MIN_FREE_DAYS) {
+      // Показываем и новые, и старые объекты, если до освобождения осталось не больше 30 суток.
+      if (days >= 0 && days <= PUBLIC_MIN_FREE_DAYS) {
         return { text: `Освободится с ${formatDateLongRu(freeFromIso)}`, tone: "gold" };
       }
     }

@@ -111,7 +111,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     initial?.management_fee_value != null ? String(initial.management_fee_value) : "",
   );
   const [availabilityNote, setAvailabilityNote] = useState(initial?.availability_note ?? "");
-  const [published, setPublished] = useState(Boolean(initial?.published));
+  const [published, setPublished] = useState(initial ? Boolean(initial.published) : true);
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [videoUrl, setVideoUrl] = useState(initial?.video_url ?? "");
