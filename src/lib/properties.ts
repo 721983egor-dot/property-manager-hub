@@ -23,7 +23,7 @@ export type PropertyPhoto = {
 };
 
 export function isPropertyVideoPath(path: string) {
-  return /\.(mp4|m4v|mov|webm)$/i.test(path) || /-(wm|glass)\./i.test(path);
+  return /\.(mp4|m4v|mov|webm)$/i.test(path) || /-(wm|glass|logo)\./i.test(path);
 }
 
 export function splitPropertyMedia(photos: PropertyPhoto[] | null | undefined) {

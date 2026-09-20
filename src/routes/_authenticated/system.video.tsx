@@ -101,8 +101,10 @@ function VideoHostsPage() {
         <CardHeader>
           <CardTitle>Rutube</CardTitle>
           <CardDescription>
-            Главный канал для площадок. {data?.rutube ? "Подключён." : "Пока не подключён."} Нужны
-            почта и пароль аккаунта канала (или готовый Token API). Author ID — из кабинета канала.
+            Главный канал для площадок. {data?.rutube ? "Подключён." : "Пока не подключён."} Почта и
+            пароль с сайта часто не принимаются API (капча). Надёжнее Token API: войдите в
+            studio.rutube.ru, либо получите токен запросом POST https://rutube.ru/api/accounts/token_auth/
+            с {"username":"почта","password":"пароль"} — в ответе поле token. Author ID канала — 59663094.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">

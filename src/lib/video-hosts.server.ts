@@ -155,26 +155,64 @@ async function jsonOrText(response: Response) {
   }
 }
 
+function rutubeErrorText(payload: Record<string, unknown>, status: number) {
+  const parts = [
+    payload["detail"],
+    payload["non_field_errors"],
+    payload["username"],
+    payload["password"],
+    payload["raw"],
+  ]
+    .flatMap((value) => (Array.isArray(value) ? value : [value]))
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean);
+  return parts.join(" ") || String(status);
+}
+
 async function rutubeToken(settings: VideoHostSettings) {
   if (settings.rutube_token.trim()) return settings.rutube_token.trim();
   if (!settings.rutube_email || !settings.rutube_password) {
     throw new Error("Rutube не подключён");
   }
-  const response = await fetch("https://rutube.ru/api/accounts/token_auth/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: settings.rutube_email.trim(),
-      password: settings.rutube_password,
-    }),
-  });
-  const payload = await jsonOrText(response);
-  const token = String(payload["token"] ?? payload["key"] ?? "").trim();
-  if (!response.ok || !token) {
-    throw new Error(`Rutube вход: ${String(payload["detail"] ?? payload["raw"] ?? response.status)}`);
+  const email = settings.rutube_email.trim();
+  const password = settings.rutube_password;
+  const headers = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": "Rutube_PHPClient",
+  };
+  const attempts: Array<{ body: string; contentType: string }> = [
+    {
+      body: JSON.stringify({ username: email, password }),
+      contentType: "application/json",
+    },
+    {
+      body: JSON.stringify({ username: email, email, password }),
+      contentType: "application/json",
+    },
+    {
+      body: new URLSearchParams({ username: email, password }).toString(),
+      contentType: "application/x-www-form-urlencoded",
+    },
+  ];
+  let last = "400";
+  for (const attempt of attempts) {
+    const response = await fetch("https://rutube.ru/api/accounts/token_auth/", {
+      method: "POST",
+      headers: { ...headers, "Content-Type": attempt.contentType },
+      body: attempt.body,
+    });
+    const payload = await jsonOrText(response);
+    const token = String(payload["token"] ?? payload["key"] ?? "").trim();
+    if (response.ok && token) {
+      await saveVideoHostSettings({ rutube_token: token });
+      return token;
+    }
+    last = rutubeErrorText(payload, response.status);
   }
-  await saveVideoHostSettings({ rutube_token: token });
-  return token;
+  throw new Error(
+    `Rutube вход: ${last}. Пароль с сайта Rutube для API не подходит (часто из‑за капчи). В Настройках → Видеоканалы вставьте Token API.`,
+  );
 }
 
 async function publishRutube(settings: VideoHostSettings, title: string, description: string, fileUrl: string) {
