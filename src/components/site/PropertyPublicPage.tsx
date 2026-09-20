@@ -476,7 +476,7 @@ export function PropertyPublicPage({
         {hasVideo ? (
           <section className="mt-14">
             <SectionTitle>Видео</SectionTitle>
-            <div className="mt-6 overflow-hidden rounded-3xl bg-site-navy-soft">
+            <div className="mt-6 w-full max-w-[640px] overflow-hidden rounded-3xl bg-site-navy-soft">
               <div className="aspect-video">
                 <PropertyVideoPlayer
                   videoUrl={property.video_url}
