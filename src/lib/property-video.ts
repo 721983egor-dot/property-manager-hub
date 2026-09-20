@@ -98,7 +98,7 @@ export function resolvePropertyVideo(
     return src ? { kind: "file", src } : null;
   }
   if (parsed.host === "youtube" && parsed.youtubeId) {
-    return { kind: "embed", src: `https://www.youtube-nocookie.com/embed/${parsed.youtubeId}` };
+    return { kind: "embed", src: youtubeEmbedSrc(parsed.youtubeId) };
   }
   if (parsed.host === "rutube" && parsed.rutubeId) {
     return { kind: "embed", src: `https://rutube.ru/play/embed/${parsed.rutubeId}` };
@@ -170,6 +170,21 @@ function youtubeParsed(raw: string, id: string): ParsedPropertyVideo {
     watchUrl: `https://www.youtube.com/watch?v=${id}`,
     youtubeId: id,
   };
+}
+
+/** Обычный youtube.com/embed — nocookie даёт ошибку 153 в iframe. */
+export function youtubeEmbedSrc(id: string, options?: { autoplay?: boolean; origin?: string }) {
+  const params = new URLSearchParams({
+    rel: "0",
+    modestbranding: "1",
+    playsinline: "1",
+  });
+  if (options?.autoplay) {
+    params.set("autoplay", "1");
+    params.set("mute", "1");
+  }
+  if (options?.origin) params.set("origin", options.origin);
+  return `https://www.youtube.com/embed/${id}?${params.toString()}`;
 }
 
 /** Куда ролик реально уйдёт: сайт всегда, площадки — по их правилам. */

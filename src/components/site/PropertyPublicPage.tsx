@@ -492,14 +492,24 @@ export function PropertyPublicPage({
         {hasVideo ? (
           <section className="mt-14">
             <SectionTitle>Видео</SectionTitle>
-            <div className="mt-6 w-full max-w-[640px] overflow-hidden rounded-3xl bg-site-navy-soft">
-              <div className="aspect-video">
-                <PropertyVideoPlayer
-                  videoUrl={playbackUrl}
-                  fileSrc={videoFileSrc}
-                  title={`${propertyPageHeading(property)} — видео`}
-                />
+            <div className="mt-6 grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-12">
+              <div className="overflow-hidden rounded-3xl bg-site-navy-soft lg:col-span-7">
+                <div className="aspect-video">
+                  <PropertyVideoPlayer
+                    videoUrl={playbackUrl}
+                    fileSrc={videoFileSrc}
+                    autoplayOnView
+                    title={`${propertyPageHeading(property)} — видео`}
+                  />
+                </div>
               </div>
+              {paragraphs.length > 0 ? (
+                <div className="space-y-4 text-[16px] leading-[1.8] text-site-muted lg:col-span-5">
+                  {paragraphs.map((p, i) => (
+                    <p key={i}>{p}</p>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </section>
         ) : null}
@@ -560,7 +570,7 @@ export function PropertyPublicPage({
         ) : null}
 
         {/* ===== Описание ===== */}
-        {paragraphs.length > 0 ? (
+        {!hasVideo && paragraphs.length > 0 ? (
           <section className="mt-14">
             <SectionTitle>Описание</SectionTitle>
             <div className="mt-5 max-w-[90ch] space-y-4 text-[16px] leading-[1.8] text-site-muted">
