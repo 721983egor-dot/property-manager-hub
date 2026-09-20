@@ -37,26 +37,48 @@ type PublishResult = {
   errors: string[];
 };
 
-function asSettings(row: Record<string, unknown> | null): VideoHostSettings {
-  return {
-    rutube_email: String(row?.["rutube_email"] ?? ""),
-    rutube_password: String(row?.["rutube_password"] ?? ""),
-    rutube_token: String(row?.["rutube_token"] ?? ""),
-    rutube_author_id: String(row?.["rutube_author_id"] ?? ""),
-    rutube_category_id: Number(row?.["rutube_category_id"] ?? 13) || 13,
-    vk_token: String(row?.["vk_token"] ?? ""),
-    vk_group_id: String(row?.["vk_group_id"] ?? ""),
-    youtube_client_id: String(row?.["youtube_client_id"] ?? ""),
-    youtube_client_secret: String(row?.["youtube_client_secret"] ?? ""),
-    youtube_refresh_token: String(row?.["youtube_refresh_token"] ?? ""),
-    extra_hashtags: String(row?.["extra_hashtags"] ?? ""),
-  };
+const SECRET_FIELDS = [
+  ["rutube_email", "RUTUBE_EMAIL"],
+  ["rutube_password", "RUTUBE_PASSWORD"],
+  ["rutube_token", "RUTUBE_TOKEN"],
+  ["rutube_author_id", "RUTUBE_AUTHOR_ID"],
+  ["vk_token", "VK_TOKEN"],
+  ["vk_group_id", "VK_GROUP_ID"],
+  ["youtube_client_id", "YOUTUBE_CLIENT_ID"],
+  ["youtube_client_secret", "YOUTUBE_CLIENT_SECRET"],
+  ["youtube_refresh_token", "YOUTUBE_REFRESH_TOKEN"],
+  ["extra_hashtags", "VIDEO_EXTRA_HASHTAGS"],
+] as const;
+
+const DEFAULT_HASHTAGS = "#residencemore #сочи #арендасочи #долгосрочнаяаренда";
+
+async function readSecret(name: string) {
+  try {
+    const { getPlatformSecret } = await import("@/lib/platform-secrets.server");
+    return (await getPlatformSecret(name)).trim();
+  } catch {
+    return "";
+  }
 }
 
 export async function loadVideoHostSettings(): Promise<VideoHostSettings> {
-  const { data, error } = await supabaseAdmin.from("video_host_settings").select("*").eq("id", true).maybeSingle();
-  if (error) throw new Error(error.message);
-  return asSettings((data ?? null) as Record<string, unknown> | null);
+  const values = Object.fromEntries(
+    await Promise.all(SECRET_FIELDS.map(async ([field, name]) => [field, await readSecret(name)])),
+  ) as Record<string, string>;
+  const category = Number(await readSecret("RUTUBE_CATEGORY_ID")) || 13;
+  return {
+    rutube_email: values.rutube_email ?? "",
+    rutube_password: values.rutube_password ?? "",
+    rutube_token: values.rutube_token ?? "",
+    rutube_author_id: values.rutube_author_id ?? "",
+    rutube_category_id: category,
+    vk_token: values.vk_token ?? "",
+    vk_group_id: values.vk_group_id ?? "",
+    youtube_client_id: values.youtube_client_id ?? "",
+    youtube_client_secret: values.youtube_client_secret ?? "",
+    youtube_refresh_token: values.youtube_refresh_token ?? "",
+    extra_hashtags: values.extra_hashtags || DEFAULT_HASHTAGS,
+  };
 }
 
 export function publicVideoHostStatus(settings: VideoHostSettings): VideoHostPublicStatus {
@@ -77,21 +99,18 @@ export function publicVideoHostStatus(settings: VideoHostSettings): VideoHostPub
 }
 
 export async function saveVideoHostSettings(patch: Partial<VideoHostSettings>) {
-  const current = await loadVideoHostSettings();
-  const next: VideoHostSettings = { ...current };
-  for (const key of Object.keys(patch) as (keyof VideoHostSettings)[]) {
-    const value = patch[key];
-    if (value == null) continue;
-    if (typeof value === "string" && value.trim() === "" && key !== "extra_hashtags" && key !== "rutube_author_id" && key !== "vk_group_id") {
+  const { setPlatformSecret } = await import("@/lib/platform-secrets.server");
+  for (const [field, name] of SECRET_FIELDS) {
+    const value = patch[field];
+    if (typeof value !== "string") continue;
+    if (value.trim() === "" && field !== "extra_hashtags" && field !== "rutube_author_id" && field !== "vk_group_id") {
       continue;
     }
-    (next as Record<string, unknown>)[key] = value;
+    await setPlatformSecret(name, value);
   }
-  const { error } = await supabaseAdmin.from("video_host_settings").upsert(
-    { id: true, ...next, updated_at: new Date().toISOString() } as never,
-    { onConflict: "id" },
-  );
-  if (error) throw new Error(error.message);
+  if (patch.rutube_category_id != null) {
+    await setPlatformSecret("RUTUBE_CATEGORY_ID", String(patch.rutube_category_id || 13));
+  }
 }
 
 function filePathOf(property: Property) {
