@@ -504,21 +504,41 @@ export const DEFAULT_RENT_TERMS = [
 
 
 export async function createProperty(input: PropertyInput) {
-  const { data, error } = await supabase
-    .from("properties")
-    .insert(input as never)
-    .select("id")
-    .single();
-  if (error) throw error;
-  return data;
+  const payload = { ...input } as Record<string, unknown>;
+  const first = await supabase.from("properties").insert(payload as never).select("id").single();
+  if (!first.error) return first.data;
+  const fallback = withoutMissingVideoColumns(payload, first.error.message);
+  if (!fallback) throw first.error;
+  const retry = await supabase.from("properties").insert(fallback as never).select("id").single();
+  if (retry.error) throw retry.error;
+  return retry.data;
 }
 
 export async function updateProperty(id: string, input: Partial<PropertyInput>) {
-  const { error } = await supabase
-    .from("properties")
-    .update(input as never)
-    .eq("id", id);
-  if (error) throw error;
+  const payload = { ...input } as Record<string, unknown>;
+  const first = await supabase.from("properties").update(payload as never).eq("id", id);
+  if (!first.error) return;
+  const fallback = withoutMissingVideoColumns(payload, first.error.message);
+  if (!fallback) throw first.error;
+  const retry = await supabase.from("properties").update(fallback as never).eq("id", id);
+  if (retry.error) throw retry.error;
+}
+
+const EXTRA_VIDEO_COLUMNS = [
+  "video_file_path",
+  "video_vk_url",
+  "video_youtube_url",
+  "video_publish_status",
+  "video_publish_error",
+] as const;
+
+function withoutMissingVideoColumns(payload: Record<string, unknown>, message: string) {
+  const lower = message.toLowerCase();
+  const extraMissing = EXTRA_VIDEO_COLUMNS.some((column) => lower.includes(column));
+  if (!extraMissing && !/schema cache|could not find/i.test(message)) return null;
+  const fallback = { ...payload };
+  for (const column of EXTRA_VIDEO_COLUMNS) delete fallback[column];
+  return fallback;
 }
 
 export async function setPropertyStatus(id: string, status: PropertyStatus) {

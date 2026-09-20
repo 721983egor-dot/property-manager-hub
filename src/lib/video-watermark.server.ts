@@ -28,7 +28,7 @@ async function hasFfmpeg() {
 
 /**
  * Накладывает логотип Residence More в правом нижнем углу.
- * Ширина знака — около 14% кадра, с небольшим отступом от края.
+ * Под ним — полупрозрачная «стеклянная» подложка, сам знак крупнее и слегка прозрачный.
  */
 export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
   const mark = watermarkPngPath();
@@ -49,7 +49,14 @@ export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
         "-i",
         mark,
         "-filter_complex",
-        "[1:v]format=rgba,colorchannelmixer=aa=0.92[logo];[logo][0:v]scale2ref=w=main_w*0.14:h=ow/mdar[wm][base];[base][wm]overlay=W-w-28:H-h-20:format=auto",
+        [
+          "[1:v]format=rgba,colorchannelmixer=aa=0.80[logo]",
+          "[logo][0:v]scale2ref=w=main_w*0.30:h=ow/mdar[wm][base]",
+          "[wm]split[mark][plate]",
+          "[plate]format=rgba,pad=iw+72:ih+52:36:26:white@0.20,boxblur=16:8[glass]",
+          "[base][glass]overlay=W-w-14:H-h-12[tmp]",
+          "[tmp][mark]overlay=W-w-50:H-h-38:format=auto",
+        ].join(";"),
         "-c:v",
         "libx264",
         "-preset",
@@ -73,16 +80,16 @@ export async function overlayVideoWatermark(input: Buffer): Promise<Buffer> {
 }
 
 export function isWatermarkedVideoPath(path: string) {
-  return /-wm\.(mp4|m4v|mov|webm)$/i.test(path);
+  return /-glass\.(mp4|m4v|mov|webm)$/i.test(path);
 }
 
-/** Скачивает ролик, ставит логотип и сохраняет как *-wm.mp4. Если уже с логотипом — не трогает. */
+/** Скачивает ролик, ставит стеклянный логотип и сохраняет как *-glass.mp4. */
 export async function ensureWatermarkedPropertyVideo(path: string): Promise<string> {
   if (!path || isWatermarkedVideoPath(path)) return path;
   const { data, error } = await supabaseAdmin.storage.from(PHOTO_BUCKET).download(path);
   if (error || !data) throw new Error(error?.message || "Не удалось скачать видео для водяного знака");
   const overlayed = await overlayVideoWatermark(Buffer.from(await data.arrayBuffer()));
-  const next = `uploads/${crypto.randomUUID()}-wm.mp4`;
+  const next = `uploads/${crypto.randomUUID()}-glass.mp4`;
   const { error: uploadError } = await supabaseAdmin.storage.from(PHOTO_BUCKET).upload(next, overlayed, {
     cacheControl: "3600",
     upsert: false,

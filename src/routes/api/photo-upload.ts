@@ -90,7 +90,7 @@ export const Route = createFileRoute("/api/photo-upload")({
           }
         }
 
-        const path = `uploads/${crypto.randomUUID()}${watermarked ? "-wm" : ""}.${outExt}`;
+        const path = `uploads/${crypto.randomUUID()}${watermarked ? "-glass" : ""}.${outExt}`;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = await supabaseAdmin.storage.from(BUCKET).upload(path, body, {
           cacheControl: "3600",

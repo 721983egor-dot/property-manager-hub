@@ -48,7 +48,7 @@ function NewObjectPage() {
       toast.success("Объект создан");
       navigate({ to: "/objects" });
     },
-    onError: () => toast.error("Не удалось сохранить объект"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось сохранить объект"),
   });
 
   return (

@@ -65,7 +65,7 @@ function EditObjectPage() {
       toast.success("Изменения сохранены");
       navigate({ to: "/objects" });
     },
-    onError: () => toast.error("Не удалось сохранить изменения"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось сохранить изменения"),
   });
 
   return (
