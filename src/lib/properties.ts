@@ -23,7 +23,7 @@ export type PropertyPhoto = {
 };
 
 export function isPropertyVideoPath(path: string) {
-  return /\.(mp4|m4v|mov|webm)$/i.test(path) || /-(wm|glass|logo)\./i.test(path);
+  return /\.(mp4|m4v|mov|webm)$/i.test(path);
 }
 
 export function splitPropertyMedia(photos: PropertyPhoto[] | null | undefined) {
@@ -39,6 +39,36 @@ export function splitPropertyMedia(photos: PropertyPhoto[] | null | undefined) {
     images.push({ path: photo.path });
   }
   return { images, video, videoPath: video?.path ?? "" };
+}
+
+/** Фото отдельно, видео — из колонок или из photos JSON (когда колонок ещё нет). */
+export function propertyMediaFromRow(row: Record<string, unknown>) {
+  const split = splitPropertyMedia(Array.isArray(row["photos"]) ? (row["photos"] as PropertyPhoto[]) : []);
+  const videoUrl = typeof row["video_url"] === "string" ? (row["video_url"] as string) : "";
+  const filePath = typeof row["video_file_path"] === "string" ? (row["video_file_path"] as string) : "";
+  return {
+    photos: split.images,
+    video_url: /^https?:\/\//i.test(videoUrl)
+      ? videoUrl
+      : split.video?.rutubeUrl || videoUrl || split.videoPath,
+    video_file_path: filePath || split.videoPath,
+    video_vk_url:
+      (typeof row["video_vk_url"] === "string" ? (row["video_vk_url"] as string) : "") ||
+      split.video?.vkUrl ||
+      "",
+    video_youtube_url:
+      (typeof row["video_youtube_url"] === "string" ? (row["video_youtube_url"] as string) : "") ||
+      split.video?.youtubeUrl ||
+      "",
+    video_publish_status:
+      (typeof row["video_publish_status"] === "string" ? (row["video_publish_status"] as string) : "") ||
+      split.video?.publishStatus ||
+      "",
+    video_publish_error:
+      (typeof row["video_publish_error"] === "string" ? (row["video_publish_error"] as string) : "") ||
+      split.video?.publishError ||
+      "",
+  };
 }
 
 /** Тип услуги — только для внутренних экранов RM OS. */
@@ -376,33 +406,9 @@ function num(value: unknown): number | null {
 }
 
 function normalize(row: Record<string, unknown>): Property {
-  const split = splitPropertyMedia(Array.isArray(row["photos"]) ? (row["photos"] as PropertyPhoto[]) : []);
-  const videoUrl = typeof row["video_url"] === "string" ? (row["video_url"] as string) : "";
-  const filePath =
-    typeof row["video_file_path"] === "string" ? (row["video_file_path"] as string) : "";
   return {
     ...(row as unknown as Property),
-    photos: split.images,
-    video_url: /^https?:\/\//i.test(videoUrl)
-      ? videoUrl
-      : split.video?.rutubeUrl || videoUrl || split.videoPath,
-    video_file_path: filePath || split.videoPath,
-    video_vk_url:
-      (typeof row["video_vk_url"] === "string" ? (row["video_vk_url"] as string) : "") ||
-      split.video?.vkUrl ||
-      "",
-    video_youtube_url:
-      (typeof row["video_youtube_url"] === "string" ? (row["video_youtube_url"] as string) : "") ||
-      split.video?.youtubeUrl ||
-      "",
-    video_publish_status:
-      (typeof row["video_publish_status"] === "string" ? (row["video_publish_status"] as string) : "") ||
-      split.video?.publishStatus ||
-      "",
-    video_publish_error:
-      (typeof row["video_publish_error"] === "string" ? (row["video_publish_error"] as string) : "") ||
-      split.video?.publishError ||
-      "",
+    ...propertyMediaFromRow(row),
     published: Boolean(row['published']),
     latitude: num(row['latitude']),
     longitude: num(row['longitude']),
@@ -606,12 +612,13 @@ function isNetworkFailure(error: unknown): boolean {
 }
 
 /** Запасная загрузка через наш сервер — когда прямой запрос в хранилище не проходит. */
-async function uploadFileViaServer(file: File): Promise<PropertyPhoto> {
+async function uploadFileViaServer(file: File, options?: { watermark?: boolean }): Promise<PropertyPhoto> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Требуется вход в систему");
   const form = new FormData();
   form.append("file", file, file.name);
+  if (options?.watermark) form.append("watermark", "1");
   const response = await fetch("/api/photo-upload", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
@@ -630,7 +637,11 @@ async function uploadPhotoViaServer(file: File): Promise<PropertyPhoto> {
   return uploadFileViaServer(file);
 }
 
-export async function uploadPhoto(file: File): Promise<PropertyPhoto> {
+export async function uploadPhoto(
+  file: File,
+  options?: { watermark?: boolean },
+): Promise<PropertyPhoto> {
+  if (options?.watermark) return uploadFileViaServer(file, { watermark: true });
   const ext = file.name.split(".").pop() ?? "jpg";
   const path = `uploads/${crypto.randomUUID()}.${ext}`;
   try {

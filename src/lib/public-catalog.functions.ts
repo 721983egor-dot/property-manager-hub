@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 
 import type { Complex } from "@/lib/complexes";
-import { splitPropertyMedia, type Property, type PropertyPhoto } from "@/lib/properties";
+import { propertyMediaFromRow, splitPropertyMedia, type Property, type PropertyPhoto } from "@/lib/properties";
 import { addDays, parseISODate, toISODate } from "@/lib/rentals";
 import { complexSlug } from "@/lib/seo";
 
@@ -12,10 +12,10 @@ function num(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function normalizeProperty(row: Record<string, unknown>): Property {
+export function normalizeProperty(row: Record<string, unknown>): Property {
   return {
     ...(row as unknown as Property),
-    photos: Array.isArray(row["photos"]) ? splitPropertyMedia(row["photos"] as PropertyPhoto[]).images : [],
+    ...propertyMediaFromRow(row),
     published: Boolean(row["published"]),
     outdoor_spaces: Array.isArray(row["outdoor_spaces"]) ? (row["outdoor_spaces"] as string[]) : [],
     appliances: Array.isArray(row["appliances"]) ? (row["appliances"] as string[]) : [],

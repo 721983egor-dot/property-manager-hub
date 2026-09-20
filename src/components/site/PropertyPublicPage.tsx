@@ -72,6 +72,8 @@ export type PublicPropertyView = Pick<
   | "photos"
   | "video_url"
   | "video_file_path"
+  | "video_vk_url"
+  | "video_youtube_url"
   | "is_apartments"
 >;
 
@@ -199,7 +201,11 @@ export function PropertyPublicPage({
   const videoFileSrc = videoPath
     ? photoUrls[videoPath] || publicPhotoUrl(videoPath)
     : null;
-  const hasVideo = Boolean(resolvePropertyVideo(property.video_url, videoFileSrc));
+  const playback =
+    resolvePropertyVideo(property.video_url, videoFileSrc) ||
+    resolvePropertyVideo(property.video_youtube_url, videoFileSrc) ||
+    resolvePropertyVideo(property.video_vk_url, videoFileSrc);
+  const hasVideo = Boolean(playback);
   const safeActive = photos.length ? Math.min(active, photos.length - 1) : 0;
   const current = photos[safeActive];
 
@@ -479,7 +485,7 @@ export function PropertyPublicPage({
             <div className="mt-6 w-full max-w-[640px] overflow-hidden rounded-3xl bg-site-navy-soft">
               <div className="aspect-video">
                 <PropertyVideoPlayer
-                  videoUrl={property.video_url}
+                  videoUrl={property.video_url || property.video_youtube_url || property.video_vk_url}
                   fileSrc={videoFileSrc}
                   title={`${propertyPageHeading(property)} — видео`}
                 />

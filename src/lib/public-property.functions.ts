@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 
-import { loadPublishedProperties } from "@/lib/public-catalog.functions";
+import { loadPublishedProperties, normalizeProperty } from "@/lib/public-catalog.functions";
 import { propertyMatchesLegacyPath, propertySlug, slugifyName } from "@/lib/seo";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,14 +31,14 @@ export const getPublicProperty = createServerFn({ method: "POST" })
     if (UUID_RE.test(key)) {
       const { data, error } = await published().eq("id", key).maybeSingle();
       if (error) throw new Error(error.message);
-      return data;
+      return data ? normalizeProperty(data as Record<string, unknown>) : null;
     }
 
     const refId = key.includes("/") ? null : refIdFromKey(key);
     if (refId != null) {
       const { data, error } = await published().eq("ref_id", refId).maybeSingle();
       if (error) throw new Error(error.message);
-      if (data) return data;
+      if (data) return normalizeProperty(data as Record<string, unknown>);
     }
 
     const all = await loadPublishedProperties();

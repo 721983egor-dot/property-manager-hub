@@ -49,8 +49,8 @@ export function parsePropertyVideoValue(
     }
 
     if (host === "vk.com" || host === "m.vk.com" || host === "vkvideo.ru") {
-      const clip = /\/clip/i.test(parsed.pathname);
-      const fromPath = parsed.pathname.match(/video(-?\d+)_(\d+)/);
+      const clip = /clip/i.test(parsed.pathname);
+      const fromPath = parsed.pathname.match(/(?:video|clip)(-?\d+)_(\d+)/i);
       const oid = fromPath?.[1] ?? parsed.searchParams.get("oid");
       const id = fromPath?.[2] ?? parsed.searchParams.get("id");
       const safeOid = String(oid ?? "").replace(/[^\d-]/g, "");
@@ -89,7 +89,10 @@ export function resolvePropertyVideo(
   fileSrc?: string | null,
 ): PropertyVideoPlayback | null {
   const parsed = parsePropertyVideoValue(videoUrl);
-  if (!parsed) return null;
+  if (!parsed) {
+    const src = (fileSrc ?? "").trim();
+    return src ? { kind: "file", src } : null;
+  }
   if (parsed.host === "file") {
     const src = (parsed.watchUrl || fileSrc || "").trim();
     return src ? { kind: "file", src } : null;
@@ -131,19 +134,22 @@ export function yandexFeedVideoReview(
   return null;
 }
 
-/** Авито: ссылка YouTube/Rutube или прямой файл. */
+/** Авито: прямой файл MP4 или ссылка YouTube/Rutube. */
 export function avitoFeedVideo(
   videoUrl: string | null | undefined,
   fileUrl?: string | null,
 ): { videoUrl?: string; videoFileUrl?: string } | null {
   const parsed = parsePropertyVideoValue(videoUrl);
-  if (!parsed) return null;
-  if (parsed.host === "youtube" || parsed.host === "rutube") {
-    return parsed.watchUrl ? { videoUrl: parsed.watchUrl } : null;
+  if (!parsed) {
+    const src = (fileUrl ?? "").trim();
+    return src ? { videoFileUrl: src } : null;
   }
   if (parsed.host === "file") {
-    const src = (fileUrl || parsed.watchUrl || "").trim();
+    const src = (fileUrl || parsed.watchUrl || parsed.path || "").trim();
     return src ? { videoFileUrl: src } : null;
+  }
+  if (parsed.host === "youtube" || parsed.host === "rutube") {
+    return parsed.watchUrl ? { videoUrl: parsed.watchUrl } : null;
   }
   return null;
 }
@@ -179,6 +185,6 @@ export function videoFeedCoverage(videoUrl: string | null | undefined): {
     site: true,
     cian: Boolean(cianFeedVideoUrl(videoUrl)),
     yandex: Boolean(yandexFeedVideoReview(videoUrl)),
-    avito: parsed.host === "youtube" || parsed.host === "rutube",
+    avito: parsed.host === "youtube" || parsed.host === "rutube" || parsed.host === "file",
   };
 }
