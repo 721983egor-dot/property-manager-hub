@@ -1,9 +1,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { PHOTO_BUCKET, splitPropertyMedia, type Property, type PropertyPhoto } from "@/lib/properties";
 import { storedVideoPath } from "@/lib/property-video";
-import { propertyVideoDescription, propertyVideoTags, propertyVideoTitle } from "@/lib/property-video-copy";
-import { feedPhotoUrl } from "@/lib/cian-feed.server";
-import { SITE_ORIGIN } from "@/lib/site";
+import { propertyVideoDescription, propertyVideoTags, propertyVideoTitle, withYoutubeShortsMarkup } from "@/lib/property-video-copy";
 
 export type VideoHostSettings = {
   rutube_email: string;
@@ -114,20 +112,13 @@ export async function saveVideoHostSettings(patch: Partial<VideoHostSettings>) {
 }
 
 function filePathOf(property: Property) {
-  return (
-    storedVideoPath(property.video_file_path) ||
-    storedVideoPath(property.video_url) ||
-    splitPropertyMedia(property.photos).videoPath ||
-    null
-  );
-}
-
-function publicFileOrigin() {
-  return (
-    process.env["PUBLIC_SITE_URL"] ||
-    process.env["PUBLIC_BASE_URL"] ||
-    SITE_ORIGIN
-  ).replace(/\/$/, "");
+  const candidates = [
+    storedVideoPath(property.video_url),
+    storedVideoPath(property.video_file_path),
+    splitPropertyMedia(property.photos).videoPath || null,
+  ].filter((path): path is string => Boolean(path));
+  const original = candidates.find((path) => !/-logo\.(mp4|m4v|mov|webm)$/i.test(path));
+  return original || candidates[0] || null;
 }
 
 async function persistVideoPhoto(propertyId: string, entry: PropertyPhoto) {
@@ -153,93 +144,6 @@ async function jsonOrText(response: Response) {
   } catch {
     return { raw: text };
   }
-}
-
-function rutubeErrorText(payload: Record<string, unknown>, status: number) {
-  const parts = [
-    payload["detail"],
-    payload["non_field_errors"],
-    payload["username"],
-    payload["password"],
-    payload["raw"],
-  ]
-    .flatMap((value) => (Array.isArray(value) ? value : [value]))
-    .map((value) => String(value ?? "").trim())
-    .filter(Boolean);
-  return parts.join(" ") || String(status);
-}
-
-async function rutubeToken(settings: VideoHostSettings) {
-  if (settings.rutube_token.trim()) return settings.rutube_token.trim();
-  if (!settings.rutube_email || !settings.rutube_password) {
-    throw new Error("Rutube не подключён");
-  }
-  const email = settings.rutube_email.trim();
-  const password = settings.rutube_password;
-  const headers = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    "User-Agent": "Rutube_PHPClient",
-  };
-  const attempts: Array<{ body: string; contentType: string }> = [
-    {
-      body: JSON.stringify({ username: email, password }),
-      contentType: "application/json",
-    },
-    {
-      body: JSON.stringify({ username: email, email, password }),
-      contentType: "application/json",
-    },
-    {
-      body: new URLSearchParams({ username: email, password }).toString(),
-      contentType: "application/x-www-form-urlencoded",
-    },
-  ];
-  let last = "400";
-  for (const attempt of attempts) {
-    const response = await fetch("https://rutube.ru/api/accounts/token_auth/", {
-      method: "POST",
-      headers: { ...headers, "Content-Type": attempt.contentType },
-      body: attempt.body,
-    });
-    const payload = await jsonOrText(response);
-    const token = String(payload["token"] ?? payload["key"] ?? "").trim();
-    if (response.ok && token) {
-      await saveVideoHostSettings({ rutube_token: token });
-      return token;
-    }
-    last = rutubeErrorText(payload, response.status);
-  }
-  throw new Error(
-    `Rutube вход: ${last}. Пароль с сайта Rutube для API не подходит (часто из‑за капчи). В Настройках → Видеоканалы вставьте Token API.`,
-  );
-}
-
-async function publishRutube(settings: VideoHostSettings, title: string, description: string, fileUrl: string) {
-  const token = await rutubeToken(settings);
-  const body: Record<string, unknown> = {
-    url: fileUrl,
-    title,
-    description,
-    is_hidden: 0,
-    category: settings.rutube_category_id,
-    hidden: false,
-  };
-  if (settings.rutube_author_id.trim()) body["author"] = Number(settings.rutube_author_id) || settings.rutube_author_id;
-  const response = await fetch("https://rutube.ru/api/video/", {
-    method: "POST",
-    headers: {
-      Authorization: `Token ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  const payload = await jsonOrText(response);
-  const id = String(payload["video_id"] ?? payload["id"] ?? "").replace(/[^a-zA-Z0-9]/g, "");
-  if (!response.ok || !id) {
-    throw new Error(`Rutube: ${String(payload["detail"] ?? payload["raw"] ?? response.status)}`);
-  }
-  return `https://rutube.ru/video/${id}/`;
 }
 
 async function youtubeAccessToken(settings: VideoHostSettings) {
@@ -268,7 +172,9 @@ async function publishYoutube(
   tags: string[],
   bytes: ArrayBuffer,
   mime: string,
+  asShort: boolean,
 ) {
+  const copy = asShort ? withYoutubeShortsMarkup(title, description, tags) : { title, description, tags };
   const access = await youtubeAccessToken(settings);
   const start = await fetch(
     "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
@@ -282,9 +188,9 @@ async function publishYoutube(
       },
       body: JSON.stringify({
         snippet: {
-          title: title.slice(0, 100),
-          description,
-          tags: tags.map((t) => t.replace(/^#/, "")).slice(0, 15),
+          title: copy.title.slice(0, 100),
+          description: copy.description,
+          tags: copy.tags.map((t) => t.replace(/^#/, "")).slice(0, 15),
           categoryId: "19",
         },
         status: { privacyStatus: "public", selfDeclaredMadeForKids: false },
@@ -310,34 +216,135 @@ async function publishYoutube(
   if (!put.ok || !id) {
     throw new Error(`YouTube загрузка: ${JSON.stringify(payload["error"] ?? payload)}`);
   }
-  return `https://www.youtube.com/watch?v=${id}`;
+  return asShort ? `https://www.youtube.com/shorts/${id}` : `https://www.youtube.com/watch?v=${id}`;
 }
 
-async function publishVk(settings: VideoHostSettings, title: string, description: string, link: string) {
-  const group = settings.vk_group_id.replace(/[^\d]/g, "");
+async function vkCall(method: string, params: URLSearchParams) {
+  const save = await fetch(`https://api.vk.com/method/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params,
+  });
+  return jsonOrText(save);
+}
+
+function vkErrorMessage(payload: Record<string, unknown>, prefix = "VK") {
+  const error = payload["error"] as { error_msg?: string; error_code?: number } | undefined;
+  const message = error?.error_msg || "";
+  if (!message) return null;
+  if (error?.error_code === 5 || /user authorization failed/i.test(message)) {
+    return `${prefix}: токен не принят. Нужен ключ пользователя или сообщества с правом «Видео», не мини-приложение. Ссылку vk.ru/residencemore можно оставить — ID группы подставим сами.`;
+  }
+  return `${prefix}: ${message}`;
+}
+
+function parseVkGroupRef(raw: string): { id?: string; screen?: string } {
+  const value = raw.trim();
+  if (!value) return {};
+  if (/^\d+$/.test(value)) return { id: value };
+  const slug = (() => {
+    try {
+      const url = new URL(/^https?:\/\//i.test(value) ? value : `https://vk.com/${value.replace(/^@/, "")}`);
+      return url.pathname.replace(/^\//, "").split("/")[0] ?? "";
+    } catch {
+      return value.replace(/^@/, "");
+    }
+  })();
+  const club = slug.match(/^(?:club|public|event)(\d+)$/i);
+  if (club?.[1]) return { id: club[1] };
+  if (/^\d+$/.test(slug)) return { id: slug };
+  return slug ? { screen: slug } : {};
+}
+
+async function resolveVkGroupId(settings: VideoHostSettings): Promise<string> {
+  const parsed = parseVkGroupRef(settings.vk_group_id);
+  if (parsed.id) return parsed.id;
+  if (!parsed.screen || !settings.vk_token.trim()) return "";
+  const params = new URLSearchParams({
+    access_token: settings.vk_token.trim(),
+    v: "5.199",
+    screen_name: parsed.screen,
+  });
+  const payload = await vkCall("utils.resolveScreenName", params);
+  const authError = vkErrorMessage(payload, "VK");
+  if (authError) throw new Error(authError);
+  const response = payload["response"] as { type?: string; object_id?: number } | undefined;
+  if (response?.type === "group" || response?.type === "page") {
+    return String(response.object_id ?? "");
+  }
+  throw new Error(`VK: «${parsed.screen}» — это не сообщество. Укажите ссылку вида https://vk.ru/residencemore`);
+}
+
+async function publishVkClip(
+  settings: VideoHostSettings,
+  description: string,
+  bytes: ArrayBuffer,
+) {
+  const group = await resolveVkGroupId(settings);
+  const params = new URLSearchParams({
+    access_token: settings.vk_token.trim(),
+    v: "5.199",
+    file_size: String(bytes.byteLength),
+    description: description.slice(0, 4000),
+    wallpost: "0",
+  });
+  if (group) params.set("group_id", group);
+  const payload = await vkCall("shortVideo.create", params);
+  const clipError = vkErrorMessage(payload, "VK клип");
+  if (clipError) throw new Error(clipError);
+  const response = payload["response"] as Record<string, unknown> | undefined;
+  const uploadUrl = String(response?.["upload_url"] ?? "");
+  const ownerId = response?.["owner_id"];
+  const videoId = response?.["video_id"];
+  if (!uploadUrl) throw new Error("VK клип: нет адреса загрузки");
+  const blob = new Blob([bytes], { type: "video/mp4" });
+  const form = new FormData();
+  form.append("file", blob, "clip.mp4");
+  let uploaded = await fetch(uploadUrl, { method: "POST", body: form });
+  if (!uploaded.ok) {
+    const retry = new FormData();
+    retry.append("data", blob, "clip.mp4");
+    uploaded = await fetch(uploadUrl, { method: "POST", body: retry });
+  }
+  if (!uploaded.ok) throw new Error(`VK клип загрузка: ${uploaded.status}`);
+  if (ownerId == null || videoId == null) {
+    const body = await jsonOrText(uploaded);
+    const oid = body["owner_id"] ?? body["ownerId"];
+    const vid = body["video_id"] ?? body["videoId"] ?? body["clip_id"];
+    if (oid != null && vid != null) return `https://vk.com/clip${oid}_${vid}`;
+    throw new Error("VK клип не вернул идентификатор");
+  }
+  return `https://vk.com/clip${ownerId}_${videoId}`;
+}
+
+async function publishVkFile(
+  settings: VideoHostSettings,
+  title: string,
+  description: string,
+  bytes: ArrayBuffer,
+) {
+  const group = await resolveVkGroupId(settings);
   const params = new URLSearchParams({
     access_token: settings.vk_token.trim(),
     v: "5.199",
     name: title.slice(0, 128),
     description,
     wallpost: "0",
-    link,
   });
   if (group) params.set("group_id", group);
-  const save = await fetch(`https://api.vk.com/method/video.save?${params.toString()}`);
-  const payload = await jsonOrText(save);
-  const error = payload["error"] as { error_msg?: string } | undefined;
+  const payload = await vkCall("video.save", params);
+  const saveError = vkErrorMessage(payload, "VK");
+  if (saveError) throw new Error(saveError);
   const response = payload["response"] as Record<string, unknown> | undefined;
-  if (error?.error_msg) throw new Error(`VK: ${error.error_msg}`);
   const uploadUrl = String(response?.["upload_url"] ?? "");
   const ownerId = response?.["owner_id"];
   const videoId = response?.["video_id"];
-  if (uploadUrl) {
-    await fetch(uploadUrl, { method: "POST" }).catch(() => undefined);
-  }
-  if (ownerId == null || videoId == null) {
-    throw new Error("VK не вернул идентификатор видео");
-  }
+  if (!uploadUrl) throw new Error("VK не вернул адрес загрузки");
+  const form = new FormData();
+  form.append("video_file", new Blob([bytes], { type: "video/mp4" }), "video.mp4");
+  const uploaded = await fetch(uploadUrl, { method: "POST", body: form });
+  if (!uploaded.ok) throw new Error(`VK загрузка: ${uploaded.status}`);
+  if (ownerId == null || videoId == null) throw new Error("VK не вернул идентификатор видео");
   return `https://vkvideo.ru/video${ownerId}_${videoId}`;
 }
 
@@ -368,7 +375,15 @@ export async function publishPropertyVideoToHosts(propertyId: string): Promise<P
   const title = propertyVideoTitle(property);
   const description = propertyVideoDescription(property, settings.extra_hashtags);
   const tags = propertyVideoTags(settings.extra_hashtags);
-  const fileUrl = feedPhotoUrl(publicFileOrigin(), publishPath);
+  let bytes: ArrayBuffer | null = null;
+  try {
+    bytes = await downloadPropertyVideo(publishPath);
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Не удалось скачать видео");
+  }
+  const shape = bytes
+    ? await (await import("@/lib/video-watermark.server")).probeVideoShape(Buffer.from(bytes))
+    : { youtubeShort: false, vkClip: false, width: 0, height: 0, durationSec: 0 };
 
   await persistVideoPhoto(propertyId, { path: publishPath, publishStatus: "publishing" });
   await tryUpdateProperty(propertyId, {
@@ -377,44 +392,48 @@ export async function publishPropertyVideoToHosts(propertyId: string): Promise<P
     video_publish_error: "",
   });
 
-  let rutubeUrl = property.video_url && /rutube\.ru/i.test(property.video_url) ? property.video_url : "";
+  const rutubeUrl = property.video_url && /rutube\.ru/i.test(property.video_url) ? property.video_url : "";
   let youtubeUrl = property.video_youtube_url || "";
   let vkUrl = property.video_vk_url || "";
 
-  const canRutube = Boolean(settings.rutube_token.trim() || (settings.rutube_email && settings.rutube_password));
-  if (canRutube && !rutubeUrl) {
+  const youtubeReady = Boolean(
+    settings.youtube_client_id && settings.youtube_client_secret && settings.youtube_refresh_token,
+  );
+  const youtubeAlreadyShort = /youtube\.com\/shorts\//i.test(youtubeUrl);
+  if (youtubeReady && bytes && (!youtubeUrl || (shape.youtubeShort && !youtubeAlreadyShort))) {
     try {
-      rutubeUrl = await publishRutube(settings, title, description, fileUrl);
-    } catch (e) {
-      errors.push(e instanceof Error ? e.message : "Rutube");
-    }
-  } else if (!canRutube) {
-    errors.push("Rutube не подключён (Настройки → Видеоканалы)");
-  }
-
-  if (
-    settings.youtube_client_id &&
-    settings.youtube_client_secret &&
-    settings.youtube_refresh_token &&
-    !youtubeUrl
-  ) {
-    try {
-      const bytes = await downloadPropertyVideo(publishPath);
-      youtubeUrl = await publishYoutube(settings, title, description, tags, bytes, "video/mp4");
+      youtubeUrl = await publishYoutube(
+        settings,
+        title,
+        description,
+        tags,
+        bytes,
+        "video/mp4",
+        shape.youtubeShort,
+      );
     } catch (e) {
       errors.push(e instanceof Error ? e.message : "YouTube");
     }
+  } else if (!youtubeReady && !youtubeUrl) {
+    errors.push("YouTube не подключён (Настройки → Видеоканалы)");
   }
 
-  const vkLink = rutubeUrl || youtubeUrl;
-  if (settings.vk_token.trim() && vkLink && !vkUrl) {
+  if (settings.vk_token.trim() && !vkUrl && bytes) {
     try {
-      vkUrl = await publishVk(settings, title, description, vkLink);
+      if (shape.vkClip) {
+        try {
+          vkUrl = await publishVkClip(settings, description, bytes);
+        } catch {
+          vkUrl = await publishVkFile(settings, title, description, bytes);
+        }
+      } else {
+        vkUrl = await publishVkFile(settings, title, description, bytes);
+      }
     } catch (e) {
       errors.push(e instanceof Error ? e.message : "VK");
     }
-  } else if (settings.vk_token.trim() && !vkLink) {
-    errors.push("VK: сначала нужен Rutube или YouTube, чтобы добавить ролик в сообщество");
+  } else if (!settings.vk_token.trim() && !vkUrl) {
+    errors.push("VK не подключён (Настройки → Видеоканалы)");
   }
 
   const status = rutubeUrl || youtubeUrl || vkUrl ? "published" : "failed";
@@ -453,14 +472,13 @@ export async function processPendingPropertyVideos(limit = 3) {
     .from("properties")
     .select("id, video_publish_status, updated_at")
     .neq("video_file_path", "")
-    .in("video_publish_status", ["pending", "publishing"])
+    .in("video_publish_status", ["publishing"])
     .order("updated_at", { ascending: true })
     .limit(20);
   if (error) throw new Error(error.message);
-  const due = (data ?? []).filter((row) => {
-    if (row.video_publish_status === "pending") return true;
-    return new Date(String(row.updated_at)).getTime() < cutoff;
-  }).slice(0, limit);
+  const due = (data ?? [])
+    .filter((row) => new Date(String(row.updated_at)).getTime() < cutoff)
+    .slice(0, limit);
   const results: { id: string; ok: boolean; error?: string }[] = [];
   for (const row of due) {
     try {

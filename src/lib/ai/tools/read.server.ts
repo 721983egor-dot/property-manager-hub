@@ -11,6 +11,7 @@ import {
 import { selectionUrl } from "@/lib/telegram/links.server";
 
 import type { AssistantToolContext } from "@/lib/ai/context.server";
+import { propertyMediaFromRow } from "@/lib/properties";
 
 const daysAgoISO = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
 const dateOnly = (iso: string) => iso.slice(0, 10);
@@ -153,7 +154,12 @@ export function createReadTools(ctx: AssistantToolContext) {
             priceMonth: r["price_month"],
             commission: r["commission"],
             published: r["published"],
-            hasVideo: Boolean(String(r["video_url"] ?? "").trim()),
+            hasVideo: (() => {
+              const media = propertyMediaFromRow(r as Record<string, unknown>);
+              return Boolean(
+                media.video_file_path || media.video_youtube_url || media.video_vk_url || media.video_url,
+              );
+            })(),
             portfolio: r["portfolio"] ?? "rm",
             createdAt: r["created_at"],
           });
@@ -191,7 +197,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getPropertyDetails: tool({
       description:
-        "Полная карточка объекта по номеру (ref_id) или названию: все поля, публикации, брони и незаполненные поля площадок.",
+        "Полная карточка объекта по номеру (ref_id) или названию: все поля, публикации, брони и незаполненные поля площадок. Фото, загруженные в карточку объекта, получают водяной знак «Резиденция & Море» по центру.",
       inputSchema: z.object({ ref: z.string() }),
       execute: async ({ ref }) => {
         const p = await ctx.findProperty(ref);
@@ -226,7 +232,12 @@ export function createReadTools(ctx: AssistantToolContext) {
           label: propertyLabel(p as { ref_id: number; title: string; internal_name?: string | null }),
           ...p,
           photosCount: Array.isArray(p["photos"]) ? (p["photos"] as unknown[]).length : 0,
-          hasVideo: Boolean(String(p["video_url"] ?? "").trim()),
+          hasVideo: (() => {
+            const media = propertyMediaFromRow(p as Record<string, unknown>);
+            return Boolean(
+              media.video_file_path || media.video_youtube_url || media.video_vk_url || media.video_url,
+            );
+          })(),
           photos: undefined,
           listings: listings ?? [],
           bookings: (bookings ?? []).map((b) => ({
@@ -243,7 +254,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getVideoHostStatus: tool({
       description:
-        "Статус видеоканалов объекта и подключены ли Rutube, VK, YouTube. Ролик с карточки выгружается туда с описанием и контактами, ссылка Rutube идёт на ЦИАН/Авито/Яндекс.",
+        "Статус видеоканалов объекта и подключены ли VK и YouTube. Выкладка на каналы только по кнопке «Выложить» или после подтверждения у Ассистента.",
       inputSchema: z.object({ ref: z.string().optional() }),
       execute: async ({ ref }) => {
         const { loadVideoHostSettings, publicVideoHostStatus } = await import("@/lib/video-hosts.server");

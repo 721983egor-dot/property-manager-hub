@@ -1132,10 +1132,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
               <PlatformBadges platforms={["ЯН", "Авито", "ЦИАН"]} />
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Видео уйдёт на Rutube, VK и YouTube с описанием, хештегами и контактами Residence More.
-              На ролик ставится логотип в правом нижнем углу. Ссылка Rutube подставится в ЦИАН, Авито и
-              Яндекс.Недвижимость. Если видео нет, на сайте пустой плеер не появится. Каналы подключаются
-              в Настройках → Видеоканалы.
+              Видеофайл можно выложить на YouTube и VK кнопкой «Выложить» в карточке. На ролик ставится
+              белый логотип справа внизу. Если видео нет, пустой плеер на сайте не появится. Каналы:
+              Настройки → Видеоканалы.
             </p>
           </div>
           <Button type="button" variant="outline" asChild disabled={videoUploading}>
@@ -1187,7 +1186,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
           <Input
             value={videoLink}
             onChange={(e) => setVideoLink(e.target.value)}
-            placeholder="Ссылка Rutube, VK или YouTube"
+            placeholder="Ссылка YouTube, VK или Rutube"
           />
           <Button type="button" variant="secondary" onClick={applyVideoLink}>
             Добавить ссылку
@@ -1245,7 +1244,7 @@ function videoCoverageHint(videoUrl: string) {
     cover.yandex ? "" : "Яндекс",
   ].filter(Boolean);
   if (no.length === 0) return `Уйдёт на ${yes.join(", ")}`;
-  return `Покажется на ${yes.join(", ")}. Не уйдёт на ${no.join(", ")} — для всех трёх площадок лучше Rutube.`;
+  return `Покажется на ${yes.join(", ")}. Не уйдёт на ${no.join(", ")} — файл уходит в Авито напрямую, для ЦИАН нужен VK, для Яндекса — YouTube или Rutube.`;
 }
 
 function Field({

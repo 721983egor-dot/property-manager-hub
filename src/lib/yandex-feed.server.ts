@@ -101,11 +101,11 @@ export async function computeYandexFeedSelection(): Promise<YandexFeedSelection>
 function offerXml(property: Property, externalId: string, origin: string): string {
   const images = (property.photos ?? [])
     .map((p) => p.path)
-    .filter(Boolean)
+    .filter((path) => path && !/\.(mp4|m4v|mov|webm)$/i.test(path))
     .map((path) => tag("image", feedPhotoUrl(origin, path)))
     .join("");
 
-  const review = yandexFeedVideoReview(property.video_url);
+  const review = yandexFeedVideoReview(property.video_youtube_url) || yandexFeedVideoReview(property.video_url);
   const videoReview = review
     ? `<video-review>${tag(review.tag, review.url)}${tag("online-show", 1)}</video-review>`
     : "";

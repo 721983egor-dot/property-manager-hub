@@ -145,6 +145,28 @@ export type Property = {
   updated_at: string;
 };
 
+/** Есть ролик: файл, ссылка или выгрузка на YouTube / VK. */
+export function propertyHasVideo(
+  property: Pick<
+    Property,
+    "video_url" | "video_file_path" | "video_youtube_url" | "video_vk_url" | "photos"
+  >,
+) {
+  const media = propertyMediaFromRow({
+    photos: property.photos,
+    video_url: property.video_url,
+    video_file_path: property.video_file_path,
+    video_vk_url: property.video_vk_url,
+    video_youtube_url: property.video_youtube_url,
+  });
+  return Boolean(
+    media.video_file_path ||
+      media.video_youtube_url ||
+      media.video_vk_url ||
+      /^https?:\/\//i.test(media.video_url),
+  );
+}
+
 export const OUTDOOR_OPTIONS = [
   { value: "balcony", label: "Балкон" },
   { value: "terrace", label: "Терраса" },

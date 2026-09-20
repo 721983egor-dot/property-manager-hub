@@ -7,7 +7,6 @@ import {
 } from "@/lib/properties";
 import { propertyPageHeading, propertyUrl } from "@/lib/seo";
 import {
-  SITE_ADDRESS_SHORT,
   SITE_NAME,
   SITE_PHONE_DISPLAY,
   SITE_TELEGRAM,
@@ -66,8 +65,16 @@ export function propertyVideoDescription(property: Property, extraHashtags: stri
   lines.push(`Телефон: ${SITE_PHONE_DISPLAY}`);
   lines.push(`WhatsApp: ${SITE_WHATSAPP}`);
   lines.push(`Telegram: ${SITE_TELEGRAM}`);
-  lines.push(`Офис: ${SITE_ADDRESS_SHORT}`);
   lines.push("");
   lines.push(propertyVideoTags(extraHashtags).join(" "));
   return lines.join("\n").slice(0, 4900);
+}
+
+export function withYoutubeShortsMarkup(title: string, description: string, tags: string[]) {
+  const nextTitle = title.includes("#Shorts") ? title : `${title.slice(0, 90)} #Shorts`.slice(0, 100);
+  const nextDescription = description.includes("#Shorts") ? description : `#Shorts\n${description}`.slice(0, 4900);
+  const nextTags = tags.some((tag) => tag.replace(/^#/, "").toLowerCase() === "shorts")
+    ? tags
+    : ["#Shorts", ...tags];
+  return { title: nextTitle, description: nextDescription, tags: nextTags };
 }

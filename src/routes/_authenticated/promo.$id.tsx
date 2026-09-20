@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronLeft, ExternalLink, Globe, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronLeft, ExternalLink, Globe, RefreshCw, Upload } from "lucide-react";
 import {
   CartesianGrid,
   Legend,
@@ -17,6 +17,7 @@ import {
 } from "recharts";
 
 import { Button } from "@/components/ui/button";
+import { VideoChannelStatus } from "@/components/VideoChannelStatus";
 import { setAvitoPublished } from "@/lib/avito.functions";
 import { setCianPublished, syncCianStats } from "@/lib/cian.functions";
 import { PLATFORMS, fetchPropertyListings, isPlatformPublished, setSitePublished, type ListingPlatform } from "@/lib/listings";
@@ -28,7 +29,9 @@ import {
   refreshYandexStats,
   type PlatformDay,
 } from "@/lib/promo-stats.functions";
-import { fetchProperty, internalTitle } from "@/lib/properties";
+import { fetchProperty, internalTitle, propertyHasVideo } from "@/lib/properties";
+import { storedVideoPath } from "@/lib/property-video";
+import { publishPropertyVideoFn } from "@/lib/video-hosts.functions";
 import { fetchDealStages, fetchPropertyDeals, fetchPropertyShowings, formatBudget } from "@/lib/deals";
 import { fetchCrmClients } from "@/lib/clients";
 import { fetchPropertyTasks, fetchStaffDirectory, formatTaskTimeRange } from "@/lib/tasks";
@@ -87,6 +90,7 @@ function PromoDetailPage() {
   const setAvito = useServerFn(setAvitoPublished);
   const setCian = useServerFn(setCianPublished);
   const setYandex = useServerFn(setYandexPublished);
+  const publishVideo = useServerFn(publishPropertyVideoFn);
   const loadSeries = useServerFn(getPropertyPlatformStats);
   const loadCian = useServerFn(syncCianStats);
   const syncAvito = useServerFn(refreshAvitoStats);
@@ -145,6 +149,21 @@ function PromoDetailPage() {
       await qc.invalidateQueries({ queryKey: ["property-platform-stats", id] });
       return result;
     },
+  });
+
+  const videoFile = storedVideoPath(property?.video_file_path) || storedVideoPath(property?.video_url);
+  const publishVideoMutation = useMutation({
+    mutationFn: async () => {
+      if (!videoFile) throw new Error("Нет видеофайла для выкладки");
+      return publishVideo({ data: { propertyId: id, filePath: videoFile } });
+    },
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ["properties", id] });
+      void qc.invalidateQueries({ queryKey: ["properties"] });
+      if (result.errors.length) toast.error(result.errors.join("; "), { duration: 20_000 });
+      else toast.success("Видео выложено на YouTube и VK");
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Не удалось выложить видео"),
   });
 
   const stageById = new Map(dealStages.map((stage) => [stage.id, stage]));
@@ -309,6 +328,37 @@ function PromoDetailPage() {
           );
         })}
       </section>
+
+      {property && propertyHasVideo(property) ? (
+        <section className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold">Видео на каналах</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                На YouTube и VK ролик уходит только по кнопке — не сам при сохранении объекта.
+              </p>
+            </div>
+            {videoFile ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9"
+                disabled={publishVideoMutation.isPending}
+                onClick={() => publishVideoMutation.mutate()}
+              >
+                <Upload className="size-4" />
+                {publishVideoMutation.isPending ? "Выкладываем..." : "Выложить"}
+              </Button>
+            ) : null}
+          </div>
+          <div className="mt-4 max-w-md">
+            <VideoChannelStatus youtubeUrl={property.video_youtube_url} vkUrl={property.video_vk_url} />
+          </div>
+          {property.video_publish_error ? (
+            <p className="mt-3 text-sm text-destructive">{property.video_publish_error}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

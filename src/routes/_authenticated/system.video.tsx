@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/system/video")({
       { title: "Видеоканалы — RM OS" },
       {
         name: "description",
-        content: "Подключение Rutube, VK Видео и YouTube для выгрузки роликов с объектов.",
+        content: "Подключение VK Видео и YouTube для выгрузки роликов с объектов. Shorts и клипы — если ролик подходит по формату.",
       },
     ],
   }),
@@ -92,8 +92,9 @@ function VideoHostsPage() {
       <div>
         <h1 className="text-xl font-semibold sm:text-2xl">Видеоканалы</h1>
         <p className="text-sm text-muted-foreground">
-          Когда в карточке объекта есть видеофайл, RM OS выгружает его на Rutube, VK Видео и YouTube
-          с описанием, хештегами и контактами. Ссылка Rutube уходит в ЦИАН, Авито и Яндекс.Недвижимость.
+          Когда в карточке объекта есть видеофайл, Авито забирает его напрямую. Параллельно RM OS
+          выгружает ролик на VK Видео (для ЦИАН) и YouTube (для Яндекса и Shorts). Вертикальные
+          ролики до 3 минут — YouTube Shorts, до 60 секунд — клип VK. Rutube пока не используем.
         </p>
       </div>
 
@@ -101,10 +102,7 @@ function VideoHostsPage() {
         <CardHeader>
           <CardTitle>Rutube</CardTitle>
           <CardDescription>
-            Главный канал для площадок. {data?.rutube ? "Подключён." : "Пока не подключён."} Почта и
-            пароль с сайта часто не принимаются API (капча). Надёжнее Token API: войдите в
-            studio.rutube.ru, либо получите токен запросом POST https://rutube.ru/api/accounts/token_auth/
-            с {`{"username":"почта","password":"пароль"}`} — в ответе поле token. Author ID канала — 59663094.
+            Пока не используем. {data?.rutube ? "Токен сохранён, но выгрузка отключена." : "Можно оставить пустым."}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -137,8 +135,10 @@ function VideoHostsPage() {
         <CardHeader>
           <CardTitle>VK Видео</CardTitle>
           <CardDescription>
-            {data?.vk ? "Подключён." : "Пока не подключён."} Токен пользователя или сообщества с правом
-            video. После Rutube ролик добавляется в сообщество как видеозапись.
+            {data?.vk ? "Подключён." : "Пока не подключён."} Токен пользователя или ключ сообщества с
+            правом «Видео». Можно вставить ссылку группы, например https://vk.ru/residencemore — числовой
+            ID подставится сам. Вертикальный ролик до 60 секунд публикуется как клип, остальные — как
+            обычное видео в сообщество.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -148,7 +148,7 @@ function VideoHostsPage() {
             onChange={(e) => setVkToken(e.target.value)}
           />
           <Input
-            placeholder="ID сообщества без минуса, например 123456789"
+            placeholder="https://vk.ru/residencemore или ID сообщества"
             value={vkGroupId}
             onChange={(e) => setVkGroupId(e.target.value)}
           />
@@ -159,9 +159,8 @@ function VideoHostsPage() {
         <CardHeader>
           <CardTitle>YouTube</CardTitle>
           <CardDescription>
-            {data?.youtube ? "Подключён." : "Пока не подключён."} В Google Cloud включите YouTube Data
-            API, создайте OAuth-клиент и получите refresh token с правом youtube.upload (OAuth Playground,
-            access_type=offline).
+            {data?.youtube ? "Подключён." : "Пока не подключён."} Вертикальные ролики до 3 минут уходят
+            как Shorts (#Shorts в названии). Обычные — как видео на канале.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">

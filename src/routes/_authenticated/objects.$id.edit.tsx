@@ -1,14 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { ChevronLeft } from "lucide-react";
+
 import { toast } from "sonner";
 
 import { PropertyForm } from "@/components/PropertyForm";
 import { fetchProperty, updateProperty, type PropertyInput } from "@/lib/properties";
-import { storedVideoPath } from "@/lib/property-video";
-import { publishPropertyVideoFn } from "@/lib/video-hosts.functions";
 
 export const Route = createFileRoute("/_authenticated/objects/$id/edit")({
   head: () => ({
@@ -45,37 +43,9 @@ function EditObjectPage() {
     queryFn: () => fetchProperty(id),
   });
 
-  const publishVideo = useServerFn(publishPropertyVideoFn);
-
   const mutation = useMutation({
     mutationFn: async (input: PropertyInput) => {
       await updateProperty(id, input);
-      const path =
-        storedVideoPath(input.video_url) ||
-        storedVideoPath(input.video_file_path) ||
-        input.photos.find((photo) => photo.kind === "video")?.path;
-      const sameFile = Boolean(data && path && (data.video_file_path === path || data.video_url === path));
-      const already = sameFile && data?.video_publish_status === "published";
-      if (path && !already) {
-        toast.message("Выгружаем видео на Rutube и YouTube — не закрывайте страницу");
-        try {
-          const result = await publishVideo({ data: { propertyId: id, filePath: path } });
-          if (result.errors.length) {
-            toast.error(result.errors.join("; "), { duration: 20_000 });
-          } else {
-            toast.success(
-              [result.rutubeUrl && `Rutube ${result.rutubeUrl}`, result.youtubeUrl && `YouTube ${result.youtubeUrl}`]
-                .filter(Boolean)
-                .join(" · ") || "Видео выгружено",
-              { duration: 12_000 },
-            );
-          }
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Не удалось выгрузить видео", {
-            duration: 20_000,
-          });
-        }
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });

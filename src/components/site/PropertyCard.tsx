@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Video } from "lucide-react";
 import { CartToggleButton } from "@/components/site/CartToggleButton";
 import { propertySlug } from "@/lib/seo";
 import {
@@ -7,6 +8,7 @@ import {
   formatMoney,
   highlightLabel,
   isHouseType,
+  propertyHasVideo,
   publicStatusView,
   shortAddress,
   STATUS_TONE_CLASS,
@@ -70,6 +72,12 @@ export function PropertyCard(props: Props) {
             Фото не загружено
           </div>
         )}
+        {propertyHasVideo(property) ? (
+          <span className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-md bg-site-navy/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
+            <Video className="size-3.5" />
+            Видео
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col px-6 py-7">

@@ -176,7 +176,7 @@ function bargainTermsXml(property: Property): string {
 function photosXml(property: Property, origin: string): string {
   const items = (property.photos ?? [])
     .map((photo) => photo.path)
-    .filter(Boolean)
+    .filter((path) => path && !/\.(mp4|m4v|mov|webm)$/i.test(path))
     .slice(0, 50)
     .map(
       (path, index) =>
@@ -187,7 +187,7 @@ function photosXml(property: Property, origin: string): string {
 }
 
 function videosXml(property: Property): string {
-  const url = cianFeedVideoUrl(property.video_url);
+  const url = cianFeedVideoUrl(property.video_url) || cianFeedVideoUrl(property.video_vk_url);
   if (!url) return "";
   return `<Videos><VideoSchema>${tag("Url", url)}</VideoSchema></Videos>`;
 }

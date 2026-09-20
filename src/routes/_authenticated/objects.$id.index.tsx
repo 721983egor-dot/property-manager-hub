@@ -14,6 +14,7 @@ import { fetchStaffCurrentBooking, priceOn, shortName, sourceLabel } from "@/lib
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchStaffComplex, infrastructureLabel, mainPhotoPath } from "@/lib/complexes";
 import { PropertyVideoPlayer } from "@/components/PropertyVideoPlayer";
+import { VideoChannelStatus } from "@/components/VideoChannelStatus";
 import { storedVideoPath } from "@/lib/property-video";
 import { publishPropertyVideoFn } from "@/lib/video-hosts.functions";
 import {
@@ -29,6 +30,7 @@ import {
   formatMoney,
   extraFeatureLabel,
   labelsFor,
+  propertyHasVideo,
   roomsLabel,
   signedUrls,
   typeLabel,
@@ -101,7 +103,7 @@ function ObjectViewPage() {
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ["properties", id] });
       if (result.errors.length) toast.error(result.errors.join("; "), { duration: 20_000 });
-      else toast.success("Видео выгружено на каналы");
+      else toast.success("Видео выложено на YouTube и VK");
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Не удалось выгрузить видео"),
   });
@@ -383,7 +385,7 @@ function ObjectViewPage() {
             )}
           </section>
 
-          {data.video_url?.trim() || data.video_file_path ? (
+          {propertyHasVideo(data) ? (
             <section className="mt-6 rounded-xl border border-border bg-card p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <h2 className="text-base font-semibold">Видео</h2>
@@ -396,31 +398,20 @@ function ObjectViewPage() {
                     onClick={() => republish.mutate()}
                   >
                     <Upload className="size-4" />
-                    {republish.isPending ? "Выгружаем..." : "Выгрузить на Rutube и YouTube"}
+                    {republish.isPending ? "Выкладываем..." : "Выложить"}
                   </Button>
                 ) : null}
               </div>
-              {data.video_publish_status ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {data.video_publish_status === "published"
-                    ? "Выгружено на каналы"
-                    : data.video_publish_status === "publishing" || data.video_publish_status === "pending"
-                      ? "Идёт выгрузка на Rutube, VK и YouTube"
-                      : `Ошибка выгрузки: ${data.video_publish_error || data.video_publish_status}`}
-                </p>
-              ) : (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  На каналы ещё не ушло — нажмите «Выгрузить на Rutube и YouTube».
-                </p>
-              )}
+              <p className="mt-2 text-sm text-muted-foreground">
+                {data.video_publish_status === "publishing" || data.video_publish_status === "pending"
+                  ? "Идёт выкладка на YouTube и VK"
+                  : "На YouTube и VK ролик уходит только по кнопке «Выложить»."}
+              </p>
+              <div className="mt-3">
+                <VideoChannelStatus youtubeUrl={data.video_youtube_url} vkUrl={data.video_vk_url} />
+              </div>
               {data.video_publish_error ? (
-                <p className="mt-1 text-sm text-destructive">{data.video_publish_error}</p>
-              ) : null}
-              {data.video_youtube_url ? (
-                <p className="mt-1 truncate text-sm text-muted-foreground">YouTube: {data.video_youtube_url}</p>
-              ) : null}
-              {data.video_url && /^https?:\/\//i.test(data.video_url) ? (
-                <p className="mt-1 truncate text-sm text-muted-foreground">{data.video_url}</p>
+                <p className="mt-2 text-sm text-destructive">{data.video_publish_error}</p>
               ) : null}
               <div className="mt-4 overflow-hidden rounded-lg border border-border bg-muted">
                 <div className="aspect-video">

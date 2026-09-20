@@ -49,7 +49,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposePropertyUpdate: tool({
       description:
-        "Предложить изменение полей объекта: публичное название, ВНУТРЕННЕЕ название, адрес, тип, комнаты, площадь, этаж, цена, статус, депозит, комиссия (%), коммунальные, описание, условия аренды, заметка о доступности, комплекс, ссылка на видео (лучше Rutube — его принимают ЦИАН, Авито и Яндекс).",
+        "Предложить изменение полей объекта: публичное название, ВНУТРЕННЕЕ название, адрес, тип, комнаты, площадь, этаж, цена, статус, депозит, комиссия (%), коммунальные, описание, условия аренды, заметка о доступности, комплекс, ссылка на видео (файл уходит в Авито, VK — в ЦИАН).",
       inputSchema: z.object({
         ref: z.string(),
         title: z.string().optional(),
@@ -73,7 +73,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         videoUrl: z
           .string()
           .optional()
-          .describe("Ссылка Rutube / VK / YouTube или пустая строка, чтобы убрать видео"),
+          .describe("Ссылка YouTube / VK / Rutube или пустая строка, чтобы убрать видео"),
       }),
       execute: async ({ ref, ...fields }) => {
         const p = await label(ref);
@@ -109,12 +109,12 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposePublishPropertyVideo: tool({
       description:
-        "Предложить повторную выгрузку видео объекта на Rutube, VK Видео и YouTube. Ссылка Rutube затем идёт в фиды ЦИАН, Авито и Яндекс.",
+        "Предложить выложить видео объекта на YouTube и VK Видео. Само при сохранении карточки это не делается — только после кнопки «Выложить» или подтверждения здесь.",
       inputSchema: z.object({ ref: z.string() }),
       execute: async ({ ref }) => {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
-        const summary = `Выгрузить видео «${p.text}» на Rutube, VK и YouTube`;
+        const summary = `Выложить видео «${p.text}» на YouTube и VK`;
         ctx.propose({ tool: "publishPropertyVideo", summary, input: { propertyId: p.id } });
         return { proposed: true, summary };
       },
@@ -122,7 +122,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeCreateProperty: tool({
       description:
-        "Предложить создание нового объекта с заполненной карточкой (включая внутреннее название). Объект создаётся неопубликованным.",
+        "Предложить создание нового объекта с заполненной карточкой (включая внутреннее название). Объект создаётся неопубликованным. Фото в карточку загружает менеджер — на них автоматически ставится водяной знак «Резиденция & Море».",
       inputSchema: z.object({
         title: z.string(),
         internalName: z.string().optional(),

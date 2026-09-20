@@ -5,8 +5,8 @@
 
 import { isAvitoHouse, missingAvitoFields } from "@/lib/avito";
 import { feedPhotoUrl } from "@/lib/cian-feed.server";
-import { avitoFeedVideo } from "@/lib/property-video";
-import type { Property } from "@/lib/properties";
+import { avitoFeedVideo, storedVideoPath } from "@/lib/property-video";
+import { splitPropertyMedia, type Property } from "@/lib/properties";
 
 type Row = Record<string, unknown>;
 
@@ -190,8 +190,16 @@ function imagesXml(property: Property, origin: string): string {
   return items ? `<Images>${items}</Images>` : "";
 }
 
-function avitoVideoXml(property: Property): string {
-  const video = avitoFeedVideo(property.video_url);
+function avitoVideoXml(property: Property, origin: string): string {
+  const filePath =
+    storedVideoPath(property.video_file_path) ||
+    storedVideoPath(property.video_url) ||
+    splitPropertyMedia(property.photos).videoPath ||
+    null;
+  if (filePath) {
+    return tagCdata("VideoFileURL", feedPhotoUrl(origin, filePath));
+  }
+  const video = avitoFeedVideo(property.video_youtube_url) || avitoFeedVideo(property.video_url);
   if (!video?.videoUrl) return "";
   return tag("VideoURL", video.videoUrl);
 }
@@ -251,7 +259,7 @@ function offerXml(property: Property, avitoId: string | null, origin: string): s
     tag("ContactMethod", "По телефону и в сообщениях"),
     tagCdata("Description", property.description.slice(0, 7500)),
     imagesXml(property, origin),
-    avitoVideoXml(property),
+    avitoVideoXml(property, origin),
     "</Ad>",
   ].join("");
 }

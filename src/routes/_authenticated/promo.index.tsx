@@ -17,6 +17,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VideoChannelStatus } from "@/components/VideoChannelStatus";
 import { PLATFORMS, fetchListings, isPlatformPublished, type ListingPlatform, type PropertyListing } from "@/lib/listings";
 import { getPromoBoard, getPromoFeedFlags, getPromoOverview, type PlatformTotals } from "@/lib/promo-stats.functions";
 import {
@@ -386,6 +387,14 @@ function PromoListPage() {
                         </div>
                       );
                     })}
+                  </div>
+
+                  <div className="mt-3">
+                    <VideoChannelStatus
+                      compact
+                      youtubeUrl={property.video_youtube_url}
+                      vkUrl={property.video_vk_url}
+                    />
                   </div>
 
                   <div className="mt-auto pt-4">

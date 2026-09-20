@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-/** Довыгружает ролики объектов на Rutube, VK и YouTube, если публикация не успела сразу. */
+/** Повторяет зависшую выкладку на YouTube и VK, если кнопка «Выложить» оборвалась. */
 export const Route = createFileRoute("/api/public/cron/video-publish")({
   server: {
     handlers: {
