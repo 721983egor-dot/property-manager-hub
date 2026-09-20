@@ -231,7 +231,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const { uploaded, failures } = await uploadPhotos(files);
+      const { uploaded, failures } = await uploadPhotos(files, { watermark: true });
       if (uploaded.length > 0) setPhotos((prev) => [...prev, ...uploaded]);
       for (const f of failures.slice(0, 3)) toast.error(`${f.name}: ${f.reason}`);
       if (failures.length > 3) toast.error(`Ещё не загружено файлов: ${failures.length - 3}`);
@@ -1013,6 +1013,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             <h2 className="text-base font-semibold">Фотографии<PlatformBadges platforms={["ЯН", "Авито", "ЦИАН"]} /></h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Первая фотография — главная. Перетаскивайте фото мышкой, чтобы менять порядок.
+              На каждое фото ставится белый логотип «Резиденция & Море» по центру.
             </p>
           </div>
           <Button type="button" variant="outline" asChild disabled={uploading}>

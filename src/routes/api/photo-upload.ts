@@ -49,10 +49,12 @@ export const Route = createFileRoute("/api/photo-upload")({
         }
 
         let file: File | null = null;
+        let wantPhotoWatermark = false;
         try {
           const form = await request.formData();
           const value = form.get("file");
           if (value instanceof File) file = value;
+          wantPhotoWatermark = String(form.get("watermark") ?? "") === "1";
         } catch {
           file = null;
         }
@@ -87,6 +89,17 @@ export const Route = createFileRoute("/api/photo-upload")({
             watermarked = true;
           } catch (error) {
             console.error("video watermark skipped", error);
+          }
+        } else if (wantPhotoWatermark) {
+          try {
+            const { overlayPhotoWatermark } = await import("@/lib/photo-watermark.server");
+            const marked = await overlayPhotoWatermark(Buffer.from(body));
+            body = marked.bytes;
+            outType = marked.contentType;
+            outExt = "jpg";
+            watermarked = true;
+          } catch (error) {
+            console.error("photo watermark skipped", error);
           }
         }
 
