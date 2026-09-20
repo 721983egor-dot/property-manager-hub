@@ -53,7 +53,7 @@ export async function overlayPhotoWatermark(input: Buffer): Promise<{ bytes: Buf
         "-filter_complex",
         [
           `[1:v]format=rgba,colorchannelmixer=aa=${alpha}[logo]`,
-          `[logo][0:v]scale2ref=w=main_w*${width}:h=ow/mdar[wm][main]`,
+          `[logo][0:v]scale2ref=w=ref_w*${width}:h=ow/mdar[wm][main]`,
           "[main][wm]overlay=(W-w)/2:(H-h)/2:format=auto",
         ].join(";"),
         "-frames:v",
