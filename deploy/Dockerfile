@@ -23,7 +23,7 @@ RUN bun install && bun run build && rm -rf node_modules /root/.bun /tmp/*
 # Runtime
 FROM node:22-alpine
 
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg postgresql-client
 
 WORKDIR /app
 
@@ -31,10 +31,16 @@ COPY --from=builder /app/.output ./.output
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/public/video-watermark.png ./public/video-watermark.png
 COPY --from=builder /app/public/photo-watermark.png ./public/photo-watermark.png
+COPY --from=builder /app/deploy/apply-migrations.sh /apply-migrations.sh
+COPY --from=builder /app/deploy/preview-entrypoint.sh /preview-entrypoint.sh
+COPY --from=builder /app/supabase/migrations /migrations
+RUN chmod +x /apply-migrations.sh /preview-entrypoint.sh
 
 ENV PORT=3000
 ENV NODE_ENV=production
 
 EXPOSE 3000
 
-CMD ["node", ".output/server/index.mjs"]
+# На тесте entrypoint применит миграции (PREVIEW_MODE + POSTGRES_PASSWORD).
+# Рабочий app без этих переменных просто стартует Node.
+CMD ["/bin/sh", "/preview-entrypoint.sh"]

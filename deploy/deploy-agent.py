@@ -405,22 +405,23 @@ def run_preview_job(source: str) -> None:
         })
         state["preview_version"] = version
         save_state(state)
-        # Подтянуть скрипт агента из preview в volume /data/repo — следующий «Выложить на тест»
-        # уже применит миграции (video_url и т.п.) без обновления рабочей системы.
+        # Подтянуть deploy-файлы из preview в /data/repo — следующий «Выложить на тест»
+        # уже с новым агентом (миграции + POSTGRES_PASSWORD у preview-app).
         try:
-            src = PREVIEW_DIR / "deploy" / "deploy-agent.py"
-            dst = REPO_DIR / "deploy" / "deploy-agent.py"
-            if src.is_file():
-                shutil.copy2(src, dst)
-                run(
-                    [
-                        "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
-                        "restart", "deploy-agent",
-                    ],
-                    timeout=120,
-                )
+            for name in ("deploy-agent.py", "docker-compose.yml", "apply-migrations.sh"):
+                src = PREVIEW_DIR / "deploy" / name
+                dst = REPO_DIR / "deploy" / name
+                if src.is_file():
+                    shutil.copy2(src, dst)
+            run(
+                [
+                    "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
+                    "restart", "deploy-agent",
+                ],
+                timeout=120,
+            )
         except Exception as agent_err:
-            print(f"warn: не удалось обновить deploy-agent из preview: {agent_err}")
+            print(f"warn: не удалось обновить deploy-файлы из preview: {agent_err}")
     except Exception as e:
         state = load_state()
         state["deployments"].append({
