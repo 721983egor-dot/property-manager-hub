@@ -1143,13 +1143,14 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </p>
           </div>
           <Button type="button" variant="outline" asChild disabled={videoUploading}>
-            <label className="cursor-pointer">
+            <label className="relative cursor-pointer">
               <Film className="size-4" />
               {videoUploading ? "Загрузка..." : "Загрузить файл"}
               <input
                 type="file"
-                accept="video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
-                className="hidden"
+                accept="video/*,.mp4,.mov,.m4v,.webm"
+                className="absolute inset-0 cursor-pointer opacity-0"
+                disabled={videoUploading}
                 onChange={(e) => {
                   void handleVideoFile(e.target.files);
                   e.target.value = "";
@@ -1158,6 +1159,9 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             </label>
           </Button>
         </div>
+        <p className="mt-2 text-sm text-muted-foreground sm:hidden">
+          Нужен именно видеоролик, не фото. На iPhone после выбора нажмите «Добавить» справа сверху.
+        </p>
 
         {videoUrl.trim() ? (
           <div className="mt-5 overflow-hidden rounded-lg border border-border">

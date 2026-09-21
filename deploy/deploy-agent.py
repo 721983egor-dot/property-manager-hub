@@ -15,6 +15,7 @@ import hmac
 import json
 import os
 import base64
+import shutil
 import subprocess
 import threading
 import time
@@ -358,11 +359,26 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
 
 
 def run_preview_job(source: str) -> None:
-    """Сборка теста долгая. Идёт в фоне, чтобы браузер не рвал связь."""
+    """Сборка теста. Миграции из preview — чтобы новые колонки (video_url и т.п.) были в общей БД."""
     state = load_state()
     try:
         version = sync_git(PREVIEW_DIR, PREVIEW_BRANCH)
         docker_free_space()
+        # Миграции с ветки preview: рабочий контейнер не трогаем, только схему БД (ADD COLUMN IF NOT EXISTS).
+        run(
+            [
+                "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
+                "run", "--rm",
+                "-v", f"{PREVIEW_DIR}/deploy/apply-migrations.sh:/apply-migrations.sh:ro",
+                "-v", f"{PREVIEW_DIR}/supabase/migrations:/migrations:ro",
+                "migrator",
+            ],
+            timeout=600,
+        )
+        run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "restart", "supabase-rest"],
+            timeout=120,
+        )
         run(
             [
                 "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
@@ -389,6 +405,22 @@ def run_preview_job(source: str) -> None:
         })
         state["preview_version"] = version
         save_state(state)
+        # Подтянуть скрипт агента из preview в volume /data/repo — следующий «Выложить на тест»
+        # уже применит миграции (video_url и т.п.) без обновления рабочей системы.
+        try:
+            src = PREVIEW_DIR / "deploy" / "deploy-agent.py"
+            dst = REPO_DIR / "deploy" / "deploy-agent.py"
+            if src.is_file():
+                shutil.copy2(src, dst)
+                run(
+                    [
+                        "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
+                        "restart", "deploy-agent",
+                    ],
+                    timeout=120,
+                )
+        except Exception as agent_err:
+            print(f"warn: не удалось обновить deploy-agent из preview: {agent_err}")
     except Exception as e:
         state = load_state()
         state["deployments"].append({
@@ -404,7 +436,7 @@ def run_preview_job(source: str) -> None:
 
 @APP.post("/deploy-preview")
 def deploy_preview(req: DeployRequest, authorization: str | None = Header(None)):
-    """Запускает сборку теста. Рабочий контейнер app и миграции не трогает."""
+    """Запускает сборку теста и миграции из preview. Рабочий контейнер app не перезапускает."""
     verify_token(authorization)
     state = load_state()
     if not PREVIEW_JOB.acquire(blocking=False):

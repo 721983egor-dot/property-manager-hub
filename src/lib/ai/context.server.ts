@@ -12,6 +12,25 @@ export const PROPERTY_COLUMNS =
 export const PROPERTY_LIST_COLUMNS =
   "id, ref_id, title, internal_name, type, status, address, complex_name, complex_id, rooms, bathrooms, area, floor, total_floors, price_month, deposit, commission, published, service_type, video_url, created_at, updated_at";
 
+/**
+ * Если в БД ещё нет колонки (миграции не применены), убираем её из select и повторяем.
+ * Все video_* снимаем разом — они появились одной фичей.
+ */
+export function stripMissingPropertyColumn(columns: string, errorMessage: string): string | null {
+  const match = errorMessage.match(/column\s+properties\.([a-z0-9_]+)\s+does not exist/i);
+  if (!match) return null;
+  const missing = match[1]!;
+  const parts = columns
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const next = missing.startsWith("video_")
+    ? parts.filter((part) => !part.startsWith("video_"))
+    : parts.filter((part) => part !== missing);
+  if (!next.length || next.length === parts.length) return null;
+  return next.join(", ");
+}
+
 export function propertyLabel(p: {
   ref_id: number;
   title: string;
@@ -135,9 +154,9 @@ export function scoreProperties(
     .sort((a, b) => b.score - a.score);
 }
 
-export async function loadAllProperties(
+async function loadAllPropertiesWithColumns(
   admin: typeof supabaseAdmin,
-  columns = PROPERTY_LIST_COLUMNS,
+  columns: string,
 ): Promise<Record<string, unknown>[]> {
   const all: Record<string, unknown>[] = [];
   const page = 500;
@@ -156,6 +175,25 @@ export async function loadAllProperties(
     if (rows.length < page) break;
   }
   return all;
+}
+
+export async function loadAllProperties(
+  admin: typeof supabaseAdmin,
+  columns = PROPERTY_LIST_COLUMNS,
+): Promise<Record<string, unknown>[]> {
+  let activeColumns = columns;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      return await loadAllPropertiesWithColumns(admin, activeColumns);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stripped = stripMissingPropertyColumn(activeColumns, message);
+      if (!stripped) throw error;
+      console.warn(`loadAllProperties: колонка отсутствует, повтор без неё (${stripped})`);
+      activeColumns = stripped;
+    }
+  }
+  throw new Error("Не удалось загрузить объекты: слишком много отсутствующих колонок");
 }
 
 /** Режет длинные .in(...) — иначе PostgREST/fetch падает на слишком длинном URL. */
@@ -213,12 +251,24 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
     findProperty: async (ref: string) => {
       const asNumber = Number(ref);
       if (Number.isFinite(asNumber) && ref.trim() !== "") {
-        const { data } = await supabaseAdmin
-          .from("properties")
-          .select(PROPERTY_COLUMNS)
-          .eq("ref_id", asNumber)
-          .limit(1);
-        if ((data ?? []).length) return (data ?? [])[0] as Record<string, unknown>;
+        let detailColumns = PROPERTY_COLUMNS;
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const { data, error } = await supabaseAdmin
+            .from("properties")
+            .select(detailColumns)
+            .eq("ref_id", asNumber)
+            .limit(1);
+          if (!error) {
+            if ((data ?? []).length) return (data ?? [])[0] as Record<string, unknown>;
+            break;
+          }
+          const stripped = stripMissingPropertyColumn(detailColumns, error.message);
+          if (!stripped) {
+            console.error("findProperty select failed", error.message);
+            break;
+          }
+          detailColumns = stripped;
+        }
       }
 
       const scored = scoreProperties(await allProperties(), ref).filter((row) => row.score >= 2);

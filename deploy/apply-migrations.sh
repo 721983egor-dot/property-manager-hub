@@ -65,3 +65,5 @@ for f in "$DIR"/*.sql; do
 done
 
 echo "== Миграции успешно применены =="
+# PostgREST кэширует схему — просим перечитать без рестарта контейнера.
+psql -c "NOTIFY pgrst, 'reload schema'" >/dev/null 2>&1 || true

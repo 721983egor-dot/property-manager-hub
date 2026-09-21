@@ -305,7 +305,7 @@ export function SocialMediaPicker({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+        accept="image/jpeg,image/png,image/webp,video/*,.mp4,.mov,.webm"
         multiple
         className="hidden"
         onChange={(e) => {
