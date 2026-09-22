@@ -358,11 +358,26 @@ def deploy(req: DeployRequest, authorization: str | None = Header(None)):
 
 
 def run_preview_job(source: str) -> None:
-    """Сборка теста долгая. Идёт в фоне, чтобы браузер не рвал связь."""
+    """Сборка теста долгая. Идёт в фоне, чтобы браузер не рвал связь.
+
+    Preview и prod делят одну БД: без migrator новые ACL/enum (например social_owner)
+    не появляются, и раздел «Соцсети» пропадает у всех, включая админов.
+    Миграции здесь безопасны для схемы; контейнер рабочего app не пересобираем.
+    """
     state = load_state()
     try:
         version = sync_git(PREVIEW_DIR, PREVIEW_BRANCH)
+        # Migrator монтирует supabase/migrations из REPO_DIR, не из PREVIEW_DIR.
+        sync_git(REPO_DIR, PREVIEW_BRANCH)
         docker_free_space()
+        run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "run", "--rm", "migrator"],
+            timeout=600,
+        )
+        run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE), "restart", "supabase-rest"],
+            timeout=120,
+        )
         run(
             [
                 "docker", "compose", "-f", str(COMPOSE_FILE), "--env-file", str(ENV_FILE),
@@ -404,7 +419,7 @@ def run_preview_job(source: str) -> None:
 
 @APP.post("/deploy-preview")
 def deploy_preview(req: DeployRequest, authorization: str | None = Header(None)):
-    """Запускает сборку теста. Рабочий контейнер app и миграции не трогает."""
+    """Запускает сборку теста и применяет миграции к общей БД. Рабочий контейнер app не трогает."""
     verify_token(authorization)
     state = load_state()
     if not PREVIEW_JOB.acquire(blocking=False):

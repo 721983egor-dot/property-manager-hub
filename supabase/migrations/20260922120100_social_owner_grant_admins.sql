@@ -6,3 +6,5 @@ SELECT ur.user_id, 'social_owner'::public.app_role
 FROM public.user_roles ur
 WHERE ur.role = 'admin'::public.app_role
 ON CONFLICT (user_id, role) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
