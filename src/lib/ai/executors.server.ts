@@ -426,20 +426,37 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const platforms = Array.isArray(input["platforms"])
       ? (input["platforms"] as string[])
       : [];
+    const mediaRaw = Array.isArray(input["media"]) ? (input["media"] as Record<string, unknown>[]) : [];
+    const media = mediaRaw
+      .map((item) => ({
+        path: String(item["path"] ?? "").trim(),
+        kind: item["kind"] === "video" ? ("video" as const) : ("photo" as const),
+        mime: String(item["mime"] ?? ""),
+        bytes: Number(item["bytes"] ?? 0),
+        width: (item["width"] as number | null | undefined) ?? null,
+        height: (item["height"] as number | null | undefined) ?? null,
+        durationSec: (item["durationSec"] as number | null | undefined) ?? null,
+      }))
+      .filter((item) => item.path);
+    const objectUrl = String(input["objectUrl"] ?? "").trim();
     const post = await saveSocialPost({
       topic: String(input["topic"] ?? ""),
       body: String(input["body"] ?? ""),
       platforms: platforms as ("instagram" | "vk" | "telegram" | "max")[],
       propertyId: (input["propertyId"] as string | null) ?? null,
       pulseItemId: (input["pulseItemId"] as string | null) ?? null,
-      objectUrl: String(input["objectUrl"] ?? "").trim() || undefined,
+      ...(objectUrl ? { objectUrl } : {}),
       scheduledAt: (input["scheduledAt"] as string | null) ?? null,
       publish: Boolean(input["publish"]),
       source: "assistant",
-      variants:
-        (input["variants"] as
-          | Partial<Record<"instagram" | "vk" | "telegram" | "max", string>>
-          | undefined) ?? undefined,
+      ...(input["variants"]
+        ? {
+            variants: input["variants"] as Partial<
+              Record<"instagram" | "vk" | "telegram" | "max", string>
+            >,
+          }
+        : {}),
+      ...(media.length ? { media } : {}),
     });
     return post.status === "draft" ? "Черновик поста сохранён" : "Пост отправлен в очередь публикации";
   },
@@ -466,6 +483,10 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       input["objectUrl"] != null
         ? String(input["objectUrl"]).trim()
         : objectUrlFromPost(post.body, post.targets);
+    const instagramVariant =
+      platforms.includes("instagram") && instagramBody.trim()
+        ? { instagram: instagramBody }
+        : undefined;
     const saved = await saveSocialPost({
       id: postId,
       topic: input["topic"] != null ? String(input["topic"]) : post.topic,
@@ -473,14 +494,14 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       platforms,
       propertyId: post.property_id,
       pulseItemId: post.pulse_item_id,
-      objectUrl: objectUrl || undefined,
+      ...(objectUrl ? { objectUrl } : {}),
       scheduledAt:
         input["scheduledAt"] !== undefined
           ? ((input["scheduledAt"] as string | null) ?? null)
           : post.scheduled_at,
       publish: Boolean(input["publish"]),
       source: "assistant",
-      variants: platforms.includes("instagram") && instagramBody.trim() ? { instagram: instagramBody } : undefined,
+      ...(instagramVariant ? { variants: instagramVariant } : {}),
     });
     return saved.status === "draft" ? "Черновик обновлён" : "Пост отправлен в очередь публикации";
   },

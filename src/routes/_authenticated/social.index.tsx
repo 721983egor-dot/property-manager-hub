@@ -13,11 +13,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { AdminOnly } from "@/components/AdminOnly";
 import { SocialMediaPicker } from "@/components/SocialMediaPicker";
 import { SocialPostCalendar } from "@/components/SocialPostCalendar";
 import { SocialPostPreview } from "@/components/SocialPostPreview";
 import { SochiPulseAiBlock } from "@/components/SochiPulseAiBlock";
+import { SocialOnly } from "@/components/SocialOnly";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,8 +26,10 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   cancelSocialPost,
   deleteSocialPost,
+  draftSocialPostFromProperty,
   getSocialBoard,
   listPostmypostProjects,
+  listSocialProperties,
   mapSocialChannel,
   publishSocialPost,
   saveSocialBrand,
@@ -64,9 +66,9 @@ export const Route = createFileRoute("/_authenticated/social/")({
     ],
   }),
   component: () => (
-    <AdminOnly>
+    <SocialOnly>
       <SocialPage />
-    </AdminOnly>
+    </SocialOnly>
   ),
 });
 
@@ -444,6 +446,8 @@ function ComposeTab({
   onCancelEdit: () => void;
 }) {
   const saveFn = useServerFn(saveSocialPost);
+  const listPropsFn = useServerFn(listSocialProperties);
+  const draftFn = useServerFn(draftSocialPostFromProperty);
   const igTarget = initial?.targets.find((t) => t.platform === "instagram")?.body ?? "";
   const [postId, setPostId] = useState(initial?.id ?? "");
   const [topic, setTopic] = useState(initial?.topic ?? "");
@@ -460,6 +464,31 @@ function ComposeTab({
   const [scheduled, setScheduled] = useState(toLocalInput(initial?.scheduled_at ?? null));
   const [media, setMedia] = useState<SocialMediaItem[]>(initial?.media ?? []);
   const [objectUrl, setObjectUrl] = useState(initial ? objectUrlFromPost(initial) : "");
+  const [propertyId, setPropertyId] = useState(initial?.property_id ?? "");
+  const [mediaKind, setMediaKind] = useState<"photos" | "video" | "auto">("auto");
+  const [propertyQuery, setPropertyQuery] = useState("");
+
+  const propertiesQuery = useQuery({
+    queryKey: ["social-properties"],
+    queryFn: () => listPropsFn({ data: undefined }),
+  });
+
+  const filteredProperties = useMemo(() => {
+    const q = propertyQuery.trim().toLowerCase();
+    const list = propertiesQuery.data ?? [];
+    if (!q) return list.slice(0, 40);
+    return list
+      .filter((p) => {
+        const hay = `${p.refId} ${p.label} ${p.complexName} ${p.address}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 40);
+  }, [propertiesQuery.data, propertyQuery]);
+
+  const selectedProperty = useMemo(
+    () => (propertiesQuery.data ?? []).find((p) => p.id === propertyId) ?? null,
+    [propertiesQuery.data, propertyId],
+  );
 
   const autoInstagram = toInstagramOrganic(body);
   const instagramValue = instagramTouched ? instagramBody : autoInstagram;
@@ -472,18 +501,43 @@ function ComposeTab({
     );
   };
 
+  const draftMut = useMutation({
+    mutationFn: () => {
+      if (!propertyId) throw new Error("Выберите объект");
+      return draftFn({ data: { propertyId, mediaKind } });
+    },
+    onSuccess: (draft) => {
+      setTopic(draft.topic);
+      setBody(draft.body);
+      setObjectUrl(draft.objectUrl);
+      setPropertyId(draft.propertyId);
+      setMedia(draft.media);
+      setInstagramTouched(false);
+      setInstagramBody("");
+      const mediaNote =
+        draft.mediaKind === "video"
+          ? "подтянуто видео"
+          : draft.mediaKind === "photos"
+            ? `подтянуто фото: ${draft.media.length}`
+            : "медиа в карточке нет — добавьте вручную";
+      toast.success(`Черновик по объекту: ${mediaNote}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const saveMut = useMutation({
     mutationFn: (publish: boolean) =>
       saveFn({
         data: {
-          id: postId || undefined,
+          ...(postId ? { id: postId } : {}),
           topic,
           body,
           platforms,
           scheduledAt: fromLocalInput(scheduled),
           publish,
-          variants,
+          ...(variants ? { variants } : {}),
           objectUrl,
+          propertyId: propertyId || null,
           media: media.map((item) => ({
             path: item.path,
             kind: item.kind,
@@ -516,10 +570,76 @@ function ComposeTab({
           <CardDescription>
             {editing
               ? "Меняйте текст, фото и дату — сохраните снова, чтобы обновить черновик."
-              : "Пишете полный текст с ценой — для ВКонтакте, Telegram и Макс. Instagram сам собирается как обычный пост без цен, телефона и оферты."}
+              : "Можно начать с объекта: описание, ЖК, расположение и фото или видео из карточки. Полный текст с ценой — для ВКонтакте, Telegram и Макс; Instagram собирается без цен."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 p-3">
+            <Label>Пост по объекту</Label>
+            <Input
+              value={propertyQuery}
+              onChange={(e) => setPropertyQuery(e.target.value)}
+              placeholder="Поиск: номер, название, ЖК…"
+            />
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={propertyId}
+              onChange={(e) => setPropertyId(e.target.value)}
+            >
+              <option value="">Без привязки к объекту</option>
+              {filteredProperties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  №{p.refId} · {p.label}
+                  {p.complexName ? ` · ${p.complexName}` : ""}
+                  {p.hasVideo ? " · видео" : ""}
+                  {p.photoCount ? ` · ${p.photoCount} фото` : ""}
+                </option>
+              ))}
+            </select>
+            {selectedProperty ? (
+              <p className="text-[11px] text-muted-foreground">
+                {selectedProperty.complexName || "без ЖК"}
+                {selectedProperty.address ? ` · ${selectedProperty.address}` : ""}
+                {" · "}
+                {selectedProperty.photoCount} фото
+                {selectedProperty.hasVideo ? " · есть видео" : ""}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["auto", "Авто"],
+                  ["photos", "Фото"],
+                  ["video", "Видео"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMediaKind(value)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    mediaKind === value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!propertyId || draftMut.isPending}
+              onClick={() => draftMut.mutate()}
+            >
+              {draftMut.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Подтянуть текст и медиа"
+              )}
+            </Button>
+          </div>
           <div className="space-y-2">
             <Label>Тема</Label>
             <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Свободная квартира у моря" />
@@ -551,7 +671,7 @@ function ComposeTab({
               placeholder="https://residence-more.ru/rent/…"
             />
             <p className="text-[11px] text-muted-foreground">
-              Вставьте карточку сами. В VK, Telegram и Макс будет видно https://residence-more.ru/, переход — сюда.
+              Вставьте карточку сами или подтяните из объекта. В VK, Telegram и Макс будет видно https://residence-more.ru/, переход — сюда.
               Instagram ссылку не ставит.
             </p>
           </div>
@@ -638,7 +758,7 @@ function ComposeTab({
           body={body}
           topic={topic}
           platforms={platforms}
-          variants={variants}
+          {...(variants ? { variants } : {})}
           media={media}
           objectUrl={objectUrl}
         />

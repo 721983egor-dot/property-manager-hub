@@ -85,7 +85,7 @@ const NAV_LINK_CLASS =
 function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith("/system"));
-  const { isAdmin, isOwner } = useAccess();
+  const { isAdmin, isOwner, isSocialOwner } = useAccess();
 
   if (isOwner) {
     return (
@@ -112,15 +112,17 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <CalendarDays className="size-4 shrink-0" />
         Календарь
       </Link>
+      {isSocialOwner && (
+        <Link to="/social" onClick={onNavigate} className={NAV_LINK_CLASS}>
+          <Share2 className="size-4 shrink-0" />
+          Соцсети
+        </Link>
+      )}
       {isAdmin && (
         <>
           <Link to="/promo" onClick={onNavigate} className={NAV_LINK_CLASS}>
             <Megaphone className="size-4 shrink-0" />
             Публикация
-          </Link>
-          <Link to="/social" onClick={onNavigate} className={NAV_LINK_CLASS}>
-            <Share2 className="size-4 shrink-0" />
-            Соцсети
           </Link>
           <Link to="/chats" onClick={onNavigate} className={NAV_LINK_CLASS}>
             <MessagesSquare className="size-4 shrink-0" />
@@ -251,12 +253,14 @@ type NavItem = {
   icon: React.ElementType;
   adminOnly?: boolean;
   managerOnly?: boolean;
+  socialOnly?: boolean;
 };
 
 
 const MOBILE_NAV: NavItem[] = [
   { to: "/objects", label: "Объекты", icon: Building2 },
   { to: "/calendar", label: "Календарь", icon: CalendarDays, managerOnly: true },
+  { to: "/social", label: "Соцсети", icon: Share2, socialOnly: true },
   { to: "/chats", label: "Чаты", icon: MessagesSquare, adminOnly: true },
   { to: "/assistant", label: "Ассистент", icon: Sparkles, adminOnly: true },
   { to: "/crm/deals", label: "CRM", icon: Handshake, adminOnly: true },
@@ -267,11 +271,14 @@ const MOBILE_NAV: NavItem[] = [
 
 function CrmMobileNav({ unread }: { unread: number }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { isAdmin, isOwner } = useAccess();
+  const { isAdmin, isOwner, isSocialOwner } = useAccess();
   const items = isOwner
     ? [{ to: "/owner", label: "Кабинет", icon: Hotel }]
     : MOBILE_NAV.filter(
-        (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || !isAdmin),
+        (item) =>
+          (!item.adminOnly || isAdmin) &&
+          (!item.managerOnly || !isAdmin) &&
+          (!item.socialOnly || isSocialOwner),
       );
 
 

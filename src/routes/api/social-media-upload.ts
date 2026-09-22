@@ -32,10 +32,10 @@ export const Route = createFileRoute("/api/social-media-upload")({
           .from("user_roles")
           .select("role")
           .eq("user_id", userData.user.id)
-          .eq("role", "admin")
+          .eq("role", "social_owner")
           .limit(1);
         if (!roles?.length) {
-          return Response.json({ error: "Раздел «Соцсети» доступен администратору" }, { status: 403 });
+          return Response.json({ error: "Раздел «Соцсети» доступен с ролью social_owner" }, { status: 403 });
         }
 
         let file: File | null = null;

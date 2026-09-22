@@ -173,14 +173,42 @@ export function createSocialTools(ctx: AssistantToolContext) {
 
     getSocialMediaRules: tool({
       description:
-        "Правила фото и видео для постов через Postmypost: JPEG до 4 МБ, кадр 4:5–1.91:1, видео MP4 до 45 МБ. Файлы добавляет менеджер во вкладке «Пост».",
+        "Правила фото и видео для постов через Postmypost: JPEG до 4 МБ, кадр 4:5–1.91:1, видео MP4 до 45 МБ. Медиа можно взять из карточки объекта (getPropertyMedia / mediaKind в proposeSocialPost) или менеджер добавит во вкладке «Пост».",
       inputSchema: z.object({}),
       execute: async () => ({ rules: socialMediaRulesText() }),
     }),
 
+    getPropertyMedia: tool({
+      description:
+        "Фото и видео из карточки объекта для поста в соцсети. Пути файлов — те же, что уходят в Postmypost. Вызывай перед proposeSocialPost по объекту, чтобы решить: фото или видео.",
+      inputSchema: z.object({
+        ref: z.string().describe("Номер объекта (ref_id), id или название"),
+      }),
+      execute: async ({ ref }) => {
+        const p = await ctx.findProperty(ref);
+        if (!p) return { error: `Объект «${ref}» не найден` };
+        const { loadPropertySocialMedia } = await import("@/lib/social.server");
+        const media = await loadPropertySocialMedia(String(p["id"]));
+        if (!media) return { error: "Медиа объекта не найдены" };
+        return {
+          propertyId: media.propertyId,
+          label: media.label,
+          photoCount: media.photos.length,
+          photos: media.photos.slice(0, 12),
+          video: media.video,
+          externalVideo: media.externalVideo,
+          hint: media.video
+            ? "Можно предложить пост с видео или с фото (mediaKind)."
+            : media.photos.length
+              ? "Есть фото — передай mediaKind: photos в proposeSocialPost."
+              : "В карточке нет файла фото/видео — текст без медиа или менеджер добавит вручную.",
+        };
+      },
+    }),
+
     proposeSocialPost: tool({
       description:
-        "Предложить черновик или публикацию. body — полная версия с ценой для VK/Telegram/Макс. instagramBody — обычный пост БЕЗ цен, телефона и оферты. Если instagramBody не передан, система сама уберёт рекламу.",
+        "Предложить черновик или публикацию. По запросу «пост по объекту X»: возьми факты из getPropertyDetails, медиа через mediaKind (photos|video|auto). body — полная версия с ценой для VK/Telegram/Макс. instagramBody — обычный пост БЕЗ цен. Ничего не публикуй само.",
       inputSchema: z.object({
         topic: z.string().describe("Короткая тема поста"),
         body: z.string().describe("Полный текст с ценой и условиями для VK, Telegram и Макс"),
@@ -196,6 +224,12 @@ export function createSocialTools(ctx: AssistantToolContext) {
           ),
         platforms: platformsSchema,
         ref: z.string().optional().describe("Объект, если пост про конкретную квартиру/дом"),
+        mediaKind: z
+          .enum(["photos", "video", "auto", "none"])
+          .optional()
+          .describe(
+            "Медиа из карточки объекта: photos, video, auto (фото или видео), none. По умолчанию auto, если указан ref.",
+          ),
         pulseItemId: z
           .string()
           .optional()
@@ -206,19 +240,61 @@ export function createSocialTools(ctx: AssistantToolContext) {
           .describe("ISO-дата публикации, если это не «прямо сейчас»"),
         publishNow: z.boolean().optional(),
       }),
-      execute: async ({ topic, body, instagramBody, platforms, ref, pulseItemId, scheduledAt, publishNow, objectUrl }) => {
+      execute: async ({
+        topic,
+        body,
+        instagramBody,
+        platforms,
+        ref,
+        mediaKind,
+        pulseItemId,
+        scheduledAt,
+        publishNow,
+        objectUrl,
+      }) => {
         let propertyId: string | undefined;
         let propertyText = "";
+        let media:
+          | {
+              path: string;
+              kind: "photo" | "video";
+              mime: string;
+              bytes: number;
+              width?: number | null;
+              height?: number | null;
+              durationSec?: number | null;
+            }[]
+          | undefined;
+        let resolvedObjectUrl = objectUrl?.trim() || "";
         if (ref) {
           const p = await label(ref);
           if (!p) return { error: `Объект «${ref}» не найден` };
           propertyId = p.id;
           propertyText = p.text;
+          const { buildPropertySocialDraft } = await import("@/lib/social.server");
+          const draft = await buildPropertySocialDraft(p.id, mediaKind ?? "auto");
+          if (!resolvedObjectUrl) resolvedObjectUrl = draft.objectUrl;
+          if ((mediaKind ?? "auto") !== "none" && draft.media.length) {
+            media = draft.media.map((item) => ({
+              path: item.path,
+              kind: item.kind,
+              mime: item.mime,
+              bytes: item.bytes,
+              width: item.width,
+              height: item.height,
+              durationSec: item.durationSec,
+            }));
+          }
         }
         const when = publishNow ? "опубликовать сейчас" : scheduledAt ? `запланировать на ${scheduledAt}` : "сохранить черновик";
         const nets = platforms.join(", ");
         const igNote = platforms.includes("instagram") ? "; Instagram — без цен и оферты" : "";
-        const summary = `${when[0].toUpperCase()}${when.slice(1)} пост «${topic || body.slice(0, 40)}» → ${nets}${igNote}${propertyText ? ` (${propertyText})` : ""}`;
+        const mediaNote = media?.length
+          ? media[0]!.kind === "video"
+            ? "; +видео из карточки"
+            : `; +${media.length} фото из карточки`
+          : "";
+        const summary = `${when.charAt(0).toUpperCase()}${when.slice(1)} пост «${topic || body.slice(0, 40)}» → ${nets}${igNote}${mediaNote}${propertyText ? ` (${propertyText})` : ""}`;
         ctx.propose({
           tool: "createSocialPost",
           summary,
@@ -230,11 +306,12 @@ export function createSocialTools(ctx: AssistantToolContext) {
             pulseItemId: pulseItemId?.trim() || null,
             scheduledAt: scheduledAt || null,
             publish: Boolean(publishNow || scheduledAt),
-            objectUrl: objectUrl?.trim() || undefined,
-            variants: instagramBody?.trim() ? { instagram: instagramBody.trim() } : undefined,
+            ...(resolvedObjectUrl ? { objectUrl: resolvedObjectUrl } : {}),
+            ...(instagramBody?.trim() ? { variants: { instagram: instagramBody.trim() } } : {}),
+            ...(media?.length ? { media } : {}),
           },
         });
-        return { proposed: true, summary, body };
+        return { proposed: true, summary, body, mediaCount: media?.length ?? 0 };
       },
     }),
 

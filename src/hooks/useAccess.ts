@@ -18,6 +18,7 @@ export function useAccess() {
     isAdmin: role === "admin",
     isManager: role === "manager",
     isOwner: role === "owner",
+    isSocialOwner: Boolean(query.data?.socialOwner),
     loading: query.isLoading,
   };
 }

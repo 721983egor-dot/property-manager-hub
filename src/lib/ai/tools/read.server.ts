@@ -238,6 +238,16 @@ export function createReadTools(ctx: AssistantToolContext) {
               media.video_file_path || media.video_youtube_url || media.video_vk_url || media.video_url,
             );
           })(),
+          mediaSummary: (() => {
+            const media = propertyMediaFromRow(p as Record<string, unknown>);
+            return {
+              photoCount: media.photos.length,
+              photoPaths: media.photos.slice(0, 12).map((photo) => photo.path),
+              videoFilePath: media.video_file_path || null,
+              videoYoutube: media.video_youtube_url || null,
+              videoVk: media.video_vk_url || null,
+            };
+          })(),
           photos: undefined,
           listings: listings ?? [],
           bookings: (bookings ?? []).map((b) => ({

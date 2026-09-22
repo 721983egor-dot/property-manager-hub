@@ -34,9 +34,11 @@ import {
   saveStaffProfile,
   setStaffPassword,
   setStaffRole,
+  setStaffSocialOwner,
   type StaffMember,
   type StaffRole,
 } from "@/lib/staff.functions";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/_authenticated/system/staff")({
   head: () => ({
@@ -58,6 +60,7 @@ export const Route = createFileRoute("/_authenticated/system/staff")({
 const ROLE_LABEL: Record<StaffRole, string> = {
   admin: "Администратор",
   manager: "Менеджер",
+  owner: "Собственник Н11",
 };
 
 function StaffPage() {
@@ -127,6 +130,9 @@ function StaffPage() {
                 </CardTitle>
                 <p className="truncate text-xs text-muted-foreground">{member.email}</p>
                 <p className="text-xs font-medium text-primary">{ROLE_LABEL[member.role]}</p>
+                {member.socialOwner ? (
+                  <p className="text-[11px] text-muted-foreground">Соцсети</p>
+                ) : null}
               </div>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
@@ -277,6 +283,7 @@ function StaffDialog({
   const queryClient = useQueryClient();
   const save = useServerFn(saveStaffProfile);
   const changeRole = useServerFn(setStaffRole);
+  const changeSocial = useServerFn(setStaffSocialOwner);
   const changePassword = useServerFn(setStaffPassword);
 
   const [fullName, setFullName] = useState("");
@@ -284,6 +291,7 @@ function StaffDialog({
   const [birthDate, setBirthDate] = useState("");
   const [photoPath, setPhotoPath] = useState("");
   const [role, setRole] = useState<StaffRole>("manager");
+  const [socialOwner, setSocialOwner] = useState(false);
   const [password, setPassword] = useState("");
 
   useEffect(() => {
@@ -293,6 +301,7 @@ function StaffDialog({
     setBirthDate(member.birth_date ?? "");
     setPhotoPath(member.photo_path);
     setRole(member.role);
+    setSocialOwner(Boolean(member.socialOwner));
     setPassword("");
   }, [open, member]);
 
@@ -309,6 +318,9 @@ function StaffDialog({
         },
       });
       if (canManage && role !== member.role) await changeRole({ data: { id: member.id, role } });
+      if (canManage && socialOwner !== Boolean(member.socialOwner)) {
+        await changeSocial({ data: { id: member.id, socialOwner } });
+      }
       const newPassword = password.trim();
       if (canManage && newPassword) {
         await changePassword({ data: { id: member.id, password: newPassword } });
@@ -368,34 +380,49 @@ function StaffDialog({
             </div>
           </div>
           {canManage ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Доступ</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Администратор</SelectItem>
-                    <SelectItem value="manager">Менеджер</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Доступ</Label>
+                  <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Администратор</SelectItem>
+                      <SelectItem value="manager">Менеджер</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Новый пароль</Label>
+                  <Input
+                    className="mt-1.5"
+                    type="text"
+                    name="staff-new-password"
+                    autoComplete="off"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Оставьте пустым"
+                  />
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Минимум 8 символов. Пароль меняется сразу после сохранения.
+                  </p>
+                </div>
               </div>
-              <div>
-                <Label>Новый пароль</Label>
-                <Input
-                  className="mt-1.5"
-                  type="text"
-                  name="staff-new-password"
-                  autoComplete="off"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Оставьте пустым"
+              <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm">
+                <Checkbox
+                  checked={socialOwner}
+                  onCheckedChange={(v) => setSocialOwner(v === true)}
+                  className="mt-0.5"
                 />
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Минимум 8 символов. Пароль меняется сразу после сохранения.
-                </p>
-              </div>
+                <span>
+                  <span className="font-medium">Соцсети (роль social_owner)</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Раздел «Соцсети», публикация через Postmypost и подтверждение действий SMM-ассистента.
+                  </span>
+                </span>
+              </label>
             </div>
           ) : null}
         </div>
@@ -429,6 +456,7 @@ function CreateStaffDialog({
   const [birthDate, setBirthDate] = useState("");
   const [photoPath, setPhotoPath] = useState("");
   const [role, setRole] = useState<StaffRole>("manager");
+  const [socialOwner, setSocialOwner] = useState(false);
 
   useEffect(() => {
     if (open) return;
@@ -439,6 +467,7 @@ function CreateStaffDialog({
     setBirthDate("");
     setPhotoPath("");
     setRole("manager");
+    setSocialOwner(false);
   }, [open]);
 
   const mutation = useMutation({
@@ -448,6 +477,7 @@ function CreateStaffDialog({
           email,
           password,
           role,
+          socialOwner,
           full_name: fullName,
           phone,
           birth_date: birthDate || null,
@@ -532,6 +562,19 @@ function CreateStaffDialog({
               Менеджер видит объекты, подборки, календарь и клиентов, может добавлять брони, но не
               редактирует и не удаляет данные.
             </p>
+            <label className="mt-3 flex items-start gap-3 rounded-md border border-border p-3 text-sm">
+              <Checkbox
+                checked={socialOwner}
+                onCheckedChange={(v) => setSocialOwner(v === true)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">Соцсети (social_owner)</span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Доступ к разделу «Соцсети» и подтверждению постов.
+                </span>
+              </span>
+            </label>
           </div>
         </div>
 

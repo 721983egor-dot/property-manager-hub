@@ -12,6 +12,8 @@ export type StaffMember = {
   birth_date: string | null;
   photo_path: string;
   role: StaffRole;
+  /** Доступ к разделу «Соцсети» (роль social_owner, дополнительно к admin/manager). */
+  socialOwner: boolean;
   created_at: string;
 };
 
@@ -23,20 +25,30 @@ export type StaffProfileInput = {
 };
 
 const PROFILE_COLUMNS = "id, email, full_name, phone, birth_date, photo_path, created_at";
+const PRIMARY_ROLES: StaffRole[] = ["admin", "manager", "owner"];
 
 async function adminClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
 
-async function roleOf(userId: string): Promise<StaffRole | null> {
+async function rolesOf(userId: string): Promise<string[]> {
   const admin = await adminClient();
   const { data } = await admin.from("user_roles").select("role").eq("user_id", userId);
-  const roles = (data ?? []).map((r) => r.role as StaffRole);
+  return (data ?? []).map((r) => r.role as string);
+}
+
+async function roleOf(userId: string): Promise<StaffRole | null> {
+  const roles = await rolesOf(userId);
   if (roles.includes("admin")) return "admin";
   if (roles.includes("manager")) return "manager";
   if (roles.includes("owner")) return "owner";
   return null;
+}
+
+export async function userHasSocialOwner(userId: string): Promise<boolean> {
+  const roles = await rolesOf(userId);
+  return roles.includes("social_owner");
 }
 
 async function requireAdmin(userId: string) {
@@ -46,36 +58,75 @@ async function requireAdmin(userId: string) {
   return adminClient();
 }
 
+async function setSocialOwnerFlag(admin: Awaited<ReturnType<typeof adminClient>>, userId: string, enabled: boolean) {
+  if (enabled) {
+    const { data: existing } = await admin
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("role", "social_owner")
+      .maybeSingle();
+    if (existing) return;
+    const { error } = await admin.from("user_roles").insert({ user_id: userId, role: "social_owner" });
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const { error } = await admin
+    .from("user_roles")
+    .delete()
+    .eq("user_id", userId)
+    .eq("role", "social_owner");
+  if (error) throw new Error(error.message);
+}
+
 /** Роль и карточка текущего сотрудника. */
 export const getMyAccess = createServerFn({ method: "POST" })
   .middleware([requireUser])
-  .handler(async ({ context }): Promise<{ role: StaffRole; profile: StaffMember | null }> => {
-    const admin = await adminClient();
-    const role = (await roleOf(context.userId)) ?? "manager";
-    const { data } = await admin
-      .from("profiles")
-      .select(PROFILE_COLUMNS)
-      .eq("id", context.userId)
-      .maybeSingle();
-    if (!data) {
-      const email = context.user.email ?? "";
-      await admin.from("profiles").insert({ id: context.userId, email });
+  .handler(
+    async ({
+      context,
+    }): Promise<{ role: StaffRole; socialOwner: boolean; profile: StaffMember | null }> => {
+      const admin = await adminClient();
+      const roles = await rolesOf(context.userId);
+      const role = (roles.includes("admin")
+        ? "admin"
+        : roles.includes("manager")
+          ? "manager"
+          : roles.includes("owner")
+            ? "owner"
+            : "manager") as StaffRole;
+      const socialOwner = roles.includes("social_owner");
+      const { data } = await admin
+        .from("profiles")
+        .select(PROFILE_COLUMNS)
+        .eq("id", context.userId)
+        .maybeSingle();
+      if (!data) {
+        const email = context.user.email ?? "";
+        await admin.from("profiles").insert({ id: context.userId, email });
+        return {
+          role,
+          socialOwner,
+          profile: {
+            id: context.userId,
+            email,
+            full_name: "",
+            phone: "",
+            birth_date: null,
+            photo_path: "",
+            role,
+            socialOwner,
+            created_at: new Date().toISOString(),
+          },
+        };
+      }
       return {
         role,
-        profile: {
-          id: context.userId,
-          email,
-          full_name: "",
-          phone: "",
-          birth_date: null,
-          photo_path: "",
-          role,
-          created_at: new Date().toISOString(),
-        },
+        socialOwner,
+        profile: { ...(data as Omit<StaffMember, "role" | "socialOwner">), role, socialOwner },
       };
-    }
-    return { role, profile: { ...(data as Omit<StaffMember, "role">), role } };
-  });
+    },
+  );
 
 /** Список сотрудников — только администратору. */
 export const listStaff = createServerFn({ method: "POST" })
@@ -87,7 +138,12 @@ export const listStaff = createServerFn({ method: "POST" })
       admin.from("user_roles").select("user_id, role"),
     ]);
     const roleMap = new Map<string, StaffRole>();
+    const socialOwners = new Set<string>();
     for (const r of roles ?? []) {
+      if (r.role === "social_owner") {
+        socialOwners.add(r.user_id);
+        continue;
+      }
       if (r.role === "admin") roleMap.set(r.user_id, "admin");
       else if (r.role === "owner") {
         if (!roleMap.has(r.user_id)) roleMap.set(r.user_id, "owner");
@@ -97,9 +153,10 @@ export const listStaff = createServerFn({ method: "POST" })
       staff: (profiles ?? [])
         .filter((p) => roleMap.get(p.id) !== "owner")
         .map((p) => ({
-        ...(p as Omit<StaffMember, "role">),
-        role: roleMap.get(p.id) ?? "manager",
-      })),
+          ...(p as Omit<StaffMember, "role" | "socialOwner">),
+          role: roleMap.get(p.id) ?? "manager",
+          socialOwner: socialOwners.has(p.id),
+        })),
     };
   });
 
@@ -108,13 +165,21 @@ export const createStaff = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .inputValidator(
     (input: unknown) =>
-      input as StaffProfileInput & { email: string; password: string; role: StaffRole },
+      input as StaffProfileInput & {
+        email: string;
+        password: string;
+        role: StaffRole;
+        socialOwner?: boolean;
+      },
   )
   .handler(async ({ context, data }): Promise<{ id: string }> => {
     const admin = await requireAdmin(context.userId);
     const email = data.email.trim().toLowerCase();
     if (!email) throw new Error("Укажите электронную почту");
     if ((data.password ?? "").length < 8) throw new Error("Пароль — минимум 8 символов");
+    if (!PRIMARY_ROLES.includes(data.role) || data.role === "owner") {
+      throw new Error("Укажите роль администратора или менеджера");
+    }
 
     const created = await admin.auth.admin.createUser({
       email,
@@ -138,6 +203,8 @@ export const createStaff = createServerFn({ method: "POST" })
 
     const { error: roleError } = await admin.from("user_roles").insert({ user_id: id, role: data.role });
     if (roleError) throw new Error(roleError.message);
+
+    if (data.socialOwner) await setSocialOwnerFlag(admin, id, true);
 
     return { id };
   });
@@ -164,7 +231,7 @@ export const saveStaffProfile = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Смена роли сотрудника. */
+/** Смена роли сотрудника (admin/manager). social_owner не сбрасывается. */
 export const setStaffRole = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .inputValidator((input: unknown) => input as { id: string; role: StaffRole })
@@ -173,9 +240,22 @@ export const setStaffRole = createServerFn({ method: "POST" })
     if (data.id === context.userId && data.role !== "admin") {
       throw new Error("Нельзя снять с себя права администратора");
     }
-    await admin.from("user_roles").delete().eq("user_id", data.id);
+    if (!PRIMARY_ROLES.includes(data.role) || data.role === "owner") {
+      throw new Error("Укажите роль администратора или менеджера");
+    }
+    await admin.from("user_roles").delete().eq("user_id", data.id).in("role", ["admin", "manager"]);
     const { error } = await admin.from("user_roles").insert({ user_id: data.id, role: data.role });
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Включить/выключить доступ к разделу «Соцсети» (роль social_owner). */
+export const setStaffSocialOwner = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: unknown) => input as { id: string; socialOwner: boolean })
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const admin = await requireAdmin(context.userId);
+    await setSocialOwnerFlag(admin, data.id, Boolean(data.socialOwner));
     return { ok: true };
   });
 

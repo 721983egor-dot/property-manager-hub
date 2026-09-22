@@ -22,8 +22,14 @@ import {
   type SocialPostTarget,
   type SocialSkill,
 } from "@/lib/social";
-import { SOCIAL_MEDIA_MAX_ITEMS, type SocialMediaItem } from "@/lib/social-media";
+import {
+  SOCIAL_MEDIA_MAX_ITEMS,
+  socialMediaDisplayUrl,
+  type SocialMediaItem,
+} from "@/lib/social-media";
 import { downloadSocialMedia, signedSocialMediaUrls } from "@/lib/social-media.server";
+import { propertyMediaFromRow, type PropertyPhoto } from "@/lib/properties";
+import { propertyUrl } from "@/lib/seo";
 
 const CHANNEL_COLUMNS =
   "id, platform, name, enabled, postmypost_account_id, postmypost_channel, external_url, last_synced_at, last_error";
@@ -33,6 +39,264 @@ const TARGET_COLUMNS =
   "id, post_id, channel_id, platform, body, status, postmypost_account_id, external_url, last_error";
 const MEDIA_COLUMNS =
   "id, post_id, kind, path, mime, bytes, width, height, duration_sec, sort_order, postmypost_file_id";
+
+export type SocialPropertyMediaKind = "photos" | "video" | "auto" | "none";
+
+export type SocialPropertyOption = {
+  id: string;
+  refId: number;
+  label: string;
+  status: string;
+  complexName: string;
+  address: string;
+  photoCount: number;
+  hasVideo: boolean;
+};
+
+export type PropertySocialDraft = {
+  propertyId: string;
+  refId: number;
+  label: string;
+  topic: string;
+  body: string;
+  objectUrl: string;
+  description: string;
+  complexName: string;
+  address: string;
+  locationDescription: string;
+  mediaKind: "photos" | "video" | "none";
+  media: SocialMediaItem[];
+  photoCount: number;
+  hasVideo: boolean;
+};
+
+function mimeFromPath(path: string, kind: "photo" | "video") {
+  if (kind === "video") return "video/mp4";
+  if (/\.png$/i.test(path)) return "image/png";
+  if (/\.webp$/i.test(path)) return "image/webp";
+  return "image/jpeg";
+}
+
+function propertyLabelFromRow(row: {
+  ref_id: number;
+  title: string;
+  internal_name?: string | null;
+}) {
+  return String(row.internal_name || row.title || `№${row.ref_id}`);
+}
+
+function draftBodyFromProperty(row: Record<string, unknown>) {
+  const title = propertyLabelFromRow({
+    ref_id: Number(row["ref_id"] ?? 0),
+    title: String(row["title"] ?? ""),
+    internal_name: (row["internal_name"] as string | null) ?? null,
+  });
+  const complex = String(row["complex_name"] ?? "").trim();
+  const address = String(row["address"] ?? "").trim();
+  const location = String(row["location_description"] ?? "").trim();
+  const description = String(row["description"] ?? "").trim();
+  const rooms = row["rooms"] != null ? Number(row["rooms"]) : null;
+  const area = row["area"] != null ? Number(row["area"]) : null;
+  const price = row["price_month"] != null ? Number(row["price_month"]) : null;
+
+  const facts: string[] = [];
+  if (rooms && Number.isFinite(rooms)) facts.push(`${rooms} комн.`);
+  if (area && Number.isFinite(area)) facts.push(`${area} м²`);
+  if (price && Number.isFinite(price)) {
+    facts.push(`${price.toLocaleString("ru-RU")} ₽/мес`);
+  }
+
+  const lines = [
+    title,
+    facts.length ? facts.join(" · ") : "",
+    complex ? `ЖК ${complex}` : "",
+    address ? `Расположение: ${address}` : "",
+    location || "",
+    description || "",
+  ].filter(Boolean);
+
+  return lines.join("\n\n");
+}
+
+function mediaItemsFromProperty(
+  row: Record<string, unknown>,
+  kind: SocialPropertyMediaKind,
+): { mediaKind: "photos" | "video" | "none"; media: SocialMediaItem[] } {
+  const media = propertyMediaFromRow(row);
+  const photos = (media.photos as PropertyPhoto[]).filter((p) => p.path);
+  const videoPath = String(media.video_file_path ?? "").trim();
+
+  const wantVideo =
+    kind === "video" || (kind === "auto" && !photos.length && Boolean(videoPath));
+  if (wantVideo) {
+    if (!videoPath) return { mediaKind: "none", media: [] };
+    return {
+      mediaKind: "video",
+      media: [
+        {
+          id: videoPath,
+          kind: "video",
+          path: videoPath,
+          mime: mimeFromPath(videoPath, "video"),
+          bytes: 0,
+          width: null,
+          height: null,
+          durationSec: null,
+          url: socialMediaDisplayUrl(videoPath),
+          sortOrder: 0,
+        },
+      ],
+    };
+  }
+
+  if (kind === "none") return { mediaKind: "none", media: [] };
+
+  const picked = photos.slice(0, SOCIAL_MEDIA_MAX_ITEMS).map((photo, index) => ({
+    id: photo.path,
+    kind: "photo" as const,
+    path: photo.path,
+    mime: mimeFromPath(photo.path, "photo"),
+    bytes: 0,
+    width: null,
+    height: null,
+    durationSec: null,
+    url: socialMediaDisplayUrl(photo.path),
+    sortOrder: index,
+  }));
+  return {
+    mediaKind: picked.length ? "photos" : "none",
+    media: picked,
+  };
+}
+
+/** Краткие опции объектов для выбора в разделе «Соцсети». */
+export async function listSocialPropertyOptions(): Promise<SocialPropertyOption[]> {
+  const { data, error } = await supabaseAdmin
+    .from("properties")
+    .select(
+      "id, ref_id, title, internal_name, status, complex_name, address, photos, video_file_path, video_url, video_vk_url, video_youtube_url",
+    )
+    .neq("status", "archived")
+    .order("ref_id", { ascending: false })
+    .limit(400);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as unknown as Record<string, unknown>[];
+  return rows.map((row) => {
+    const media = propertyMediaFromRow(row);
+    return {
+      id: String(row["id"]),
+      refId: Number(row["ref_id"]),
+      label: propertyLabelFromRow({
+        ref_id: Number(row["ref_id"]),
+        title: String(row["title"] ?? ""),
+        internal_name: (row["internal_name"] as string | null) ?? null,
+      }),
+      status: String(row["status"] ?? ""),
+      complexName: String(row["complex_name"] ?? ""),
+      address: String(row["address"] ?? ""),
+      photoCount: media.photos.length,
+      hasVideo: Boolean(media.video_file_path),
+    };
+  });
+}
+
+/** Черновик поста по карточке объекта: текст + фото или видео. */
+export async function buildPropertySocialDraft(
+  propertyId: string,
+  mediaKind: SocialPropertyMediaKind = "auto",
+): Promise<PropertySocialDraft> {
+  const { data, error } = await supabaseAdmin
+    .from("properties")
+    .select(
+      "id, ref_id, title, internal_name, status, complex_name, address, location_description, description, rooms, area, price_month, photos, video_file_path, video_url, video_vk_url, video_youtube_url",
+    )
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Объект не найден");
+
+  const row = data as unknown as Record<string, unknown>;
+  const mediaInfo = propertyMediaFromRow(row);
+  const picked = mediaItemsFromProperty(row, mediaKind);
+  const label = propertyLabelFromRow({
+    ref_id: Number(row["ref_id"]),
+    title: String(row["title"] ?? ""),
+    internal_name: (row["internal_name"] as string | null) ?? null,
+  });
+  const complexName = String(row["complex_name"] ?? "").trim();
+  const address = String(row["address"] ?? "").trim();
+  const locationDescription = String(row["location_description"] ?? "").trim();
+  const description = String(row["description"] ?? "").trim();
+
+  return {
+    propertyId: String(row["id"]),
+    refId: Number(row["ref_id"]),
+    label,
+    topic: complexName ? `${label} · ${complexName}` : label,
+    body: draftBodyFromProperty(row),
+    objectUrl: propertyUrl({ title: String(row["title"] ?? ""), ref_id: Number(row["ref_id"]) }),
+    description,
+    complexName,
+    address,
+    locationDescription,
+    mediaKind: picked.mediaKind,
+    media: picked.media,
+    photoCount: mediaInfo.photos.length,
+    hasVideo: Boolean(mediaInfo.video_file_path),
+  };
+}
+
+/** Медиа объекта для Ассистента (пути в том же бакете, что и посты). */
+export async function loadPropertySocialMedia(propertyRefOrId: string) {
+  const byId = await supabaseAdmin
+    .from("properties")
+    .select(
+      "id, ref_id, title, internal_name, photos, video_file_path, video_url, video_vk_url, video_youtube_url",
+    )
+    .eq("id", propertyRefOrId)
+    .maybeSingle();
+  let row = byId.data as unknown as Record<string, unknown> | null;
+  if (!row) {
+    const ref = Number(propertyRefOrId);
+    if (Number.isFinite(ref) && ref > 0) {
+      const byRef = await supabaseAdmin
+        .from("properties")
+        .select(
+          "id, ref_id, title, internal_name, photos, video_file_path, video_url, video_vk_url, video_youtube_url",
+        )
+        .eq("ref_id", ref)
+        .maybeSingle();
+      row = (byRef.data as unknown as Record<string, unknown> | null) ?? null;
+    }
+  }
+  if (!row) return null;
+  const media = propertyMediaFromRow(row);
+  return {
+    propertyId: String(row["id"]),
+    label: propertyLabelFromRow({
+      ref_id: Number(row["ref_id"]),
+      title: String(row["title"] ?? ""),
+      internal_name: (row["internal_name"] as string | null) ?? null,
+    }),
+    photos: media.photos.map((p) => ({
+      path: p.path,
+      url: socialMediaDisplayUrl(p.path),
+      kind: "photo" as const,
+    })),
+    video: media.video_file_path
+      ? {
+          path: media.video_file_path,
+          url: socialMediaDisplayUrl(media.video_file_path),
+          kind: "video" as const,
+        }
+      : null,
+    externalVideo: {
+      youtube: media.video_youtube_url || null,
+      vk: media.video_vk_url || null,
+      other: /^https?:\/\//i.test(media.video_url) ? media.video_url : null,
+    },
+  };
+}
 
 function isPlatform(value: string): value is SocialPlatform {
   return (SOCIAL_PLATFORMS as readonly string[]).includes(value);
