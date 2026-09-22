@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BlogRouteImport } from './routes/blog'
 import { Route as BookingRouteImport } from './routes/booking'
 import { Route as ContactsRouteImport } from './routes/contacts'
 import { Route as ManagementRouteImport } from './routes/management'
@@ -23,6 +24,8 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as ApiPhotoUploadRouteImport } from './routes/api/photo-upload'
 import { Route as ApiSocialMediaUploadRouteImport } from './routes/api/social-media-upload'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as PCodeRouteImport } from './routes/p.$code'
 import { Route as RentIndexRouteImport } from './routes/rent.index'
 import { Route as RentIdRouteImport } from './routes/rent.$id'
@@ -43,11 +46,11 @@ import { Route as AuthenticatedPromoAvitoRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
 import { Route as AuthenticatedSocialIndexRouteImport } from './routes/_authenticated/social.index'
-import { Route as AuthenticatedSystemVideoRouteImport } from './routes/_authenticated/system.video'
 import { Route as AuthenticatedSystemQuickRepliesRouteImport } from './routes/_authenticated/system.quick-replies'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
 import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authenticated/system.telegram'
 import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
+import { Route as AuthenticatedSystemVideoRouteImport } from './routes/_authenticated/system.video'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as ApiPublicStaffSessionRouteImport } from './routes/api/public/staff-session'
 import { Route as RentComplexSlugRouteImport } from './routes/rent.$complex.$slug'
@@ -90,6 +93,11 @@ const AboutRoute = AboutRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookingRoute = BookingRouteImport.update({
@@ -141,6 +149,16 @@ const ApiSocialMediaUploadRoute = ApiSocialMediaUploadRouteImport.update({
   id: '/api/social-media-upload',
   path: '/api/social-media-upload',
   getParentRoute: () => rootRouteImport,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BlogRoute,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
 } as any)
 const PCodeRoute = PCodeRouteImport.update({
   id: '/p/$code',
@@ -250,11 +268,6 @@ const AuthenticatedSocialIndexRoute =
     path: '/social/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedSystemVideoRoute = AuthenticatedSystemVideoRouteImport.update({
-  id: '/system/video',
-  path: '/system/video',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedSystemQuickRepliesRoute =
   AuthenticatedSystemQuickRepliesRouteImport.update({
     id: '/system/quick-replies',
@@ -277,6 +290,12 @@ const AuthenticatedSystemUpdateRoute =
   AuthenticatedSystemUpdateRouteImport.update({
     id: '/system/update',
     path: '/system/update',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSystemVideoRoute =
+  AuthenticatedSystemVideoRouteImport.update({
+    id: '/system/video',
+    path: '/system/video',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
@@ -421,6 +440,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
   '/booking': typeof BookingRoute
   '/contacts': typeof ContactsRoute
   '/management': typeof ManagementRoute
@@ -431,8 +451,10 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AuthenticatedCalendarRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
+  '/blog/': typeof BlogIndexRoute
   '/rent/': typeof RentIndexRoute
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
@@ -442,11 +464,11 @@ export interface FileRoutesByFullPath {
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
-  '/system/video': typeof AuthenticatedSystemVideoRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/system/video': typeof AuthenticatedSystemVideoRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/rent/$complex/$slug': typeof RentComplexSlugRoute
@@ -494,8 +516,10 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthenticatedCalendarRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
+  '/blog': typeof BlogIndexRoute
   '/rent': typeof RentIndexRoute
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
@@ -505,11 +529,11 @@ export interface FileRoutesByTo {
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
-  '/system/video': typeof AuthenticatedSystemVideoRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/system/video': typeof AuthenticatedSystemVideoRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/rent/$complex/$slug': typeof RentComplexSlugRoute
@@ -550,6 +574,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
   '/booking': typeof BookingRoute
   '/contacts': typeof ContactsRoute
   '/management': typeof ManagementRoute
@@ -560,8 +585,10 @@ export interface FileRoutesById {
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/p/$code': typeof PCodeRoute
   '/rent/$id': typeof RentIdRoute
+  '/blog/': typeof BlogIndexRoute
   '/rent/': typeof RentIndexRoute
   '/_authenticated/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/_authenticated/hotel/owners': typeof AuthenticatedHotelOwnersRoute
@@ -571,11 +598,11 @@ export interface FileRoutesById {
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
   '/_authenticated/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
-  '/_authenticated/system/video': typeof AuthenticatedSystemVideoRoute
   '/_authenticated/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
   '/_authenticated/system/telegram': typeof AuthenticatedSystemTelegramRoute
   '/_authenticated/system/update': typeof AuthenticatedSystemUpdateRoute
+  '/_authenticated/system/video': typeof AuthenticatedSystemVideoRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/rent/$complex/$slug': typeof RentComplexSlugRoute
@@ -616,6 +643,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/auth'
+    | '/blog'
     | '/booking'
     | '/contacts'
     | '/management'
@@ -626,8 +654,10 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/api/photo-upload'
     | '/api/social-media-upload'
+    | '/blog/$slug'
     | '/p/$code'
     | '/rent/$id'
+    | '/blog/'
     | '/rent/'
     | '/complexes/new'
     | '/hotel/owners'
@@ -637,11 +667,11 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/avito'
     | '/promo/import'
-    | '/system/video'
     | '/system/quick-replies'
     | '/system/staff'
     | '/system/telegram'
     | '/system/update'
+    | '/system/video'
     | '/api/public/health'
     | '/api/public/staff-session'
     | '/rent/$complex/$slug'
@@ -689,8 +719,10 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/api/photo-upload'
     | '/api/social-media-upload'
+    | '/blog/$slug'
     | '/p/$code'
     | '/rent/$id'
+    | '/blog'
     | '/rent'
     | '/complexes/new'
     | '/hotel/owners'
@@ -700,11 +732,11 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/avito'
     | '/promo/import'
-    | '/system/video'
     | '/system/quick-replies'
     | '/system/staff'
     | '/system/telegram'
     | '/system/update'
+    | '/system/video'
     | '/api/public/health'
     | '/api/public/staff-session'
     | '/rent/$complex/$slug'
@@ -744,6 +776,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/about'
     | '/auth'
+    | '/blog'
     | '/booking'
     | '/contacts'
     | '/management'
@@ -754,8 +787,10 @@ export interface FileRouteTypes {
     | '/_authenticated/calendar'
     | '/api/photo-upload'
     | '/api/social-media-upload'
+    | '/blog/$slug'
     | '/p/$code'
     | '/rent/$id'
+    | '/blog/'
     | '/rent/'
     | '/_authenticated/complexes/new'
     | '/_authenticated/hotel/owners'
@@ -765,11 +800,11 @@ export interface FileRouteTypes {
     | '/_authenticated/promo/$id'
     | '/_authenticated/promo/avito'
     | '/_authenticated/promo/import'
-    | '/_authenticated/system/video'
     | '/_authenticated/system/quick-replies'
     | '/_authenticated/system/staff'
     | '/_authenticated/system/telegram'
     | '/_authenticated/system/update'
+    | '/_authenticated/system/video'
     | '/api/public/health'
     | '/api/public/staff-session'
     | '/rent/$complex/$slug'
@@ -810,6 +845,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   AuthRoute: typeof AuthRoute
+  BlogRoute: typeof BlogRouteWithChildren
   BookingRoute: typeof BookingRoute
   ContactsRoute: typeof ContactsRoute
   ManagementRoute: typeof ManagementRoute
@@ -863,6 +899,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/booking': {
@@ -934,6 +977,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/social-media-upload'
       preLoaderRoute: typeof ApiSocialMediaUploadRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof BlogRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
     }
     '/p/$code': {
       id: '/p/$code'
@@ -1075,13 +1132,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSocialIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/system/video': {
-      id: '/_authenticated/system/video'
-      path: '/system/video'
-      fullPath: '/system/video'
-      preLoaderRoute: typeof AuthenticatedSystemVideoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/system/quick-replies': {
       id: '/_authenticated/system/quick-replies'
       path: '/system/quick-replies'
@@ -1108,6 +1158,13 @@ declare module '@tanstack/react-router' {
       path: '/system/update'
       fullPath: '/system/update'
       preLoaderRoute: typeof AuthenticatedSystemUpdateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/system/video': {
+      id: '/_authenticated/system/video'
+      path: '/system/video'
+      fullPath: '/system/video'
+      preLoaderRoute: typeof AuthenticatedSystemVideoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/health': {
@@ -1291,11 +1348,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
   AuthenticatedPromoAvitoRoute: typeof AuthenticatedPromoAvitoRoute
   AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
-  AuthenticatedSystemVideoRoute: typeof AuthenticatedSystemVideoRoute
   AuthenticatedSystemQuickRepliesRoute: typeof AuthenticatedSystemQuickRepliesRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
   AuthenticatedSystemTelegramRoute: typeof AuthenticatedSystemTelegramRoute
   AuthenticatedSystemUpdateRoute: typeof AuthenticatedSystemUpdateRoute
+  AuthenticatedSystemVideoRoute: typeof AuthenticatedSystemVideoRoute
   AuthenticatedAssistantIndexRoute: typeof AuthenticatedAssistantIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedComplexesIndexRoute: typeof AuthenticatedComplexesIndexRoute
@@ -1326,11 +1383,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
   AuthenticatedPromoAvitoRoute: AuthenticatedPromoAvitoRoute,
   AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
-  AuthenticatedSystemVideoRoute: AuthenticatedSystemVideoRoute,
   AuthenticatedSystemQuickRepliesRoute: AuthenticatedSystemQuickRepliesRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
   AuthenticatedSystemTelegramRoute: AuthenticatedSystemTelegramRoute,
   AuthenticatedSystemUpdateRoute: AuthenticatedSystemUpdateRoute,
+  AuthenticatedSystemVideoRoute: AuthenticatedSystemVideoRoute,
   AuthenticatedAssistantIndexRoute: AuthenticatedAssistantIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedComplexesIndexRoute: AuthenticatedComplexesIndexRoute,
@@ -1354,6 +1411,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+  BlogIndexRoute: typeof BlogIndexRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+  BlogIndexRoute: BlogIndexRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
 interface RentRouteChildren {
   RentIdRoute: typeof RentIdRoute
   RentIndexRoute: typeof RentIndexRoute
@@ -1375,6 +1444,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AuthRoute: AuthRoute,
+  BlogRoute: BlogRouteWithChildren,
   BookingRoute: BookingRoute,
   ContactsRoute: ContactsRoute,
   ManagementRoute: ManagementRoute,

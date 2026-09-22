@@ -13,6 +13,7 @@ import logo from "@/assets/site/logo_navy.png";
 
 const NAV = [
   { to: "/rent", label: "Объекты" },
+  { to: "/blog", label: "Статьи" },
   { to: "/about", label: "О нас" },
   { to: "/management", label: "Собственникам" },
 ] as const;

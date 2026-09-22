@@ -6,11 +6,13 @@ export const SOCIAL_ASSISTANT_PROMPT = `Ты — SMM-режим Ассистен
 Каналы компании: Instagram, ВКонтакте, группа Telegram, группа в мессенджере Макс.
 Публикация и статистика идут через Postmypost, включая Макс.
 Сторис — ОТДЕЛЬНЫЙ поток (getSocialStories / proposeSocialStory), не путай с лентой постов.
+Длинные статьи на сайт (/blog) — ОТДЕЛЬНАЯ сущность (getSiteArticles / proposeSiteArticle). Не зеркаль каждый соцпост в блог: только крупные материалы.
 
 Как работать:
 - Идеи, рубрики, тексты, адаптации под сеть — твоя основная работа.
 - По запросу «сделай пост по объекту X»: getPropertyDetails + getPropertyMedia, затем proposeSocialPost с ref и mediaKind (photos | video | auto). Не предлагай пост сам при появлении нового объекта — только по указке.
 - Сторис: с нуля (proposeSocialStory) или из поста (fromPostId). Правки по запросу — proposeUpdateSocialStory. Каналы: getStoryChannelCapabilities — Макс всегда вручную; Telegram сторис только если аккаунт через приложение, не бот.
+- Статьи на сайт: proposeSiteArticle (длинный текст, slug, SEO). Публикация — proposePublishSiteArticle. Выжимка в соцсеть из статьи — proposeSocialPostFromArticle (черновик поста со ссылкой на /blog/…).
 - Факты об объектах (цена, комнаты, свободен ли, описание, ЖК, расположение) бери ТОЛЬКО из инструментов searchProperties / getPropertyDetails / getPropertyMedia. Не выдумывай метраж и цену.
 - Голос бренда и выученные правила — из getSocialBrand и блока ниже. Соблюдай их.
 - Черновик или публикация поста — только proposeSocialPost. Правки черновика — proposeUpdateSocialPost. Ничего не публикуй само. Запланированный в Postmypost не правь: сначала proposeCancelSocialPost.
@@ -38,6 +40,7 @@ export async function askSocialAssistantCore(messages: AssistantChatMessage[]): 
     socialSkillsPrompt,
   } = await import("@/lib/social.server");
   const { loadSocialStories } = await import("@/lib/social-stories.server");
+  const { loadSiteArticles } = await import("@/lib/site-articles.server");
 
   const setup = resolveAssistantModel();
   if ("error" in setup) return { text: "", actions: [], error: setup.error };
@@ -53,12 +56,13 @@ export async function askSocialAssistantCore(messages: AssistantChatMessage[]): 
 
   try {
     const pulseMod = await import("@/lib/sochi-pulse.server");
-    const [brand, skills, channels, posts, stories, properties, pulse] = await Promise.all([
+    const [brand, skills, channels, posts, stories, articles, properties, pulse] = await Promise.all([
       loadSocialBrand(),
       loadSocialSkills(),
       loadSocialChannels(),
       loadSocialPosts(20),
       loadSocialStories(12),
+      loadSiteArticles(12),
       ctx.allProperties(),
       pulseMod.loadSochiPulse().catch(() => null),
     ]);
@@ -83,6 +87,10 @@ export async function askSocialAssistantCore(messages: AssistantChatMessage[]): 
       return `- [${s.status}] ${s.topic || s.body.slice(0, 40)} → ${nets}${s.from_post_topic ? ` (из «${s.from_post_topic}»)` : ""}`;
     });
 
+    const articleLines = articles.slice(0, 8).map((a) => {
+      return `- [${a.status}] ${a.title}${a.slug ? ` (/blog/${a.slug})` : ""}`;
+    });
+
     const live = `\n\nСнимок соцсетей:
 Каналы:
 ${channelLines.join("\n") || "- (нет)"}
@@ -92,6 +100,9 @@ ${postLines.join("\n") || "- (нет постов)"}
 
 Сторис (отдельный поток):
 ${storyLines.join("\n") || "- (нет сторис)"}
+
+Статьи на сайт (/blog, только крупные):
+${articleLines.join("\n") || "- (нет статей)"}
 
 Свободные объекты (до 20, для идей контента):
 ${free.map((n) => `- ${n}`).join("\n") || "- (нет)"}`;

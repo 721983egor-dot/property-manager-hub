@@ -366,3 +366,125 @@ export const deleteSocialStory = createServerFn({ method: "POST" })
     await deleteSocialStory(data.id);
     return { ok: true };
   });
+
+export const saveSiteArticle = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator(
+    (input: {
+      id?: string;
+      title: string;
+      slug?: string;
+      excerpt?: string;
+      body: string;
+      seoTitle?: string;
+      seoDescription?: string;
+      coverUrl?: string;
+      propertyId?: string | null;
+      publish?: boolean;
+    }) => ({
+      ...input,
+      title: String(input.title ?? "").trim(),
+      slug: String(input.slug ?? "").trim(),
+      excerpt: String(input.excerpt ?? "").trim(),
+      body: String(input.body ?? "").trim(),
+      seoTitle: String(input.seoTitle ?? "").trim(),
+      seoDescription: String(input.seoDescription ?? "").trim(),
+      coverUrl: String(input.coverUrl ?? "").trim(),
+      propertyId: input.propertyId || null,
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const admin = await requireSocialOwner(context.userId);
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const { saveSiteArticle } = await import("@/lib/site-articles.server");
+    return saveSiteArticle({
+      title: data.title,
+      body: data.body,
+      slug: data.slug,
+      excerpt: data.excerpt,
+      seoTitle: data.seoTitle,
+      seoDescription: data.seoDescription,
+      coverUrl: data.coverUrl,
+      propertyId: data.propertyId,
+      ...(data.id ? { id: data.id } : {}),
+      ...(data.publish != null ? { publish: data.publish } : {}),
+      createdBy: profile?.full_name || profile?.email || "",
+      source: "manual",
+    });
+  });
+
+export const publishSiteArticle = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    const { publishSiteArticle } = await import("@/lib/site-articles.server");
+    const article = await publishSiteArticle(data.id);
+    return { ok: true, article, message: "Статья опубликована на сайте" };
+  });
+
+export const unpublishSiteArticle = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    const { unpublishSiteArticle } = await import("@/lib/site-articles.server");
+    const article = await unpublishSiteArticle(data.id);
+    return { ok: true, article, message: "Статья снята с публикации" };
+  });
+
+export const deleteSiteArticle = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    const { deleteSiteArticle } = await import("@/lib/site-articles.server");
+    await deleteSiteArticle(data.id);
+    return { ok: true };
+  });
+
+/** Черновик соцпоста-выжимки из статьи (без авто-публикации). */
+export const draftSocialPostFromArticle = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { articleId: string; platforms?: SocialPlatform[] }) => ({
+    articleId: String(input.articleId ?? "").trim(),
+    platforms: platformsOf(input.platforms),
+  }))
+  .handler(async ({ context, data }) => {
+    const admin = await requireSocialOwner(context.userId);
+    if (!data.articleId) throw new Error("Выберите статью");
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const {
+      buildSocialExcerptFromArticle,
+      loadSiteArticleById,
+    } = await import("@/lib/site-articles.server");
+    const article = await loadSiteArticleById(data.articleId);
+    if (!article) throw new Error("Статья не найдена");
+    const excerpt = buildSocialExcerptFromArticle(article);
+    const { loadSocialChannels, saveSocialPost } = await import("@/lib/social.server");
+    const channels = await loadSocialChannels();
+    const platforms =
+      data.platforms.length > 0
+        ? data.platforms
+        : channels.filter((c) => c.enabled).map((c) => c.platform);
+    if (!platforms.length) throw new Error("Нет включённых каналов");
+    const post = await saveSocialPost({
+      topic: excerpt.topic,
+      body: excerpt.body,
+      platforms,
+      propertyId: excerpt.propertyId,
+      articleId: excerpt.articleId,
+      publish: false,
+      createdBy: profile?.full_name || profile?.email || "",
+      source: "manual",
+    });
+    return post;
+  });

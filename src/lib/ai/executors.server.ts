@@ -445,6 +445,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       platforms: platforms as ("instagram" | "vk" | "telegram" | "max")[],
       propertyId: (input["propertyId"] as string | null) ?? null,
       pulseItemId: (input["pulseItemId"] as string | null) ?? null,
+      articleId: (input["articleId"] as string | null) ?? null,
       ...(objectUrl ? { objectUrl } : {}),
       scheduledAt: (input["scheduledAt"] as string | null) ?? null,
       publish: Boolean(input["publish"]),
@@ -602,6 +603,57 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   cancelSocialStory: async (input) => {
     const { cancelSocialStory } = await import("@/lib/social-stories.server");
     return cancelSocialStory(must(input["storyId"] as string, "Не указана сторис"));
+  },
+
+  createSiteArticle: async (input) => {
+    const { saveSiteArticle } = await import("@/lib/site-articles.server");
+    const article = await saveSiteArticle({
+      title: String(input["title"] ?? ""),
+      body: String(input["body"] ?? ""),
+      ...(input["slug"] != null ? { slug: String(input["slug"]) } : {}),
+      ...(input["excerpt"] != null ? { excerpt: String(input["excerpt"]) } : {}),
+      ...(input["seoTitle"] != null ? { seoTitle: String(input["seoTitle"]) } : {}),
+      ...(input["seoDescription"] != null ? { seoDescription: String(input["seoDescription"]) } : {}),
+      ...(input["coverUrl"] != null ? { coverUrl: String(input["coverUrl"]) } : {}),
+      propertyId: (input["propertyId"] as string | null) ?? null,
+      publish: Boolean(input["publish"]),
+      source: "assistant",
+    });
+    return article.status === "published" ? "Статья опубликована на сайте" : "Черновик статьи сохранён";
+  },
+
+  updateSiteArticle: async (input) => {
+    const { loadSiteArticleById, saveSiteArticle } = await import("@/lib/site-articles.server");
+    const articleId = must(input["articleId"] as string, "Не указана статья");
+    const article = await loadSiteArticleById(articleId);
+    if (!article) throw new Error("Статья не найдена");
+    const saved = await saveSiteArticle({
+      id: articleId,
+      title: input["title"] != null ? String(input["title"]) : article.title,
+      body: input["body"] != null ? String(input["body"]) : article.body,
+      slug: input["slug"] != null ? String(input["slug"]) : article.slug,
+      excerpt: input["excerpt"] != null ? String(input["excerpt"]) : article.excerpt,
+      seoTitle: input["seoTitle"] != null ? String(input["seoTitle"]) : article.seo_title,
+      seoDescription:
+        input["seoDescription"] != null ? String(input["seoDescription"]) : article.seo_description,
+      coverUrl: input["coverUrl"] != null ? String(input["coverUrl"]) : article.cover_url,
+      propertyId: article.property_id,
+      publish: Boolean(input["publish"]) || article.status === "published",
+      source: "assistant",
+    });
+    return saved.status === "published" ? "Статья обновлена на сайте" : "Черновик статьи обновлён";
+  },
+
+  publishSiteArticle: async (input) => {
+    const { publishSiteArticle } = await import("@/lib/site-articles.server");
+    await publishSiteArticle(must(input["articleId"] as string, "Не указана статья"));
+    return "Статья опубликована на сайте";
+  },
+
+  unpublishSiteArticle: async (input) => {
+    const { unpublishSiteArticle } = await import("@/lib/site-articles.server");
+    await unpublishSiteArticle(must(input["articleId"] as string, "Не указана статья"));
+    return "Статья снята с публикации";
   },
 
   saveHotelRoom: async (input) => {

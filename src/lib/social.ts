@@ -1,4 +1,5 @@
 import type { SocialMediaItem } from "@/lib/social-media";
+import type { SiteArticle } from "@/lib/site-articles";
 
 export const SOCIAL_PLATFORMS = ["instagram", "vk", "telegram", "max"] as const;
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
@@ -71,6 +72,8 @@ export type SocialPost = {
   property_id: string | null;
   property_title: string | null;
   pulse_item_id: string | null;
+  /** Выжимка из длинной статьи сайта (итерация 3). */
+  article_id: string | null;
   scheduled_at: string | null;
   published_at: string | null;
   created_by: string;
@@ -159,6 +162,8 @@ export type SocialBoard = {
   channels: SocialChannel[];
   posts: SocialPost[];
   stories: SocialStory[];
+  /** Длинные статьи на сайт (не лента постов). */
+  articles: SiteArticle[];
   brand: SocialBrand;
   skills: SocialSkill[];
   stats: SocialPostStatsRow[];

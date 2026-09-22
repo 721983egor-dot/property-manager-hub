@@ -13,6 +13,11 @@ import {
   removeSocialSkill,
 } from "@/lib/social.server";
 import { loadSocialStories, storyPlatformHints } from "@/lib/social-stories.server";
+import {
+  buildSocialExcerptFromArticle,
+  loadSiteArticleById,
+  loadSiteArticles,
+} from "@/lib/site-articles.server";
 
 import type { AssistantToolContext } from "@/lib/ai/context.server";
 
@@ -634,6 +639,176 @@ export function createSocialTools(ctx: AssistantToolContext) {
         const summary = `Отменить сторис «${story.topic || story.body.slice(0, 40)}»`;
         ctx.propose({ tool: "cancelSocialStory", summary, input: { storyId } });
         return { proposed: true, summary };
+      },
+    }),
+
+    getSiteArticles: tool({
+      description:
+        "Длинные статьи на сайт (/blog). Не лента соцпостов. Черновики и опубликованные материалы.",
+      inputSchema: z.object({
+        status: z.enum(["draft", "published", "archived"]).optional(),
+        limit: z.number().optional(),
+      }),
+      execute: async ({ status, limit }) => {
+        const articles = await loadSiteArticles(limit && limit > 0 ? Math.min(limit, 80) : 40);
+        const filtered = status ? articles.filter((a) => a.status === status) : articles;
+        return filtered.map((a) => ({
+          id: a.id,
+          status: a.status,
+          title: a.title,
+          slug: a.slug,
+          excerpt: a.excerpt.slice(0, 200),
+          bodyPreview: a.body.slice(0, 400),
+          seoTitle: a.seo_title,
+          seoDescription: a.seo_description,
+          coverUrl: a.cover_url || undefined,
+          property: a.property_title,
+          publishedAt: a.published_at,
+          url: a.status === "published" && a.slug ? `/blog/${a.slug}` : undefined,
+        }));
+      },
+    }),
+
+    proposeSiteArticle: tool({
+      description:
+        "Предложить длинную статью на сайт (только крупные материалы, не соцпост). Черновик или сразу публикация. Требует confirm.",
+      inputSchema: z.object({
+        title: z.string(),
+        body: z.string().describe("Полный текст статьи, можно Markdown"),
+        slug: z.string().optional(),
+        excerpt: z.string().optional(),
+        seoTitle: z.string().optional(),
+        seoDescription: z.string().optional(),
+        coverUrl: z.string().optional(),
+        ref: z.string().optional().describe("Объект, если статья про квартиру"),
+        publishNow: z.boolean().optional(),
+      }),
+      execute: async ({ title, body, slug, excerpt, seoTitle, seoDescription, coverUrl, ref, publishNow }) => {
+        let propertyId: string | null = null;
+        let propertyText = "";
+        if (ref) {
+          const p = await label(ref);
+          if (!p) return { error: `Объект «${ref}» не найден` };
+          propertyId = p.id;
+          propertyText = p.text;
+        }
+        const when = publishNow ? "опубликовать на сайте" : "сохранить черновик";
+        const summary = `${when.charAt(0).toUpperCase()}${when.slice(1)} статьи «${title.slice(0, 60)}»${propertyText ? ` (${propertyText})` : ""}`;
+        ctx.propose({
+          tool: "createSiteArticle",
+          summary,
+          input: {
+            title,
+            body,
+            slug: slug || null,
+            excerpt: excerpt || null,
+            seoTitle: seoTitle || null,
+            seoDescription: seoDescription || null,
+            coverUrl: coverUrl || null,
+            propertyId,
+            publish: Boolean(publishNow),
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeUpdateSiteArticle: tool({
+      description: "Предложить правки статьи (черновик или опубликованной). Требует confirm.",
+      inputSchema: z.object({
+        articleId: z.string(),
+        title: z.string().optional(),
+        body: z.string().optional(),
+        slug: z.string().optional(),
+        excerpt: z.string().optional(),
+        seoTitle: z.string().optional(),
+        seoDescription: z.string().optional(),
+        coverUrl: z.string().optional(),
+        publishNow: z.boolean().optional(),
+      }),
+      execute: async ({ articleId, title, body, slug, excerpt, seoTitle, seoDescription, coverUrl, publishNow }) => {
+        const article = await loadSiteArticleById(articleId);
+        if (!article) return { error: "Статья не найдена" };
+        const bits: string[] = [];
+        if (title != null) bits.push("заголовок");
+        if (body != null) bits.push("текст");
+        if (slug != null) bits.push("slug");
+        if (excerpt != null) bits.push("описание");
+        if (seoTitle != null || seoDescription != null) bits.push("SEO");
+        if (coverUrl != null) bits.push("обложку");
+        if (publishNow) bits.push("публикацию");
+        const summary = `Править статью «${article.title}»${bits.length ? `: ${bits.join(", ")}` : ""}`;
+        ctx.propose({
+          tool: "updateSiteArticle",
+          summary,
+          input: {
+            articleId,
+            title,
+            body,
+            slug,
+            excerpt,
+            seoTitle,
+            seoDescription,
+            coverUrl,
+            publish: Boolean(publishNow),
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposePublishSiteArticle: tool({
+      description: "Предложить опубликовать черновик статьи на сайте (/blog).",
+      inputSchema: z.object({ articleId: z.string() }),
+      execute: async ({ articleId }) => {
+        const article = await loadSiteArticleById(articleId);
+        if (!article) return { error: "Статья не найдена" };
+        const summary = `Опубликовать на сайте статью «${article.title}»`;
+        ctx.propose({ tool: "publishSiteArticle", summary, input: { articleId } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeUnpublishSiteArticle: tool({
+      description: "Предложить снять статью с публикации (вернуть в черновик).",
+      inputSchema: z.object({ articleId: z.string() }),
+      execute: async ({ articleId }) => {
+        const article = await loadSiteArticleById(articleId);
+        if (!article) return { error: "Статья не найдена" };
+        const summary = `Снять с сайта статью «${article.title}»`;
+        ctx.propose({ tool: "unpublishSiteArticle", summary, input: { articleId } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeSocialPostFromArticle: tool({
+      description:
+        "Предложить выжимку статьи в черновик соцпоста (ссылка на /blog/…). Не публикует автоматически. Требует confirm.",
+      inputSchema: z.object({
+        articleId: z.string(),
+        platforms: platformsSchema.optional(),
+        bodyOverride: z.string().optional().describe("Свой текст выжимки; иначе из excerpt/начала статьи"),
+      }),
+      execute: async ({ articleId, platforms, bodyOverride }) => {
+        const article = await loadSiteArticleById(articleId);
+        if (!article) return { error: "Статья не найдена" };
+        const excerpt = buildSocialExcerptFromArticle(article);
+        const body = bodyOverride?.trim() || excerpt.body;
+        const nets = platforms?.length ? platforms : (["instagram", "vk", "telegram", "max"] as const);
+        const summary = `Черновик поста-выжимки из статьи «${article.title}» → ${nets.join(", ")}`;
+        ctx.propose({
+          tool: "createSocialPost",
+          summary,
+          input: {
+            topic: excerpt.topic,
+            body,
+            platforms: [...nets],
+            propertyId: excerpt.propertyId,
+            articleId: excerpt.articleId,
+            publish: false,
+          },
+        });
+        return { proposed: true, summary, body };
       },
     }),
   };

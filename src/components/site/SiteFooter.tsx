@@ -16,6 +16,7 @@ import logo from "@/assets/site/logo.png";
 const SECTIONS = [
   { to: "/", label: "Главная" },
   { to: "/rent", label: "Долгосрочная аренда" },
+  { to: "/blog", label: "Статьи" },
   { to: "/management", label: "Собственникам" },
   { to: "/about", label: "О нас" },
 ] as const;

@@ -34,7 +34,7 @@ import { propertyUrl } from "@/lib/seo";
 const CHANNEL_COLUMNS =
   "id, platform, name, enabled, postmypost_account_id, postmypost_channel, external_url, last_synced_at, last_error";
 const POST_COLUMNS =
-  "id, status, topic, body, property_id, pulse_item_id, scheduled_at, published_at, created_by, source, postmypost_publication_id, last_error, created_at";
+  "id, status, topic, body, property_id, pulse_item_id, article_id, scheduled_at, published_at, created_by, source, postmypost_publication_id, last_error, created_at";
 const TARGET_COLUMNS =
   "id, post_id, channel_id, platform, body, status, postmypost_account_id, external_url, last_error";
 const MEDIA_COLUMNS =
@@ -427,6 +427,7 @@ function mapPost(
     property_id: (row["property_id"] as string | null) ?? null,
     property_title: propertyTitle,
     pulse_item_id: (row["pulse_item_id"] as string | null) ?? null,
+    article_id: (row["article_id"] as string | null) ?? null,
     scheduled_at: (row["scheduled_at"] as string | null) ?? null,
     published_at: (row["published_at"] as string | null) ?? null,
     created_by: String(row["created_by"] ?? ""),
@@ -445,12 +446,17 @@ export async function loadSocialPosts(limit = 80): Promise<SocialPost[]> {
     .select(POST_COLUMNS)
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error && /pulse_item_id/i.test(error.message)) {
-    ({ data, error } = await supabaseAdmin
+  if (error && /pulse_item_id|article_id/i.test(error.message)) {
+    let cols = POST_COLUMNS;
+    if (/article_id/i.test(error.message)) cols = cols.replace(", article_id", "");
+    if (/pulse_item_id/i.test(error.message)) cols = cols.replace(", pulse_item_id", "");
+    const fallback = await supabaseAdmin
       .from("social_posts")
-      .select(POST_COLUMNS.replace(", pulse_item_id", ""))
+      .select(cols)
       .order("created_at", { ascending: false })
-      .limit(limit));
+      .limit(limit);
+    data = fallback.data as typeof data;
+    error = fallback.error;
   }
   if (error) throw new Error(error.message);
   const posts = (data ?? []) as Record<string, unknown>[];
@@ -524,11 +530,13 @@ export async function loadSocialPosts(limit = 80): Promise<SocialPost[]> {
 export async function loadSocialBoard(): Promise<SocialBoard> {
   const token = (await getPlatformSecret("POSTMYPOST_API_TOKEN").catch(() => "")).trim();
   const { loadSocialStories } = await import("@/lib/social-stories.server");
-  const [{ data: settings }, channels, posts, stories, brand, skills] = await Promise.all([
+  const { loadSiteArticles } = await import("@/lib/site-articles.server");
+  const [{ data: settings }, channels, posts, stories, articles, brand, skills] = await Promise.all([
     supabaseAdmin.from("social_settings").select("postmypost_project_id, timezone").eq("id", true).maybeSingle(),
     loadSocialChannels(),
     loadSocialPosts(),
     loadSocialStories(),
+    loadSiteArticles(),
     loadSocialBrand(),
     loadSocialSkills(),
   ]);
@@ -569,6 +577,7 @@ export async function loadSocialBoard(): Promise<SocialBoard> {
     channels,
     posts,
     stories,
+    articles,
     brand,
     skills,
     stats: SOCIAL_PLATFORMS.map((platform) => statsMap.get(platform)!),
@@ -636,6 +645,7 @@ export type SaveSocialPostInput = {
   propertyId?: string | null;
   objectUrl?: string;
   pulseItemId?: string | null;
+  articleId?: string | null;
   scheduledAt?: string | null;
   publish?: boolean;
   source?: "manual" | "assistant";
@@ -738,6 +748,7 @@ export async function saveSocialPost(input: SaveSocialPostInput): Promise<Social
     status: input.publish ? status : "draft",
     last_error: "",
     ...(input.pulseItemId !== undefined ? { pulse_item_id: input.pulseItemId || null } : {}),
+    ...(input.articleId !== undefined ? { article_id: input.articleId || null } : {}),
   };
 
   if (postId) {

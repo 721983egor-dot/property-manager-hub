@@ -1517,6 +1517,7 @@ export type Database = {
       }
       social_posts: {
         Row: {
+          article_id: string | null
           body: string
           created_at: string
           created_by: string
@@ -1533,6 +1534,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          article_id?: string | null
           body?: string
           created_at?: string
           created_by?: string
@@ -1549,6 +1551,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          article_id?: string | null
           body?: string
           created_at?: string
           created_by?: string
@@ -1562,6 +1565,60 @@ export type Database = {
           source?: string
           status?: string
           topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_articles: {
+        Row: {
+          body: string
+          cover_url: string
+          created_at: string
+          created_by: string
+          excerpt: string
+          id: string
+          property_id: string | null
+          published_at: string | null
+          seo_description: string
+          seo_title: string
+          slug: string
+          source: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          cover_url?: string
+          created_at?: string
+          created_by?: string
+          excerpt?: string
+          id?: string
+          property_id?: string | null
+          published_at?: string | null
+          seo_description?: string
+          seo_title?: string
+          slug?: string
+          source?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          cover_url?: string
+          created_at?: string
+          created_by?: string
+          excerpt?: string
+          id?: string
+          property_id?: string | null
+          published_at?: string | null
+          seo_description?: string
+          seo_title?: string
+          slug?: string
+          source?: string
+          status?: string
+          title?: string
           updated_at?: string
         }
         Relationships: []
