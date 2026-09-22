@@ -138,15 +138,20 @@ export async function listPostmypostAccounts(
   return asList(json).map(mapAccount).filter((row): row is PostmypostAccount => Boolean(row));
 }
 
+/** 1 — post, 2 — story, 4 — reels (OpenAPI Postmypost). Строки тоже принимаются API. */
+export type PostmypostPublicationType = "post" | "story" | 1 | 2 | 4;
+
 export async function createPostmypostPublication(
   token: string,
   input: {
     projectId: number;
     postAt: string;
     status: "draft" | "pending_publication";
+    publicationType?: PostmypostPublicationType;
     details: { accountId: number; content: string; fileIds?: number[] }[];
   },
 ): Promise<number> {
+  const publicationType = input.publicationType ?? "post";
   const json = await request<unknown>(token, "/publications", {
     method: "POST",
     body: {
@@ -156,7 +161,7 @@ export async function createPostmypostPublication(
       publication_status: input.status,
       details: input.details.map((d) => ({
         account_id: d.accountId,
-        publication_type: "post",
+        publication_type: publicationType,
         content: d.content,
         ...(d.fileIds?.length ? { file_ids: d.fileIds } : {}),
       })),

@@ -523,10 +523,12 @@ export async function loadSocialPosts(limit = 80): Promise<SocialPost[]> {
 
 export async function loadSocialBoard(): Promise<SocialBoard> {
   const token = (await getPlatformSecret("POSTMYPOST_API_TOKEN").catch(() => "")).trim();
-  const [{ data: settings }, channels, posts, brand, skills] = await Promise.all([
+  const { loadSocialStories } = await import("@/lib/social-stories.server");
+  const [{ data: settings }, channels, posts, stories, brand, skills] = await Promise.all([
     supabaseAdmin.from("social_settings").select("postmypost_project_id, timezone").eq("id", true).maybeSingle(),
     loadSocialChannels(),
     loadSocialPosts(),
+    loadSocialStories(),
     loadSocialBrand(),
     loadSocialSkills(),
   ]);
@@ -566,6 +568,7 @@ export async function loadSocialBoard(): Promise<SocialBoard> {
     timezone: String(settings?.timezone ?? "Europe/Moscow"),
     channels,
     posts,
+    stories,
     brand,
     skills,
     stats: SOCIAL_PLATFORMS.map((platform) => statsMap.get(platform)!),

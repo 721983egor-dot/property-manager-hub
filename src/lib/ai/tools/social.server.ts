@@ -12,6 +12,7 @@ import {
   loadSocialSkills,
   removeSocialSkill,
 } from "@/lib/social.server";
+import { loadSocialStories, storyPlatformHints } from "@/lib/social-stories.server";
 
 import type { AssistantToolContext } from "@/lib/ai/context.server";
 
@@ -410,6 +411,228 @@ export function createSocialTools(ctx: AssistantToolContext) {
         const next = { ...current, ...Object.fromEntries(Object.entries(fields).filter(([, v]) => v != null)) };
         const summary = "Обновить голос бренда для соцсетей";
         ctx.propose({ tool: "saveSocialBrand", summary, input: next });
+        return { proposed: true, summary };
+      },
+    }),
+
+    getSocialStories: tool({
+      description:
+        "Отдельный поток сторис (не лента постов): черновики, очередь, опубликованные и заготовки «опубликовать вручную».",
+      inputSchema: z.object({
+        status: z
+          .enum(["draft", "scheduled", "publishing", "published", "failed", "cancelled"])
+          .optional(),
+        limit: z.number().optional(),
+      }),
+      execute: async ({ status, limit }) => {
+        const stories = await loadSocialStories(limit && limit > 0 ? Math.min(limit, 80) : 40);
+        const filtered = status ? stories.filter((s) => s.status === status) : stories;
+        return filtered.map((s) => ({
+          id: s.id,
+          status: s.status,
+          topic: s.topic,
+          body: s.body.slice(0, 200),
+          platforms: s.targets.map((t) => ({
+            platform: t.platform,
+            delivery: t.delivery,
+            status: t.status,
+            note: t.last_error || undefined,
+          })),
+          fromPostId: s.from_post_id,
+          fromPost: s.from_post_topic,
+          property: s.property_title,
+          mediaCount: s.media.length,
+          scheduledAt: s.scheduled_at,
+          error: s.last_error || undefined,
+        }));
+      },
+    }),
+
+    getStoryChannelCapabilities: tool({
+      description:
+        "Что умеет Postmypost для сторис по каналам IG/VK/TG/Макс: API или только заготовка для ручной публикации.",
+      inputSchema: z.object({}),
+      execute: async () => ({ channels: storyPlatformHints() }),
+    }),
+
+    proposeSocialStory: tool({
+      description:
+        "Предложить сторис: с нуля (topic+body+медиа) или из поста (fromPostId). Медиа для Postmypost обязательно при публикации. Макс — всегда вручную. Требует confirm.",
+      inputSchema: z.object({
+        topic: z.string().describe("Короткая тема сторис"),
+        body: z.string().describe("Подпись сторис (коротко)"),
+        platforms: platformsSchema,
+        fromPostId: z
+          .string()
+          .optional()
+          .describe("Если сторис из существующего поста — id поста; медиа и подпись можно взять из него"),
+        ref: z.string().optional().describe("Объект, если сторис про квартиру"),
+        mediaPaths: z
+          .array(
+            z.object({
+              path: z.string(),
+              kind: z.enum(["photo", "video"]),
+              mime: z.string().optional(),
+            }),
+          )
+          .optional()
+          .describe("Один файл: path из getPropertyMedia или из поста. Если fromPostId и пусто — возьмём медиа поста."),
+        scheduledAt: z.string().optional(),
+        publishNow: z.boolean().optional(),
+      }),
+      execute: async ({ topic, body, platforms, fromPostId, ref, mediaPaths, scheduledAt, publishNow }) => {
+        let propertyId: string | null = null;
+        let propertyText = "";
+        let resolvedTopic = topic;
+        let resolvedBody = body;
+        let resolvedFromPost: string | null = fromPostId?.trim() || null;
+        let media:
+          | {
+              path: string;
+              kind: "photo" | "video";
+              mime: string;
+              bytes: number;
+              width?: number | null;
+              height?: number | null;
+              durationSec?: number | null;
+            }[]
+          | undefined;
+
+        if (resolvedFromPost) {
+          const { buildStoryDraftFromPost } = await import("@/lib/social-stories.server");
+          try {
+            const draft = await buildStoryDraftFromPost(resolvedFromPost);
+            if (!resolvedTopic.trim()) resolvedTopic = draft.topic;
+            if (!resolvedBody.trim()) resolvedBody = draft.body;
+            propertyId = draft.propertyId;
+            if (!mediaPaths?.length && draft.media.length) {
+              media = draft.media.map((item) => ({
+                path: item.path,
+                kind: item.kind,
+                mime: item.mime,
+                bytes: item.bytes,
+                width: item.width,
+                height: item.height,
+                durationSec: item.durationSec,
+              }));
+            }
+          } catch (e) {
+            return { error: e instanceof Error ? e.message : "Пост не найден" };
+          }
+        }
+
+        if (ref) {
+          const p = await label(ref);
+          if (!p) return { error: `Объект «${ref}» не найден` };
+          propertyId = p.id;
+          propertyText = p.text;
+        }
+
+        if (mediaPaths?.length) {
+          media = mediaPaths.slice(0, 1).map((item) => ({
+            path: item.path,
+            kind: item.kind,
+            mime: item.mime || (item.kind === "video" ? "video/mp4" : "image/jpeg"),
+            bytes: 0,
+          }));
+        }
+
+        const when = publishNow
+          ? "опубликовать сейчас"
+          : scheduledAt
+            ? `запланировать на ${scheduledAt}`
+            : "сохранить черновик";
+        const nets = platforms.join(", ");
+        const fromNote = resolvedFromPost ? " из поста" : "";
+        const summary = `${when.charAt(0).toUpperCase()}${when.slice(1)} сторис${fromNote} «${resolvedTopic || resolvedBody.slice(0, 40)}» → ${nets}${propertyText ? ` (${propertyText})` : ""}`;
+        ctx.propose({
+          tool: "createSocialStory",
+          summary,
+          input: {
+            topic: resolvedTopic,
+            body: resolvedBody,
+            platforms,
+            fromPostId: resolvedFromPost,
+            propertyId,
+            scheduledAt: scheduledAt || null,
+            publish: Boolean(publishNow || scheduledAt),
+            ...(media?.length ? { media } : {}),
+          },
+        });
+        return { proposed: true, summary, body: resolvedBody, mediaCount: media?.length ?? 0 };
+      },
+    }),
+
+    proposeUpdateSocialStory: tool({
+      description:
+        "Предложить правки черновика сторис по запросу Егора. Запланированную сначала proposeCancelSocialStory.",
+      inputSchema: z.object({
+        storyId: z.string(),
+        topic: z.string().optional(),
+        body: z.string().optional(),
+        platforms: platformsSchema.optional(),
+        scheduledAt: z.string().nullable().optional(),
+        publishNow: z.boolean().optional(),
+      }),
+      execute: async ({ storyId, topic, body, platforms, scheduledAt, publishNow }) => {
+        const stories = await loadSocialStories(80);
+        const story = stories.find((s) => s.id === storyId);
+        if (!story) return { error: "Сторис не найдена" };
+        if (story.status !== "draft" && story.status !== "failed") {
+          return { error: "Править можно только черновик. Запланированную сначала снимите с очереди." };
+        }
+        const bits: string[] = [];
+        if (topic != null) bits.push("тему");
+        if (body != null) bits.push("текст");
+        if (platforms) bits.push("сети");
+        if (scheduledAt !== undefined) bits.push("дату");
+        if (publishNow) bits.push("публикацию");
+        const summary = `Править сторис «${story.topic || story.body.slice(0, 40)}»${bits.length ? `: ${bits.join(", ")}` : ""}`;
+        ctx.propose({
+          tool: "updateSocialStory",
+          summary,
+          input: {
+            storyId,
+            topic,
+            body,
+            platforms,
+            scheduledAt,
+            publish: Boolean(publishNow),
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposePublishSocialStory: tool({
+      description: "Предложить отправить черновик сторис в Postmypost (или пометить как заготовку для ручной публикации).",
+      inputSchema: z.object({
+        storyId: z.string(),
+        immediate: z.boolean().optional(),
+      }),
+      execute: async ({ storyId, immediate }) => {
+        const stories = await loadSocialStories(80);
+        const story = stories.find((s) => s.id === storyId);
+        if (!story) return { error: "Сторис не найдена" };
+        const summary = `${immediate ? "Опубликовать сейчас" : "Отправить в очередь"} сторис «${story.topic || story.body.slice(0, 40)}»`;
+        ctx.propose({
+          tool: "publishSocialStory",
+          summary,
+          input: { storyId, immediate: Boolean(immediate) },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeCancelSocialStory: tool({
+      description: "Предложить отменить запланированную сторис.",
+      inputSchema: z.object({ storyId: z.string() }),
+      execute: async ({ storyId }) => {
+        const stories = await loadSocialStories(80);
+        const story = stories.find((s) => s.id === storyId);
+        if (!story) return { error: "Сторис не найдена" };
+        const summary = `Отменить сторис «${story.topic || story.body.slice(0, 40)}»`;
+        ctx.propose({ tool: "cancelSocialStory", summary, input: { storyId } });
         return { proposed: true, summary };
       },
     }),

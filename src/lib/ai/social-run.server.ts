@@ -5,14 +5,16 @@ export const SOCIAL_ASSISTANT_PROMPT = `Ты — SMM-режим Ассистен
 
 Каналы компании: Instagram, ВКонтакте, группа Telegram, группа в мессенджере Макс.
 Публикация и статистика идут через Postmypost, включая Макс.
+Сторис — ОТДЕЛЬНЫЙ поток (getSocialStories / proposeSocialStory), не путай с лентой постов.
 
 Как работать:
 - Идеи, рубрики, тексты, адаптации под сеть — твоя основная работа.
 - По запросу «сделай пост по объекту X»: getPropertyDetails + getPropertyMedia, затем proposeSocialPost с ref и mediaKind (photos | video | auto). Не предлагай пост сам при появлении нового объекта — только по указке.
+- Сторис: с нуля (proposeSocialStory) или из поста (fromPostId). Правки по запросу — proposeUpdateSocialStory. Каналы: getStoryChannelCapabilities — Макс всегда вручную; Telegram сторис только если аккаунт через приложение, не бот.
 - Факты об объектах (цена, комнаты, свободен ли, описание, ЖК, расположение) бери ТОЛЬКО из инструментов searchProperties / getPropertyDetails / getPropertyMedia. Не выдумывай метраж и цену.
 - Голос бренда и выученные правила — из getSocialBrand и блока ниже. Соблюдай их.
-- Черновик или публикация — только proposeSocialPost. Правки черновика — proposeUpdateSocialPost. Ничего не публикуй само. Запланированный в Postmypost не правь: сначала proposeCancelSocialPost.
-- Медиа: из карточки объекта через mediaKind в proposeSocialPost, либо менеджер добавит во вкладке «Пост». Правила формата — getSocialMediaRules.
+- Черновик или публикация поста — только proposeSocialPost. Правки черновика — proposeUpdateSocialPost. Ничего не публикуй само. Запланированный в Postmypost не правь: сначала proposeCancelSocialPost.
+- Медиа: из карточки объекта через mediaKind в proposeSocialPost, либо менеджер добавит во вкладке «Пост». Для сторис — один файл (фото или видео). Правила формата — getSocialMediaRules.
 - Пульс Сочи (погода, новости, афиша) — getSochiPulse. Посты про город пиши только из этих фактов, передавай pulseItemId. Если по теме уже есть пост — сначала скажи об этом.
 - По просьбе «запомни, как пишем» — rememberSocialSkill.
 - Instagram: НЕ реклама. Без цен, депозита, телефона, ссылок и блока «условия аренды». Живой пост про место и ощущение, хештеги в конце, призыв только «напишите в директ». Всегда передавай instagramBody отдельно. В ответе человеку показывай обе версии: полную и Instagram.
@@ -35,6 +37,7 @@ export async function askSocialAssistantCore(messages: AssistantChatMessage[]): 
     socialBrandPrompt,
     socialSkillsPrompt,
   } = await import("@/lib/social.server");
+  const { loadSocialStories } = await import("@/lib/social-stories.server");
 
   const setup = resolveAssistantModel();
   if ("error" in setup) return { text: "", actions: [], error: setup.error };
@@ -50,11 +53,12 @@ export async function askSocialAssistantCore(messages: AssistantChatMessage[]): 
 
   try {
     const pulseMod = await import("@/lib/sochi-pulse.server");
-    const [brand, skills, channels, posts, properties, pulse] = await Promise.all([
+    const [brand, skills, channels, posts, stories, properties, pulse] = await Promise.all([
       loadSocialBrand(),
       loadSocialSkills(),
       loadSocialChannels(),
       loadSocialPosts(20),
+      loadSocialStories(12),
       ctx.allProperties(),
       pulseMod.loadSochiPulse().catch(() => null),
     ]);
@@ -74,12 +78,20 @@ export async function askSocialAssistantCore(messages: AssistantChatMessage[]): 
       return `- [${p.status}] ${p.topic || p.body.slice(0, 60)} → ${nets}${p.scheduled_at ? ` (${p.scheduled_at})` : ""}`;
     });
 
+    const storyLines = stories.slice(0, 8).map((s) => {
+      const nets = s.targets.map((t) => `${t.platform}:${t.delivery}`).join("/");
+      return `- [${s.status}] ${s.topic || s.body.slice(0, 40)} → ${nets}${s.from_post_topic ? ` (из «${s.from_post_topic}»)` : ""}`;
+    });
+
     const live = `\n\nСнимок соцсетей:
 Каналы:
 ${channelLines.join("\n") || "- (нет)"}
 
 Последние посты:
 ${postLines.join("\n") || "- (нет постов)"}
+
+Сторис (отдельный поток):
+${storyLines.join("\n") || "- (нет сторис)"}
 
 Свободные объекты (до 20, для идей контента):
 ${free.map((n) => `- ${n}`).join("\n") || "- (нет)"}`;

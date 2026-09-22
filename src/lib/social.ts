@@ -91,12 +91,74 @@ export type SocialPostStatsRow = {
   reach: number;
 };
 
+/** Как доставляем сторис в канал: API Postmypost или заготовка для ручной публикации. */
+export type StoryDelivery = "postmypost" | "manual";
+
+export type SocialStoryTarget = {
+  id: string;
+  channel_id: string;
+  platform: SocialPlatform;
+  body: string;
+  status: string;
+  delivery: StoryDelivery;
+  postmypost_account_id: number | null;
+  external_url: string;
+  last_error: string;
+};
+
+export type SocialStory = {
+  id: string;
+  status: SocialPostStatus;
+  topic: string;
+  body: string;
+  from_post_id: string | null;
+  from_post_topic: string | null;
+  property_id: string | null;
+  property_title: string | null;
+  scheduled_at: string | null;
+  published_at: string | null;
+  created_by: string;
+  source: "manual" | "assistant";
+  postmypost_publication_id: number | null;
+  last_error: string;
+  created_at: string;
+  targets: SocialStoryTarget[];
+  media: SocialMediaItem[];
+};
+
+/**
+ * Возможности сторис по каналам (Postmypost + ограничения площадок).
+ * Макс — всегда вручную; Telegram — API только если аккаунт через приложение, не бот.
+ */
+export const STORY_PLATFORM_INFO: Record<
+  SocialPlatform,
+  { delivery: StoryDelivery; hint: string }
+> = {
+  instagram: {
+    delivery: "postmypost",
+    hint: "Сторис через Postmypost",
+  },
+  vk: {
+    delivery: "postmypost",
+    hint: "Сторис только в сообществе VK (личный профиль API не поддерживает)",
+  },
+  telegram: {
+    delivery: "postmypost",
+    hint: "Сторис, если Telegram подключён через приложение (не бот). Иначе — вручную.",
+  },
+  max: {
+    delivery: "manual",
+    hint: "Заготовка: опубликовать сторис в Макс вручную",
+  },
+};
+
 export type SocialBoard = {
   connected: boolean;
   projectId: number | null;
   timezone: string;
   channels: SocialChannel[];
   posts: SocialPost[];
+  stories: SocialStory[];
   brand: SocialBrand;
   skills: SocialSkill[];
   stats: SocialPostStatsRow[];

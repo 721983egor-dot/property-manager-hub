@@ -7,6 +7,7 @@ import type {
   SocialBrand,
   SocialPlatform,
   SocialPost,
+  SocialStory,
 } from "@/lib/social";
 import { SOCIAL_PLATFORMS } from "@/lib/social";
 import type { PropertySocialDraft, SocialPropertyMediaKind, SocialPropertyOption } from "@/lib/social.server";
@@ -251,4 +252,117 @@ export const getSochiPulse = createServerFn({ method: "POST" })
     await requireSocialOwner(context.userId);
     const { loadSochiPulse } = await import("@/lib/sochi-pulse.server");
     return loadSochiPulse({ force: data.force });
+  });
+
+export const draftSocialStoryFromPost = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { postId: string }) => ({
+    postId: String(input.postId ?? "").trim(),
+  }))
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    if (!data.postId) throw new Error("Выберите пост");
+    const { buildStoryDraftFromPost } = await import("@/lib/social-stories.server");
+    return buildStoryDraftFromPost(data.postId);
+  });
+
+export const saveSocialStory = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator(
+    (input: {
+      id?: string;
+      topic: string;
+      body: string;
+      platforms: SocialPlatform[];
+      fromPostId?: string | null;
+      propertyId?: string | null;
+      scheduledAt?: string | null;
+      publish?: boolean;
+      media?: {
+        path: string;
+        kind: "photo" | "video";
+        mime: string;
+        bytes: number;
+        width?: number | null;
+        height?: number | null;
+        durationSec?: number | null;
+      }[];
+    }) => ({
+      ...input,
+      topic: String(input.topic ?? "").trim(),
+      body: String(input.body ?? "").trim(),
+      platforms: platformsOf(input.platforms),
+      scheduledAt: input.scheduledAt || null,
+      fromPostId: input.fromPostId || null,
+      propertyId: input.propertyId || null,
+      media: Array.isArray(input.media)
+        ? input.media
+            .slice(0, 1)
+            .map((item) => ({
+              path: String(item.path ?? "").trim(),
+              kind: item.kind === "video" ? ("video" as const) : ("photo" as const),
+              mime: String(item.mime ?? ""),
+              bytes: Number(item.bytes ?? 0),
+              width: item.width ?? null,
+              height: item.height ?? null,
+              durationSec: item.durationSec ?? null,
+            }))
+            .filter((item) => item.path)
+        : undefined,
+    }),
+  )
+  .handler(async ({ context, data }): Promise<SocialStory> => {
+    const admin = await requireSocialOwner(context.userId);
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const { saveSocialStory } = await import("@/lib/social-stories.server");
+    return saveSocialStory({
+      topic: data.topic,
+      body: data.body,
+      platforms: data.platforms,
+      scheduledAt: data.scheduledAt,
+      fromPostId: data.fromPostId,
+      propertyId: data.propertyId,
+      ...(data.id ? { id: data.id } : {}),
+      ...(data.publish != null ? { publish: data.publish } : {}),
+      ...(data.media ? { media: data.media } : {}),
+      createdBy: profile?.full_name || profile?.email || "",
+      source: "manual",
+    });
+  });
+
+export const publishSocialStory = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { id: string; immediate?: boolean }) => input)
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    const { publishSocialStory } = await import("@/lib/social-stories.server");
+    const message = await publishSocialStory(
+      data.id,
+      data.immediate != null ? { immediate: data.immediate } : {},
+    );
+    return { ok: true, message };
+  });
+
+export const cancelSocialStory = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    const { cancelSocialStory } = await import("@/lib/social-stories.server");
+    const message = await cancelSocialStory(data.id);
+    return { ok: true, message };
+  });
+
+export const deleteSocialStory = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    const { deleteSocialStory } = await import("@/lib/social-stories.server");
+    await deleteSocialStory(data.id);
+    return { ok: true };
   });

@@ -531,6 +531,79 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Голос бренда для соцсетей обновлён";
   },
 
+  createSocialStory: async (input) => {
+    const { saveSocialStory } = await import("@/lib/social-stories.server");
+    const platforms = Array.isArray(input["platforms"])
+      ? (input["platforms"] as string[])
+      : [];
+    const mediaRaw = Array.isArray(input["media"]) ? (input["media"] as Record<string, unknown>[]) : [];
+    const media = mediaRaw
+      .map((item) => ({
+        path: String(item["path"] ?? "").trim(),
+        kind: item["kind"] === "video" ? ("video" as const) : ("photo" as const),
+        mime: String(item["mime"] ?? ""),
+        bytes: Number(item["bytes"] ?? 0),
+        width: (item["width"] as number | null | undefined) ?? null,
+        height: (item["height"] as number | null | undefined) ?? null,
+        durationSec: (item["durationSec"] as number | null | undefined) ?? null,
+      }))
+      .filter((item) => item.path)
+      .slice(0, 1);
+    const story = await saveSocialStory({
+      topic: String(input["topic"] ?? ""),
+      body: String(input["body"] ?? ""),
+      platforms: platforms as ("instagram" | "vk" | "telegram" | "max")[],
+      fromPostId: (input["fromPostId"] as string | null) ?? null,
+      propertyId: (input["propertyId"] as string | null) ?? null,
+      scheduledAt: (input["scheduledAt"] as string | null) ?? null,
+      publish: Boolean(input["publish"]),
+      source: "assistant",
+      ...(media.length ? { media } : {}),
+    });
+    return story.status === "draft" ? "Черновик сторис сохранён" : "Сторис отправлена";
+  },
+
+  updateSocialStory: async (input) => {
+    const { loadSocialStories, saveSocialStory } = await import("@/lib/social-stories.server");
+    const storyId = must(input["storyId"] as string, "Не указана сторис");
+    const stories = await loadSocialStories(80);
+    const story = stories.find((s) => s.id === storyId);
+    if (!story) throw new Error("Сторис не найдена");
+    if (story.status !== "draft" && story.status !== "failed") {
+      throw new Error("Править можно только черновик. Запланированную сторис сначала снимите с очереди.");
+    }
+    const platforms = Array.isArray(input["platforms"])
+      ? (input["platforms"] as ("instagram" | "vk" | "telegram" | "max")[])
+      : story.targets.map((t) => t.platform);
+    const saved = await saveSocialStory({
+      id: storyId,
+      topic: input["topic"] != null ? String(input["topic"]) : story.topic,
+      body: input["body"] != null ? String(input["body"]) : story.body,
+      platforms,
+      fromPostId: story.from_post_id,
+      propertyId: story.property_id,
+      scheduledAt:
+        input["scheduledAt"] !== undefined
+          ? ((input["scheduledAt"] as string | null) ?? null)
+          : story.scheduled_at,
+      publish: Boolean(input["publish"]),
+      source: "assistant",
+    });
+    return saved.status === "draft" ? "Черновик сторис обновлён" : "Сторис отправлена";
+  },
+
+  publishSocialStory: async (input) => {
+    const { publishSocialStory } = await import("@/lib/social-stories.server");
+    return publishSocialStory(must(input["storyId"] as string, "Не указана сторис"), {
+      immediate: Boolean(input["immediate"]),
+    });
+  },
+
+  cancelSocialStory: async (input) => {
+    const { cancelSocialStory } = await import("@/lib/social-stories.server");
+    return cancelSocialStory(must(input["storyId"] as string, "Не указана сторис"));
+  },
+
   saveHotelRoom: async (input) => {
     const name = must(String(input["name"] ?? "").trim(), "Не указан номер");
     const row = {

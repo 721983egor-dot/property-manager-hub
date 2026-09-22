@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { SocialMediaPicker } from "@/components/SocialMediaPicker";
 import { SocialPostCalendar } from "@/components/SocialPostCalendar";
 import { SocialPostPreview } from "@/components/SocialPostPreview";
+import { SocialStoriesPanel } from "@/components/SocialStoriesPanel";
 import { SochiPulseAiBlock } from "@/components/SochiPulseAiBlock";
 import { SocialOnly } from "@/components/SocialOnly";
 import { Button } from "@/components/ui/button";
@@ -72,10 +73,11 @@ export const Route = createFileRoute("/_authenticated/social/")({
   ),
 });
 
-type Tab = "posts" | "calendar" | "pulse" | "compose" | "brand" | "connect";
+type Tab = "posts" | "stories" | "calendar" | "pulse" | "compose" | "brand" | "connect";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "posts", label: "Лента" },
+  { key: "stories", label: "Сторис" },
   { key: "calendar", label: "Календарь" },
   { key: "pulse", label: "Пульс Сочи" },
   { key: "compose", label: "Пост" },
@@ -128,9 +130,10 @@ function SocialPage() {
             Соцсети
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Instagram, ВКонтакте, Telegram и Макс. Публикация и статистика — через Postmypost.
-            Перед отправкой смотрите, как пост выглядит в каждой сети. В Instagram — обычный пост без цен.
-            Пульс Сочи — новости, погода и события, из них сразу пишется черновик.
+            Instagram, ВКонтакте, Telegram и Макс. Посты и отдельный поток сторис. Публикация и
+            статистика — через Postmypost. Перед отправкой смотрите, как пост выглядит в каждой сети.
+            В Instagram — обычный пост без цен. Пульс Сочи — новости, погода и события, из них сразу
+            пишется черновик.
           </p>
         </div>
       </header>
@@ -192,6 +195,14 @@ function SocialPage() {
           <div className="mt-6">
             {tab === "posts" && (
               <PostsTab boardPosts={board.posts} onChange={refresh} onEdit={editPost} />
+            )}
+            {tab === "stories" && (
+              <SocialStoriesPanel
+                stories={board.stories ?? []}
+                posts={board.posts}
+                defaultPlatforms={board.channels.filter((c) => c.enabled).map((c) => c.platform)}
+                onChange={refresh}
+              />
             )}
             {tab === "calendar" && (
               <SocialPostCalendar posts={board.posts} onEdit={editPost} />

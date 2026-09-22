@@ -1659,6 +1659,141 @@ export type Database = {
         }
           Relationships: []
       }
+      social_stories: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string
+          from_post_id: string | null
+          id: string
+          last_error: string
+          postmypost_publication_id: number | null
+          property_id: string | null
+          published_at: string | null
+          scheduled_at: string | null
+          source: string
+          status: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          from_post_id?: string | null
+          id?: string
+          last_error?: string
+          postmypost_publication_id?: number | null
+          property_id?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          source?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          from_post_id?: string | null
+          id?: string
+          last_error?: string
+          postmypost_publication_id?: number | null
+          property_id?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          source?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_story_media: {
+        Row: {
+          bytes: number
+          created_at: string
+          duration_sec: number | null
+          height: number | null
+          id: string
+          kind: string
+          mime: string
+          path: string
+          postmypost_file_id: number | null
+          sort_order: number
+          story_id: string
+          width: number | null
+        }
+        Insert: {
+          bytes?: number
+          created_at?: string
+          duration_sec?: number | null
+          height?: number | null
+          id?: string
+          kind: string
+          mime?: string
+          path: string
+          postmypost_file_id?: number | null
+          sort_order?: number
+          story_id: string
+          width?: number | null
+        }
+        Update: {
+          bytes?: number
+          created_at?: string
+          duration_sec?: number | null
+          height?: number | null
+          id?: string
+          kind?: string
+          mime?: string
+          path?: string
+          postmypost_file_id?: number | null
+          sort_order?: number
+          story_id?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
+      social_story_targets: {
+        Row: {
+          body: string
+          channel_id: string
+          delivery: string
+          external_url: string
+          id: string
+          last_error: string
+          platform: string
+          postmypost_account_id: number | null
+          status: string
+          story_id: string
+        }
+        Insert: {
+          body?: string
+          channel_id: string
+          delivery?: string
+          external_url?: string
+          id?: string
+          last_error?: string
+          platform: string
+          postmypost_account_id?: number | null
+          status?: string
+          story_id: string
+        }
+        Update: {
+          body?: string
+          channel_id?: string
+          delivery?: string
+          external_url?: string
+          id?: string
+          last_error?: string
+          platform?: string
+          postmypost_account_id?: number | null
+          status?: string
+          story_id?: string
+        }
+        Relationships: []
+      }
       task_types: {
         Row: {
           color: string
