@@ -10,7 +10,6 @@ import {
   type SocialHitAnalytics,
   type SocialHitPostRow,
 } from "@/lib/social-analytics";
-import type { SocialPlatform } from "@/lib/social";
 
 const LEAD_WINDOW_DAYS = 14;
 
