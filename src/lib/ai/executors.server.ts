@@ -146,12 +146,26 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (f["availabilityNote"] != null) patch["availability_note"] = f["availabilityNote"];
     if (f["videoUrl"] != null) patch["video_url"] = String(f["videoUrl"]).trim();
     if (!Object.keys(patch).length) throw new Error("Нет изменений");
-    const { error } = await supabaseAdmin
+    const first = await supabaseAdmin
       .from("properties")
       .update(patch as never)
       .eq("id", propertyId);
-    if (error) throw new Error(error.message);
-    return "Объект обновлён";
+    if (!first.error) return "Объект обновлён";
+    if (/video_url/i.test(first.error.message) && "video_url" in patch) {
+      delete patch["video_url"];
+      if (!Object.keys(patch).length) {
+        throw new Error(
+          "Колонка video_url ещё не в базе. Сохраните видео кнопкой «Загрузить файл» в карточке объекта или выложите тест ещё раз после миграций.",
+        );
+      }
+      const retry = await supabaseAdmin
+        .from("properties")
+        .update(patch as never)
+        .eq("id", propertyId);
+      if (retry.error) throw new Error(retry.error.message);
+      return "Объект обновлён";
+    }
+    throw new Error(first.error.message);
   },
 
   publishPropertyVideo: async (input) => {

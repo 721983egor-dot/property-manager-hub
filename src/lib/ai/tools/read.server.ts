@@ -2,7 +2,6 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import {
-  PROPERTY_COLUMNS,
   postgrestValue,
   propertyLabel,
   scoreProperties,
