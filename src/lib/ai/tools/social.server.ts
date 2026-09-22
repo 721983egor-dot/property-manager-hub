@@ -107,6 +107,61 @@ export function createSocialTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getSocialHitAnalytics: tool({
+      description:
+        "Разбор «что залетело»: смешанный KPI без жёстких порогов (охват + реакции + proxy-заявки по объекту), относительный рейтинг постов, микс рубрик и подсказки тем для календаря. Вызывай перед советами по контент-миксу.",
+      inputSchema: z.object({
+        days: z.number().optional().describe("Период 7–90 дней, по умолчанию 30"),
+      }),
+      execute: async ({ days }) => {
+        const { loadSocialHitAnalytics, compactHitAnalyticsForAssistant } = await import(
+          "@/lib/social-analytics.server"
+        );
+        const board = await loadSocialHitAnalytics(days && days > 0 ? days : 30);
+        return compactHitAnalyticsForAssistant(board);
+      },
+    }),
+
+    proposeMarkSocialHit: tool({
+      description:
+        "Предложить сохранить метку «залетел», рубрику микса или короткий вывод по посту. Требует confirm менеджера. Не меняет текст поста.",
+      inputSchema: z.object({
+        postId: z.string(),
+        manualHit: z.boolean().optional().describe("true — отметить залетевшим, false — снять"),
+        contentMix: z
+          .enum(["life_sochi", "relocation", "property", "company", "other"])
+          .nullable()
+          .optional()
+          .describe("Рубрика микса; null — снова авто-эвристика"),
+        hitNote: z.string().optional().describe("Короткий вывод: почему сработало / что повторить"),
+      }),
+      execute: async ({ postId, manualHit, contentMix, hitNote }) => {
+        const posts = await loadSocialPosts(80);
+        const post = posts.find((p) => p.id === postId);
+        if (!post) return { error: "Пост не найден" };
+        const bits: string[] = [];
+        if (manualHit === true) bits.push("отметить «залетел»");
+        if (manualHit === false) bits.push("снять «залетел»");
+        if (contentMix !== undefined) {
+          bits.push(contentMix ? `рубрику «${contentMix}»` : "сбросить рубрику (авто)");
+        }
+        if (hitNote != null) bits.push("вывод");
+        if (!bits.length) return { error: "Нечего сохранять — укажи manualHit, contentMix или hitNote" };
+        const summary = `Разбор «${post.topic || post.body.slice(0, 40)}»: ${bits.join(", ")}`;
+        ctx.propose({
+          tool: "updateSocialPostHitMeta",
+          summary,
+          input: {
+            postId,
+            ...(manualHit !== undefined ? { manualHit } : {}),
+            ...(contentMix !== undefined ? { contentMix } : {}),
+            ...(hitNote !== undefined ? { hitNote } : {}),
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
     getSocialBrand: tool({
       description: "Голос бренда и правила публикаций Residence More для соцсетей.",
       inputSchema: z.object({}),

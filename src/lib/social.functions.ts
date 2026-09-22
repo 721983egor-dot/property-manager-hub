@@ -488,3 +488,42 @@ export const draftSocialPostFromArticle = createServerFn({ method: "POST" })
     });
     return post;
   });
+
+export const getSocialHitAnalytics = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: { days?: number } | undefined) => ({
+    days: input?.days && input.days > 0 ? Math.min(input.days, 90) : 30,
+  }))
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    const { loadSocialHitAnalytics } = await import("@/lib/social-analytics.server");
+    return loadSocialHitAnalytics(data.days);
+  });
+
+export const updateSocialPostHitMeta = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator(
+    (input: {
+      postId: string;
+      contentMix?: "life_sochi" | "relocation" | "property" | "company" | "other" | null;
+      manualHit?: boolean;
+      hitNote?: string;
+    }) => ({
+      postId: String(input.postId ?? "").trim(),
+      contentMix: input.contentMix === undefined ? undefined : input.contentMix,
+      manualHit: input.manualHit,
+      hitNote: input.hitNote,
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    await requireSocialOwner(context.userId);
+    if (!data.postId) throw new Error("Не указан пост");
+    const { updateSocialPostHitMeta } = await import("@/lib/social-analytics.server");
+    await updateSocialPostHitMeta({
+      postId: data.postId,
+      ...(data.contentMix !== undefined ? { contentMix: data.contentMix } : {}),
+      ...(data.manualHit !== undefined ? { manualHit: data.manualHit } : {}),
+      ...(data.hitNote !== undefined ? { hitNote: data.hitNote } : {}),
+    });
+    return { ok: true as const };
+  });

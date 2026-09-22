@@ -64,6 +64,9 @@ export type SocialPostTarget = {
   last_error: string;
 };
 
+/** Рубрика контент-микса (итерация 4). */
+export type SocialContentMix = "life_sochi" | "relocation" | "property" | "company" | "other";
+
 export type SocialPost = {
   id: string;
   status: SocialPostStatus;
@@ -74,6 +77,11 @@ export type SocialPost = {
   pulse_item_id: string | null;
   /** Выжимка из длинной статьи сайта (итерация 3). */
   article_id: string | null;
+  /** Рубрика микса; null — вывести эвристикой в аналитике. */
+  content_mix: SocialContentMix | null;
+  /** Ручная пометка «залетел». */
+  manual_hit: boolean;
+  hit_note: string;
   scheduled_at: string | null;
   published_at: string | null;
   created_by: string;

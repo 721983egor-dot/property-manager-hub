@@ -34,6 +34,8 @@ import { propertyUrl } from "@/lib/seo";
 const CHANNEL_COLUMNS =
   "id, platform, name, enabled, postmypost_account_id, postmypost_channel, external_url, last_synced_at, last_error";
 const POST_COLUMNS =
+  "id, status, topic, body, property_id, pulse_item_id, article_id, content_mix, manual_hit, hit_note, scheduled_at, published_at, created_by, source, postmypost_publication_id, last_error, created_at";
+const POST_COLUMNS_LEGACY =
   "id, status, topic, body, property_id, pulse_item_id, article_id, scheduled_at, published_at, created_by, source, postmypost_publication_id, last_error, created_at";
 const TARGET_COLUMNS =
   "id, post_id, channel_id, platform, body, status, postmypost_account_id, external_url, last_error";
@@ -413,6 +415,14 @@ export async function saveSocialConnection(input: {
   }
 }
 
+function mapContentMix(value: unknown): SocialPost["content_mix"] {
+  const v = String(value ?? "");
+  if (v === "life_sochi" || v === "relocation" || v === "property" || v === "company" || v === "other") {
+    return v;
+  }
+  return null;
+}
+
 function mapPost(
   row: Record<string, unknown>,
   targets: SocialPostTarget[],
@@ -428,6 +438,9 @@ function mapPost(
     property_title: propertyTitle,
     pulse_item_id: (row["pulse_item_id"] as string | null) ?? null,
     article_id: (row["article_id"] as string | null) ?? null,
+    content_mix: mapContentMix(row["content_mix"]),
+    manual_hit: Boolean(row["manual_hit"]),
+    hit_note: String(row["hit_note"] ?? ""),
     scheduled_at: (row["scheduled_at"] as string | null) ?? null,
     published_at: (row["published_at"] as string | null) ?? null,
     created_by: String(row["created_by"] ?? ""),
@@ -446,8 +459,9 @@ export async function loadSocialPosts(limit = 80): Promise<SocialPost[]> {
     .select(POST_COLUMNS)
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error && /pulse_item_id|article_id/i.test(error.message)) {
+  if (error && /pulse_item_id|article_id|content_mix|manual_hit|hit_note/i.test(error.message)) {
     let cols = POST_COLUMNS;
+    if (/content_mix|manual_hit|hit_note/i.test(error.message)) cols = POST_COLUMNS_LEGACY;
     if (/article_id/i.test(error.message)) cols = cols.replace(", article_id", "");
     if (/pulse_item_id/i.test(error.message)) cols = cols.replace(", pulse_item_id", "");
     const fallback = await supabaseAdmin

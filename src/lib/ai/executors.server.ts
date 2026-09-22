@@ -656,6 +656,29 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Статья снята с публикации";
   },
 
+  updateSocialPostHitMeta: async (input) => {
+    const { updateSocialPostHitMeta } = await import("@/lib/social-analytics.server");
+    const postId = must(input["postId"] as string, "Не указан пост");
+    const mixRaw = input["contentMix"];
+    const contentMix =
+      mixRaw === null
+        ? null
+        : mixRaw === "life_sochi" ||
+            mixRaw === "relocation" ||
+            mixRaw === "property" ||
+            mixRaw === "company" ||
+            mixRaw === "other"
+          ? mixRaw
+          : undefined;
+    await updateSocialPostHitMeta({
+      postId,
+      ...(contentMix !== undefined ? { contentMix } : {}),
+      ...(input["manualHit"] !== undefined ? { manualHit: Boolean(input["manualHit"]) } : {}),
+      ...(input["hitNote"] !== undefined ? { hitNote: String(input["hitNote"] ?? "") } : {}),
+    });
+    return "Метка разбора поста сохранена";
+  },
+
   saveHotelRoom: async (input) => {
     const name = must(String(input["name"] ?? "").trim(), "Не указан номер");
     const row = {

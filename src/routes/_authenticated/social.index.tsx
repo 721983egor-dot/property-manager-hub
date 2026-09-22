@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { SocialMediaPicker } from "@/components/SocialMediaPicker";
 import { SocialPostCalendar } from "@/components/SocialPostCalendar";
 import { SocialPostPreview } from "@/components/SocialPostPreview";
+import { SocialAnalyticsPanel } from "@/components/SocialAnalyticsPanel";
 import { SocialArticlesPanel } from "@/components/SocialArticlesPanel";
 import { SocialStoriesPanel } from "@/components/SocialStoriesPanel";
 import { SochiPulseAiBlock } from "@/components/SochiPulseAiBlock";
@@ -74,12 +75,13 @@ export const Route = createFileRoute("/_authenticated/social/")({
   ),
 });
 
-type Tab = "posts" | "stories" | "articles" | "calendar" | "pulse" | "compose" | "brand" | "connect";
+type Tab = "posts" | "stories" | "articles" | "analytics" | "calendar" | "pulse" | "compose" | "brand" | "connect";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "posts", label: "Лента" },
   { key: "stories", label: "Сторис" },
   { key: "articles", label: "Статьи" },
+  { key: "analytics", label: "Разбор" },
   { key: "calendar", label: "Календарь" },
   { key: "pulse", label: "Пульс Сочи" },
   { key: "compose", label: "Пост" },
@@ -132,9 +134,10 @@ function SocialPage() {
             Соцсети
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Instagram, ВКонтакте, Telegram и Макс. Посты, сторис и длинные статьи на сайт (/blog).
-            Публикация и статистика — через Postmypost. Перед отправкой смотрите, как пост выглядит в
-            каждой сети. В Instagram — обычный пост без цен. Пульс Сочи — новости, погода и события.
+            Instagram, ВКонтакте, Telegram и Макс. Посты, сторис, статьи на сайт (/blog) и разбор
+            «что залетело». Публикация и статистика — через Postmypost. Перед отправкой смотрите, как
+            пост выглядит в каждой сети. В Instagram — обычный пост без цен. Пульс Сочи — новости,
+            погода и события.
           </p>
         </div>
       </header>
@@ -214,6 +217,7 @@ function SocialPage() {
                 }}
               />
             )}
+            {tab === "analytics" && <SocialAnalyticsPanel />}
             {tab === "calendar" && (
               <SocialPostCalendar posts={board.posts} onEdit={editPost} />
             )}
