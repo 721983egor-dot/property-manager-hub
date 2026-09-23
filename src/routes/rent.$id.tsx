@@ -3,6 +3,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 
 import { trackEvent } from "@/lib/analytics";
+import { legacyRentComplexSlug } from "@/lib/legacy-redirects";
 import { SITE_ORIGIN } from "@/lib/site";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { type Property, isPublicListingStatus, publicStatusView } from "@/lib/properties";
@@ -18,6 +19,17 @@ import { pickSimilarProperties } from "@/lib/rent-search";
 
 export const Route = createFileRoute("/rent/$id")({
   loader: async ({ params, context }) => {
+    // Tilda: /rent/lazurbereg1 → /rent/jk/lazurnyj-bereg-1 (иначе 404 в индексе Яндекса)
+    const legacyComplex = legacyRentComplexSlug(params.id);
+    if (legacyComplex) {
+      throw redirect({
+        to: "/rent/jk/$slug",
+        params: { slug: legacyComplex },
+        replace: true,
+        statusCode: 301,
+      });
+    }
+
     const property = await context.queryClient
       .ensureQueryData(publicPropertyQueryOptions(params.id))
       .catch(() => null);
