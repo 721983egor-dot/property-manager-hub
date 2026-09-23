@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { legacyRedirectPath } from "./lib/legacy-redirects";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -16,6 +17,18 @@ async function getServerEntry(): Promise<ServerEntry> {
     );
   }
   return serverEntryPromise;
+}
+
+/** Ранний 301 со старых Tilda-URL (в т.ч. вне `/rent/…`), до роутера. */
+function legacyRedirectResponse(request: Request): Response | null {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const url = new URL(request.url);
+  const dest = legacyRedirectPath(url.pathname);
+  if (!dest) return null;
+  return new Response(null, {
+    status: 301,
+    headers: { Location: `${dest}${url.search}` },
+  });
 }
 
 // h3 swallows in-handler throws into a normal 500 Response with body
@@ -47,6 +60,8 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const legacy = legacyRedirectResponse(request);
+      if (legacy) return legacy;
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

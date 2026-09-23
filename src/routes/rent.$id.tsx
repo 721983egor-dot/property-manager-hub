@@ -3,7 +3,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 
 import { trackEvent } from "@/lib/analytics";
-import { legacyRentComplexSlug } from "@/lib/legacy-redirects";
+import { legacyRedirectPath, legacyRentComplexSlug } from "@/lib/legacy-redirects";
 import { SITE_ORIGIN } from "@/lib/site";
 import { PropertyPublicPage } from "@/components/site/PropertyPublicPage";
 import { type Property, isPublicListingStatus, publicStatusView } from "@/lib/properties";
@@ -19,7 +19,31 @@ import { pickSimilarProperties } from "@/lib/rent-search";
 
 export const Route = createFileRoute("/rent/$id")({
   loader: async ({ params, context }) => {
-    // Tilda: /rent/lazurbereg1 → /rent/jk/lazurnyj-bereg-1 (иначе 404 в индексе Яндекса)
+    // Tilda / legacy: массовая карта (дубль раннего 301 из server.ts)
+    const legacyPath = legacyRedirectPath(`/rent/${params.id}`);
+    if (legacyPath) {
+      if (legacyPath === "/rent" || legacyPath === "/rent/") {
+        throw redirect({ to: "/rent", replace: true, statusCode: 301 });
+      }
+      const jk = legacyPath.match(/^\/rent\/jk\/([^/]+)$/);
+      if (jk) {
+        throw redirect({
+          to: "/rent/jk/$slug",
+          params: { slug: jk[1] },
+          replace: true,
+          statusCode: 301,
+        });
+      }
+      const prop = legacyPath.match(/^\/rent\/([^/]+)$/);
+      if (prop) {
+        throw redirect({
+          to: "/rent/$id",
+          params: { id: prop[1] },
+          replace: true,
+          statusCode: 301,
+        });
+      }
+    }
     const legacyComplex = legacyRentComplexSlug(params.id);
     if (legacyComplex) {
       throw redirect({
