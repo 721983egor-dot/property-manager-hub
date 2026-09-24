@@ -238,16 +238,23 @@ export const syncCianChatThreads = createServerFn({ method: "POST" }).handler(as
 
 /** Оператор: вручную обновить чаты и статистику Авито. */
 export const syncAvitoChatThreads = createServerFn({ method: "POST" }).handler(async () => {
-  const { syncAvitoChats, syncAvitoListingIds, syncAvitoStats } =
+  const { syncAvitoChats, syncAvitoListingIds, syncAvitoPublicationStatus, syncAvitoStats } =
     await import("@/lib/avito-chats.server");
   try {
     await syncAvitoListingIds();
   } catch {
     // Номера объявлений подтянутся, когда Авито обработает фид.
   }
+  let deactivated = 0;
+  try {
+    const status = await syncAvitoPublicationStatus();
+    deactivated = status.deactivated;
+  } catch {
+    // Статус обновится при следующем успешном запросе к API.
+  }
   const chats = await syncAvitoChats();
   const stats = await syncAvitoStats();
-  return { ...chats, synced: stats.synced };
+  return { ...chats, synced: stats.synced, deactivated };
 });
 
 /** Оператор: сообщения одного диалога. */

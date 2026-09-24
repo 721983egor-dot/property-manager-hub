@@ -71,14 +71,22 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
 
   let avitoChats = 0;
   let avitoSynced = 0;
+  let avitoDeactivated = 0;
   try {
-    const { syncAvitoChats, syncAvitoListingIds, syncAvitoStats } = await import(
-      "@/lib/avito-chats.server"
-    );
+    const { syncAvitoChats, syncAvitoListingIds, syncAvitoPublicationStatus, syncAvitoStats } =
+      await import("@/lib/avito-chats.server");
     try {
       await syncAvitoListingIds();
     } catch (e) {
       errors.push(e instanceof Error ? e.message : "Не удалось получить номера объявлений Авито");
+    }
+    try {
+      const status = await syncAvitoPublicationStatus();
+      avitoDeactivated = status.deactivated;
+    } catch (e) {
+      errors.push(
+        e instanceof Error ? e.message : "Не удалось сверить статусы объявлений Авито",
+      );
     }
     const result = await syncAvitoChats();
     const stats = await syncAvitoStats();
@@ -112,6 +120,7 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
     messages,
     avitoChats,
     avitoSynced,
+    avitoDeactivated,
     yandexSynced,
     social,
     errors: errors.slice(0, 5),

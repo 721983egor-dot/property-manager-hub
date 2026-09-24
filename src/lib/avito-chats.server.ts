@@ -127,6 +127,59 @@ export async function syncAvitoChats(): Promise<{ chats: number; messages: numbe
 }
 
 /**
+ * Сверяет локальные «опубликовано на Авито» с реально активными объявлениями в кабинете.
+ * Истёкшие / снятые на Авито снимаем с публикации в RM OS и убираем из фида,
+ * чтобы зелёный статус не врал после окончания срока.
+ */
+export async function syncAvitoPublicationStatus(): Promise<{
+  checked: number;
+  deactivated: number;
+  activeOnAvito: number;
+}> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { fetchAvitoItems } = await import("@/lib/avito.server");
+
+  const activeItems = await fetchAvitoItems();
+  const activeIds = new Set(activeItems.map((item) => item.id));
+
+  const { data: listings, error } = await supabaseAdmin
+    .from("property_listings")
+    .select("property_id, external_id")
+    .eq("platform", "avito")
+    .eq("published", true);
+  if (error) throw new Error(error.message);
+
+  const now = new Date().toISOString();
+  let checked = 0;
+  let deactivated = 0;
+
+  for (const row of listings ?? []) {
+    const externalId = String(row.external_id ?? "").trim();
+    // Без номера объявления ещё не знаем статус на Авито — не трогаем.
+    if (!/^\d+$/.test(externalId)) continue;
+    checked += 1;
+    if (activeIds.has(externalId)) continue;
+
+    const { error: updError } = await supabaseAdmin
+      .from("property_listings")
+      .update({
+        published: false,
+        unpublished_at: now,
+        last_synced_at: now,
+        sync_status: "expired_on_avito",
+        sync_error: "Объявление не активно на Авито (истёк срок или снято)",
+      })
+      .eq("property_id", row.property_id)
+      .eq("platform", "avito")
+      .eq("published", true);
+    if (updError) throw new Error(updError.message);
+    deactivated += 1;
+  }
+
+  return { checked, deactivated, activeOnAvito: activeIds.size };
+}
+
+/**
  * После обработки фида Авито подставляет номера объявлений к объектам RM OS.
  * Уже сопоставленные вручную числовые ID не трогаем.
  */

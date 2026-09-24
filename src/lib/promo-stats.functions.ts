@@ -247,14 +247,23 @@ export const getPromoOverview = createServerFn({ method: "POST" })
 
 /** Подтягивает свежую статистику Авито по уже связанным объявлениям. */
 export const refreshAvitoStats = createServerFn({ method: "POST" }).handler(async () => {
-  const { syncAvitoListingIds, syncAvitoStats } = await import("@/lib/avito-chats.server");
+  const { syncAvitoListingIds, syncAvitoPublicationStatus, syncAvitoStats } = await import(
+    "@/lib/avito-chats.server"
+  );
   try {
     await syncAvitoListingIds();
   } catch {
     // Автозагрузка ещё не отдала номера — статистика по уже связанным объектам всё равно обновится.
   }
+  let deactivated = 0;
+  try {
+    const status = await syncAvitoPublicationStatus();
+    deactivated = status.deactivated;
+  } catch {
+    // Ключи или API недоступны — статистику по уже активным всё равно обновим.
+  }
   const result = await syncAvitoStats();
-  return { synced: result.synced };
+  return { synced: result.synced, deactivated };
 });
 
 /** Подтягивает статистику Яндекс Недвижимости по объявлениям из фида. */

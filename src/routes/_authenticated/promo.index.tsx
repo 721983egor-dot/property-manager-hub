@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { BarChart3, Download, Link2, Search } from "lucide-react";
 import {
   CartesianGrid,
@@ -18,15 +19,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VideoChannelStatus } from "@/components/VideoChannelStatus";
-import { PLATFORMS, fetchListings, isPlatformPublished, type ListingPlatform, type PropertyListing } from "@/lib/listings";
+import { setAvitoPublished } from "@/lib/avito.functions";
+import { setCianPublished } from "@/lib/cian.functions";
+import {
+  PLATFORMS,
+  fetchListings,
+  isPlatformPublished,
+  platformLabel,
+  setSitePublished,
+  type ListingPlatform,
+  type PropertyListing,
+} from "@/lib/listings";
 import { getPromoBoard, getPromoFeedFlags, getPromoOverview, type PlatformTotals } from "@/lib/promo-stats.functions";
 import {
   fetchProperties,
   formatMoney,
   internalTitle,
   signedUrls,
+  type Property,
 } from "@/lib/properties";
 import { toISODate } from "@/lib/rentals";
+import { setYandexPublished } from "@/lib/yandex-realty.functions";
 
 export const Route = createFileRoute("/_authenticated/promo/")({
   head: () => ({
@@ -98,14 +111,19 @@ function formatCount(value: number) {
 }
 
 function PromoListPage() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<PublishFilter>("all");
   const [period, setPeriod] = useState<Period>("7");
   const [chartSeries, setChartSeries] = useState<ChartSeries>("total");
   const [viewSort, setViewSort] = useState<ViewSort>("views_desc");
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const loadBoard = useServerFn(getPromoBoard);
   const loadOverview = useServerFn(getPromoOverview);
   const loadFeedFlags = useServerFn(getPromoFeedFlags);
+  const setAvito = useServerFn(setAvitoPublished);
+  const setCian = useServerFn(setCianPublished);
+  const setYandex = useServerFn(setYandexPublished);
   const range = PERIODS.find((item) => item.key === period)!;
   const dates = periodRange(range.days);
 
@@ -178,6 +196,35 @@ function PromoListPage() {
 
   const chartLines = chartLinesFor(chartSeries);
   const totals = overview?.totals;
+
+  async function togglePlatformPublish(
+    property: Property,
+    platform: ListingPlatform,
+    published: boolean,
+  ) {
+    const key = `${property.id}:${platform}`;
+    setBusyKey(key);
+    const label = platformLabel(platform);
+    try {
+      if (platform === "site") {
+        await setSitePublished(property.id, !published);
+        await qc.invalidateQueries({ queryKey: ["properties"] });
+      } else if (platform === "avito") {
+        await setAvito({ data: { propertyId: property.id, published: !published } });
+      } else if (platform === "cian") {
+        await setCian({ data: { propertyId: property.id, published: !published } });
+      } else {
+        await setYandex({ data: { propertyId: property.id, published: !published } });
+      }
+      await qc.invalidateQueries({ queryKey: ["property-listings"] });
+      await qc.invalidateQueries({ queryKey: ["promo-feed-flags"] });
+      toast.success(published ? `Снято с публикации: ${label}` : `Опубликовано: ${label}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : `Не удалось изменить публикацию: ${label}`);
+    } finally {
+      setBusyKey(null);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
@@ -314,6 +361,7 @@ function PromoListPage() {
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
         Фильтр: опубликовано на выбранной площадке. Сортировка по просмотрам за выбранный период.
+        Клик по цветной точке — опубликовать или снять на этой площадке.
       </p>
 
       {isLoading ? (
@@ -365,16 +413,46 @@ function PromoListPage() {
                         feedFlags,
                       );
                       const platformTotals = stats?.[platform.value] ?? EMPTY;
+                      const toggleKey = `${property.id}:${platform.value}`;
+                      const busy = busyKey === toggleKey;
                       return (
                         <div key={platform.value} className="rounded-lg border border-border p-2.5">
                           <div className="flex items-center justify-between gap-2">
                             <p className="truncate text-xs font-medium">{platform.short}</p>
-                            <span
-                              className={
-                                "size-2 shrink-0 rounded-full " +
-                                (published ? "bg-emerald-500" : "bg-muted-foreground/30")
+                            <button
+                              type="button"
+                              disabled={busy || busyKey !== null}
+                              aria-busy={busy}
+                              aria-label={
+                                published
+                                  ? `Снять с публикации: ${platform.short}`
+                                  : `Опубликовать: ${platform.short}`
                               }
-                            />
+                              title={
+                                published
+                                  ? `Снять с ${platform.short}`
+                                  : `Опубликовать на ${platform.short}`
+                              }
+                              onClick={() =>
+                                void togglePlatformPublish(property, platform.value, published)
+                              }
+                              className={
+                                "grid size-5 shrink-0 place-items-center rounded-md transition-opacity " +
+                                "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                                "disabled:cursor-not-allowed disabled:opacity-50"
+                              }
+                            >
+                              <span
+                                className={
+                                  "size-2 rounded-full " +
+                                  (busy
+                                    ? "animate-pulse bg-amber-500"
+                                    : published
+                                      ? "bg-emerald-500"
+                                      : "bg-muted-foreground/30")
+                                }
+                              />
+                            </button>
                           </div>
                           <p className="mt-2 text-lg font-semibold tabular-nums leading-none">
                             {platformTotals.hasData || published ? formatCount(platformTotals.views) : "—"}
