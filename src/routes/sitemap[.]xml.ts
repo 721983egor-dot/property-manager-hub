@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { loadPublicComplexes, loadPublishedProperties } from "@/lib/public-catalog.functions";
-import { loadPublishedArticles } from "@/lib/site-articles.server";
 import { buildSitemapXml, complexSlug, complexUrl, propertyUrl } from "@/lib/seo";
 import { SITE_ORIGIN } from "@/lib/site";
 
@@ -16,15 +15,13 @@ export const Route = createFileRoute("/sitemap.xml")({
     handlers: {
       GET: async () => {
         try {
-          const [properties, complexes, articles] = await Promise.all([
+          const [properties, complexes] = await Promise.all([
             loadPublishedProperties(),
             loadPublicComplexes(),
-            loadPublishedArticles().catch(() => []),
           ]);
           const staticPages = [
             { loc: `${SITE_ORIGIN}/`, changefreq: "daily", priority: "1.0" },
             { loc: `${SITE_ORIGIN}/rent`, changefreq: "daily", priority: "0.9" },
-            { loc: `${SITE_ORIGIN}/blog`, changefreq: "weekly", priority: "0.6" },
             { loc: `${SITE_ORIGIN}/about`, changefreq: "monthly", priority: "0.5" },
             { loc: `${SITE_ORIGIN}/management`, changefreq: "monthly", priority: "0.5" },
             { loc: `${SITE_ORIGIN}/contacts`, changefreq: "monthly", priority: "0.4" },
@@ -43,17 +40,10 @@ export const Route = createFileRoute("/sitemap.xml")({
             changefreq: "daily",
             priority: "0.7",
           }));
-          const articlePages = articles.map((a) => ({
-            loc: `${SITE_ORIGIN}/blog/${a.slug}`,
-            lastmod: isoDay(a.published_at),
-            changefreq: "monthly",
-            priority: "0.55",
-          }));
           const xml = buildSitemapXml([
             ...staticPages,
             ...complexPages,
             ...propertyPages,
-            ...articlePages,
           ]);
           return new Response(xml, {
             headers: {
