@@ -499,10 +499,18 @@ export const createDealFromThread = createServerFn({ method: "POST" })
       .update({ name: data.name, phone: data.phone })
       .eq("id", data.threadId);
 
-    const { data: stages } = await db
+    let { data: stages } = await db
       .from("deal_stages")
-      .select("id, kind, position")
+      .select("id, kind, position, pipeline")
+      .eq("pipeline", "rental")
       .order("position", { ascending: true });
+    if (!stages) {
+      const legacy = await db
+        .from("deal_stages")
+        .select("id, kind, position")
+        .order("position", { ascending: true });
+      stages = legacy.data;
+    }
     const stage = (stages ?? []).find((s) => s.kind === "open") ?? (stages ?? [])[0] ?? null;
     if (!stage) throw new Error("Сначала настройте стадии сделок в CRM");
 
@@ -556,6 +564,7 @@ export const createDealFromThread = createServerFn({ method: "POST" })
     const baseRow: Record<string, unknown> = {
       title: `Чат — ${data.name}`,
       stage_id: stage.id,
+      pipeline: "rental",
       client_id: clientId,
       property_id: propertyId,
       responsible_id: data.responsibleId ?? null,
