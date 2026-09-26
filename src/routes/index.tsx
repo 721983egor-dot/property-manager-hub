@@ -30,6 +30,7 @@ import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import heroImage from "@/assets/site/hero_villa_sunset.jpg";
 import aboutImg from "@/assets/site/home_about.jpg";
 import selectionImg from "@/assets/site/home_p5.jpg";
+import serviceHomeImg from "@/assets/site/mgmt_p3.jpg";
 
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
@@ -353,8 +354,41 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Как у нас арендовать */}
+      {/* Обслуживание домов */}
       <section className="bg-site-navy-soft py-20">
+        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
+              Отдельная линия
+            </p>
+            <h2 className="mt-3 text-3xl font-bold text-site-navy md:text-4xl">
+              Обслуживание домов и вилл
+            </h2>
+            <p className="mt-5 max-w-lg leading-relaxed text-site-muted">
+              Территория, сад, бассейн, инженерия и клининг — берём на себя
+              регулярный уход за частным домом, даже если он не сдаётся в аренду.
+            </p>
+            <Link
+              to="/service"
+              className="mt-8 inline-flex items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+            >
+              Перейти в Сервис
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+          <div className="overflow-hidden rounded-2xl">
+            <img
+              src={serviceHomeImg}
+              alt="Обслуживание частных домов в Сочи"
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Как у нас арендовать */}
+      <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
           <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
             Как у нас арендовать?
@@ -367,7 +401,7 @@ function HomePage() {
             {STEPS.map((step, i) => (
               <div
                 key={step.title}
-                className="rounded-xl border border-site-line bg-white p-6"
+                className="rounded-xl border border-site-line bg-site-navy-soft p-6"
               >
                 <span className="text-3xl font-bold text-site-gold">
                   {String(i + 1).padStart(2, "0")}
@@ -385,7 +419,7 @@ function HomePage() {
       </section>
 
       {/* О компании */}
-      <section className="bg-white py-20">
+      <section className="bg-site-navy-soft py-20">
         <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
           <div className="overflow-hidden rounded-2xl">
             <img

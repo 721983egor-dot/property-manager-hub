@@ -20,6 +20,7 @@ import { Route as ManagementRouteImport } from './routes/management'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RentRouteImport } from './routes/rent'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as ServiceRouteImport } from './routes/service'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as ApiPhotoUploadRouteImport } from './routes/api/photo-upload'
@@ -136,6 +137,11 @@ const RentRoute = RentRouteImport.update({
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   id: '/robots.txt',
   path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServiceRoute = ServiceRouteImport.update({
+  id: '/service',
+  path: '/service',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -503,6 +509,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
+  '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
@@ -576,6 +583,7 @@ export interface FileRoutesByTo {
   '/management': typeof ManagementRoute
   '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
+  '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
@@ -653,6 +661,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/rent': typeof RentRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
+  '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
@@ -730,6 +739,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rent'
     | '/robots.txt'
+    | '/service'
     | '/sitemap.xml'
     | '/calendar'
     | '/api/photo-upload'
@@ -803,6 +813,7 @@ export interface FileRouteTypes {
     | '/management'
     | '/privacy'
     | '/robots.txt'
+    | '/service'
     | '/sitemap.xml'
     | '/calendar'
     | '/api/photo-upload'
@@ -879,6 +890,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/rent'
     | '/robots.txt'
+    | '/service'
     | '/sitemap.xml'
     | '/_authenticated/calendar'
     | '/api/photo-upload'
@@ -956,6 +968,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RentRoute: typeof RentRouteWithChildren
   RobotsDottxtRoute: typeof RobotsDottxtRoute
+  ServiceRoute: typeof ServiceRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiPhotoUploadRoute: typeof ApiPhotoUploadRoute
   ApiSocialMediaUploadRoute: typeof ApiSocialMediaUploadRoute
@@ -1052,6 +1065,13 @@ declare module '@tanstack/react-router' {
       path: '/robots.txt'
       fullPath: '/robots.txt'
       preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/service': {
+      id: '/service'
+      path: '/service'
+      fullPath: '/service'
+      preLoaderRoute: typeof ServiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -1631,6 +1651,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RentRoute: RentRouteWithChildren,
   RobotsDottxtRoute: RobotsDottxtRoute,
+  ServiceRoute: ServiceRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiPhotoUploadRoute: ApiPhotoUploadRoute,
   ApiSocialMediaUploadRoute: ApiSocialMediaUploadRoute,

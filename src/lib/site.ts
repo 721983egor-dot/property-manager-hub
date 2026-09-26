@@ -17,6 +17,7 @@ export const SITE_REQUISITES =
 
 export const LEAD_TOPICS = [
   { value: "rent", label: "Долгосрочная аренда" },
+  { value: "service", label: "Сервис / обслуживание дома" },
   { value: "management", label: "Собственникам" },
   { value: "other", label: "Другое" },
 ] as const;

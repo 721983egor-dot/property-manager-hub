@@ -12,7 +12,8 @@ import { ContactMenu } from "@/components/site/ContactMenu";
 import logo from "@/assets/site/logo_navy.png";
 
 const NAV = [
-  { to: "/rent", label: "Объекты" },
+  { to: "/rent", label: "Аренда" },
+  { to: "/service", label: "Сервис" },
   { to: "/about", label: "О нас" },
   { to: "/management", label: "Собственникам" },
 ] as const;

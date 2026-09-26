@@ -24,6 +24,7 @@ export const Route = createFileRoute("/sitemap.xml")({
             { loc: `${SITE_ORIGIN}/rent`, changefreq: "daily", priority: "0.9" },
             { loc: `${SITE_ORIGIN}/about`, changefreq: "monthly", priority: "0.5" },
             { loc: `${SITE_ORIGIN}/management`, changefreq: "monthly", priority: "0.5" },
+            { loc: `${SITE_ORIGIN}/service`, changefreq: "monthly", priority: "0.6" },
             { loc: `${SITE_ORIGIN}/contacts`, changefreq: "monthly", priority: "0.4" },
           ];
           const complexPages = complexes
