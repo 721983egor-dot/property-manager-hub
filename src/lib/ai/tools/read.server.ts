@@ -1753,5 +1753,113 @@ export function createReadTools(ctx: AssistantToolContext) {
         return { runs: data ?? [] };
       },
     }),
+
+    getMaintenanceProperties: tool({
+      description:
+        "Объекты блока «Обслуживание»: дома/виллы с услугой «управление объектом». forRent=false — только обслуживание, не в календаре аренды.",
+      inputSchema: z.object({
+        query: z.string().optional(),
+        forRent: z.boolean().optional().describe("Фильтр: в аренду / только обслуживание"),
+        includeArchived: z.boolean().optional(),
+      }),
+      execute: async ({ query, forRent, includeArchived }) => {
+        const rows = await allProperties();
+        const list = rows.filter((row) => {
+          const type = String(row["type"] ?? "");
+          const service = String(row["service_type"] ?? "management");
+          const portfolio = String(row["portfolio"] ?? "rm");
+          if (portfolio === "n11") return false;
+          if (service !== "management") return false;
+          if (type !== "house" && type !== "villa") return false;
+          if (!includeArchived && String(row["status"] ?? "") === "archived") return false;
+          if (forRent === true && row["for_rent"] === false) return false;
+          if (forRent === false && row["for_rent"] !== false) return false;
+          if (query) {
+            const hay = `${row["title"]} ${row["internal_name"]} ${row["address"]}`.toLowerCase();
+            if (!hay.includes(query.toLowerCase())) return false;
+          }
+          return true;
+        });
+        return {
+          count: list.length,
+          properties: list.map((row) => ({
+            id: row["id"],
+            ref: row["ref_id"],
+            title: row["internal_name"] || row["title"],
+            type: row["type"],
+            status: row["status"],
+            forRent: row["for_rent"] !== false,
+            published: Boolean(row["published"]),
+            address: row["address"],
+          })),
+        };
+      },
+    }),
+
+    getMaintenanceServices: tool({
+      description:
+        "Справочник пунктов услуг обслуживания (бассейн, сад, уборка…) и услуги, назначенные объекту.",
+      inputSchema: z.object({
+        propertyRef: z.string().optional().describe("Если указан — вернуть услуги этого объекта"),
+        activeOnly: z.boolean().optional(),
+      }),
+      execute: async ({ propertyRef, activeOnly }) => {
+        let catalogQuery = admin
+          .from("maintenance_service_items")
+          .select("id, name, position, active")
+          .order("position");
+        if (activeOnly !== false) catalogQuery = catalogQuery.eq("active", true);
+        const { data: catalog, error } = await catalogQuery;
+        if (error) return { error: error.message };
+        let linked: { id: string; name: string }[] = [];
+        if (propertyRef) {
+          const found = await ctx.findProperty(propertyRef);
+          if (!found) return { error: "Объект не найден", catalog: catalog ?? [] };
+          const { data: links } = await admin
+            .from("property_maintenance_services")
+            .select("service_item_id")
+            .eq("property_id", found["id"] as string);
+          const ids = new Set((links ?? []).map((l) => l.service_item_id));
+          linked = (catalog ?? [])
+            .filter((item) => ids.has(item.id))
+            .map((item) => ({ id: item.id, name: item.name }));
+          return { property: propertyLabel(found as never), catalog: catalog ?? [], linked };
+        }
+        return { catalog: catalog ?? [] };
+      },
+    }),
+
+    getMaintenanceTasks: tool({
+      description:
+        "Задачи типа «Обслуживание» — те же записи, что в общем блоке задач CRM, отфильтрованные по типу.",
+      inputSchema: z.object({
+        status: z.enum(["open", "done", "all"]).optional(),
+        propertyRef: z.string().optional(),
+      }),
+      execute: async ({ status, propertyRef }) => {
+        const { data: types } = await admin.from("task_types").select("id, name, color");
+        const maintenance = (types ?? []).find(
+          (t) => String(t.name).trim().toLowerCase() === "обслуживание",
+        );
+        if (!maintenance) return { count: 0, tasks: [], note: "Тип «Обслуживание» ещё не создан" };
+        let query = admin
+          .from("tasks")
+          .select(
+            "id, title, description, status, due_date, due_start, due_end, assignee_id, property_id, task_type_id, completed_at",
+          )
+          .eq("task_type_id", maintenance.id)
+          .order("due_date", { ascending: true })
+          .limit(200);
+        if (status === "open" || status === "done") query = query.eq("status", status);
+        if (propertyRef) {
+          const found = await ctx.findProperty(propertyRef);
+          if (!found) return { error: "Объект не найден" };
+          query = query.eq("property_id", found["id"] as string);
+        }
+        const { data: tasks, error } = await query;
+        if (error) return { error: error.message };
+        return { count: (tasks ?? []).length, type: maintenance, tasks: tasks ?? [] };
+      },
+    }),
   };
 }

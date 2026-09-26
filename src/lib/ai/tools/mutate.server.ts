@@ -70,6 +70,10 @@ export function createMutateTools(ctx: AssistantToolContext) {
         description: z.string().optional(),
         rentTerms: z.string().optional(),
         availabilityNote: z.string().optional(),
+        forRent: z
+          .boolean()
+          .optional()
+          .describe("В аренду: показывать в календаре аренды. false = только обслуживание"),
         videoUrl: z
           .string()
           .optional()
@@ -98,6 +102,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (fields.description) parts.push("новое описание");
         if (fields.rentTerms) parts.push("новые условия аренды");
         if (fields.availabilityNote) parts.push("заметка о доступности");
+        if (fields.forRent === true) parts.push("в аренду");
+        if (fields.forRent === false) parts.push("только обслуживание (не в аренду)");
         if (fields.videoUrl != null)
           parts.push(fields.videoUrl.trim() ? "ссылка на видео" : "убрать видео");
         if (!parts.length) return { error: "Не указано ни одного изменения" };
@@ -744,6 +750,146 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (!type) return { error: "Тип не найден" };
         const summary = `Удалить тип задачи «${type.name}»`;
         ctx.propose({ tool: "deleteTaskType", summary, input: { typeId } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeMaintenanceServiceItem: tool({
+      description:
+        "Предложить создание, изменение или удаление пункта справочника услуг обслуживания (бассейн, сад, уборка…). Требует подтверждения.",
+      inputSchema: z.object({
+        itemId: z.string().optional(),
+        name: z.string().optional(),
+        remove: z.boolean().optional(),
+        active: z.boolean().optional(),
+      }),
+      execute: async ({ itemId, name, remove, active }) => {
+        if (remove) {
+          if (!itemId) return { error: "Укажите itemId для удаления" };
+          const { data } = await ctx.admin
+            .from("maintenance_service_items")
+            .select("name")
+            .eq("id", itemId)
+            .maybeSingle();
+          if (!data) return { error: "Пункт не найден" };
+          const summary = `Удалить услугу обслуживания «${data.name}»`;
+          ctx.propose({ tool: "deleteMaintenanceServiceItem", summary, input: { itemId } });
+          return { proposed: true, summary };
+        }
+        const title = (name ?? "").trim();
+        if (!title) return { error: "Укажите название услуги" };
+        const summary = `${itemId ? "Изменить" : "Создать"} услугу обслуживания «${title}»`;
+        ctx.propose({
+          tool: "upsertMaintenanceServiceItem",
+          summary,
+          input: { itemId: itemId ?? null, name: title, active: active ?? true },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposePropertyMaintenanceServices: tool({
+      description:
+        "Предложить набор услуг обслуживания для объекта (по названиям из справочника). Требует подтверждения.",
+      inputSchema: z.object({
+        propertyRef: z.string(),
+        serviceNames: z.array(z.string()).describe("Названия услуг из справочника"),
+      }),
+      execute: async ({ propertyRef, serviceNames }) => {
+        const p = await label(propertyRef);
+        if (!p) return { error: "Объект не найден" };
+        const { data: catalog } = await ctx.admin
+          .from("maintenance_service_items")
+          .select("id, name")
+          .eq("active", true);
+        const ids: string[] = [];
+        const missing: string[] = [];
+        for (const raw of serviceNames) {
+          const found = (catalog ?? []).find(
+            (item) => item.name.toLowerCase() === raw.trim().toLowerCase(),
+          );
+          if (found) ids.push(found.id);
+          else missing.push(raw);
+        }
+        if (missing.length) {
+          return {
+            error: `Не найдены услуги: ${missing.join(", ")}. Сначала создайте через proposeMaintenanceServiceItem.`,
+          };
+        }
+        const summary = `Назначить услуги «${serviceNames.join(", ") || "нет"}» объекту ${p.text}`;
+        ctx.propose({
+          tool: "setPropertyMaintenanceServices",
+          summary,
+          input: { propertyId: p.id, serviceItemIds: ids },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeMaintenanceTask: tool({
+      description:
+        "Предложить задачу обслуживания (тип «Обслуживание»). Видна и в общем блоке задач. Требует подтверждения.",
+      inputSchema: z.object({
+        taskId: z.string().optional(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        dueDate: z.string().optional(),
+        dueStart: z.string().optional(),
+        dueEnd: z.string().optional(),
+        assigneeQuery: z.string().optional(),
+        propertyRef: z.string().optional(),
+        items: z.array(z.string()).optional(),
+      }),
+      execute: async (input) => {
+        const { data: types } = await ctx.admin.from("task_types").select("id, name").order("position");
+        const maintenance = (types ?? []).find(
+          (t) => String(t.name).trim().toLowerCase() === "обслуживание",
+        );
+        if (!maintenance) {
+          return { error: "Тип «Обслуживание» не найден. Создайте через proposeTaskType или дождитесь миграции." };
+        }
+        const property = input.propertyRef ? await label(input.propertyRef) : null;
+        if (input.propertyRef && !property) return { error: "Объект не найден" };
+        let assigneeId: string | null = null;
+        let assigneeName = "";
+        if (input.assigneeQuery) {
+          const term = input.assigneeQuery.toLowerCase();
+          const { data: profiles } = await ctx.admin
+            .from("profiles")
+            .select("id, full_name, email")
+            .limit(200);
+          const found = (profiles ?? []).find((p) =>
+            `${p.full_name} ${p.email}`.toLowerCase().includes(term),
+          );
+          if (!found) return { error: "Сотрудник не найден" };
+          assigneeId = found.id;
+          assigneeName = found.full_name || found.email;
+        }
+        const parts: string[] = ["тип Обслуживание"];
+        if (input.title) parts.push(`«${input.title}»`);
+        if (input.dueDate) parts.push(input.dueDate);
+        if (assigneeName) parts.push(`исполнитель ${assigneeName}`);
+        if (property) parts.push(`объект ${property.text}`);
+        const summary = `${input.taskId ? "Изменить" : "Создать"} задачу обслуживания: ${parts.join(", ")}`;
+        ctx.propose({
+          tool: "upsertTask",
+          summary,
+          input: {
+            taskId: input.taskId ?? null,
+            title: input.title ?? null,
+            description: input.description ?? null,
+            typeId: maintenance.id,
+            dueDate: input.dueDate ?? null,
+            dueStart: input.dueStart ?? null,
+            dueEnd: input.dueEnd ?? null,
+            assigneeId,
+            propertyId: property?.id ?? null,
+            dealId: null,
+            status: null,
+            items: input.items ?? null,
+            clearDue: input.dueDate === "",
+          },
+        });
         return { proposed: true, summary };
       },
     }),

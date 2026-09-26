@@ -15,10 +15,10 @@ import {
   Send,
   Settings,
   Share2,
-
   Sparkles,
   UserRound,
   Users,
+  Wrench,
   Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -55,6 +55,7 @@ const CRM_PREFIXES = [
   "/system",
   "/hotel",
   "/owner",
+  "/maintenance",
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -111,6 +112,10 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       <Link to="/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <CalendarDays className="size-4 shrink-0" />
         Календарь
+      </Link>
+      <Link to="/maintenance/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Wrench className="size-4 shrink-0" />
+        Обслуживание
       </Link>
       {isSocialOwner && (
         <Link to="/social" onClick={onNavigate} className={NAV_LINK_CLASS}>

@@ -118,7 +118,11 @@ function CalendarPage() {
 
   const hotelRooms = useMemo(() => {
     return properties.filter(
-      (p) => p.portfolio === "n11" && p.service_type !== "commission_only" && p.status !== "archived",
+      (p) =>
+        p.portfolio === "n11" &&
+        p.service_type !== "commission_only" &&
+        p.status !== "archived" &&
+        p.for_rent !== false,
     );
   }, [properties]);
 
@@ -132,7 +136,9 @@ function CalendarPage() {
       (p) =>
         p.portfolio !== "n11" &&
         p.service_type !== "commission_only" &&
-        p.status !== "archived",
+        p.status !== "archived" &&
+        // Обслуживание без «в аренду» не попадает в шахматку аренды.
+        p.for_rent !== false,
     );
     return [...list].sort((a, b) => {
       const ao = a.sort_order ?? Number.MAX_SAFE_INTEGER;

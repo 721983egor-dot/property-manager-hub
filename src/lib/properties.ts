@@ -127,6 +127,8 @@ export type Property = {
   service_type: ServiceType;
   management_fee_type: ManagementFeeType;
   management_fee_value: number | null;
+  /** В календаре аренды — только при true. Для обслуживания домов включается явно. */
+  for_rent: boolean;
   availability_note: string;
   beds_count: number | null;
   repair_type: string;
@@ -464,6 +466,8 @@ function normalize(row: Record<string, unknown>): Property {
       ? "amount"
       : "percent") as ManagementFeeType,
     management_fee_value: num(row['management_fee_value']),
+    // До миграции колонки нет — считаем, что объект в аренде (старое поведение).
+    for_rent: row["for_rent"] === false ? false : true,
     beds_count: num(row['beds_count']),
     repair_type: typeof row['repair_type'] === "string" ? (row['repair_type'] as string) : "",
     wc_location_type:
@@ -554,6 +558,7 @@ export type PropertyInput = {
   service_type: ServiceType;
   management_fee_type: ManagementFeeType;
   management_fee_value: number | null;
+  for_rent: boolean;
   availability_note: string;
   beds_count: number | null;
   repair_type: string;

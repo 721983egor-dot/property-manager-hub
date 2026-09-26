@@ -37,6 +37,11 @@ import { Route as AuthenticatedHotelIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedHotelOwnersRouteImport } from './routes/_authenticated/hotel.owners'
 import { Route as AuthenticatedHotelRoomsRouteImport } from './routes/_authenticated/hotel.rooms'
 import { Route as AuthenticatedHotelSyncRouteImport } from './routes/_authenticated/hotel.sync'
+import { Route as AuthenticatedMaintenanceIndexRouteImport } from './routes/_authenticated/maintenance.index'
+import { Route as AuthenticatedMaintenanceCalendarRouteImport } from './routes/_authenticated/maintenance.calendar'
+import { Route as AuthenticatedMaintenanceObjectsRouteImport } from './routes/_authenticated/maintenance.objects'
+import { Route as AuthenticatedMaintenanceServicesRouteImport } from './routes/_authenticated/maintenance.services'
+import { Route as AuthenticatedMaintenanceTasksRouteImport } from './routes/_authenticated/maintenance.tasks'
 import { Route as AuthenticatedObjectsIndexRouteImport } from './routes/_authenticated/objects.index'
 import { Route as AuthenticatedObjectsNewRouteImport } from './routes/_authenticated/objects.new'
 import { Route as AuthenticatedOwnerIndexRouteImport } from './routes/_authenticated/owner.index'
@@ -61,6 +66,8 @@ import { Route as AuthenticatedCrmClientsIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedCrmDealsIndexRouteImport } from './routes/_authenticated/crm.deals.index'
 import { Route as AuthenticatedCrmLeadsIndexRouteImport } from './routes/_authenticated/crm.leads.index'
 import { Route as AuthenticatedCrmTasksIndexRouteImport } from './routes/_authenticated/crm.tasks.index'
+import { Route as AuthenticatedMaintenanceObjectsIdRouteImport } from './routes/_authenticated/maintenance.objects.$id'
+import { Route as AuthenticatedMaintenanceObjectsNewRouteImport } from './routes/_authenticated/maintenance.objects.new'
 import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authenticated/objects.$id.index'
 import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authenticated/objects.$id.edit'
 import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_authenticated/objects.$id.preview'
@@ -75,6 +82,7 @@ import { Route as ApiPublicSystemPlatformKeysRouteImport } from './routes/api/pu
 import { Route as ApiPublicSystemTelegramBootstrapRouteImport } from './routes/api/public/system/telegram-bootstrap'
 import { Route as ApiPublicSystemTelegramCredentialsRouteImport } from './routes/api/public/system/telegram-credentials'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
+import { Route as AuthenticatedMaintenanceObjectsIdEditRouteImport } from './routes/_authenticated/maintenance.objects.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -219,6 +227,36 @@ const AuthenticatedHotelSyncRoute = AuthenticatedHotelSyncRouteImport.update({
   path: '/hotel/sync',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMaintenanceIndexRoute =
+  AuthenticatedMaintenanceIndexRouteImport.update({
+    id: '/maintenance/',
+    path: '/maintenance/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMaintenanceCalendarRoute =
+  AuthenticatedMaintenanceCalendarRouteImport.update({
+    id: '/maintenance/calendar',
+    path: '/maintenance/calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMaintenanceObjectsRoute =
+  AuthenticatedMaintenanceObjectsRouteImport.update({
+    id: '/maintenance/objects',
+    path: '/maintenance/objects',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMaintenanceServicesRoute =
+  AuthenticatedMaintenanceServicesRouteImport.update({
+    id: '/maintenance/services',
+    path: '/maintenance/services',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMaintenanceTasksRoute =
+  AuthenticatedMaintenanceTasksRouteImport.update({
+    id: '/maintenance/tasks',
+    path: '/maintenance/tasks',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedObjectsIndexRoute =
   AuthenticatedObjectsIndexRouteImport.update({
     id: '/objects/',
@@ -354,6 +392,18 @@ const AuthenticatedCrmTasksIndexRoute =
     path: '/crm/tasks/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMaintenanceObjectsIdRoute =
+  AuthenticatedMaintenanceObjectsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedMaintenanceObjectsRoute,
+  } as any)
+const AuthenticatedMaintenanceObjectsNewRoute =
+  AuthenticatedMaintenanceObjectsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedMaintenanceObjectsRoute,
+  } as any)
 const AuthenticatedObjectsIdIndexRoute =
   AuthenticatedObjectsIdIndexRouteImport.update({
     id: '/objects/$id/',
@@ -435,6 +485,12 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedMaintenanceObjectsIdEditRoute =
+  AuthenticatedMaintenanceObjectsIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AuthenticatedMaintenanceObjectsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -460,6 +516,10 @@ export interface FileRoutesByFullPath {
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/maintenance/calendar': typeof AuthenticatedMaintenanceCalendarRoute
+  '/maintenance/objects': typeof AuthenticatedMaintenanceObjectsRouteWithChildren
+  '/maintenance/services': typeof AuthenticatedMaintenanceServicesRoute
+  '/maintenance/tasks': typeof AuthenticatedMaintenanceTasksRoute
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
@@ -477,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/complexes/': typeof AuthenticatedComplexesIndexRoute
   '/hotel/': typeof AuthenticatedHotelIndexRoute
+  '/maintenance/': typeof AuthenticatedMaintenanceIndexRoute
   '/objects/': typeof AuthenticatedObjectsIndexRoute
   '/owner/': typeof AuthenticatedOwnerIndexRoute
   '/promo/': typeof AuthenticatedPromoIndexRoute
@@ -484,6 +545,8 @@ export interface FileRoutesByFullPath {
   '/social/': typeof AuthenticatedSocialIndexRoute
   '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/maintenance/objects/$id': typeof AuthenticatedMaintenanceObjectsIdRouteWithChildren
+  '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
@@ -502,6 +565,7 @@ export interface FileRoutesByFullPath {
   '/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/crm/tasks/': typeof AuthenticatedCrmTasksIndexRoute
   '/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
+  '/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -525,6 +589,10 @@ export interface FileRoutesByTo {
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/maintenance/calendar': typeof AuthenticatedMaintenanceCalendarRoute
+  '/maintenance/objects': typeof AuthenticatedMaintenanceObjectsRouteWithChildren
+  '/maintenance/services': typeof AuthenticatedMaintenanceServicesRoute
+  '/maintenance/tasks': typeof AuthenticatedMaintenanceTasksRoute
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
@@ -542,6 +610,7 @@ export interface FileRoutesByTo {
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/complexes': typeof AuthenticatedComplexesIndexRoute
   '/hotel': typeof AuthenticatedHotelIndexRoute
+  '/maintenance': typeof AuthenticatedMaintenanceIndexRoute
   '/objects': typeof AuthenticatedObjectsIndexRoute
   '/owner': typeof AuthenticatedOwnerIndexRoute
   '/promo': typeof AuthenticatedPromoIndexRoute
@@ -549,6 +618,8 @@ export interface FileRoutesByTo {
   '/social': typeof AuthenticatedSocialIndexRoute
   '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/maintenance/objects/$id': typeof AuthenticatedMaintenanceObjectsIdRouteWithChildren
+  '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
@@ -567,6 +638,7 @@ export interface FileRoutesByTo {
   '/crm/leads': typeof AuthenticatedCrmLeadsIndexRoute
   '/crm/tasks': typeof AuthenticatedCrmTasksIndexRoute
   '/objects/$id': typeof AuthenticatedObjectsIdIndexRoute
+  '/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -594,6 +666,10 @@ export interface FileRoutesById {
   '/_authenticated/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/_authenticated/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/_authenticated/hotel/sync': typeof AuthenticatedHotelSyncRoute
+  '/_authenticated/maintenance/calendar': typeof AuthenticatedMaintenanceCalendarRoute
+  '/_authenticated/maintenance/objects': typeof AuthenticatedMaintenanceObjectsRouteWithChildren
+  '/_authenticated/maintenance/services': typeof AuthenticatedMaintenanceServicesRoute
+  '/_authenticated/maintenance/tasks': typeof AuthenticatedMaintenanceTasksRoute
   '/_authenticated/objects/new': typeof AuthenticatedObjectsNewRoute
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
   '/_authenticated/promo/avito': typeof AuthenticatedPromoAvitoRoute
@@ -611,6 +687,7 @@ export interface FileRoutesById {
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/complexes/': typeof AuthenticatedComplexesIndexRoute
   '/_authenticated/hotel/': typeof AuthenticatedHotelIndexRoute
+  '/_authenticated/maintenance/': typeof AuthenticatedMaintenanceIndexRoute
   '/_authenticated/objects/': typeof AuthenticatedObjectsIndexRoute
   '/_authenticated/owner/': typeof AuthenticatedOwnerIndexRoute
   '/_authenticated/promo/': typeof AuthenticatedPromoIndexRoute
@@ -618,6 +695,8 @@ export interface FileRoutesById {
   '/_authenticated/social/': typeof AuthenticatedSocialIndexRoute
   '/_authenticated/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/_authenticated/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/_authenticated/maintenance/objects/$id': typeof AuthenticatedMaintenanceObjectsIdRouteWithChildren
+  '/_authenticated/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
@@ -636,6 +715,7 @@ export interface FileRoutesById {
   '/_authenticated/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/_authenticated/crm/tasks/': typeof AuthenticatedCrmTasksIndexRoute
   '/_authenticated/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
+  '/_authenticated/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -663,6 +743,10 @@ export interface FileRouteTypes {
     | '/hotel/owners'
     | '/hotel/rooms'
     | '/hotel/sync'
+    | '/maintenance/calendar'
+    | '/maintenance/objects'
+    | '/maintenance/services'
+    | '/maintenance/tasks'
     | '/objects/new'
     | '/promo/$id'
     | '/promo/avito'
@@ -680,6 +764,7 @@ export interface FileRouteTypes {
     | '/chats/'
     | '/complexes/'
     | '/hotel/'
+    | '/maintenance/'
     | '/objects/'
     | '/owner/'
     | '/promo/'
@@ -687,6 +772,8 @@ export interface FileRouteTypes {
     | '/social/'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
+    | '/maintenance/objects/$id'
+    | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
@@ -705,6 +792,7 @@ export interface FileRouteTypes {
     | '/crm/leads/'
     | '/crm/tasks/'
     | '/objects/$id/'
+    | '/maintenance/objects/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -728,6 +816,10 @@ export interface FileRouteTypes {
     | '/hotel/owners'
     | '/hotel/rooms'
     | '/hotel/sync'
+    | '/maintenance/calendar'
+    | '/maintenance/objects'
+    | '/maintenance/services'
+    | '/maintenance/tasks'
     | '/objects/new'
     | '/promo/$id'
     | '/promo/avito'
@@ -745,6 +837,7 @@ export interface FileRouteTypes {
     | '/chats'
     | '/complexes'
     | '/hotel'
+    | '/maintenance'
     | '/objects'
     | '/owner'
     | '/promo'
@@ -752,6 +845,8 @@ export interface FileRouteTypes {
     | '/social'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
+    | '/maintenance/objects/$id'
+    | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
@@ -770,6 +865,7 @@ export interface FileRouteTypes {
     | '/crm/leads'
     | '/crm/tasks'
     | '/objects/$id'
+    | '/maintenance/objects/$id/edit'
   id:
     | '__root__'
     | '/'
@@ -796,6 +892,10 @@ export interface FileRouteTypes {
     | '/_authenticated/hotel/owners'
     | '/_authenticated/hotel/rooms'
     | '/_authenticated/hotel/sync'
+    | '/_authenticated/maintenance/calendar'
+    | '/_authenticated/maintenance/objects'
+    | '/_authenticated/maintenance/services'
+    | '/_authenticated/maintenance/tasks'
     | '/_authenticated/objects/new'
     | '/_authenticated/promo/$id'
     | '/_authenticated/promo/avito'
@@ -813,6 +913,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chats/'
     | '/_authenticated/complexes/'
     | '/_authenticated/hotel/'
+    | '/_authenticated/maintenance/'
     | '/_authenticated/objects/'
     | '/_authenticated/owner/'
     | '/_authenticated/promo/'
@@ -820,6 +921,8 @@ export interface FileRouteTypes {
     | '/_authenticated/social/'
     | '/_authenticated/complexes/$id/edit'
     | '/_authenticated/crm/clients/$id'
+    | '/_authenticated/maintenance/objects/$id'
+    | '/_authenticated/maintenance/objects/new'
     | '/_authenticated/objects/$id/edit'
     | '/_authenticated/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
@@ -838,6 +941,7 @@ export interface FileRouteTypes {
     | '/_authenticated/crm/leads/'
     | '/_authenticated/crm/tasks/'
     | '/_authenticated/objects/$id/'
+    | '/_authenticated/maintenance/objects/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1069,6 +1173,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHotelSyncRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/maintenance/': {
+      id: '/_authenticated/maintenance/'
+      path: '/maintenance'
+      fullPath: '/maintenance/'
+      preLoaderRoute: typeof AuthenticatedMaintenanceIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/maintenance/calendar': {
+      id: '/_authenticated/maintenance/calendar'
+      path: '/maintenance/calendar'
+      fullPath: '/maintenance/calendar'
+      preLoaderRoute: typeof AuthenticatedMaintenanceCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/maintenance/objects': {
+      id: '/_authenticated/maintenance/objects'
+      path: '/maintenance/objects'
+      fullPath: '/maintenance/objects'
+      preLoaderRoute: typeof AuthenticatedMaintenanceObjectsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/maintenance/services': {
+      id: '/_authenticated/maintenance/services'
+      path: '/maintenance/services'
+      fullPath: '/maintenance/services'
+      preLoaderRoute: typeof AuthenticatedMaintenanceServicesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/maintenance/tasks': {
+      id: '/_authenticated/maintenance/tasks'
+      path: '/maintenance/tasks'
+      fullPath: '/maintenance/tasks'
+      preLoaderRoute: typeof AuthenticatedMaintenanceTasksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/objects/': {
       id: '/_authenticated/objects/'
       path: '/objects'
@@ -1237,6 +1376,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCrmTasksIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/maintenance/objects/$id': {
+      id: '/_authenticated/maintenance/objects/$id'
+      path: '/$id'
+      fullPath: '/maintenance/objects/$id'
+      preLoaderRoute: typeof AuthenticatedMaintenanceObjectsIdRouteImport
+      parentRoute: typeof AuthenticatedMaintenanceObjectsRoute
+    }
+    '/_authenticated/maintenance/objects/new': {
+      id: '/_authenticated/maintenance/objects/new'
+      path: '/new'
+      fullPath: '/maintenance/objects/new'
+      preLoaderRoute: typeof AuthenticatedMaintenanceObjectsNewRouteImport
+      parentRoute: typeof AuthenticatedMaintenanceObjectsRoute
+    }
     '/_authenticated/objects/$id/': {
       id: '/_authenticated/objects/$id/'
       path: '/objects/$id'
@@ -1335,8 +1488,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/maintenance/objects/$id/edit': {
+      id: '/_authenticated/maintenance/objects/$id/edit'
+      path: '/edit'
+      fullPath: '/maintenance/objects/$id/edit'
+      preLoaderRoute: typeof AuthenticatedMaintenanceObjectsIdEditRouteImport
+      parentRoute: typeof AuthenticatedMaintenanceObjectsIdRoute
+    }
   }
 }
+
+interface AuthenticatedMaintenanceObjectsIdRouteChildren {
+  AuthenticatedMaintenanceObjectsIdEditRoute: typeof AuthenticatedMaintenanceObjectsIdEditRoute
+}
+
+const AuthenticatedMaintenanceObjectsIdRouteChildren: AuthenticatedMaintenanceObjectsIdRouteChildren =
+  {
+    AuthenticatedMaintenanceObjectsIdEditRoute:
+      AuthenticatedMaintenanceObjectsIdEditRoute,
+  }
+
+const AuthenticatedMaintenanceObjectsIdRouteWithChildren =
+  AuthenticatedMaintenanceObjectsIdRoute._addFileChildren(
+    AuthenticatedMaintenanceObjectsIdRouteChildren,
+  )
+
+interface AuthenticatedMaintenanceObjectsRouteChildren {
+  AuthenticatedMaintenanceObjectsIdRoute: typeof AuthenticatedMaintenanceObjectsIdRouteWithChildren
+  AuthenticatedMaintenanceObjectsNewRoute: typeof AuthenticatedMaintenanceObjectsNewRoute
+}
+
+const AuthenticatedMaintenanceObjectsRouteChildren: AuthenticatedMaintenanceObjectsRouteChildren =
+  {
+    AuthenticatedMaintenanceObjectsIdRoute:
+      AuthenticatedMaintenanceObjectsIdRouteWithChildren,
+    AuthenticatedMaintenanceObjectsNewRoute:
+      AuthenticatedMaintenanceObjectsNewRoute,
+  }
+
+const AuthenticatedMaintenanceObjectsRouteWithChildren =
+  AuthenticatedMaintenanceObjectsRoute._addFileChildren(
+    AuthenticatedMaintenanceObjectsRouteChildren,
+  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
@@ -1344,6 +1537,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHotelOwnersRoute: typeof AuthenticatedHotelOwnersRoute
   AuthenticatedHotelRoomsRoute: typeof AuthenticatedHotelRoomsRoute
   AuthenticatedHotelSyncRoute: typeof AuthenticatedHotelSyncRoute
+  AuthenticatedMaintenanceCalendarRoute: typeof AuthenticatedMaintenanceCalendarRoute
+  AuthenticatedMaintenanceObjectsRoute: typeof AuthenticatedMaintenanceObjectsRouteWithChildren
+  AuthenticatedMaintenanceServicesRoute: typeof AuthenticatedMaintenanceServicesRoute
+  AuthenticatedMaintenanceTasksRoute: typeof AuthenticatedMaintenanceTasksRoute
   AuthenticatedObjectsNewRoute: typeof AuthenticatedObjectsNewRoute
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
   AuthenticatedPromoAvitoRoute: typeof AuthenticatedPromoAvitoRoute
@@ -1357,6 +1554,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedComplexesIndexRoute: typeof AuthenticatedComplexesIndexRoute
   AuthenticatedHotelIndexRoute: typeof AuthenticatedHotelIndexRoute
+  AuthenticatedMaintenanceIndexRoute: typeof AuthenticatedMaintenanceIndexRoute
   AuthenticatedObjectsIndexRoute: typeof AuthenticatedObjectsIndexRoute
   AuthenticatedOwnerIndexRoute: typeof AuthenticatedOwnerIndexRoute
   AuthenticatedPromoIndexRoute: typeof AuthenticatedPromoIndexRoute
@@ -1379,6 +1577,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHotelOwnersRoute: AuthenticatedHotelOwnersRoute,
   AuthenticatedHotelRoomsRoute: AuthenticatedHotelRoomsRoute,
   AuthenticatedHotelSyncRoute: AuthenticatedHotelSyncRoute,
+  AuthenticatedMaintenanceCalendarRoute: AuthenticatedMaintenanceCalendarRoute,
+  AuthenticatedMaintenanceObjectsRoute:
+    AuthenticatedMaintenanceObjectsRouteWithChildren,
+  AuthenticatedMaintenanceServicesRoute: AuthenticatedMaintenanceServicesRoute,
+  AuthenticatedMaintenanceTasksRoute: AuthenticatedMaintenanceTasksRoute,
   AuthenticatedObjectsNewRoute: AuthenticatedObjectsNewRoute,
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
   AuthenticatedPromoAvitoRoute: AuthenticatedPromoAvitoRoute,
@@ -1392,6 +1595,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedComplexesIndexRoute: AuthenticatedComplexesIndexRoute,
   AuthenticatedHotelIndexRoute: AuthenticatedHotelIndexRoute,
+  AuthenticatedMaintenanceIndexRoute: AuthenticatedMaintenanceIndexRoute,
   AuthenticatedObjectsIndexRoute: AuthenticatedObjectsIndexRoute,
   AuthenticatedOwnerIndexRoute: AuthenticatedOwnerIndexRoute,
   AuthenticatedPromoIndexRoute: AuthenticatedPromoIndexRoute,

@@ -77,14 +77,24 @@ type Props = {
   initial?: Property;
   onSubmit: (input: PropertyInput) => Promise<void>;
   submitting?: boolean;
+  /** Режим блока «Обслуживание»: только дома/виллы, управление, без автопубликации. */
+  maintenanceMode?: boolean;
 };
 
-export function PropertyForm({ initial, onSubmit, submitting }: Props) {
+export function PropertyForm({ initial, onSubmit, submitting, maintenanceMode }: Props) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [internalName, setInternalName] = useState(initial?.internal_name ?? "");
   const [type, setType] = useState<PropertyType>(
-    initial?.type === "aparts" ? "apartment" : initial?.type === "villa" ? "house" : (initial?.type ?? "apartment"),
+    maintenanceMode
+      ? initial?.type === "villa"
+        ? "villa"
+        : "house"
+      : initial?.type === "aparts"
+        ? "apartment"
+        : initial?.type === "villa"
+          ? "house"
+          : (initial?.type ?? "apartment"),
   );
   const [complexId, setComplexId] = useState<string | null>(initial?.complex_id ?? null);
   const [complexDialog, setComplexDialog] = useState(false);
@@ -102,7 +112,7 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
   const [bathrooms, setBathrooms] = useState(String(initial?.bathrooms ?? 1));
   const [status, setStatus] = useState<PropertyStatus>(initial?.status ?? "free");
   const [serviceType, setServiceType] = useState<ServiceType>(
-    initial?.service_type ?? "management",
+    maintenanceMode ? "management" : (initial?.service_type ?? "management"),
   );
   const [feeType, setFeeType] = useState<ManagementFeeType>(
     initial?.management_fee_type ?? "percent",
@@ -111,7 +121,12 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
     initial?.management_fee_value != null ? String(initial.management_fee_value) : "",
   );
   const [availabilityNote, setAvailabilityNote] = useState(initial?.availability_note ?? "");
-  const [published, setPublished] = useState(initial ? Boolean(initial.published) : true);
+  const [published, setPublished] = useState(
+    initial ? Boolean(initial.published) : maintenanceMode ? false : true,
+  );
+  const [forRent, setForRent] = useState(
+    initial ? initial.for_rent !== false : maintenanceMode ? false : true,
+  );
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [videoUrl, setVideoUrl] = useState(initial?.video_url ?? "");
@@ -379,9 +394,11 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
       location_description: locationDescription,
       rent_terms: rentTermsLines.map((l) => l.trim()).filter(Boolean).join("\n"),
       card_highlights: cardHighlights,
-      service_type: serviceType,
+      service_type: maintenanceMode ? "management" : serviceType,
       management_fee_type: feeType,
-      management_fee_value: serviceType === "management" ? toNum(feeValue) : null,
+      management_fee_value:
+        (maintenanceMode || serviceType === "management") ? toNum(feeValue) : null,
+      for_rent: forRent,
       availability_note: serviceType === "commission_only" ? availabilityNote.trim() : "",
       beds_count: toNum(bedsCount),
       repair_type: repairType,
@@ -399,18 +416,24 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
         <h2 className="text-base font-semibold">Основная информация</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <Field label="Тип услуги (только в RM OS)" className="md:col-span-2">
-            <Select value={serviceType} onValueChange={(v) => setServiceType(v as ServiceType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SERVICE_TYPES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {maintenanceMode ? (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                Управление объектом
+              </p>
+            ) : (
+              <Select value={serviceType} onValueChange={(v) => setServiceType(v as ServiceType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_TYPES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </Field>
 
           <Field label="Тип объекта" className="md:col-span-2">
@@ -419,7 +442,10 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PROPERTY_TYPES.map((t) => (
+                {(maintenanceMode
+                  ? PROPERTY_TYPES.filter((t) => t.value === "house")
+                  : PROPERTY_TYPES
+                ).map((t) => (
                   <SelectItem key={t.value} value={t.value}>
                     {t.label}
                   </SelectItem>
@@ -623,6 +649,22 @@ export function PropertyForm({ initial, onSubmit, submitting }: Props) {
             <span className="block font-medium">Опубликовать на сайте Residence More</span>
             <span className="mt-0.5 block text-muted-foreground">
               Объект появится на публичной странице со списком аренды.
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-4 flex items-start gap-3 md:col-span-2">
+          <input
+            type="checkbox"
+            id="for_rent"
+            checked={forRent}
+            onChange={(e) => setForRent(e.target.checked)}
+            className="mt-1 size-5 accent-[hsl(var(--primary))]"
+          />
+          <label htmlFor="for_rent" className="cursor-pointer text-sm">
+            <span className="block font-medium">В аренду</span>
+            <span className="mt-0.5 block text-muted-foreground">
+              Показывать в календаре аренды RM OS. Без галочки объект остаётся только в обслуживании.
             </span>
           </label>
         </div>

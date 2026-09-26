@@ -144,6 +144,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (f["description"] != null) patch["description"] = f["description"];
     if (f["rentTerms"] != null) patch["rent_terms"] = f["rentTerms"];
     if (f["availabilityNote"] != null) patch["availability_note"] = f["availabilityNote"];
+    if (f["forRent"] != null) patch["for_rent"] = Boolean(f["forRent"]);
     if (f["videoUrl"] != null) patch["video_url"] = String(f["videoUrl"]).trim();
     if (!Object.keys(patch).length) throw new Error("Нет изменений");
     const { error } = await supabaseAdmin
@@ -919,6 +920,54 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const { error } = await supabaseAdmin.from("task_types").delete().eq("id", typeId);
     if (error) throw new Error(error.message);
     return "Тип задачи удалён";
+  },
+
+  upsertMaintenanceServiceItem: async (input) => {
+    const itemId = (input["itemId"] as string | null) || null;
+    const name = String(input["name"] ?? "").trim() || "Услуга";
+    const active = input["active"] == null ? true : Boolean(input["active"]);
+    if (itemId) {
+      const { error } = await supabaseAdmin
+        .from("maintenance_service_items")
+        .update({ name, active } as never)
+        .eq("id", itemId);
+      if (error) throw new Error(error.message);
+      return "Услуга обслуживания обновлена";
+    }
+    const { count } = await supabaseAdmin
+      .from("maintenance_service_items")
+      .select("id", { count: "exact", head: true });
+    const { error } = await supabaseAdmin
+      .from("maintenance_service_items")
+      .insert({ name, active, position: count ?? 0 } as never);
+    if (error) throw new Error(error.message);
+    return "Услуга обслуживания создана";
+  },
+
+  deleteMaintenanceServiceItem: async (input) => {
+    const itemId = must(input["itemId"] as string, "Не указана услуга");
+    const { error } = await supabaseAdmin.from("maintenance_service_items").delete().eq("id", itemId);
+    if (error) throw new Error(error.message);
+    return "Услуга обслуживания удалена";
+  },
+
+  setPropertyMaintenanceServices: async (input) => {
+    const propertyId = must(input["propertyId"] as string, "Не указан объект");
+    const serviceItemIds = Array.isArray(input["serviceItemIds"])
+      ? (input["serviceItemIds"] as string[]).filter(Boolean)
+      : [];
+    const { error: delError } = await supabaseAdmin
+      .from("property_maintenance_services")
+      .delete()
+      .eq("property_id", propertyId);
+    if (delError) throw new Error(delError.message);
+    if (serviceItemIds.length) {
+      const { error } = await supabaseAdmin.from("property_maintenance_services").insert(
+        serviceItemIds.map((service_item_id) => ({ property_id: propertyId, service_item_id })) as never,
+      );
+      if (error) throw new Error(error.message);
+    }
+    return "Услуги объекта обновлены";
   },
 };
 

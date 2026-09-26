@@ -67,6 +67,12 @@ type Props = {
   defaultDueEnd?: string;
   defaultDealId?: string | null;
   defaultPropertyId?: string | null;
+  /** Предвыбранный тип (например «Обслуживание»). */
+  defaultTaskTypeId?: string | null;
+  /** Ограничить список объектов (дома обслуживания). */
+  propertyIds?: string[] | null;
+  /** Зафиксировать тип задачи и скрыть выбор. */
+  lockTaskType?: boolean;
 };
 
 export function TaskDialog({
@@ -79,6 +85,9 @@ export function TaskDialog({
   defaultDueEnd,
   defaultDealId,
   defaultPropertyId,
+  defaultTaskTypeId,
+  propertyIds,
+  lockTaskType,
 }: Props) {
   const queryClient = useQueryClient();
   const { profile, isAdmin } = useAccess();
@@ -115,14 +124,20 @@ export function TaskDialog({
     setAssigneeId(task?.assignee_id ?? profile?.id ?? NONE);
     setPropertyId(task?.property_id ?? defaultPropertyId ?? NONE);
     setDealId(task?.deal_id ?? defaultDealId ?? NONE);
-    setTypeId(task?.task_type_id ?? types[0]?.id ?? NONE);
+    setTypeId(task?.task_type_id ?? defaultTaskTypeId ?? types[0]?.id ?? NONE);
     setDraftItems(task ? [] : [{ key: crypto.randomUUID(), title: "", done: false }]);
     setNewItem("");
-  }, [open, task?.id, defaultColumn, defaultDueDate, defaultDueStart, defaultDueEnd, defaultDealId, defaultPropertyId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
+  }, [open, task?.id, defaultColumn, defaultDueDate, defaultDueStart, defaultDueEnd, defaultDealId, defaultPropertyId, defaultTaskTypeId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
+
+  const selectableProperties = useMemo(() => {
+    if (!propertyIds) return properties;
+    const allowed = new Set(propertyIds);
+    return properties.filter((item) => allowed.has(item.id));
+  }, [properties, propertyIds]);
 
   const selectedProperty = useMemo(
-    () => properties.find((item) => item.id === (propertyId === NONE ? "" : propertyId)),
-    [properties, propertyId],
+    () => selectableProperties.find((item) => item.id === (propertyId === NONE ? "" : propertyId)),
+    [selectableProperties, propertyId],
   );
 
   const selectedDeal = useMemo(
@@ -251,22 +266,28 @@ export function TaskDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>Тип</Label>
-              <Select value={typeId} onValueChange={setTypeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Тип задачи" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Без типа</SelectItem>
-                  {types.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      <span className="inline-flex items-center gap-2">
-                        <span className="size-2.5 rounded-full" style={{ background: type.color }} />
-                        {type.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {lockTaskType ? (
+                <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                  {types.find((type) => type.id === typeId)?.name ?? "Обслуживание"}
+                </p>
+              ) : (
+                <Select value={typeId} onValueChange={setTypeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Тип задачи" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Без типа</SelectItem>
+                    {types.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="size-2.5 rounded-full" style={{ background: type.color }} />
+                          {type.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label>Дата</Label>
@@ -425,7 +446,7 @@ export function TaskDialog({
                         <Check className={cn("mr-2 size-4", propertyId === NONE ? "opacity-100" : "opacity-0")} />
                         Не выбран
                       </CommandItem>
-                      {properties.map((property) => (
+                      {selectableProperties.map((property) => (
                         <CommandItem
                           key={property.id}
                           value={internalTitle(property)}
