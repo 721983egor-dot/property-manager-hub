@@ -18,7 +18,6 @@ import {
   Sparkles,
   UserRound,
   Users,
-  Wrench,
   Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -113,10 +112,7 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <CalendarDays className="size-4 shrink-0" />
         Календарь
       </Link>
-      <Link to="/maintenance/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Wrench className="size-4 shrink-0" />
-        Обслуживание
-      </Link>
+      {/* Обслуживание: код/роуты есть, пункт меню скрыт до готовности блока (прод). */}
       {isSocialOwner && (
         <Link to="/social" onClick={onNavigate} className={NAV_LINK_CLASS}>
           <Share2 className="size-4 shrink-0" />
