@@ -603,7 +603,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeTask: tool({
       description:
-        "Предложить создание или изменение задачи RM OS: название, тип, дата, интервал времени (например 10:00–10:30), исполнитель, объект, сделка CRM, комментарий, пункты чеклиста. С датой и временем задача видна в календаре. Требует подтверждения менеджера.",
+        "Предложить создание или изменение задачи RM OS: название, тип, дата, интервал времени (например 10:00–10:30), регулярность (повтор daily/weekly/monthly и срок жизни recurrenceUntil), исполнитель, объект, сделка CRM, комментарий, пункты чеклиста. С датой и временем задача видна в календаре. После выполнения регулярной задачи создаётся следующее повторение. Требует подтверждения менеджера.",
       inputSchema: z.object({
         taskId: z.string().optional(),
         title: z.string().optional(),
@@ -612,6 +612,12 @@ export function createMutateTools(ctx: AssistantToolContext) {
         dueDate: z.string().optional().describe("Дата ГГГГ-ММ-ДД, пустая строка чтобы убрать срок"),
         dueStart: z.string().optional().describe("Начало интервала ЧЧ:ММ"),
         dueEnd: z.string().optional().describe("Конец интервала ЧЧ:ММ"),
+        isRecurring: z.boolean().optional().describe("Регулярная задача"),
+        recurrence: z.enum(["daily", "weekly", "monthly"]).optional().describe("Периодичность повтора"),
+        recurrenceUntil: z
+          .string()
+          .optional()
+          .describe("Срок жизни регулярности ГГГГ-ММ-ДД; пустая строка чтобы убрать ограничение"),
         assigneeQuery: z.string().optional().describe("ФИО или почта исполнителя"),
         propertyRef: z.string().optional(),
         dealQuery: z.string().optional().describe("Название сделки CRM, к которой привязать задачу"),
@@ -658,6 +664,22 @@ export function createMutateTools(ctx: AssistantToolContext) {
                 : "";
           parts.push(`${input.dueDate}${range}`);
         }
+        if (input.isRecurring === false) parts.push("без регулярности");
+        else if (input.isRecurring || input.recurrence || input.recurrenceUntil != null) {
+          const freq =
+            input.recurrence === "daily"
+              ? "каждый день"
+              : input.recurrence === "monthly"
+                ? "каждый месяц"
+                : "каждую неделю";
+          const until =
+            input.recurrenceUntil === ""
+              ? ", без срока жизни"
+              : input.recurrenceUntil
+                ? `, до ${input.recurrenceUntil}`
+                : "";
+          parts.push(`регулярная (${freq}${until})`);
+        }
         if (assigneeName) parts.push(`исполнитель ${assigneeName}`);
         if (property) parts.push(`объект ${property.text}`);
         let dealId: string | null = null;
@@ -686,6 +708,10 @@ export function createMutateTools(ctx: AssistantToolContext) {
             dueDate: input.dueDate ?? null,
             dueStart: input.dueStart ?? null,
             dueEnd: input.dueEnd ?? null,
+            isRecurring: input.isRecurring ?? null,
+            recurrence: input.recurrence ?? null,
+            recurrenceUntil: input.recurrenceUntil ?? null,
+            clearRecurrenceUntil: input.recurrenceUntil === "",
             assigneeId,
             propertyId: property?.id ?? null,
             dealId,
@@ -768,18 +794,19 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeTaskType: tool({
       description:
-        "Предложить создание или изменение типа задачи (название и цвет). Требует подтверждения.",
+        "Предложить создание или изменение типа задачи (название, цвет HEX, порядок position). Порядок в UI меняется drag-and-drop. Требует подтверждения.",
       inputSchema: z.object({
         typeId: z.string().optional(),
         name: z.string(),
         color: z.string().optional().describe("HEX цвет, например #3b82f6"),
+        position: z.number().optional().describe("Позиция в списке типов, начиная с 0"),
       }),
-      execute: async ({ typeId, name, color }) => {
-        const summary = `${typeId ? "Изменить" : "Создать"} тип задачи «${name}»${color ? ` (${color})` : ""}`;
+      execute: async ({ typeId, name, color, position }) => {
+        const summary = `${typeId ? "Изменить" : "Создать"} тип задачи «${name}»${color ? ` (${color})` : ""}${position != null ? `, позиция ${position}` : ""}`;
         ctx.propose({
           tool: "upsertTaskType",
           summary,
-          input: { typeId: typeId ?? null, name, color: color ?? "#3b82f6" },
+          input: { typeId: typeId ?? null, name, color: color ?? "#3b82f6", position: position ?? null },
         });
         return { proposed: true, summary };
       },

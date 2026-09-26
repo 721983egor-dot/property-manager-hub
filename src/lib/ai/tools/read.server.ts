@@ -1478,7 +1478,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getTasks: tool({
       description:
-        "Канбан и календарь задач RM OS: открытые и выполненные. Фильтры: текст, исполнитель, объект, сделка, тип, статус (open/done), колонка (overdue/today/this_week/next_week/later/none). Задачи с датой и временем видны в календаре.",
+        "Канбан и календарь задач RM OS: открытые и выполненные. Фильтры: текст, исполнитель, объект, сделка, тип, статус (open/done), колонка (overdue/today/this_week/next_week/later/none), регулярные (isRecurring). Задачи с датой и временем видны в календаре. Регулярные после выполнения порождают следующее повторение до recurrence_until.",
       inputSchema: z.object({
         query: z.string().optional(),
         assigneeQuery: z.string().optional().describe("ФИО или почта сотрудника"),
@@ -1487,15 +1487,20 @@ export function createReadTools(ctx: AssistantToolContext) {
         typeName: z.string().optional().describe("Название типа задачи"),
         status: z.enum(["open", "done", "all"]).optional(),
         column: z.enum(["overdue", "today", "this_week", "next_week", "later", "none"]).optional(),
+        isRecurring: z.boolean().optional().describe("Только регулярные / только разовые"),
       }),
-      execute: async ({ query, assigneeQuery, propertyRef, dealQuery, typeName, status, column }) => {
+      execute: async ({ query, assigneeQuery, propertyRef, dealQuery, typeName, status, column, isRecurring }) => {
+        const selectWithRecurring =
+          "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, deal_id, task_type_id, position, completed_at, created_at, updated_at, is_recurring, recurrence, recurrence_until";
+        const selectWithDeal =
+          "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, deal_id, task_type_id, position, completed_at, created_at, updated_at";
+        const selectCore =
+          "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, task_type_id, position, completed_at, created_at, updated_at";
         const [{ data: taskRows, error: tasksError }, { data: items }, { data: profiles }, { data: types }] =
           await Promise.all([
             admin
               .from("tasks")
-              .select(
-                "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, deal_id, task_type_id, position, completed_at, created_at, updated_at",
-              )
+              .select(selectWithRecurring)
               .order("due_date", { ascending: true })
               .limit(300),
             admin.from("task_items").select("id, task_id, title, done, position").order("position"),
@@ -1504,12 +1509,19 @@ export function createReadTools(ctx: AssistantToolContext) {
           ]);
         let rows = taskRows;
         let error = tasksError;
+        if (error && /is_recurring|recurrence|schema cache|could not find/i.test(error.message)) {
+          const retry = await admin
+            .from("tasks")
+            .select(selectWithDeal)
+            .order("due_date", { ascending: true })
+            .limit(300);
+          rows = retry.data;
+          error = retry.error;
+        }
         if (error && /deal_id|schema cache|could not find/i.test(error.message)) {
           const retry = await admin
             .from("tasks")
-            .select(
-              "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, task_type_id, position, completed_at, created_at, updated_at",
-            )
+            .select(selectCore)
             .order("due_date", { ascending: true })
             .limit(300);
           rows = retry.data;
@@ -1595,6 +1607,9 @@ export function createReadTools(ctx: AssistantToolContext) {
           .filter((row) => (dealId ? row.deal_id === dealId : true))
           .filter((row) => (typeId ? row.task_type_id === typeId : true))
           .filter((row) => (wantedStatus === "all" ? true : row.status === wantedStatus))
+          .filter((row) =>
+            isRecurring == null ? true : Boolean(row.is_recurring) === isRecurring,
+          )
           .map((row) => {
             const type = row.task_type_id ? typeMap.get(row.task_type_id) : null;
             return {
@@ -1605,6 +1620,9 @@ export function createReadTools(ctx: AssistantToolContext) {
               dueDate: row.due_date,
               dueStart: String(row.due_start || "").slice(0, 5),
               dueEnd: String(row.due_end || "").slice(0, 5),
+              isRecurring: Boolean(row.is_recurring),
+              recurrence: row.is_recurring ? (row.recurrence ?? "weekly") : null,
+              recurrenceUntil: row.recurrence_until ?? null,
               onCalendar: Boolean(row.due_date && row.due_start && row.due_end && row.status !== "done"),
               column: columnOf(row.due_date),
               type: type?.name ?? "",
@@ -1632,7 +1650,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           count: mapped.length,
           source: "crm.tasks",
           types: (types ?? []).map((t) => ({ id: t.id, name: t.name, color: t.color })),
-          hint: "Колонки канбана — по дате. В календарь попадают только задачи с датой и временем.",
+          hint: "Колонки канбана — по дате. В календарь попадают только задачи с датой и временем. Регулярные: isRecurring + recurrence + recurrenceUntil.",
           tasks: mapped,
         };
       },

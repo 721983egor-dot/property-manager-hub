@@ -30,11 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccess } from "@/hooks/useAccess";
 import { fetchDeals } from "@/lib/deals";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import {
+  TASK_RECURRENCE_OPTIONS,
   TASK_TIME_SLOTS,
   addTaskItem,
   completeTask,
@@ -50,6 +52,7 @@ import {
   setTaskItemDone,
   type StaffTask,
   type TaskColumnId,
+  type TaskRecurrence,
 } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 
@@ -105,6 +108,9 @@ export function TaskDialog({
   const [propertyId, setPropertyId] = useState(NONE);
   const [dealId, setDealId] = useState(NONE);
   const [typeId, setTypeId] = useState(NONE);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrence, setRecurrence] = useState<TaskRecurrence>("weekly");
+  const [recurrenceUntil, setRecurrenceUntil] = useState("");
   const [propertyOpen, setPropertyOpen] = useState(false);
   const [dealOpen, setDealOpen] = useState(false);
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
@@ -125,6 +131,9 @@ export function TaskDialog({
     setPropertyId(task?.property_id ?? defaultPropertyId ?? NONE);
     setDealId(task?.deal_id ?? defaultDealId ?? NONE);
     setTypeId(task?.task_type_id ?? defaultTaskTypeId ?? types[0]?.id ?? NONE);
+    setIsRecurring(Boolean(task?.is_recurring));
+    setRecurrence(task?.recurrence ?? "weekly");
+    setRecurrenceUntil(task?.recurrence_until ?? "");
     setDraftItems(task ? [] : [{ key: crypto.randomUUID(), title: "", done: false }]);
     setNewItem("");
   }, [open, task?.id, defaultColumn, defaultDueDate, defaultDueStart, defaultDueEnd, defaultDealId, defaultPropertyId, defaultTaskTypeId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
@@ -170,6 +179,9 @@ export function TaskDialog({
         property_id: propertyId === NONE ? null : propertyId,
         deal_id: dealId === NONE ? null : dealId,
         task_type_id: typeId === NONE ? null : typeId,
+        is_recurring: isRecurring,
+        recurrence,
+        recurrence_until: isRecurring ? recurrenceUntil || null : null,
         position: task?.position ?? 0,
       });
       if (!task) {
@@ -351,6 +363,56 @@ export function TaskDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="rounded-lg border border-border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label htmlFor="task-recurring">Регулярная задача</Label>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  После выполнения создастся следующее повторение по дате и времени выше.
+                </p>
+              </div>
+              <Switch
+                id="task-recurring"
+                checked={isRecurring}
+                onCheckedChange={(checked) => {
+                  setIsRecurring(checked);
+                  if (checked && !dueDate) {
+                    setDueDate(dueDateForColumn("today", new Date(), "create") ?? "");
+                  }
+                }}
+              />
+            </div>
+            {isRecurring ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label>Повтор</Label>
+                  <Select value={recurrence} onValueChange={(value) => setRecurrence(value as TaskRecurrence)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TASK_RECURRENCE_OPTIONS.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Действует до</Label>
+                  <Input
+                    type="date"
+                    value={recurrenceUntil}
+                    min={dueDate || undefined}
+                    onChange={(event) => setRecurrenceUntil(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Срок жизни: до этой даты включительно.</p>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-1.5">

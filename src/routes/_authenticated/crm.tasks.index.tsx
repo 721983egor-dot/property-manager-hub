@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, CalendarDays, Check, ListTodo, Plus, Search, Settings2 } from "lucide-react";
+import { CalendarClock, CalendarDays, Check, ListTodo, Plus, RefreshCw, Search, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { TaskDialog } from "@/components/TaskDialog";
@@ -13,6 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAccess } from "@/hooks/useAccess";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchDeals } from "@/lib/deals";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import { formatDateRu, parseISODate, toISODate } from "@/lib/rentals";
@@ -25,10 +26,12 @@ import {
   formatTaskTimeRange,
   moveTask,
   postponeTask,
+  recurrenceLabel,
   taskColumnId,
   type StaffTask,
   type TaskColumnId,
 } from "@/lib/tasks";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/crm/tasks/")({
   head: () => ({
@@ -48,6 +51,7 @@ export const Route = createFileRoute("/_authenticated/crm/tasks/")({
 function TasksPage() {
   const queryClient = useQueryClient();
   const { profile } = useAccess();
+  const isMobile = useIsMobile();
   const { data: tasks = [], isLoading, error } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
   const { data: types = [] } = useQuery({ queryKey: ["task-types"], queryFn: fetchTaskTypes });
   const { data: properties = [] } = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
@@ -65,6 +69,8 @@ function TasksPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [postponeId, setPostponeId] = useState<string | null>(null);
+  /** На мобиле доска по умолчанию показывает «Сегодня». */
+  const [mobileColumn, setMobileColumn] = useState<TaskColumnId>("today");
 
   const staffName = useMemo(
     () => new Map(staff.map((member) => [member.id, member.full_name || member.email])),
@@ -294,156 +300,203 @@ function TasksPage() {
           {visible.length === 0 ? <p className="text-sm text-muted-foreground">Пока пусто.</p> : null}
         </div>
       ) : (
-        <div className="mt-5 flex gap-4 overflow-x-auto pb-4">
-          {TASK_COLUMNS.map((column) => {
-            const items = visible.filter((task) => taskColumnId(task) === column.id);
-            return (
-              <div
-                key={column.id}
-                className="flex w-[280px] shrink-0 flex-col rounded-lg bg-muted/40 p-2"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => {
-                  if (dragId) {
-                    moveMutation.mutate({ id: dragId, column: column.id, position: items.length });
-                  }
-                  setDragId(null);
-                }}
-              >
-                <div className="flex items-center gap-2 px-2 py-2">
-                  <span className="size-2.5 rounded-full" style={{ background: column.color }} />
-                  <span className="text-sm font-semibold">{column.name}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{items.length}</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {items.map((task) => {
-                    const type = task.task_type_id ? typeById.get(task.task_type_id) : null;
-                    return (
-                      <article
-                        key={task.id}
-                        draggable
-                        onDragStart={(event) => {
-                          if ((event.target as HTMLElement).closest("button")) {
-                            event.preventDefault();
-                            return;
-                          }
-                          setDragId(task.id);
-                        }}
-                        onDragEnd={() => setDragId(null)}
-                        onClick={() => openTask(task)}
-                        className={
-                          "cursor-pointer rounded-md border border-border bg-background p-3 text-left shadow-sm transition-shadow hover:shadow-md" +
-                          (dragId === task.id ? " opacity-50" : "")
-                        }
-                        style={type ? { borderLeftWidth: 4, borderLeftColor: type.color } : undefined}
-                      >
-                        <p className="text-sm font-medium">{taskTitle(task)}</p>
-                        {type ? (
-                          <p className="mt-1 text-xs font-medium" style={{ color: type.color }}>
-                            {type.name}
-                          </p>
-                        ) : null}
-                        {task.due_date && column.id !== "today" ? (
-                          <p className="mt-1 text-xs text-muted-foreground">{formatDateRu(task.due_date)}</p>
-                        ) : null}
-                        {task.assignee_id ? (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {staffName.get(task.assignee_id) ?? "Сотрудник"}
-                          </p>
-                        ) : null}
-                        {task.property_id ? (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                            {propertyName.get(task.property_id)}
-                          </p>
-                        ) : null}
-                        {task.deal_id ? (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                            Сделка: {dealName.get(task.deal_id) ?? "привязана"}
-                          </p>
-                        ) : null}
-                        {task.items.length > 0 ? (
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                            {task.items.slice(0, 6).map((item) => (
-                              <span
-                                key={item.id}
-                                className={
-                                  "size-2.5 rounded-full border " +
-                                  (item.done
-                                    ? "border-primary bg-primary"
-                                    : "border-muted-foreground/40")
-                                }
-                                title={item.title}
-                              />
-                            ))}
-                            <span className="text-xs text-muted-foreground">
-                              {task.items.filter((item) => item.done).length}/{task.items.length}
-                            </span>
-                          </div>
-                        ) : null}
-                        <div
-                          className="mt-2 flex flex-wrap gap-1.5"
-                          onClick={(event) => event.stopPropagation()}
-                          onMouseDown={(event) => event.stopPropagation()}
-                        >
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-xs"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              doneMutation.mutate(task.id);
+        <>
+          {isMobile ? (
+            <div className="mt-4 flex gap-1.5 overflow-x-auto pb-1">
+              {TASK_COLUMNS.map((column) => {
+                const count = visible.filter((task) => taskColumnId(task) === column.id).length;
+                const active = mobileColumn === column.id;
+                return (
+                  <button
+                    key={column.id}
+                    type="button"
+                    onClick={() => setMobileColumn(column.id)}
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                      active
+                        ? "border-transparent text-white"
+                        : "border-border bg-background text-muted-foreground",
+                    )}
+                    style={active ? { background: column.color } : undefined}
+                  >
+                    {column.name}
+                    <span className={cn("ml-1.5 tabular-nums", active ? "opacity-90" : "opacity-60")}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          <div className={cn("mt-5 flex gap-4 pb-4", isMobile ? "flex-col" : "overflow-x-auto")}>
+            {(isMobile ? TASK_COLUMNS.filter((column) => column.id === mobileColumn) : TASK_COLUMNS).map(
+              (column) => {
+                const items = visible.filter((task) => taskColumnId(task) === column.id);
+                return (
+                  <div
+                    key={column.id}
+                    className={cn(
+                      "flex flex-col rounded-lg bg-muted/40 p-2",
+                      isMobile ? "w-full" : "w-[280px] shrink-0",
+                    )}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => {
+                      if (dragId) {
+                        moveMutation.mutate({ id: dragId, column: column.id, position: items.length });
+                      }
+                      setDragId(null);
+                    }}
+                  >
+                    <div className="flex items-center gap-2 px-2 py-2">
+                      <span className="size-2.5 rounded-full" style={{ background: column.color }} />
+                      <span className="text-sm font-semibold">{column.name}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{items.length}</span>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {items.map((task) => {
+                        const type = task.task_type_id ? typeById.get(task.task_type_id) : null;
+                        return (
+                          <article
+                            key={task.id}
+                            draggable={!isMobile}
+                            onDragStart={(event) => {
+                              if (isMobile) return;
+                              if ((event.target as HTMLElement).closest("button")) {
+                                event.preventDefault();
+                                return;
+                              }
+                              setDragId(task.id);
                             }}
+                            onDragEnd={() => setDragId(null)}
+                            onClick={() => openTask(task)}
+                            className={
+                              "cursor-pointer rounded-md border border-border bg-background p-3 text-left shadow-sm transition-shadow hover:shadow-md" +
+                              (dragId === task.id ? " opacity-50" : "")
+                            }
+                            style={type ? { borderLeftWidth: 4, borderLeftColor: type.color } : undefined}
                           >
-                            <Check className="mr-1 size-3" />
-                            Выполнено
-                          </Button>
-                          <Popover
-                            open={postponeId === task.id}
-                            onOpenChange={(open) => setPostponeId(open ? task.id : null)}
-                          >
-                            <PopoverTrigger asChild>
+                            <p className="text-sm font-medium">{taskTitle(task)}</p>
+                            {type ? (
+                              <p className="mt-1 text-xs font-medium" style={{ color: type.color }}>
+                                {type.name}
+                              </p>
+                            ) : null}
+                            {task.is_recurring ? (
+                              <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                <RefreshCw className="size-3" />
+                                {recurrenceLabel(task.recurrence)}
+                                {task.recurrence_until
+                                  ? ` · до ${formatDateRu(task.recurrence_until)}`
+                                  : ""}
+                              </p>
+                            ) : null}
+                            {task.due_date && column.id !== "today" ? (
+                              <p className="mt-1 text-xs text-muted-foreground">{formatDateRu(task.due_date)}</p>
+                            ) : null}
+                            {task.assignee_id ? (
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {staffName.get(task.assignee_id) ?? "Сотрудник"}
+                              </p>
+                            ) : null}
+                            {task.property_id ? (
+                              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                                {propertyName.get(task.property_id)}
+                              </p>
+                            ) : null}
+                            {task.deal_id ? (
+                              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                                Сделка: {dealName.get(task.deal_id) ?? "привязана"}
+                              </p>
+                            ) : null}
+                            {task.items.length > 0 ? (
+                              <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                                {task.items.slice(0, 6).map((item) => (
+                                  <span
+                                    key={item.id}
+                                    className={
+                                      "size-2.5 rounded-full border " +
+                                      (item.done
+                                        ? "border-primary bg-primary"
+                                        : "border-muted-foreground/40")
+                                    }
+                                    title={item.title}
+                                  />
+                                ))}
+                                <span className="text-xs text-muted-foreground">
+                                  {task.items.filter((item) => item.done).length}/{task.items.length}
+                                </span>
+                              </div>
+                            ) : null}
+                            <div
+                              className="mt-2 flex flex-wrap gap-1.5"
+                              onClick={(event) => event.stopPropagation()}
+                              onMouseDown={(event) => event.stopPropagation()}
+                            >
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="ghost"
+                                variant="outline"
                                 className="h-7 px-2 text-xs"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <CalendarClock className="mr-1 size-3" />
-                                Отложить
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-auto p-2"
-                              align="start"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <Calendar
-                                mode="single"
-                                {...(task.due_date ? { selected: parseISODate(task.due_date) } : {})}
-                                onSelect={(date) => {
-                                  if (!date) return;
-                                  postponeMutation.mutate({ id: task.id, dueDate: toISODate(date) });
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  doneMutation.mutate(task.id);
                                 }}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => openNew(column.id)}
-                  className="mt-2 rounded-md px-2 py-2 text-left text-xs text-muted-foreground hover:bg-background"
-                >
-                  + Добавить задачу
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                              >
+                                <Check className="mr-1 size-3" />
+                                Выполнено
+                              </Button>
+                              <Popover
+                                open={postponeId === task.id}
+                                onOpenChange={(open) => setPostponeId(open ? task.id : null)}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    <CalendarClock className="mr-1 size-3" />
+                                    Отложить
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-auto p-2"
+                                  align="start"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    {...(task.due_date ? { selected: parseISODate(task.due_date) } : {})}
+                                    onSelect={(date) => {
+                                      if (!date) return;
+                                      postponeMutation.mutate({ id: task.id, dueDate: toISODate(date) });
+                                    }}
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </article>
+                        );
+                      })}
+                      {items.length === 0 ? (
+                        <p className="px-2 py-3 text-xs text-muted-foreground">Нет задач в этой колонке.</p>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openNew(column.id)}
+                      className="mt-2 rounded-md px-2 py-2 text-left text-xs text-muted-foreground hover:bg-background"
+                    >
+                      + Добавить задачу
+                    </button>
+                  </div>
+                );
+              },
+            )}
+          </div>
+        </>
       )}
 
       <TaskDialog

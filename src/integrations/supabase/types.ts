@@ -1928,8 +1928,11 @@ export type Database = {
           due_end: string
           due_start: string
           id: string
+          is_recurring: boolean
           position: number
           property_id: string | null
+          recurrence: string
+          recurrence_until: string | null
           status: string
           task_type_id: string | null
           title: string
@@ -1946,8 +1949,11 @@ export type Database = {
           due_end?: string
           due_start?: string
           id?: string
+          is_recurring?: boolean
           position?: number
           property_id?: string | null
+          recurrence?: string
+          recurrence_until?: string | null
           status?: string
           task_type_id?: string | null
           title?: string
@@ -1964,8 +1970,11 @@ export type Database = {
           due_end?: string
           due_start?: string
           id?: string
+          is_recurring?: boolean
           position?: number
           property_id?: string | null
+          recurrence?: string
+          recurrence_until?: string | null
           status?: string
           task_type_id?: string | null
           title?: string

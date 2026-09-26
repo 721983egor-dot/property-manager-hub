@@ -804,32 +804,55 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (input["propertyId"] != null) patch["property_id"] = input["propertyId"];
     if (input["dealId"] != null) patch["deal_id"] = input["dealId"];
     if (input["typeId"] != null) patch["task_type_id"] = input["typeId"];
+    if (input["isRecurring"] != null) patch["is_recurring"] = Boolean(input["isRecurring"]);
+    if (input["recurrence"] != null) {
+      const value = String(input["recurrence"]);
+      patch["recurrence"] = value === "daily" || value === "monthly" ? value : "weekly";
+    }
+    if (input["clearRecurrenceUntil"]) patch["recurrence_until"] = null;
+    else if (input["recurrenceUntil"] != null) patch["recurrence_until"] = input["recurrenceUntil"] || null;
+    if (patch["is_recurring"] === false) {
+      patch["recurrence_until"] = null;
+    }
     if (input["status"] != null) {
       patch["status"] = input["status"];
       patch["completed_at"] = input["status"] === "done" ? new Date().toISOString() : null;
     }
     let savedId = taskId;
     if (taskId) {
-      const { error } = await supabaseAdmin.from("tasks").update(patch as never).eq("id", taskId);
+      let { error } = await supabaseAdmin.from("tasks").update(patch as never).eq("id", taskId);
+      if (error && /is_recurring|recurrence|schema cache|could not find/i.test(error.message)) {
+        const stripped = { ...patch };
+        delete stripped.is_recurring;
+        delete stripped.recurrence;
+        delete stripped.recurrence_until;
+        ({ error } = await supabaseAdmin.from("tasks").update(stripped as never).eq("id", taskId));
+      }
       if (error) throw new Error(error.message);
     } else {
-      const { data, error } = await supabaseAdmin
-        .from("tasks")
-        .insert({
-          title: (patch["title"] as string) || "Новая задача",
-          description: (patch["description"] as string) ?? "",
-          due_date: (patch["due_date"] as string | null) ?? null,
-          due_start: (patch["due_start"] as string) ?? "",
-          due_end: (patch["due_end"] as string) ?? "",
-          assignee_id: (patch["assignee_id"] as string | null) ?? null,
-          property_id: (patch["property_id"] as string | null) ?? null,
-          deal_id: (patch["deal_id"] as string | null) ?? null,
-          task_type_id: (patch["task_type_id"] as string | null) ?? null,
-          status: (patch["status"] as string) ?? "open",
-          completed_at: (patch["completed_at"] as string | null) ?? null,
-        } as never)
-        .select("id")
-        .single();
+      const insertRow: Record<string, unknown> = {
+        title: (patch["title"] as string) || "Новая задача",
+        description: (patch["description"] as string) ?? "",
+        due_date: (patch["due_date"] as string | null) ?? null,
+        due_start: (patch["due_start"] as string) ?? "",
+        due_end: (patch["due_end"] as string) ?? "",
+        assignee_id: (patch["assignee_id"] as string | null) ?? null,
+        property_id: (patch["property_id"] as string | null) ?? null,
+        deal_id: (patch["deal_id"] as string | null) ?? null,
+        task_type_id: (patch["task_type_id"] as string | null) ?? null,
+        is_recurring: Boolean(patch["is_recurring"]),
+        recurrence: (patch["recurrence"] as string) ?? "weekly",
+        recurrence_until: (patch["recurrence_until"] as string | null) ?? null,
+        status: (patch["status"] as string) ?? "open",
+        completed_at: (patch["completed_at"] as string | null) ?? null,
+      };
+      let { data, error } = await supabaseAdmin.from("tasks").insert(insertRow as never).select("id").single();
+      if (error && /is_recurring|recurrence|schema cache|could not find/i.test(error.message)) {
+        delete insertRow.is_recurring;
+        delete insertRow.recurrence;
+        delete insertRow.recurrence_until;
+        ({ data, error } = await supabaseAdmin.from("tasks").insert(insertRow as never).select("id").single());
+      }
       if (error) throw new Error(error.message);
       savedId = (data as { id: string }).id;
     }
@@ -849,11 +872,101 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
 
   completeTask: async (input) => {
     const taskId = must(input["taskId"] as string, "Не указана задача");
+    const { data: task, error: loadError } = await supabaseAdmin
+      .from("tasks")
+      .select(
+        "id, title, description, due_date, due_start, due_end, assignee_id, created_by, property_id, deal_id, task_type_id, position, is_recurring, recurrence, recurrence_until",
+      )
+      .eq("id", taskId)
+      .maybeSingle();
+    let current = task as Record<string, unknown> | null;
+    if (loadError && /is_recurring|recurrence|schema cache|could not find/i.test(loadError.message)) {
+      const retry = await supabaseAdmin
+        .from("tasks")
+        .select(
+          "id, title, description, due_date, due_start, due_end, assignee_id, created_by, property_id, deal_id, task_type_id, position",
+        )
+        .eq("id", taskId)
+        .maybeSingle();
+      if (retry.error) throw new Error(retry.error.message);
+      current = retry.data as Record<string, unknown> | null;
+    } else if (loadError) {
+      throw new Error(loadError.message);
+    }
     const { error } = await supabaseAdmin
       .from("tasks")
       .update({ status: "done", completed_at: new Date().toISOString() } as never)
       .eq("id", taskId);
     if (error) throw new Error(error.message);
+
+    if (current?.is_recurring && current.due_date) {
+      const recurrence =
+        current.recurrence === "daily" || current.recurrence === "monthly" ? current.recurrence : "weekly";
+      const due = String(current.due_date);
+      const [y, m, d] = due.split("-").map(Number);
+      const base = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+      let next: Date;
+      if (recurrence === "daily") next = new Date(base.getFullYear(), base.getMonth(), base.getDate() + 1);
+      else if (recurrence === "weekly") next = new Date(base.getFullYear(), base.getMonth(), base.getDate() + 7);
+      else {
+        next = new Date(base.getFullYear(), base.getMonth() + 1, base.getDate());
+        if (next.getDate() !== base.getDate()) next = new Date(base.getFullYear(), base.getMonth() + 2, 0);
+      }
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const nextDue = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+      const until = (current.recurrence_until as string | null) ?? null;
+      if (!until || nextDue <= until) {
+        const { data: items } = await supabaseAdmin
+          .from("task_items")
+          .select("title, position")
+          .eq("task_id", taskId)
+          .order("position");
+        const insertRow: Record<string, unknown> = {
+          title: current.title,
+          description: current.description ?? "",
+          status: "open",
+          due_date: nextDue,
+          due_start: current.due_start ?? "",
+          due_end: current.due_end ?? "",
+          assignee_id: current.assignee_id ?? null,
+          property_id: current.property_id ?? null,
+          deal_id: current.deal_id ?? null,
+          task_type_id: current.task_type_id ?? null,
+          is_recurring: true,
+          recurrence,
+          recurrence_until: until,
+          position: current.position ?? 0,
+          created_by: current.created_by ?? null,
+          completed_at: null,
+        };
+        let { data: created, error: spawnError } = await supabaseAdmin
+          .from("tasks")
+          .insert(insertRow as never)
+          .select("id")
+          .single();
+        if (spawnError && /is_recurring|recurrence|schema cache|could not find/i.test(spawnError.message)) {
+          delete insertRow.is_recurring;
+          delete insertRow.recurrence;
+          delete insertRow.recurrence_until;
+          ({ data: created, error: spawnError } = await supabaseAdmin
+            .from("tasks")
+            .insert(insertRow as never)
+            .select("id")
+            .single());
+        }
+        if (spawnError) throw new Error(spawnError.message);
+        const newId = (created as { id: string }).id;
+        const checklist = (items ?? [])
+          .map((item) => String(item.title ?? "").trim())
+          .filter(Boolean)
+          .map((title, position) => ({ task_id: newId, title, done: false, position }));
+        if (checklist.length) {
+          const { error: itemsError } = await supabaseAdmin.from("task_items").insert(checklist as never);
+          if (itemsError) throw new Error(itemsError.message);
+        }
+        return `Задача отмечена выполненной, следующее повторение на ${nextDue}`;
+      }
+    }
     return "Задача отмечена выполненной";
   },
 
@@ -913,10 +1026,11 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
 
   upsertTaskType: async (input) => {
     const typeId = (input["typeId"] as string | null) || null;
-    const row = {
+    const row: Record<string, unknown> = {
       name: String(input["name"] ?? "Тип").trim() || "Тип",
       color: String(input["color"] ?? "#3b82f6"),
     };
+    if (input["position"] != null) row["position"] = Number(input["position"]);
     if (typeId) {
       const { error } = await supabaseAdmin.from("task_types").update(row as never).eq("id", typeId);
       if (error) throw new Error(error.message);
@@ -927,7 +1041,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       .select("id", { count: "exact", head: true });
     const { error } = await supabaseAdmin
       .from("task_types")
-      .insert({ ...row, position: count ?? 0 } as never);
+      .insert({ ...row, position: row["position"] ?? count ?? 0 } as never);
     if (error) throw new Error(error.message);
     return "Тип задачи создан";
   },

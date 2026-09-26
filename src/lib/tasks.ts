@@ -5,6 +5,9 @@ export type TaskStatus = "open" | "done";
 
 export type TaskColumnId = "overdue" | "today" | "this_week" | "next_week" | "later" | "none";
 
+/** Периодичность регулярной задачи. */
+export type TaskRecurrence = "daily" | "weekly" | "monthly";
+
 export type TaskType = {
   id: string;
   name: string;
@@ -34,6 +37,9 @@ export type StaffTask = {
   property_id: string | null;
   deal_id: string | null;
   task_type_id: string | null;
+  is_recurring: boolean;
+  recurrence: TaskRecurrence;
+  recurrence_until: string | null;
   position: number;
   completed_at: string | null;
   created_at: string;
@@ -58,6 +64,9 @@ export type TaskInput = {
   property_id: string | null;
   deal_id: string | null;
   task_type_id: string | null;
+  is_recurring?: boolean;
+  recurrence?: TaskRecurrence;
+  recurrence_until?: string | null;
   position?: number;
 };
 
@@ -66,6 +75,12 @@ export type TaskTypeInput = {
   color: string;
   position: number;
 };
+
+export const TASK_RECURRENCE_OPTIONS: { id: TaskRecurrence; label: string }[] = [
+  { id: "daily", label: "Каждый день" },
+  { id: "weekly", label: "Каждую неделю" },
+  { id: "monthly", label: "Каждый месяц" },
+];
 
 export const TASK_TYPE_COLORS = [
   "#ef4444",
@@ -91,13 +106,44 @@ export const TASK_COLUMNS: { id: TaskColumnId; name: string; color: string }[] =
   { id: "none", name: "Без срока", color: "#94a3b8" },
 ];
 
-const TASK_COLUMNS_CORE =
+const TASK_COLUMNS_BASE =
   "id, title, description, status, due_date, due_start, due_end, assignee_id, created_by, property_id, task_type_id, position, completed_at, created_at, updated_at";
 
-const TASK_COLUMNS_SQL = `${TASK_COLUMNS_CORE}, deal_id`;
+const TASK_COLUMNS_WITH_DEAL = `${TASK_COLUMNS_BASE}, deal_id`;
+
+const TASK_COLUMNS_WITH_RECURRING = `${TASK_COLUMNS_WITH_DEAL}, is_recurring, recurrence, recurrence_until`;
 
 function missingDealColumn(message: string) {
   return /deal_id|schema cache|could not find/i.test(message);
+}
+
+function missingRecurringColumn(message: string) {
+  return /is_recurring|recurrence_until|recurrence|schema cache|could not find/i.test(message);
+}
+
+function normalizeRecurrence(value: unknown): TaskRecurrence {
+  if (value === "daily" || value === "monthly") return value;
+  return "weekly";
+}
+
+/** Следующая дата повторения после dueDate. */
+export function nextRecurrenceDate(
+  dueDate: string,
+  recurrence: TaskRecurrence,
+): string {
+  const date = parseISODate(dueDate);
+  if (recurrence === "daily") return toISODate(addDays(date, 1));
+  if (recurrence === "weekly") return toISODate(addDays(date, 7));
+  const next = new Date(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  // Если день «перескочил» месяц (31 → март), берём последний день целевого месяца.
+  if (next.getDate() !== date.getDate()) {
+    return toISODate(new Date(date.getFullYear(), date.getMonth() + 2, 0));
+  }
+  return toISODate(next);
+}
+
+export function recurrenceLabel(recurrence: TaskRecurrence): string {
+  return TASK_RECURRENCE_OPTIONS.find((item) => item.id === recurrence)?.label ?? "Каждую неделю";
 }
 
 export function timeSlots(stepMin = 30, from = "07:00", to = "22:00"): string[] {
@@ -201,6 +247,9 @@ function mapTask(row: Record<string, unknown>, items: StaffTaskItem[]): StaffTas
     property_id: (row.property_id as string | null) ?? null,
     deal_id: (row.deal_id as string | null) ?? null,
     task_type_id: (row.task_type_id as string | null) ?? null,
+    is_recurring: Boolean(row.is_recurring),
+    recurrence: normalizeRecurrence(row.recurrence),
+    recurrence_until: (row.recurrence_until as string | null) ?? null,
     position: Number(row.position ?? 0),
     completed_at: (row.completed_at as string | null) ?? null,
     created_at: String(row.created_at ?? ""),
@@ -262,9 +311,26 @@ export async function deleteTaskType(id: string) {
   if (error) throw error;
 }
 
+/** Сохраняет порядок типов после drag-and-drop. */
+export async function reorderTaskTypes(orderedIds: string[]) {
+  const results = await Promise.all(
+    orderedIds.map((id, position) =>
+      supabase.from("task_types").update({ position } as never).eq("id", id),
+    ),
+  );
+  const failed = results.find((result) => result.error);
+  if (failed?.error) throw failed.error;
+}
+
 async function selectTasks(run: (columns: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }>) {
-  const first = await run(TASK_COLUMNS_SQL);
-  const result = missingDealColumn(first.error?.message ?? "") ? await run(TASK_COLUMNS_CORE) : first;
+  const first = await run(TASK_COLUMNS_WITH_RECURRING);
+  let result = first;
+  if (missingRecurringColumn(first.error?.message ?? "")) {
+    result = await run(TASK_COLUMNS_WITH_DEAL);
+  }
+  if (missingDealColumn(result.error?.message ?? "")) {
+    result = await run(TASK_COLUMNS_BASE);
+  }
   if (result.error) throw result.error;
   return attachItems((result.data ?? []) as Record<string, unknown>[]);
 }
@@ -298,7 +364,8 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  const row = {
+  const isRecurring = Boolean(input.is_recurring);
+  const row: Record<string, unknown> = {
     title: input.title.trim() || "Без названия",
     description: input.description.trim(),
     status: input.status,
@@ -309,6 +376,9 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
     property_id: input.property_id,
     deal_id: input.deal_id,
     task_type_id: input.task_type_id,
+    is_recurring: isRecurring,
+    recurrence: isRecurring ? normalizeRecurrence(input.recurrence) : "weekly",
+    recurrence_until: isRecurring ? input.recurrence_until || null : null,
     position: input.position ?? 0,
     completed_at: input.status === "done" ? new Date().toISOString() : null,
   };
@@ -322,16 +392,85 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
           .single();
 
   let result = await write(row);
+  if (result.error && missingRecurringColumn(result.error.message)) {
+    const stripped = { ...row };
+    delete stripped.is_recurring;
+    delete stripped.recurrence;
+    delete stripped.recurrence_until;
+    result = await write(stripped);
+  }
   if (result.error && missingDealColumn(result.error.message)) {
-    const { deal_id: _dealId, ...rest } = row;
-    result = await write(rest);
+    const stripped = { ...row };
+    delete stripped.deal_id;
+    delete stripped.is_recurring;
+    delete stripped.recurrence;
+    delete stripped.recurrence_until;
+    result = await write(stripped);
   }
   if (result.error) throw result.error;
   if (id) return id;
   return (result.data as { id: string }).id;
 }
 
+async function spawnNextRecurringTask(task: StaffTask) {
+  if (!task.is_recurring || !task.due_date) return;
+  const nextDue = nextRecurrenceDate(task.due_date, task.recurrence);
+  if (task.recurrence_until && nextDue > task.recurrence_until) return;
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const row: Record<string, unknown> = {
+    title: task.title,
+    description: task.description,
+    status: "open",
+    due_date: nextDue,
+    due_start: task.due_start,
+    due_end: task.due_end,
+    assignee_id: task.assignee_id,
+    property_id: task.property_id,
+    deal_id: task.deal_id,
+    task_type_id: task.task_type_id,
+    is_recurring: true,
+    recurrence: task.recurrence,
+    recurrence_until: task.recurrence_until,
+    position: task.position,
+    created_by: session?.user?.id ?? task.created_by,
+    completed_at: null,
+  };
+
+  let insert = await supabase.from("tasks").insert(row as never).select("id").single();
+  if (insert.error && missingRecurringColumn(insert.error.message)) {
+    const stripped = { ...row };
+    delete stripped.is_recurring;
+    delete stripped.recurrence;
+    delete stripped.recurrence_until;
+    insert = await supabase.from("tasks").insert(stripped as never).select("id").single();
+  }
+  if (insert.error && missingDealColumn(insert.error.message)) {
+    const stripped = { ...row };
+    delete stripped.deal_id;
+    delete stripped.is_recurring;
+    delete stripped.recurrence;
+    delete stripped.recurrence_until;
+    insert = await supabase.from("tasks").insert(stripped as never).select("id").single();
+  }
+  if (insert.error) throw insert.error;
+
+  const newId = (insert.data as { id: string }).id;
+  if (task.items.length > 0) {
+    await saveTaskItems(
+      newId,
+      task.items.map((item) => item.title),
+    );
+  }
+}
+
 export async function completeTask(id: string) {
+  const tasks = await selectTasks(async (columns) =>
+    supabase.from("tasks").select(columns).eq("id", id).limit(1),
+  );
+  const task = tasks[0];
   const { error } = await supabase
     .from("tasks")
     .update({
@@ -340,6 +479,7 @@ export async function completeTask(id: string) {
     } as never)
     .eq("id", id);
   if (error) throw error;
+  if (task) await spawnNextRecurringTask(task);
 }
 
 export async function reopenTask(id: string) {
