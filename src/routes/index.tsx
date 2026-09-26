@@ -10,8 +10,10 @@ import { catalogRoomOptions } from "@/lib/rent-search";
 import {
   publicComplexesQueryOptions,
   publicFreeFromQueryOptions,
+  publicPropertyViewCountsQueryOptions,
   publishedPropertiesQueryOptions,
 } from "@/lib/public-catalog.functions";
+import { pickPopularProperties, POPULAR_HOME_LIMIT } from "@/lib/popular-objects";
 import { complexSlug, publicPhotoUrl } from "@/lib/seo";
 import {
   SITE_ADDRESS,
@@ -35,6 +37,7 @@ export const Route = createFileRoute("/")({
       context.queryClient.ensureQueryData(publishedPropertiesQueryOptions()),
       context.queryClient.ensureQueryData(publicComplexesQueryOptions()),
       context.queryClient.ensureQueryData(publicFreeFromQueryOptions()),
+      context.queryClient.ensureQueryData(publicPropertyViewCountsQueryOptions()),
     ]);
   },
   head: () => {
@@ -146,6 +149,7 @@ function HomePage() {
   const { data: allProperties = [] } = useSuspenseQuery(publishedPropertiesQueryOptions());
   const { data: complexes = [] } = useSuspenseQuery(publicComplexesQueryOptions());
   const { data: availability } = useSuspenseQuery(publicFreeFromQueryOptions());
+  const { data: viewCounts = {} } = useSuspenseQuery(publicPropertyViewCountsQueryOptions());
   const freeFrom = availability?.freeFrom ?? {};
   const nextStart = availability?.nextStart ?? {};
   const complexLinks = complexes.filter((c) => c.show_in_site_filter);
@@ -161,12 +165,14 @@ function HomePage() {
 
   const popular = useMemo(
     () =>
-      activeProperties.slice(0, 6).map((p) => ({
-        property: p,
-        freeFromIso: freeFrom[p.id] ?? null,
-        nextStartIso: nextStart[p.id] ?? null,
-      })),
-    [activeProperties, freeFrom, nextStart],
+      pickPopularProperties(activeProperties, viewCounts, { limit: POPULAR_HOME_LIMIT }).map(
+        (p) => ({
+          property: p,
+          freeFromIso: freeFrom[p.id] ?? null,
+          nextStartIso: nextStart[p.id] ?? null,
+        }),
+      ),
+    [activeProperties, viewCounts, freeFrom, nextStart],
   );
 
   const roomCounts = useMemo(() => catalogRoomOptions(activeProperties), [activeProperties]);

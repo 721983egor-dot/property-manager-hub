@@ -182,6 +182,48 @@ export function publicFreeFromQueryOptions() {
   });
 }
 
+/** Окно учёта просмотров карточек для блока «Популярные объекты» на главной. */
+const POPULAR_VIEWS_DAYS = 90;
+
+/**
+ * Число page_view по объектам за последние N дней (анонимная аналитика сайта).
+ * Нужно для смеси «новые + популярные» на главной.
+ */
+export async function loadPropertyPageViewCounts(
+  days = POPULAR_VIEWS_DAYS,
+): Promise<Record<string, number>> {
+  const since = new Date();
+  since.setUTCDate(since.getUTCDate() - Math.max(1, days));
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("property_events")
+    .select("property_id")
+    .eq("event_type", "page_view")
+    .gte("occurred_at", since.toISOString())
+    .limit(50_000);
+  if (error) throw new Error(error.message);
+
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const id = row.property_id;
+    if (!id) continue;
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+export const listPropertyPageViewCounts = createServerFn({ method: "POST" }).handler(
+  async () => loadPropertyPageViewCounts(),
+);
+
+export function publicPropertyViewCountsQueryOptions() {
+  return queryOptions({
+    queryKey: ["public-property-view-counts"],
+    queryFn: () => listPropertyPageViewCounts(),
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function resolveComplexBySlug(complexes: Complex[], slug: string): Complex | null {
   const wanted = slug.trim().toLowerCase();
   if (!wanted) return null;
