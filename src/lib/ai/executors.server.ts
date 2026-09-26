@@ -802,8 +802,12 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     }
     if (input["assigneeId"] != null) patch["assignee_id"] = input["assigneeId"];
     if (input["propertyId"] != null) patch["property_id"] = input["propertyId"];
-    if (input["dealId"] != null) patch["deal_id"] = input["dealId"];
+    if (input["clearDeal"]) patch["deal_id"] = null;
+    else if (input["dealId"] != null) patch["deal_id"] = input["dealId"];
     if (input["typeId"] != null) patch["task_type_id"] = input["typeId"];
+    if (input["maintenanceServiceItemId"] !== undefined) {
+      patch["maintenance_service_item_id"] = input["maintenanceServiceItemId"] || null;
+    }
     if (input["isRecurring"] != null) patch["is_recurring"] = Boolean(input["isRecurring"]);
     if (input["recurrence"] != null) {
       const value = String(input["recurrence"]);
@@ -821,11 +825,17 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     let savedId = taskId;
     if (taskId) {
       let { error } = await supabaseAdmin.from("tasks").update(patch as never).eq("id", taskId);
+      if (error && /maintenance_service_item_id|schema cache|could not find/i.test(error.message)) {
+        const stripped = { ...patch };
+        delete stripped.maintenance_service_item_id;
+        ({ error } = await supabaseAdmin.from("tasks").update(stripped as never).eq("id", taskId));
+      }
       if (error && /is_recurring|recurrence|schema cache|could not find/i.test(error.message)) {
         const stripped = { ...patch };
         delete stripped.is_recurring;
         delete stripped.recurrence;
         delete stripped.recurrence_until;
+        delete stripped.maintenance_service_item_id;
         ({ error } = await supabaseAdmin.from("tasks").update(stripped as never).eq("id", taskId));
       }
       if (error) throw new Error(error.message);
@@ -840,6 +850,8 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
         property_id: (patch["property_id"] as string | null) ?? null,
         deal_id: (patch["deal_id"] as string | null) ?? null,
         task_type_id: (patch["task_type_id"] as string | null) ?? null,
+        maintenance_service_item_id:
+          (patch["maintenance_service_item_id"] as string | null | undefined) ?? null,
         is_recurring: Boolean(patch["is_recurring"]),
         recurrence: (patch["recurrence"] as string) ?? "weekly",
         recurrence_until: (patch["recurrence_until"] as string | null) ?? null,
@@ -847,10 +859,15 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
         completed_at: (patch["completed_at"] as string | null) ?? null,
       };
       let { data, error } = await supabaseAdmin.from("tasks").insert(insertRow as never).select("id").single();
+      if (error && /maintenance_service_item_id|schema cache|could not find/i.test(error.message)) {
+        delete insertRow.maintenance_service_item_id;
+        ({ data, error } = await supabaseAdmin.from("tasks").insert(insertRow as never).select("id").single());
+      }
       if (error && /is_recurring|recurrence|schema cache|could not find/i.test(error.message)) {
         delete insertRow.is_recurring;
         delete insertRow.recurrence;
         delete insertRow.recurrence_until;
+        delete insertRow.maintenance_service_item_id;
         ({ data, error } = await supabaseAdmin.from("tasks").insert(insertRow as never).select("id").single());
       }
       if (error) throw new Error(error.message);

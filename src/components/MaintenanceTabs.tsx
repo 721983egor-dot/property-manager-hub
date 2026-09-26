@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 
 const ITEMS = [
   { to: "/maintenance/objects", label: "Объекты", active: "objects" },
-  { to: "/maintenance/calendar", label: "Календарь", active: "calendar" },
   { to: "/maintenance/tasks", label: "Задачи", active: "tasks" },
   { to: "/maintenance/services", label: "Услуги", active: "services" },
 ] as const;
@@ -10,7 +9,7 @@ const ITEMS = [
 export function MaintenanceTabs({
   active,
 }: {
-  active: "objects" | "calendar" | "tasks" | "services";
+  active: "objects" | "tasks" | "services";
 }) {
   return (
     <div className="mt-6 border-b border-border">

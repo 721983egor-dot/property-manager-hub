@@ -188,11 +188,10 @@ export function MaintenanceTasksPage({ defaultView }: { defaultView: "board" | "
     <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <div className="flex flex-wrap items-center gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {defaultView === "calendar" ? "Календарь обслуживания" : "Задачи обслуживания"}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Задачи обслуживания</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Тип «{MAINTENANCE_TASK_TYPE_NAME}» — те же задачи видны в общем блоке CRM → Задачи.
+            Тип «{MAINTENANCE_TASK_TYPE_NAME}» — доска и календарь в одном месте, как в CRM. Те же
+            задачи видны в общем блоке CRM → Задачи.
           </p>
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
@@ -202,7 +201,7 @@ export function MaintenanceTasksPage({ defaultView }: { defaultView: "board" | "
         </div>
       </div>
 
-      <MaintenanceTabs active={defaultView === "calendar" ? "calendar" : "tasks"} />
+      <MaintenanceTabs active="tasks" />
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <div className="flex rounded-md border border-border p-0.5">

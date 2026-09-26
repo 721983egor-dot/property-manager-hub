@@ -37,6 +37,8 @@ export type StaffTask = {
   property_id: string | null;
   deal_id: string | null;
   task_type_id: string | null;
+  /** Услуга из справочника обслуживания (для типа «Обслуживание»). */
+  maintenance_service_item_id: string | null;
   is_recurring: boolean;
   recurrence: TaskRecurrence;
   recurrence_until: string | null;
@@ -64,6 +66,7 @@ export type TaskInput = {
   property_id: string | null;
   deal_id: string | null;
   task_type_id: string | null;
+  maintenance_service_item_id?: string | null;
   is_recurring?: boolean;
   recurrence?: TaskRecurrence;
   recurrence_until?: string | null;
@@ -113,12 +116,18 @@ const TASK_COLUMNS_WITH_DEAL = `${TASK_COLUMNS_BASE}, deal_id`;
 
 const TASK_COLUMNS_WITH_RECURRING = `${TASK_COLUMNS_WITH_DEAL}, is_recurring, recurrence, recurrence_until`;
 
+const TASK_COLUMNS_WITH_SERVICE = `${TASK_COLUMNS_WITH_RECURRING}, maintenance_service_item_id`;
+
 function missingDealColumn(message: string) {
   return /deal_id|schema cache|could not find/i.test(message);
 }
 
 function missingRecurringColumn(message: string) {
   return /is_recurring|recurrence_until|recurrence|schema cache|could not find/i.test(message);
+}
+
+function missingServiceColumn(message: string) {
+  return /maintenance_service_item_id|schema cache|could not find/i.test(message);
 }
 
 function normalizeRecurrence(value: unknown): TaskRecurrence {
@@ -247,6 +256,7 @@ function mapTask(row: Record<string, unknown>, items: StaffTaskItem[]): StaffTas
     property_id: (row.property_id as string | null) ?? null,
     deal_id: (row.deal_id as string | null) ?? null,
     task_type_id: (row.task_type_id as string | null) ?? null,
+    maintenance_service_item_id: (row.maintenance_service_item_id as string | null) ?? null,
     is_recurring: Boolean(row.is_recurring),
     recurrence: normalizeRecurrence(row.recurrence),
     recurrence_until: (row.recurrence_until as string | null) ?? null,
@@ -323,9 +333,12 @@ export async function reorderTaskTypes(orderedIds: string[]) {
 }
 
 async function selectTasks(run: (columns: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }>) {
-  const first = await run(TASK_COLUMNS_WITH_RECURRING);
+  const first = await run(TASK_COLUMNS_WITH_SERVICE);
   let result = first;
-  if (missingRecurringColumn(first.error?.message ?? "")) {
+  if (missingServiceColumn(first.error?.message ?? "")) {
+    result = await run(TASK_COLUMNS_WITH_RECURRING);
+  }
+  if (missingRecurringColumn(result.error?.message ?? "")) {
     result = await run(TASK_COLUMNS_WITH_DEAL);
   }
   if (missingDealColumn(result.error?.message ?? "")) {
@@ -376,6 +389,7 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
     property_id: input.property_id,
     deal_id: input.deal_id,
     task_type_id: input.task_type_id,
+    maintenance_service_item_id: input.maintenance_service_item_id ?? null,
     is_recurring: isRecurring,
     recurrence: isRecurring ? normalizeRecurrence(input.recurrence) : "weekly",
     recurrence_until: isRecurring ? input.recurrence_until || null : null,
@@ -392,8 +406,14 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
           .single();
 
   let result = await write(row);
+  if (result.error && missingServiceColumn(result.error.message)) {
+    const stripped = { ...row };
+    delete stripped.maintenance_service_item_id;
+    result = await write(stripped);
+  }
   if (result.error && missingRecurringColumn(result.error.message)) {
     const stripped = { ...row };
+    delete stripped.maintenance_service_item_id;
     delete stripped.is_recurring;
     delete stripped.recurrence;
     delete stripped.recurrence_until;
@@ -402,6 +422,7 @@ export async function saveTask(id: string | null, input: TaskInput): Promise<str
   if (result.error && missingDealColumn(result.error.message)) {
     const stripped = { ...row };
     delete stripped.deal_id;
+    delete stripped.maintenance_service_item_id;
     delete stripped.is_recurring;
     delete stripped.recurrence;
     delete stripped.recurrence_until;
@@ -431,6 +452,7 @@ async function spawnNextRecurringTask(task: StaffTask) {
     property_id: task.property_id,
     deal_id: task.deal_id,
     task_type_id: task.task_type_id,
+    maintenance_service_item_id: task.maintenance_service_item_id,
     is_recurring: true,
     recurrence: task.recurrence,
     recurrence_until: task.recurrence_until,
@@ -440,8 +462,14 @@ async function spawnNextRecurringTask(task: StaffTask) {
   };
 
   let insert = await supabase.from("tasks").insert(row as never).select("id").single();
+  if (insert.error && missingServiceColumn(insert.error.message)) {
+    const stripped = { ...row };
+    delete stripped.maintenance_service_item_id;
+    insert = await supabase.from("tasks").insert(stripped as never).select("id").single();
+  }
   if (insert.error && missingRecurringColumn(insert.error.message)) {
     const stripped = { ...row };
+    delete stripped.maintenance_service_item_id;
     delete stripped.is_recurring;
     delete stripped.recurrence;
     delete stripped.recurrence_until;
@@ -450,6 +478,7 @@ async function spawnNextRecurringTask(task: StaffTask) {
   if (insert.error && missingDealColumn(insert.error.message)) {
     const stripped = { ...row };
     delete stripped.deal_id;
+    delete stripped.maintenance_service_item_id;
     delete stripped.is_recurring;
     delete stripped.recurrence;
     delete stripped.recurrence_until;

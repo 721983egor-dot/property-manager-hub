@@ -34,6 +34,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccess } from "@/hooks/useAccess";
 import { fetchDeals } from "@/lib/deals";
+import {
+  fetchMaintenanceServiceItems,
+  filterMaintenanceProperties,
+  isMaintenanceTaskType,
+} from "@/lib/maintenance";
 import { fetchProperties, internalTitle } from "@/lib/properties";
 import {
   TASK_RECURRENCE_OPTIONS,
@@ -98,6 +103,10 @@ export function TaskDialog({
   const { data: staff = [] } = useQuery({ queryKey: ["staff-directory"], queryFn: fetchStaffDirectory });
   const { data: types = [] } = useQuery({ queryKey: ["task-types"], queryFn: fetchTaskTypes });
   const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: fetchDeals });
+  const { data: serviceItems = [] } = useQuery({
+    queryKey: ["maintenance-services", "active"],
+    queryFn: () => fetchMaintenanceServiceItems({ activeOnly: true }),
+  });
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -107,6 +116,7 @@ export function TaskDialog({
   const [assigneeId, setAssigneeId] = useState(NONE);
   const [propertyId, setPropertyId] = useState(NONE);
   const [dealId, setDealId] = useState(NONE);
+  const [serviceItemId, setServiceItemId] = useState(NONE);
   const [typeId, setTypeId] = useState(NONE);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrence, setRecurrence] = useState<TaskRecurrence>("weekly");
@@ -130,6 +140,7 @@ export function TaskDialog({
     setAssigneeId(task?.assignee_id ?? profile?.id ?? NONE);
     setPropertyId(task?.property_id ?? defaultPropertyId ?? NONE);
     setDealId(task?.deal_id ?? defaultDealId ?? NONE);
+    setServiceItemId(task?.maintenance_service_item_id ?? NONE);
     setTypeId(task?.task_type_id ?? defaultTaskTypeId ?? types[0]?.id ?? NONE);
     setIsRecurring(Boolean(task?.is_recurring));
     setRecurrence(task?.recurrence ?? "weekly");
@@ -138,11 +149,35 @@ export function TaskDialog({
     setNewItem("");
   }, [open, task?.id, defaultColumn, defaultDueDate, defaultDueStart, defaultDueEnd, defaultDealId, defaultPropertyId, defaultTaskTypeId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
 
+  const selectedType = useMemo(
+    () => types.find((type) => type.id === (typeId === NONE ? "" : typeId)) ?? null,
+    [types, typeId],
+  );
+  const isMaintenanceTask = Boolean(
+    lockTaskType || isMaintenanceTaskType(selectedType, defaultTaskTypeId ?? null),
+  );
+
   const selectableProperties = useMemo(() => {
+    if (isMaintenanceTask) {
+      const maintenance = filterMaintenanceProperties(properties, { includeArchived: true });
+      if (propertyIds) {
+        const allowed = new Set(propertyIds);
+        return maintenance.filter((item) => allowed.has(item.id));
+      }
+      return maintenance;
+    }
     if (!propertyIds) return properties;
     const allowed = new Set(propertyIds);
     return properties.filter((item) => allowed.has(item.id));
-  }, [properties, propertyIds]);
+  }, [properties, propertyIds, isMaintenanceTask]);
+
+  useEffect(() => {
+    if (!isMaintenanceTask) return;
+    setDealId(NONE);
+    if (propertyId !== NONE && !selectableProperties.some((p) => p.id === propertyId)) {
+      setPropertyId(NONE);
+    }
+  }, [isMaintenanceTask, selectableProperties, propertyId]);
 
   const selectedProperty = useMemo(
     () => selectableProperties.find((item) => item.id === (propertyId === NONE ? "" : propertyId)),
@@ -177,8 +212,13 @@ export function TaskDialog({
         due_end: dueDate ? end : "",
         assignee_id: assigneeId === NONE ? null : assigneeId,
         property_id: propertyId === NONE ? null : propertyId,
-        deal_id: dealId === NONE ? null : dealId,
+        deal_id: isMaintenanceTask ? null : dealId === NONE ? null : dealId,
         task_type_id: typeId === NONE ? null : typeId,
+        maintenance_service_item_id: isMaintenanceTask
+          ? serviceItemId === NONE
+            ? null
+            : serviceItemId
+          : null,
         is_recurring: isRecurring,
         recurrence,
         recurrence_until: isRecurring ? recurrenceUntil || null : null,
@@ -283,7 +323,18 @@ export function TaskDialog({
                   {types.find((type) => type.id === typeId)?.name ?? "Обслуживание"}
                 </p>
               ) : (
-                <Select value={typeId} onValueChange={setTypeId}>
+                <Select
+                  value={typeId}
+                  onValueChange={(value) => {
+                    setTypeId(value);
+                    const next = types.find((type) => type.id === value);
+                    if (isMaintenanceTaskType(next ?? null, defaultTaskTypeId ?? null)) {
+                      setDealId(NONE);
+                    } else {
+                      setServiceItemId(NONE);
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Тип задачи" />
                   </SelectTrigger>
@@ -415,6 +466,7 @@ export function TaskDialog({
             ) : null}
           </div>
 
+          {!isMaintenanceTask ? (
           <div className="grid gap-1.5">
             <Label>Сделка</Label>
             <Popover open={dealOpen} onOpenChange={setDealOpen}>
@@ -480,9 +532,10 @@ export function TaskDialog({
               <p className="text-xs text-muted-foreground">Задача появится в истории карточки сделки.</p>
             )}
           </div>
+          ) : null}
 
           <div className="grid gap-1.5">
-            <Label>Объект</Label>
+            <Label>{isMaintenanceTask ? "Объект обслуживания" : "Объект"}</Label>
             <Popover open={propertyOpen} onOpenChange={setPropertyOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="justify-between font-normal">
@@ -494,9 +547,17 @@ export function TaskDialog({
               </PopoverTrigger>
               <PopoverContent className="w-[min(28rem,90vw)] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="ЛБ2, 35к16, кв 2…" />
+                  <CommandInput
+                    placeholder={
+                      isMaintenanceTask ? "Дом или вилла обслуживания…" : "ЛБ2, 35к16, кв 2…"
+                    }
+                  />
                   <CommandList>
-                    <CommandEmpty>Ничего не найдено.</CommandEmpty>
+                    <CommandEmpty>
+                      {isMaintenanceTask
+                        ? "Нет объектов обслуживания."
+                        : "Ничего не найдено."}
+                    </CommandEmpty>
                     <CommandGroup>
                       <CommandItem
                         value="Не выбран"
@@ -528,10 +589,39 @@ export function TaskDialog({
                 </Command>
               </PopoverContent>
             </Popover>
+            {isMaintenanceTask ? (
+              <p className="text-xs text-muted-foreground">
+                Только дома и виллы из блока «Обслуживание».
+              </p>
+            ) : null}
+          </div>
+
+          {isMaintenanceTask ? (
+            <div className="grid gap-1.5">
+              <Label>Услуга</Label>
+              <Select value={serviceItemId} onValueChange={setServiceItemId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Услуга обслуживания" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Не выбрана</SelectItem>
+                  {serviceItems.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Справочник: Обслуживание → Услуги
+                {serviceItems.length === 0 ? " (пока пуст)" : ""}.
+              </p>
+            </div>
+          ) : (
             <p className="text-xs text-muted-foreground">
               Если объект выбран, задача появится в «Публикация и реклама».
             </p>
-          </div>
+          )}
 
           <div className="grid gap-1.5">
             <Label>Комментарий</Label>

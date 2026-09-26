@@ -129,6 +129,14 @@ export type Property = {
   management_fee_value: number | null;
   /** В календаре аренды — только при true. Для обслуживания домов включается явно. */
   for_rent: boolean;
+  /** Котёл: gas | electric | none | "". */
+  boiler_kind: string;
+  has_generator: boolean;
+  air_conditioners_count: number | null;
+  pool_length_m: number | null;
+  pool_width_m: number | null;
+  pool_heated: boolean;
+  garden_notes: string;
   availability_note: string;
   beds_count: number | null;
   repair_type: string;
@@ -468,6 +476,18 @@ function normalize(row: Record<string, unknown>): Property {
     management_fee_value: num(row['management_fee_value']),
     // До миграции колонки нет — считаем, что объект в аренде (старое поведение).
     for_rent: row["for_rent"] === false ? false : true,
+    boiler_kind:
+      row["boiler_kind"] === "gas" || row["boiler_kind"] === "electric" || row["boiler_kind"] === "none"
+        ? String(row["boiler_kind"])
+        : typeof row["boiler_kind"] === "string"
+          ? String(row["boiler_kind"])
+          : "",
+    has_generator: Boolean(row["has_generator"]),
+    air_conditioners_count: num(row["air_conditioners_count"]),
+    pool_length_m: num(row["pool_length_m"]),
+    pool_width_m: num(row["pool_width_m"]),
+    pool_heated: Boolean(row["pool_heated"]),
+    garden_notes: typeof row["garden_notes"] === "string" ? (row["garden_notes"] as string) : "",
     beds_count: num(row['beds_count']),
     repair_type: typeof row['repair_type'] === "string" ? (row['repair_type'] as string) : "",
     wc_location_type:
@@ -559,6 +579,13 @@ export type PropertyInput = {
   management_fee_type: ManagementFeeType;
   management_fee_value: number | null;
   for_rent: boolean;
+  boiler_kind: string;
+  has_generator: boolean;
+  air_conditioners_count: number | null;
+  pool_length_m: number | null;
+  pool_width_m: number | null;
+  pool_heated: boolean;
+  garden_notes: string;
   availability_note: string;
   beds_count: number | null;
   repair_type: string;

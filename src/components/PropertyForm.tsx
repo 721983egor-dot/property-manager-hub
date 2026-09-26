@@ -127,6 +127,19 @@ export function PropertyForm({ initial, onSubmit, submitting, maintenanceMode }:
   const [forRent, setForRent] = useState(
     initial ? initial.for_rent !== false : maintenanceMode ? false : true,
   );
+  const [boilerKind, setBoilerKind] = useState(initial?.boiler_kind ?? "");
+  const [hasGenerator, setHasGenerator] = useState(Boolean(initial?.has_generator));
+  const [acCount, setAcCount] = useState(
+    initial?.air_conditioners_count != null ? String(initial.air_conditioners_count) : "",
+  );
+  const [poolLength, setPoolLength] = useState(
+    initial?.pool_length_m != null ? String(initial.pool_length_m) : "",
+  );
+  const [poolWidth, setPoolWidth] = useState(
+    initial?.pool_width_m != null ? String(initial.pool_width_m) : "",
+  );
+  const [poolHeated, setPoolHeated] = useState(Boolean(initial?.pool_heated));
+  const [gardenNotes, setGardenNotes] = useState(initial?.garden_notes ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [photos, setPhotos] = useState<PropertyPhoto[]>(initial?.photos ?? []);
   const [videoUrl, setVideoUrl] = useState(initial?.video_url ?? "");
@@ -399,6 +412,13 @@ export function PropertyForm({ initial, onSubmit, submitting, maintenanceMode }:
       management_fee_value:
         (maintenanceMode || serviceType === "management") ? toNum(feeValue) : null,
       for_rent: forRent,
+      boiler_kind: boilerKind,
+      has_generator: hasGenerator,
+      air_conditioners_count: toNum(acCount),
+      pool_length_m: toNum(poolLength),
+      pool_width_m: toNum(poolWidth),
+      pool_heated: poolHeated,
+      garden_notes: gardenNotes.trim(),
       availability_note: serviceType === "commission_only" ? availabilityNote.trim() : "",
       beds_count: toNum(bedsCount),
       repair_type: repairType,
@@ -669,6 +689,92 @@ export function PropertyForm({ initial, onSubmit, submitting, maintenanceMode }:
           </label>
         </div>
       </section>
+
+      {maintenanceMode ? (
+        <section className="rounded-xl border border-border bg-card p-6">
+          <h2 className="text-base font-semibold">Обслуживание объекта</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Инженерия, бассейн и сад. Эти поля также редактируются в карточке обслуживания.
+          </p>
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <Field label="Котёл">
+              <Select
+                value={boilerKind || "__none__"}
+                onValueChange={(v) => setBoilerKind(v === "__none__" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Не указан" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Не указан</SelectItem>
+                  <SelectItem value="gas">Газовый</SelectItem>
+                  <SelectItem value="electric">Электро</SelectItem>
+                  <SelectItem value="none">Нет</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Кондиционеры, шт.">
+              <Input
+                type="number"
+                min={0}
+                value={acCount}
+                onChange={(e) => setAcCount(e.target.value)}
+                placeholder="0"
+              />
+            </Field>
+            <div className="flex items-start gap-3 md:col-span-2">
+              <input
+                type="checkbox"
+                id="has_generator"
+                checked={hasGenerator}
+                onChange={(e) => setHasGenerator(e.target.checked)}
+                className="mt-1 size-5 accent-[hsl(var(--primary))]"
+              />
+              <label htmlFor="has_generator" className="cursor-pointer text-sm font-medium">
+                Генератор есть
+              </label>
+            </div>
+            <Field label="Бассейн: длина, м">
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={poolLength}
+                onChange={(e) => setPoolLength(e.target.value)}
+              />
+            </Field>
+            <Field label="Бассейн: ширина, м">
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={poolWidth}
+                onChange={(e) => setPoolWidth(e.target.value)}
+              />
+            </Field>
+            <div className="flex items-start gap-3 md:col-span-2">
+              <input
+                type="checkbox"
+                id="pool_heated"
+                checked={poolHeated}
+                onChange={(e) => setPoolHeated(e.target.checked)}
+                className="mt-1 size-5 accent-[hsl(var(--primary))]"
+              />
+              <label htmlFor="pool_heated" className="cursor-pointer text-sm font-medium">
+                Подогрев бассейна есть
+              </label>
+            </div>
+            <Field label="Садовые насаждения" className="md:col-span-2">
+              <Textarea
+                value={gardenNotes}
+                onChange={(e) => setGardenNotes(e.target.value)}
+                placeholder="Деревья, кустарники, газон…"
+                rows={3}
+              />
+            </Field>
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-base font-semibold">Данные для площадок</h2>

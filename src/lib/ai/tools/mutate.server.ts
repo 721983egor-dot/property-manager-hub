@@ -898,7 +898,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeMaintenanceTask: tool({
       description:
-        "Предложить задачу обслуживания (тип «Обслуживание»). Видна и в общем блоке задач. Требует подтверждения.",
+        "Предложить задачу обслуживания (тип «Обслуживание»). Без сделки CRM. Объект — дом/вилла обслуживания; услуга — из справочника. Видна и в общем блоке задач. Требует подтверждения.",
       inputSchema: z.object({
         taskId: z.string().optional(),
         title: z.string().optional(),
@@ -908,6 +908,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         dueEnd: z.string().optional(),
         assigneeQuery: z.string().optional(),
         propertyRef: z.string().optional(),
+        serviceName: z.string().optional().describe("Название услуги из справочника обслуживания"),
         items: z.array(z.string()).optional(),
       }),
       execute: async (input) => {
@@ -920,6 +921,24 @@ export function createMutateTools(ctx: AssistantToolContext) {
         }
         const property = input.propertyRef ? await label(input.propertyRef) : null;
         if (input.propertyRef && !property) return { error: "Объект не найден" };
+        let serviceItemId: string | null = null;
+        let serviceLabel = "";
+        if (input.serviceName) {
+          const { data: catalog } = await ctx.admin
+            .from("maintenance_service_items")
+            .select("id, name")
+            .eq("active", true);
+          const found = (catalog ?? []).find(
+            (item) => item.name.toLowerCase() === input.serviceName!.trim().toLowerCase(),
+          );
+          if (!found) {
+            return {
+              error: `Услуга «${input.serviceName}» не найдена. Создайте через proposeMaintenanceServiceItem.`,
+            };
+          }
+          serviceItemId = found.id;
+          serviceLabel = found.name;
+        }
         let assigneeId: string | null = null;
         let assigneeName = "";
         if (input.assigneeQuery) {
@@ -940,6 +959,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (input.dueDate) parts.push(input.dueDate);
         if (assigneeName) parts.push(`исполнитель ${assigneeName}`);
         if (property) parts.push(`объект ${property.text}`);
+        if (serviceLabel) parts.push(`услуга ${serviceLabel}`);
         const summary = `${input.taskId ? "Изменить" : "Создать"} задачу обслуживания: ${parts.join(", ")}`;
         ctx.propose({
           tool: "upsertTask",
@@ -955,6 +975,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
             assigneeId,
             propertyId: property?.id ?? null,
             dealId: null,
+            clearDeal: true,
+            maintenanceServiceItemId: serviceItemId,
             status: null,
             items: input.items ?? null,
             clearDue: input.dueDate === "",

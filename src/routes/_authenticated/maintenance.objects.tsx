@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ImageIcon, Plus, Search } from "lucide-react";
+import { ImageIcon, Pencil, Plus, Search } from "lucide-react";
 
 import { MaintenanceTabs } from "@/components/MaintenanceTabs";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -138,6 +138,10 @@ function MaintenanceObjectsPage() {
                   {property.price_month != null ? ` · ${formatMoney(property.price_month)}` : ""}
                 </p>
               </div>
+              <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:inline-flex">
+                <Pencil className="size-3.5" />
+                Открыть
+              </span>
             </Link>
           );
         })}
