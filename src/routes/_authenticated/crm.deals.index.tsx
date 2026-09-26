@@ -11,6 +11,7 @@ import { AdminOnly } from "@/components/AdminOnly";
 import { CrmTabs } from "@/components/CrmTabs";
 
 import { DealDialog } from "@/components/DealDialog";
+import { IntakeDealDialog } from "@/components/IntakeDealDialog";
 import { DealAnalytics } from "@/components/DealAnalytics";
 import { DealSettingsDialog } from "@/components/DealSettingsDialog";
 import {
@@ -30,20 +31,25 @@ import { fetchProperties, internalTitle } from "@/lib/properties";
 import { listStaff } from "@/lib/staff.functions";
 import {
   customValueLabel,
-
   deleteDeal,
   fetchDealFields,
   fetchDealStages,
   fetchDeals,
   formatBudget,
   guestsLabel,
+  intakeDraftFromCustom,
   moveDeal,
   type Deal,
+  type DealPipeline,
 } from "@/lib/deals";
 
 export const Route = createFileRoute("/_authenticated/crm/deals/")({
   validateSearch: (search: Record<string, unknown>) => ({
     deal: typeof search.deal === "string" && search.deal ? search.deal : undefined,
+    funnel:
+      search.funnel === "intake" || search.funnel === "deals"
+        ? (search.funnel as "deals" | "intake")
+        : undefined,
   }),
   head: () => ({
     meta: [
@@ -51,12 +57,12 @@ export const Route = createFileRoute("/_authenticated/crm/deals/")({
       {
         name: "description",
         content:
-          "Канбан сделок RM OS: стадии, клиенты, объекты, бюджет, состав гостей и настраиваемые поля.",
+          "Канбан сделок и новых объектов RM OS: стадии, клиенты, объекты и настраиваемые поля.",
       },
       { property: "og:title", content: "Сделки — CRM RM OS" },
       {
         property: "og:description",
-        content: "Канбан сделок долгосрочной аренды: стадии, клиенты, бюджет и свои поля.",
+        content: "Канбан сделок аренды и приёма объектов: стадии, клиенты и свои поля.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -83,13 +89,25 @@ function DealsPage() {
   const initializeStages = useServerFn(createDefaultDealStages);
   const loadStaff = useServerFn(listStaff);
 
+  const pipeline: DealPipeline = searchParams.funnel === "intake" ? "intake" : "rental";
+  const isIntake = pipeline === "intake";
+
   const {
     data: stages = [],
     error: stagesError,
     isLoading: stagesLoading,
-  } = useQuery({ queryKey: ["deal-stages"], queryFn: fetchDealStages });
-  const { data: fields = [] } = useQuery({ queryKey: ["deal-fields"], queryFn: fetchDealFields });
-  const { data: deals = [], isLoading } = useQuery({ queryKey: ["deals"], queryFn: fetchDeals });
+  } = useQuery({
+    queryKey: ["deal-stages", pipeline],
+    queryFn: () => fetchDealStages(pipeline),
+  });
+  const { data: fields = [] } = useQuery({
+    queryKey: ["deal-fields", pipeline],
+    queryFn: () => fetchDealFields(pipeline),
+  });
+  const { data: deals = [], isLoading } = useQuery({
+    queryKey: ["deals", pipeline],
+    queryFn: () => fetchDeals(pipeline),
+  });
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
   const { data: properties = [] } = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
   const { data: staffData } = useQuery({
@@ -107,6 +125,19 @@ function DealsPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [closedView, setClosedView] = useState<"won" | "lost" | null>(null);
   const [pageView, setPageView] = useState<"board" | "analytics">("board");
+
+  const setFunnel = (next: "deals" | "intake") => {
+    setClosedView(null);
+    setPageView("board");
+    setDialogOpen(false);
+    setEditing(null);
+    void navigate({
+      search: {
+        deal: undefined,
+        funnel: next === "intake" ? "intake" : undefined,
+      },
+    });
+  };
 
   const boardStages = useMemo(() => stages.filter((s) => s.kind === "open"), [stages]);
   const wonStageIds = useMemo(
@@ -177,15 +208,15 @@ function DealsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       setDeleteId(null);
-      toast.success("Сделка удалена");
+      toast.success(isIntake ? "Карточка удалена" : "Сделка удалена");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось удалить"),
   });
 
   const stagesInit = useMutation({
-    mutationFn: () => initializeStages({} as never),
+    mutationFn: () => initializeStages({ data: { pipeline } } as never),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["deal-stages"] });
+      queryClient.invalidateQueries({ queryKey: ["deal-stages", pipeline] });
       toast.success(result.count > 0 ? "Стадии восстановлены" : "Стадии уже есть в базе");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось создать стадии"),
@@ -209,19 +240,44 @@ function DealsPage() {
     if (!dealId || deals.length === 0) return;
     const found = deals.find((item) => item.id === dealId);
     if (found && editing?.id !== found.id) openDeal(found);
-  }, [searchParams.deal, deals]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams.deal, deals, pipeline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const closeDialog = (open: boolean) => {
     setDialogOpen(open);
     if (!open && searchParams.deal) {
-      void navigate({ search: { deal: undefined } });
+      void navigate({
+        search: {
+          deal: undefined,
+          funnel: isIntake ? "intake" : undefined,
+        },
+      });
     }
   };
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Сделки</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {isIntake ? "Новые объекты" : "Сделки"}
+        </h1>
+        <div className="flex rounded-md border border-border p-0.5">
+          <Button
+            size="sm"
+            variant={!isIntake ? "default" : "ghost"}
+            className="h-8 px-3"
+            onClick={() => setFunnel("deals")}
+          >
+            Сделки
+          </Button>
+          <Button
+            size="sm"
+            variant={isIntake ? "default" : "ghost"}
+            className="h-8 px-3"
+            onClick={() => setFunnel("intake")}
+          >
+            Новые объекты
+          </Button>
+        </div>
         <div className="ml-auto flex flex-wrap gap-2">
           {isAdmin && (
             <Button variant="outline" onClick={() => setSettingsOpen(true)}>
@@ -229,7 +285,7 @@ function DealsPage() {
             </Button>
           )}
           <Button onClick={() => openNew(boardStages[0]?.id)}>
-            <Plus className="mr-1.5 size-4" /> Сделка
+            <Plus className="mr-1.5 size-4" /> {isIntake ? "Объект" : "Сделка"}
           </Button>
         </div>
       </div>
@@ -241,7 +297,7 @@ function DealsPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Поиск по сделкам"
+            placeholder={isIntake ? "Поиск по новым объектам" : "Поиск по сделкам"}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -303,7 +359,7 @@ function DealsPage() {
           }
           onClick={() => setClosedView(closedView === "won" ? null : "won")}
         >
-          Успешные сделки ({wonDeals.length})
+          Успешные {isIntake ? "объекты" : "сделки"} ({wonDeals.length})
         </Button>
         <Button
           variant="outline"
@@ -353,13 +409,17 @@ function DealsPage() {
       ) : null}
 
       {stagesLoading || isLoading ? (
-        <p className="mt-10 text-center text-muted-foreground">Загружаем сделки…</p>
+        <p className="mt-10 text-center text-muted-foreground">
+          {isIntake ? "Загружаем новые объекты…" : "Загружаем сделки…"}
+        </p>
       ) : boardStages.length === 0 ? (
         <div className="mt-8 rounded-lg border border-dashed border-border p-6 text-center">
           <p className="text-sm text-muted-foreground">
             {stagesError
               ? `Не удалось загрузить стадии: ${stagesError.message}`
-              : "Стадии сделок не найдены. Создайте стандартный набор — потом их можно переименовать."}
+              : isIntake
+                ? "Стадии новых объектов не найдены. Создайте стандартный набор — потом их можно переименовать."
+                : "Стадии сделок не найдены. Создайте стандартный набор — потом их можно переименовать."}
           </p>
           {isAdmin && (
             <Button className="mt-4" disabled={stagesInit.isPending} onClick={() => stagesInit.mutate()}>
@@ -406,7 +466,7 @@ function DealsPage() {
                       <p className="text-sm font-medium">{deal.title || "Без названия"}</p>
                       {deal.client_id && (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {clientName.get(deal.client_id) ?? "Клиент"}
+                          {clientName.get(deal.client_id) ?? (isIntake ? "Собственник" : "Клиент")}
                         </p>
                       )}
                       {deal.responsible_id ? (
@@ -414,6 +474,34 @@ function DealsPage() {
                           Ведёт: {staffName.get(deal.responsible_id) ?? "менеджер"}
                         </p>
                       ) : null}
+                      {isIntake ? (
+                        (() => {
+                          const draft = intakeDraftFromCustom(deal.custom);
+                          return (
+                            <>
+                              {draft.address ? (
+                                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                                  {draft.address}
+                                </p>
+                              ) : null}
+                              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                <span className="font-semibold">{formatBudget(deal.budget)}</span>
+                                {draft.property_type ? (
+                                  <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                                    {draft.property_type}
+                                  </span>
+                                ) : null}
+                                {deal.source ? (
+                                  <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                                    {deal.source}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </>
+                          );
+                        })()
+                      ) : (
+                        <>
                       {deal.property_id && (
                         <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                           {propertyName.get(deal.property_id)}
@@ -437,6 +525,8 @@ function DealsPage() {
                           <span className="text-muted-foreground">{deal.preferred_messenger}</span>
                         ) : null}
                       </div>
+                        </>
+                      )}
                       {cardFields.map((f) =>
                         deal.custom[f.key] == null || deal.custom[f.key] === "" ? null : (
                           <p key={f.id} className="mt-1 text-xs text-muted-foreground">
@@ -467,7 +557,7 @@ function DealsPage() {
                   onClick={() => openNew(stage.id)}
                   className="mt-2 rounded-md px-2 py-2 text-left text-xs text-muted-foreground hover:bg-background"
                 >
-                  + Добавить сделку
+                  + Добавить {isIntake ? "объект" : "сделку"}
                 </button>
               </div>
             );
@@ -480,28 +570,42 @@ function DealsPage() {
         </>
       )}
 
-      <DealDialog
-        open={dialogOpen}
-        onOpenChange={closeDialog}
-        deal={editing}
-        stages={stages}
-        fields={fields}
-        {...(defaultStage ? { defaultStageId: defaultStage } : {})}
-      />
+      {isIntake ? (
+        <IntakeDealDialog
+          open={dialogOpen}
+          onOpenChange={closeDialog}
+          deal={editing}
+          stages={stages}
+          fields={fields}
+          {...(defaultStage ? { defaultStageId: defaultStage } : {})}
+        />
+      ) : (
+        <DealDialog
+          open={dialogOpen}
+          onOpenChange={closeDialog}
+          deal={editing}
+          stages={stages}
+          fields={fields}
+          {...(defaultStage ? { defaultStageId: defaultStage } : {})}
+        />
+      )}
       {isAdmin && (
         <DealSettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           stages={stages}
           fields={fields}
+          pipeline={pipeline}
         />
       )}
 
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить сделку?</AlertDialogTitle>
-            <AlertDialogDescription>Восстановить сделку будет нельзя.</AlertDialogDescription>
+            <AlertDialogTitle>{isIntake ? "Удалить карточку?" : "Удалить сделку?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isIntake ? "Восстановить карточку будет нельзя." : "Восстановить сделку будет нельзя."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>

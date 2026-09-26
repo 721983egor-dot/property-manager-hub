@@ -124,17 +124,25 @@ export const getStaffProperty = createServerFn({ method: "POST" })
     return data;
   });
 
-const CLIENT_COLUMNS = "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios";
+const CLIENT_COLUMNS =
+  "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, party_kind";
+const CLIENT_COLUMNS_LEGACY = "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios";
 
 /** Клиенты для вошедших сотрудников. Менеджер получает только чтение. */
 export const listStaffClients = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .handler(async ({ context }) => {
     const admin = await requireStaff(context.userId);
-    const { data, error } = await admin
+    let { data, error } = await admin
       .from("clients")
       .select(CLIENT_COLUMNS)
       .order("full_name", { ascending: true });
+    if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
+      ({ data, error } = await admin
+        .from("clients")
+        .select(CLIENT_COLUMNS_LEGACY)
+        .order("full_name", { ascending: true }));
+    }
     if (error) throw new Error(error.message);
     return data ?? [];
   });
@@ -144,11 +152,18 @@ export const getStaffClient = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => input as { id: string })
   .handler(async ({ context, data: input }) => {
     const admin = await requireStaff(context.userId);
-    const { data, error } = await admin
+    let { data, error } = await admin
       .from("clients")
       .select(CLIENT_COLUMNS)
       .eq("id", input.id)
       .maybeSingle();
+    if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
+      ({ data, error } = await admin
+        .from("clients")
+        .select(CLIENT_COLUMNS_LEGACY)
+        .eq("id", input.id)
+        .maybeSingle());
+    }
     if (error) throw new Error(error.message);
     return data;
   });

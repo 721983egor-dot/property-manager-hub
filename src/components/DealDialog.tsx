@@ -147,6 +147,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
       saveDeal(deal?.id ?? null, {
         title: title.trim() || "Без названия",
         stage_id: overrideStageId ?? stageId,
+        pipeline: deal?.pipeline ?? "rental",
         client_id: clientId === NONE ? null : clientId,
         property_id: propertyId === NONE ? null : propertyId,
         responsible_id: responsibleId === NONE ? null : responsibleId,
@@ -186,6 +187,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           id: savedDealId,
           title,
           stage_id: stageId,
+          pipeline: "rental" as const,
           lead_id: null,
           position: 0,
           created_at: new Date().toISOString(),

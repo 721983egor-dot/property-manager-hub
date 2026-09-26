@@ -257,19 +257,31 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeClient: tool({
       description:
-        "Предложить создание клиента или изменение его данных (комментарий, чёрный список).",
+        "Предложить создание клиента или изменение его данных (комментарий, чёрный список, кто он: РМ / собственник / Н11).",
       inputSchema: z.object({
         fullName: z.string(),
         phone: z.string().optional(),
         comment: z.string().optional(),
         blacklisted: z.boolean().optional(),
         blacklistReason: z.string().optional(),
+        partyKind: z
+          .enum(["rm", "owner", "n11"])
+          .optional()
+          .describe("Кто он: rm = РМ, owner = собственник, n11 = Н11"),
       }),
       execute: async (input) => {
         const existing = await ctx.findClient(input.phone || input.fullName);
+        const kindLabel =
+          input.partyKind === "owner"
+            ? "собственник"
+            : input.partyKind === "n11"
+              ? "Н11"
+              : input.partyKind === "rm"
+                ? "РМ"
+                : null;
         const summary = existing
-          ? `Обновить клиента ${existing["full_name"] as string}`
-          : `Создать клиента ${input.fullName}${input.phone ? ` (${input.phone})` : ""}`;
+          ? `Обновить клиента ${existing["full_name"] as string}${kindLabel ? ` (${kindLabel})` : ""}`
+          : `Создать клиента ${input.fullName}${input.phone ? ` (${input.phone})` : ""}${kindLabel ? `, ${kindLabel}` : ""}`;
         ctx.propose({
           tool: "upsertClient",
           summary,
@@ -409,9 +421,13 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeDeal: tool({
       description:
-        "Предложить создание или изменение сделки CRM: название, стадия, клиент, объект, источник, бюджет, взрослые, дети, комментарий, Telegram, удобный мессенджер, дополнительные поля. Требует подтверждения менеджера.",
+        "Предложить создание или изменение сделки CRM (аренда) или карточки «Новый объект» (воронка собственников). pipeline=rental по умолчанию, intake — новые объекты. Требует подтверждения менеджера.",
       inputSchema: z.object({
         dealId: z.string().optional(),
+        pipeline: z
+          .enum(["rental", "intake"])
+          .optional()
+          .describe("rental = сделки аренды, intake = новые объекты"),
         title: z.string().optional(),
         stage: z.string().optional(),
         clientRef: z.string().optional(),
@@ -427,19 +443,40 @@ export function createMutateTools(ctx: AssistantToolContext) {
           .optional()
           .describe("Удобный мессенджер клиента"),
         custom: z.record(z.string(), z.string()).optional(),
+        intakeDraft: z
+          .object({
+            property_type: z.string().optional(),
+            complex_id: z.string().nullable().optional(),
+            address: z.string().optional(),
+            rooms: z.string().optional(),
+            bathrooms: z.string().optional(),
+            floor: z.string().optional(),
+            total_floors: z.string().optional(),
+            area: z.string().optional(),
+            price_month: z.string().optional(),
+            deposit: z.string().optional(),
+            commission: z.string().optional(),
+            service_type: z.string().optional(),
+            description: z.string().optional(),
+          })
+          .optional()
+          .describe("Черновик полей объекта для pipeline=intake"),
       }),
       execute: async (input) => {
-        const { data: stages } = await ctx.admin
-          .from("deal_stages")
-          .select("id, name")
-          .order("position");
+        const pipeline = input.pipeline === "intake" ? "intake" : "rental";
+        let stagesQuery = ctx.admin.from("deal_stages").select("id, name, pipeline").order("position");
+        let { data: stages, error: stagesError } = await stagesQuery.eq("pipeline", pipeline);
+        if (stagesError && /pipeline|schema cache|could not find/i.test(stagesError.message)) {
+          ({ data: stages } = await ctx.admin.from("deal_stages").select("id, name").order("position"));
+        }
         const stageRow = input.stage
           ? (stages ?? []).find((s) => s.name.toLowerCase() === input.stage!.toLowerCase())
           : null;
-        if (input.stage && !stageRow) return { error: "Стадия не найдена" };
+        if (input.stage && !stageRow) return { error: "Стадия не найдена в этой воронке" };
         const client = input.clientRef ? await ctx.findClient(input.clientRef) : null;
         const property = input.propertyRef ? await label(input.propertyRef) : null;
         const parts: string[] = [];
+        parts.push(pipeline === "intake" ? "новый объект" : "сделка");
         if (input.title) parts.push(`«${input.title}»`);
         if (stageRow) parts.push(`стадия «${stageRow.name}»`);
         if (client) parts.push(`клиент ${client["full_name"] as string}`);
@@ -450,12 +487,18 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (input.source) parts.push(`источник ${input.source}`);
         if (input.telegram) parts.push(`Telegram ${input.telegram}`);
         if (input.preferredMessenger) parts.push(`мессенджер ${input.preferredMessenger}`);
-        const summary = `${input.dealId ? "Изменить" : "Создать"} сделку: ${parts.join(", ") || "без изменений"}`;
+        if (input.intakeDraft?.address) parts.push(`адрес ${input.intakeDraft.address}`);
+        const summary = `${input.dealId ? "Изменить" : "Создать"} ${parts.join(", ") || "без изменений"}`;
+        const custom = {
+          ...(input.custom ?? {}),
+          ...(input.intakeDraft ? { intake_draft: input.intakeDraft } : {}),
+        };
         ctx.propose({
           tool: "upsertDeal",
           summary,
           input: {
             dealId: input.dealId ?? null,
+            pipeline,
             stageId: stageRow?.id ?? (stages ?? [])[0]?.id ?? null,
             clientId: client ? (client["id"] as string) : null,
             propertyId: property?.id ?? null,
@@ -467,7 +510,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
             comment: input.comment ?? null,
             telegram: input.telegram ?? null,
             preferredMessenger: input.preferredMessenger ?? null,
-            custom: input.custom ?? null,
+            custom: Object.keys(custom).length ? custom : null,
           },
         });
         return { proposed: true, summary };

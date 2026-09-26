@@ -20,6 +20,7 @@ import {
   clientStatusOf,
   currentBookingOf,
   fetchCrmClients,
+  partyKindLabel,
   upcomingBookingOf,
   type ClientStatus,
 } from "@/lib/clients";
@@ -48,12 +49,15 @@ export const Route = createFileRoute("/_authenticated/crm/clients/")({
   component: ClientsPage,
 });
 
-type FilterKey = ClientStatus | "all" | "blacklist" | "n11" | "rm";
+type FilterKey = ClientStatus | "all" | "blacklist" | "n11" | "rm" | "owner" | "party_rm" | "party_n11";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "Все" },
-  { key: "n11", label: "Клиенты Н11" },
-  { key: "rm", label: "Клиенты РМ" },
+  { key: "party_rm", label: "РМ" },
+  { key: "owner", label: "Собственники" },
+  { key: "party_n11", label: "Н11 (кто он)" },
+  { key: "n11", label: "Папка Н11" },
+  { key: "rm", label: "Папка РМ" },
   { key: "renting", label: "Арендует" },
   { key: "booked", label: "Забронировал" },
   { key: "left", label: "Съехал" },
@@ -133,6 +137,9 @@ function ClientsPage() {
         }
         if (filter === "all") return true;
         if (filter === "blacklist") return row.client.blacklisted;
+        if (filter === "owner") return row.client.party_kind === "owner";
+        if (filter === "party_rm") return row.client.party_kind === "rm";
+        if (filter === "party_n11") return row.client.party_kind === "n11";
         if (filter === "n11") return row.portfolios.has("n11");
         if (filter === "rm") return row.portfolios.has("rm") || row.portfolios.size === 0;
         return row.status === filter;
@@ -187,6 +194,7 @@ function ClientsPage() {
           <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Клиент</th>
+              <th className="px-4 py-3 font-medium">Кто он</th>
               <th className="px-4 py-3 font-medium">Телефон</th>
               <th className="px-4 py-3 font-medium">Статус</th>
               <th className="px-4 py-3 font-medium">Объект</th>
@@ -198,13 +206,13 @@ function ClientsPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td className="px-4 py-6 text-muted-foreground" colSpan={7}>
+                <td className="px-4 py-6 text-muted-foreground" colSpan={8}>
                   Загрузка...
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-muted-foreground" colSpan={7}>
+                <td className="px-4 py-6 text-muted-foreground" colSpan={8}>
                   Клиенты не найдены
                 </td>
               </tr>
@@ -227,6 +235,9 @@ function ClientsPage() {
                         </span>
                       ) : null}
                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {partyKindLabel(row.client.party_kind)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-between gap-3 text-muted-foreground">

@@ -5,6 +5,24 @@ import { getStaffClient, listStaffClients } from "@/lib/staff-data.functions";
 
 import { asPortfolios, type Portfolio } from "@/lib/portfolios";
 
+/** Кто клиент в CRM: арендатор РМ, собственник или Н11. */
+export type ClientPartyKind = "rm" | "owner" | "n11";
+
+export const CLIENT_PARTY_KINDS: { value: ClientPartyKind; label: string }[] = [
+  { value: "rm", label: "РМ" },
+  { value: "owner", label: "Собственник" },
+  { value: "n11", label: "Н11" },
+];
+
+export function asPartyKind(value: unknown): ClientPartyKind {
+  if (value === "owner" || value === "n11") return value;
+  return "rm";
+}
+
+export function partyKindLabel(value: ClientPartyKind | string | null | undefined) {
+  return CLIENT_PARTY_KINDS.find((item) => item.value === value)?.label ?? value ?? "—";
+}
+
 export type CrmClient = {
   id: string;
   full_name: string;
@@ -13,6 +31,7 @@ export type CrmClient = {
   blacklisted: boolean;
   blacklist_reason: string;
   portfolios: Portfolio[];
+  party_kind: ClientPartyKind;
 };
 
 export type ClientStatus = "renting" | "booked" | "left" | "none";
@@ -27,8 +46,6 @@ export const CLIENT_STATUSES: { value: ClientStatus; label: string }[] = [
 export function clientStatusLabel(status: ClientStatus) {
   return CLIENT_STATUSES.find((s) => s.value === status)?.label ?? status;
 }
-
-const SELECT = "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios";
 
 /** Нормализация цифр телефона: Российский номер с 8 → 7, результат без '+'.
  *  Примеры: 8 900 001 51 96 → 79000015196, +7 900 001 51 96 → 79000015196. */
@@ -73,19 +90,25 @@ export function hasCallablePhone(phone: string) {
   return phoneDigits(phone).length === 11;
 }
 
-export async function fetchCrmClients(): Promise<CrmClient[]> {
-  const data = await listStaffClients();
-  return ((data ?? []) as CrmClient[]).map((c) => ({
+const SELECT = "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, party_kind";
+
+function mapClient(c: CrmClient & { party_kind?: unknown }): CrmClient {
+  return {
     ...c,
     portfolios: asPortfolios(c.portfolios),
-  }));
+    party_kind: asPartyKind(c.party_kind),
+  };
+}
+
+export async function fetchCrmClients(): Promise<CrmClient[]> {
+  const data = await listStaffClients();
+  return ((data ?? []) as CrmClient[]).map(mapClient);
 }
 
 export async function fetchCrmClient(id: string): Promise<CrmClient | null> {
   const data = await getStaffClient({ data: { id } });
   if (!data) return null;
-  const client = data as CrmClient;
-  return { ...client, portfolios: asPortfolios(client.portfolios) };
+  return mapClient(data as CrmClient);
 }
 
 export type ClientInput = {
@@ -95,21 +118,23 @@ export type ClientInput = {
   blacklisted: boolean;
   blacklist_reason: string;
   portfolios: Portfolio[];
+  party_kind: ClientPartyKind;
 };
 
 export async function saveClient(id: string | null, input: ClientInput) {
-  if (id) {
-    const { error } = await supabase.from("clients").update(input as never).eq("id", id);
-    if (error) throw error;
-    return id;
+  const write = async (row: Record<string, unknown>) =>
+    id
+      ? supabase.from("clients").update(row as never).eq("id", id)
+      : supabase.from("clients").insert(row as never).select("id").single();
+
+  let result = await write(input as never);
+  if (result.error && /party_kind|schema cache|could not find/i.test(result.error.message)) {
+    const { party_kind: _pk, ...rest } = input;
+    result = await write(rest as never);
   }
-  const { data, error } = await supabase
-    .from("clients")
-    .insert(input as never)
-    .select("id")
-    .single();
-  if (error) throw error;
-  return (data as { id: string }).id;
+  if (result.error) throw result.error;
+  if (id) return id;
+  return (result.data as { id: string }).id;
 }
 
 export async function deleteClient(id: string) {

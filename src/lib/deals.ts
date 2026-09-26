@@ -4,12 +4,21 @@ import { markPropertyRented, saveBooking } from "@/lib/bookings";
 
 export type DealStageKind = "open" | "won" | "lost";
 
+/** Воронка CRM: аренда (сделки) или приём объектов (новые объекты). */
+export type DealPipeline = "rental" | "intake";
+
+export const DEAL_PIPELINES: { value: DealPipeline; label: string }[] = [
+  { value: "rental", label: "Сделки" },
+  { value: "intake", label: "Новые объекты" },
+];
+
 export type DealStage = {
   id: string;
   name: string;
   color: string;
   position: number;
   kind: DealStageKind;
+  pipeline: DealPipeline;
 };
 
 export type DealFieldType = "text" | "number" | "select" | "date" | "checkbox";
@@ -31,12 +40,14 @@ export type DealField = {
   position: number;
   show_in_card: boolean;
   archived: boolean;
+  pipeline: DealPipeline;
 };
 
 export type Deal = {
   id: string;
   title: string;
   stage_id: string;
+  pipeline: DealPipeline;
   client_id: string | null;
   property_id: string | null;
   lead_id: string | null;
@@ -61,6 +72,55 @@ export type Deal = {
   payment_day: number | null;
 };
 
+/** Черновик объекта в карточке «Новый объект» (CRM, не публикация на сайт). */
+export type IntakePropertyDraft = {
+  property_type: string;
+  complex_id: string | null;
+  address: string;
+  rooms: string;
+  bathrooms: string;
+  floor: string;
+  total_floors: string;
+  area: string;
+  price_month: string;
+  deposit: string;
+  commission: string;
+  service_type: string;
+  description: string;
+};
+
+export const EMPTY_INTAKE_DRAFT: IntakePropertyDraft = {
+  property_type: "apartment",
+  complex_id: null,
+  address: "",
+  rooms: "1",
+  bathrooms: "1",
+  floor: "",
+  total_floors: "",
+  area: "",
+  price_month: "",
+  deposit: "",
+  commission: "",
+  service_type: "management",
+  description: "",
+};
+
+export function intakeDraftFromCustom(custom: Record<string, unknown> | null | undefined): IntakePropertyDraft {
+  const raw = (custom?.["intake_draft"] as Partial<IntakePropertyDraft> | undefined) ?? {};
+  return {
+    ...EMPTY_INTAKE_DRAFT,
+    ...raw,
+    complex_id: raw.complex_id ?? null,
+  };
+}
+
+export function withIntakeDraft(
+  custom: Record<string, unknown>,
+  draft: IntakePropertyDraft,
+): Record<string, unknown> {
+  return { ...custom, intake_draft: draft };
+}
+
 export const DEAL_SOURCES = [
   "Сайт",
   "Авито",
@@ -77,15 +137,26 @@ const DEAL_COLUMNS_CORE =
   "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, custom, position, created_at, updated_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
 
 const DEAL_COLUMNS = `${DEAL_COLUMNS_CORE}, telegram, preferred_messenger`;
+const DEAL_COLUMNS_WITH_PIPELINE = `${DEAL_COLUMNS}, pipeline`;
+const DEAL_COLUMNS_CORE_WITH_PIPELINE = `${DEAL_COLUMNS_CORE}, pipeline`;
 
 function missingDealContactColumn(message: string) {
   return /telegram|preferred_messenger|schema cache|could not find/i.test(message);
+}
+
+function missingPipelineColumn(message: string) {
+  return /pipeline|schema cache|could not find/i.test(message);
+}
+
+function asPipeline(value: unknown): DealPipeline {
+  return value === "intake" ? "intake" : "rental";
 }
 
 function mapDealRow(d: Record<string, unknown>): Deal {
   const custom = ((d.custom ?? {}) as Record<string, unknown>) ?? {};
   return {
     ...(d as unknown as Deal),
+    pipeline: asPipeline(d.pipeline),
     telegram: String(d.telegram || custom.telegram || ""),
     preferred_messenger: String(d.preferred_messenger || custom.preferred_messenger || ""),
     custom,
@@ -107,16 +178,36 @@ function payloadWithContact(input: DealInput): DealInput {
 
 /* ---------------- стадии ---------------- */
 
-export async function fetchDealStages(): Promise<DealStage[]> {
+export async function fetchDealStages(pipeline: DealPipeline = "rental"): Promise<DealStage[]> {
+  const withPipeline = await supabase
+    .from("deal_stages")
+    .select("id, name, color, position, kind, pipeline")
+    .eq("pipeline", pipeline)
+    .order("position", { ascending: true });
+  if (!withPipeline.error) {
+    return (withPipeline.data ?? []).map((row) => ({
+      ...(row as DealStage),
+      pipeline: asPipeline((row as { pipeline?: string }).pipeline),
+    }));
+  }
+  if (!missingPipelineColumn(withPipeline.error.message)) throw withPipeline.error;
+  // До миграции — одна общая воронка (только rental).
+  if (pipeline !== "rental") return [];
   const { data, error } = await supabase
     .from("deal_stages")
     .select("id, name, color, position, kind")
     .order("position", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as DealStage[];
+  return (data ?? []).map((row) => ({ ...(row as Omit<DealStage, "pipeline">), pipeline: "rental" as const }));
 }
 
-export type StageInput = { name: string; color: string; kind: DealStageKind; position: number };
+export type StageInput = {
+  name: string;
+  color: string;
+  kind: DealStageKind;
+  position: number;
+  pipeline: DealPipeline;
+};
 
 export async function saveDealStage(id: string | null, input: StageInput) {
   if (id) {
@@ -140,13 +231,26 @@ export async function deleteDealStage(id: string) {
 
 /* ---------------- поля ---------------- */
 
-export async function fetchDealFields(): Promise<DealField[]> {
+export async function fetchDealFields(pipeline: DealPipeline = "rental"): Promise<DealField[]> {
+  const withPipeline = await supabase
+    .from("deal_fields")
+    .select("id, key, label, field_type, options, position, show_in_card, archived, pipeline")
+    .eq("pipeline", pipeline)
+    .order("position", { ascending: true });
+  if (!withPipeline.error) {
+    return (withPipeline.data ?? []).map((row) => ({
+      ...(row as DealField),
+      pipeline: asPipeline((row as { pipeline?: string }).pipeline),
+    }));
+  }
+  if (!missingPipelineColumn(withPipeline.error.message)) throw withPipeline.error;
+  if (pipeline !== "rental") return [];
   const { data, error } = await supabase
     .from("deal_fields")
     .select("id, key, label, field_type, options, position, show_in_card, archived")
     .order("position", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as DealField[];
+  return (data ?? []).map((row) => ({ ...(row as Omit<DealField, "pipeline">), pipeline: "rental" as const }));
 }
 
 export type FieldInput = {
@@ -157,6 +261,7 @@ export type FieldInput = {
   position: number;
   show_in_card: boolean;
   archived: boolean;
+  pipeline: DealPipeline;
 };
 
 export async function saveDealField(id: string | null, input: FieldInput) {
@@ -202,21 +307,40 @@ export function slugifyFieldKey(label: string) {
 async function loadDeals(
   run: (columns: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }>,
 ): Promise<Deal[]> {
-  const first = await run(DEAL_COLUMNS);
-  const result = missingDealContactColumn(first.error?.message ?? "") ? await run(DEAL_COLUMNS_CORE) : first;
+  let result = await run(DEAL_COLUMNS_WITH_PIPELINE);
+  if (result.error && missingPipelineColumn(result.error.message)) {
+    result = await run(DEAL_COLUMNS);
+  }
+  if (result.error && missingDealContactColumn(result.error.message)) {
+    const coreWithPipeline = await run(DEAL_COLUMNS_CORE_WITH_PIPELINE);
+    result =
+      coreWithPipeline.error && missingPipelineColumn(coreWithPipeline.error.message)
+        ? await run(DEAL_COLUMNS_CORE)
+        : coreWithPipeline;
+  }
   if (result.error) throw result.error;
   return (result.data ?? []).map((d) => mapDealRow(d as Record<string, unknown>));
 }
 
-export async function fetchDeals(): Promise<Deal[]> {
-  return loadDeals(async (columns) =>
-    supabase.from("deals").select(columns).order("position", { ascending: true }),
-  );
+export async function fetchDeals(pipeline?: DealPipeline): Promise<Deal[]> {
+  const deals = await loadDeals(async (columns) => {
+    let q = supabase.from("deals").select(columns).order("position", { ascending: true });
+    if (pipeline && columns.includes("pipeline")) q = q.eq("pipeline", pipeline);
+    return q;
+  });
+  if (!pipeline) return deals;
+  return deals.filter((d) => d.pipeline === pipeline);
+}
+
+/** Все сделки обеих воронок — для задач и календаря. */
+export async function fetchAllPipelineDeals(): Promise<Deal[]> {
+  return fetchDeals();
 }
 
 export type DealInput = {
   title: string;
   stage_id: string;
+  pipeline: DealPipeline;
   client_id: string | null;
   property_id: string | null;
   responsible_id: string | null;
@@ -232,15 +356,19 @@ export type DealInput = {
 
 export async function saveDeal(id: string | null, input: DealInput) {
   const payload = payloadWithContact(input);
-  const write = async (row: DealInput) =>
+  const write = async (row: Record<string, unknown>) =>
     id
       ? supabase.from("deals").update(row as never).eq("id", id)
       : supabase.from("deals").insert(row as never).select("id").single();
 
-  let result = await write(payload);
+  let result = await write(payload as never);
   if (result.error && missingDealContactColumn(result.error.message)) {
     const { telegram: _t, preferred_messenger: _m, ...rest } = payload;
-    result = await write(rest as DealInput);
+    result = await write(rest as never);
+  }
+  if (result.error && missingPipelineColumn(result.error.message)) {
+    const { pipeline: _p, ...rest } = payload;
+    result = await write(rest as never);
   }
   if (result.error) throw result.error;
   if (id) return id;
@@ -290,7 +418,7 @@ export async function convertLeadToDeal(lead: {
   topic: string;
   message: string;
 }) {
-  const stages = await fetchDealStages();
+  const stages = await fetchDealStages("rental");
   const stage = stages.find((s) => s.kind === "open") ?? stages[0];
   if (!stage) throw new Error("Сначала настройте стадии сделок");
 
@@ -306,7 +434,7 @@ export async function convertLeadToDeal(lead: {
   if (!clientId) {
     const { data, error } = await supabase
       .from("clients")
-      .insert({ full_name: lead.name || "Клиент с сайта", phone: lead.phone } as never)
+      .insert({ full_name: lead.name || "Клиент с сайта", phone: lead.phone, party_kind: "rm" } as never)
       .select("id")
       .single();
     if (error) throw error;
@@ -314,19 +442,21 @@ export async function convertLeadToDeal(lead: {
   }
 
   const { data: sessionData } = await supabase.auth.getSession();
-  const { data, error } = await supabase
-    .from("deals")
-    .insert({
-      title: lead.name ? `Заявка — ${lead.name}` : "Заявка с сайта",
-      stage_id: stage.id,
-      client_id: clientId,
-      lead_id: lead.id,
-      responsible_id: sessionData.session?.user?.id ?? null,
-      source: "Сайт",
-      comment: lead.message,
-    } as never)
-    .select("id")
-    .single();
+  const row = {
+    title: lead.name ? `Заявка — ${lead.name}` : "Заявка с сайта",
+    stage_id: stage.id,
+    pipeline: "rental",
+    client_id: clientId,
+    lead_id: lead.id,
+    responsible_id: sessionData.session?.user?.id ?? null,
+    source: "Сайт",
+    comment: lead.message,
+  };
+  let { data, error } = await supabase.from("deals").insert(row as never).select("id").single();
+  if (error && missingPipelineColumn(error.message)) {
+    const { pipeline: _p, ...rest } = row;
+    ({ data, error } = await supabase.from("deals").insert(rest as never).select("id").single());
+  }
   if (error) throw error;
   return (data as { id: string }).id;
 }

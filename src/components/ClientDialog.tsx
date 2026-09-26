@@ -15,16 +15,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { normalizePhone } from "@/lib/bookings";
 import {
+  CLIENT_PARTY_KINDS,
   fetchCrmClients,
   formatPhone,
   phoneDigits,
   saveClient,
+  type ClientPartyKind,
   type CrmClient,
 } from "@/lib/clients";
 import { asPortfolios, PORTFOLIOS, type Portfolio } from "@/lib/portfolios";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Props = {
   open: boolean;
@@ -32,10 +40,11 @@ type Props = {
   client?: CrmClient | null;
   /** Вызывается после сохранения — например, чтобы сразу подставить клиента в сделку. */
   onSaved?: (clientId: string) => void;
+  /** Стартовый тип при создании (например собственник из карточки нового объекта). */
+  defaultPartyKind?: ClientPartyKind;
 };
 
-export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
-
+export function ClientDialog({ open, onOpenChange, client, onSaved, defaultPartyKind }: Props) {
   const qc = useQueryClient();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -43,6 +52,7 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
   const [blacklisted, setBlacklisted] = useState(false);
   const [reason, setReason] = useState("");
   const [portfolios, setPortfolios] = useState<Portfolio[]>(["rm"]);
+  const [partyKind, setPartyKind] = useState<ClientPartyKind>("rm");
 
   useEffect(() => {
     if (!open) return;
@@ -52,7 +62,8 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
     setBlacklisted(client?.blacklisted ?? false);
     setReason(client?.blacklist_reason ?? "");
     setPortfolios(asPortfolios(client?.portfolios));
-  }, [open, client?.id]);
+    setPartyKind(client?.party_kind ?? defaultPartyKind ?? "rm");
+  }, [open, client?.id, defaultPartyKind]);
 
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
 
@@ -72,6 +83,7 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
         blacklisted,
         blacklist_reason: blacklisted ? reason.trim() : "",
         portfolios: portfolios.length ? portfolios : ["rm"],
+        party_kind: partyKind,
       });
     },
     onSuccess: async (id: string) => {
@@ -84,8 +96,6 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
-
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,6 +138,22 @@ export function ClientDialog({ open, onOpenChange, client, onSaved }: Props) {
               Возможный дубль: клиент «{duplicate.full_name}» уже есть с таким номером.
             </p>
           ) : null}
+
+          <div>
+            <Label>Кто он</Label>
+            <Select value={partyKind} onValueChange={(v) => setPartyKind(v as ClientPartyKind)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CLIENT_PARTY_KINDS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div>
             <Label>Папка</Label>

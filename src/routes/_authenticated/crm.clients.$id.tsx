@@ -23,8 +23,10 @@ import {
   clientStatusOf,
   deleteClient,
   fetchCrmClient,
+  partyKindLabel,
 } from "@/lib/clients";
 import { DealDialog } from "@/components/DealDialog";
+import { IntakeDealDialog } from "@/components/IntakeDealDialog";
 import {
   fetchClientDeals,
   fetchDealFields,
@@ -82,8 +84,23 @@ function ClientPage() {
     queryKey: ["client-deals", id],
     queryFn: () => fetchClientDeals(id),
   });
-  const { data: stages = [] } = useQuery({ queryKey: ["deal-stages"], queryFn: fetchDealStages });
-  const { data: dealFields = [] } = useQuery({ queryKey: ["deal-fields"], queryFn: fetchDealFields });
+  const { data: rentalStages = [] } = useQuery({
+    queryKey: ["deal-stages", "rental"],
+    queryFn: () => fetchDealStages("rental"),
+  });
+  const { data: intakeStages = [] } = useQuery({
+    queryKey: ["deal-stages", "intake"],
+    queryFn: () => fetchDealStages("intake"),
+  });
+  const { data: rentalFields = [] } = useQuery({
+    queryKey: ["deal-fields", "rental"],
+    queryFn: () => fetchDealFields("rental"),
+  });
+  const { data: intakeFields = [] } = useQuery({
+    queryKey: ["deal-fields", "intake"],
+    queryFn: () => fetchDealFields("intake"),
+  });
+  const stages = [...rentalStages, ...intakeStages];
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
 
   const stageKind = (stageId: string) => stages.find((s) => s.id === stageId)?.kind ?? "open";
@@ -126,6 +143,9 @@ function ClientPage() {
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">{client.full_name}</h1>
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                {partyKindLabel(client.party_kind)}
+              </span>
               <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 {clientStatusLabel(status)}
               </span>
@@ -179,9 +199,9 @@ function ClientPage() {
 
       <section className={cn("mt-8", isAdmin ? "" : "hidden")}>
 
-        <h2 className="text-lg font-semibold tracking-tight">Сделки</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Сделки и новые объекты</h2>
         {deals.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">У клиента пока нет сделок</p>
+          <p className="mt-3 text-sm text-muted-foreground">У клиента пока нет сделок и новых объектов</p>
         ) : (
           <div className="mt-3 grid gap-6">
             {(["open", "closed"] as const).map((group) => {
@@ -208,7 +228,14 @@ function ClientPage() {
                           className="w-full rounded-xl border border-border p-4 text-left transition-shadow hover:shadow-sm"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-3">
-                            <span className="font-medium">{d.title}</span>
+                            <span className="font-medium">
+                              {d.title}
+                              {d.pipeline === "intake" ? (
+                                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                  · новый объект
+                                </span>
+                              ) : null}
+                            </span>
                             <span
                               className="rounded-md px-2 py-0.5 text-xs font-medium text-white"
                               style={{ backgroundColor: stage?.color || "#64748b" }}
@@ -306,13 +333,23 @@ function ClientPage() {
         defaultClientId={client.id}
       />
       {activeDeal ? (
-        <DealDialog
-          open={Boolean(activeDeal)}
-          onOpenChange={(v) => !v && setActiveDeal(null)}
-          deal={activeDeal}
-          stages={stages}
-          fields={dealFields}
-        />
+        activeDeal.pipeline === "intake" ? (
+          <IntakeDealDialog
+            open={Boolean(activeDeal)}
+            onOpenChange={(v) => !v && setActiveDeal(null)}
+            deal={activeDeal}
+            stages={intakeStages}
+            fields={intakeFields}
+          />
+        ) : (
+          <DealDialog
+            open={Boolean(activeDeal)}
+            onOpenChange={(v) => !v && setActiveDeal(null)}
+            deal={activeDeal}
+            stages={rentalStages}
+            fields={rentalFields}
+          />
+        )
       ) : null}
 
     </div>

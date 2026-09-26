@@ -270,17 +270,28 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (input["comment"] != null) patch["comment"] = input["comment"];
     if (input["blacklisted"] != null) patch["blacklisted"] = input["blacklisted"];
     if (input["blacklistReason"] != null) patch["blacklist_reason"] = input["blacklistReason"];
+    if (input["partyKind"] != null) patch["party_kind"] = input["partyKind"];
     if (clientId) {
-      const { error } = await supabaseAdmin
+      let { error } = await supabaseAdmin
         .from("clients")
         .update(patch as never)
         .eq("id", clientId);
+      if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
+        const { party_kind: _pk, ...rest } = patch;
+        ({ error } = await supabaseAdmin.from("clients").update(rest as never).eq("id", clientId));
+      }
       if (error) throw new Error(error.message);
       return "Клиент обновлён";
     }
-    const { error } = await supabaseAdmin
+    let { error } = await supabaseAdmin
       .from("clients")
       .insert({ full_name: (patch["full_name"] as string) ?? "", ...patch } as never);
+    if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
+      const { party_kind: _pk, ...rest } = patch;
+      ({ error } = await supabaseAdmin
+        .from("clients")
+        .insert({ full_name: (rest["full_name"] as string) ?? "", ...rest } as never));
+    }
     if (error) throw new Error(error.message);
     return "Клиент создан";
   },
@@ -385,6 +396,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const dealId = input["dealId"] as string | null;
 
     const patch: Record<string, unknown> = {};
+    if (input["pipeline"] != null) patch["pipeline"] = input["pipeline"];
     if (input["title"] != null) patch["title"] = input["title"];
     if (input["stageId"] != null) patch["stage_id"] = input["stageId"];
     if (input["clientId"] != null) patch["client_id"] = input["clientId"];
@@ -410,12 +422,17 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
         ? supabaseAdmin.from("deals").update(row as never).eq("id", dealId)
         : supabaseAdmin.from("deals").insert({
             ...row,
+            pipeline: (row["pipeline"] as string) || "rental",
             stage_id: must(row["stage_id"] as string, "Не указана стадия сделки"),
             title: (row["title"] as string) ?? "Новая сделка",
           } as never);
     let { error } = await writeDeal(patch);
     if (error && /telegram|preferred_messenger|schema cache|could not find/i.test(error.message)) {
       const { telegram: _t, preferred_messenger: _m, ...rest } = patch;
+      ({ error } = await writeDeal(rest));
+    }
+    if (error && /pipeline|schema cache|could not find/i.test(error.message)) {
+      const { pipeline: _p, ...rest } = patch;
       ({ error } = await writeDeal(rest));
     }
     if (error) throw new Error(error.message);

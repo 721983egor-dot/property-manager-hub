@@ -1226,21 +1226,55 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getCrmDeals: tool({
       description:
-        "Только сделки CRM (канбан). НЕ календарь и НЕ текущая аренда. query ищет по названию, источнику, комментарию, Telegram и удобному мессенджеру. Для броней/кто живёт — getBookings / getCurrentRentals / getClientHistory. Сводка по открытым/закрытым и источникам — getCrmDealAnalytics.",
+        "Сделки CRM и/или «Новые объекты» (канбан). НЕ календарь и НЕ текущая аренда. pipeline=rental|intake|all. query ищет по названию, источнику, комментарию, Telegram. Для броней/кто живёт — getBookings / getCurrentRentals / getClientHistory. Сводка — getCrmDealAnalytics.",
       inputSchema: z.object({
         query: z.string().optional(),
         clientQuery: z.string().optional().describe("ФИО или телефон клиента"),
         stage: z.string().optional(),
+        pipeline: z
+          .enum(["rental", "intake", "all"])
+          .optional()
+          .describe("rental = сделки, intake = новые объекты, all = обе воронки"),
       }),
-      execute: async ({ query, clientQuery, stage }) => {
-        const [{ data: stages }, { data: fields }] = await Promise.all([
-          admin.from("deal_stages").select("id, name, kind, position").order("position"),
-          admin.from("deal_fields").select("key, label, field_type, options, archived"),
-        ]);
-        const stageMap = new Map((stages ?? []).map((s) => [s.id, s.name]));
+      execute: async ({ query, clientQuery, stage, pipeline }) => {
+        const wanted = pipeline ?? "all";
+        let stagesRaw: { id: string; name: string; kind: string; position: number; pipeline?: string }[] | null =
+          null;
+        let fields:
+          | { key: string; label: string; field_type: string; options: string[]; archived: boolean; pipeline?: string }[]
+          | null = null;
+        {
+          const [stagesRes, fieldsRes] = await Promise.all([
+            admin.from("deal_stages").select("id, name, kind, position, pipeline").order("position"),
+            admin.from("deal_fields").select("key, label, field_type, options, archived, pipeline"),
+          ]);
+          if (stagesRes.error && /pipeline|schema cache|could not find/i.test(stagesRes.error.message)) {
+            const legacy = await admin
+              .from("deal_stages")
+              .select("id, name, kind, position")
+              .order("position");
+            stagesRaw = (legacy.data ?? []).map((s) => ({ ...s, pipeline: "rental" }));
+          } else {
+            stagesRaw = stagesRes.data;
+          }
+          if (fieldsRes.error && /pipeline|schema cache|could not find/i.test(fieldsRes.error.message)) {
+            const legacy = await admin
+              .from("deal_fields")
+              .select("key, label, field_type, options, archived");
+            fields = (legacy.data ?? []).map((f) => ({ ...f, pipeline: "rental" }));
+          } else {
+            fields = fieldsRes.data;
+          }
+        }
+        let stages = stagesRaw ?? [];
+        if (wanted !== "all") {
+          stages = stages.filter((s) => (s.pipeline ?? "rental") === wanted);
+        }
+        const stageMap = new Map(stages.map((s) => [s.id, s.name]));
         let q = admin.from("deals").select("*").limit(200);
+        if (wanted !== "all") q = q.eq("pipeline", wanted);
         if (stage) {
-          const found = (stages ?? []).find((s) => s.name.toLowerCase() === stage.toLowerCase());
+          const found = stages.find((s) => s.name.toLowerCase() === stage.toLowerCase());
           if (found) q = q.eq("stage_id", found.id);
         }
         let resolvedClient: { id: string; full_name?: string; phone?: string } | null = null;
@@ -1270,10 +1304,23 @@ export function createReadTools(ctx: AssistantToolContext) {
           q = q.or(`${coreSearch},telegram.ilike.${like},preferred_messenger.ilike.${like}`);
         }
         let { data, error } = await q;
+        if (error && /pipeline|schema cache|could not find/i.test(error.message)) {
+          q = admin.from("deals").select("*").limit(200);
+          if (stage) {
+            const found = stages.find((s) => s.name.toLowerCase() === stage.toLowerCase());
+            if (found) q = q.eq("stage_id", found.id);
+          }
+          if (resolvedClient) q = q.eq("client_id", resolvedClient.id);
+          if (query) q = q.or(`${coreSearch},telegram.ilike.${like},preferred_messenger.ilike.${like}`);
+          ({ data, error } = await q);
+        }
         if (error && query && /telegram|preferred_messenger|schema cache|could not find/i.test(error.message)) {
           let retry = admin.from("deals").select("*").limit(200);
+          if (wanted !== "all") {
+            // без колонки pipeline фильтр intake недоступен
+          }
           if (stage) {
-            const found = (stages ?? []).find((s) => s.name.toLowerCase() === stage.toLowerCase());
+            const found = stages.find((s) => s.name.toLowerCase() === stage.toLowerCase());
             if (found) retry = retry.eq("stage_id", found.id);
           }
           if (resolvedClient) retry = retry.eq("client_id", resolvedClient.id);
@@ -1303,6 +1350,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const deals = (data ?? []).map((d) => ({
           id: d.id,
           title: d.title,
+          pipeline: (d.pipeline as string) || "rental",
           stage: stageMap.get(d.stage_id) ?? "",
           client: d.client_id ? (clientMap.get(d.client_id) ?? "") : "",
           property: d.property_id ? (propNames.get(d.property_id) ?? "") : "",
@@ -1330,6 +1378,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         return {
           count: deals.length,
           source: "crm.deals",
+          pipeline: wanted,
           hint:
             "Пустой список сделок при наличии брони в Календаре — нормально для клиентов до CRM.",
           clientFilter: resolvedClient
@@ -1339,7 +1388,11 @@ export function createReadTools(ctx: AssistantToolContext) {
                 phone: resolvedClient.phone ?? null,
               }
             : null,
-          stages: (stages ?? []).map((s) => ({ name: s.name, kind: s.kind })),
+          stages: stages.map((s) => ({
+            name: s.name,
+            kind: s.kind,
+            pipeline: (s.pipeline as string) || "rental",
+          })),
           fields: (fields ?? []).filter((f) => !f.archived),
           deals,
         };

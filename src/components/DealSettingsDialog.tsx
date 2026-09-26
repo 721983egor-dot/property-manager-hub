@@ -30,6 +30,7 @@ import {
   slugifyFieldKey,
   type DealField,
   type DealFieldType,
+  type DealPipeline,
   type DealStage,
   type DealStageKind,
 } from "@/lib/deals";
@@ -45,10 +46,11 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   stages: DealStage[];
   fields: DealField[];
+  pipeline?: DealPipeline;
 };
 
-/** Настройка канбана: стадии и дополнительные поля сделок (только администратор). */
-export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props) {
+/** Настройка канбана: стадии и дополнительные поля (только администратор). */
+export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipeline = "rental" }: Props) {
   const queryClient = useQueryClient();
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["deal-stages"] });
@@ -82,12 +84,13 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props
   const [newStage, setNewStage] = useState("");
   const [newField, setNewField] = useState("");
   const [newFieldType, setNewFieldType] = useState<DealFieldType>("text");
+  const title = pipeline === "intake" ? "Настройка новых объектов" : "Настройка сделок";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Настройка сделок</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="stages">
@@ -105,7 +108,13 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props
                     e.target.value !== s.name &&
                     stageMutation.mutate({
                       id: s.id,
-                      patch: { name: e.target.value, color: s.color, kind: s.kind, position: s.position },
+                      patch: {
+                        name: e.target.value,
+                        color: s.color,
+                        kind: s.kind,
+                        position: s.position,
+                        pipeline,
+                      },
                     })
                   }
                 />
@@ -117,7 +126,13 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props
                     e.target.value !== s.color &&
                     stageMutation.mutate({
                       id: s.id,
-                      patch: { name: s.name, color: e.target.value, kind: s.kind, position: s.position },
+                      patch: {
+                        name: s.name,
+                        color: e.target.value,
+                        kind: s.kind,
+                        position: s.position,
+                        pipeline,
+                      },
                     })
                   }
                 />
@@ -126,7 +141,13 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props
                   onValueChange={(v) =>
                     stageMutation.mutate({
                       id: s.id,
-                      patch: { name: s.name, color: s.color, kind: v as DealStageKind, position: s.position },
+                      patch: {
+                        name: s.name,
+                        color: s.color,
+                        kind: v as DealStageKind,
+                        position: s.position,
+                        pipeline,
+                      },
                     })
                   }
                 >
@@ -144,8 +165,26 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props
                     disabled={index === 0}
                     onClick={() => {
                       const prev = stages[index - 1]!;
-                      stageMutation.mutate({ id: s.id, patch: { name: s.name, color: s.color, kind: s.kind, position: prev.position } });
-                      stageMutation.mutate({ id: prev.id, patch: { name: prev.name, color: prev.color, kind: prev.kind, position: s.position } });
+                      stageMutation.mutate({
+                        id: s.id,
+                        patch: {
+                          name: s.name,
+                          color: s.color,
+                          kind: s.kind,
+                          position: prev.position,
+                          pipeline,
+                        },
+                      });
+                      stageMutation.mutate({
+                        id: prev.id,
+                        patch: {
+                          name: prev.name,
+                          color: prev.color,
+                          kind: prev.kind,
+                          position: s.position,
+                          pipeline,
+                        },
+                      });
                     }}
                   >
                     ↑
@@ -156,8 +195,26 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props
                     disabled={index === stages.length - 1}
                     onClick={() => {
                       const next = stages[index + 1]!;
-                      stageMutation.mutate({ id: s.id, patch: { name: s.name, color: s.color, kind: s.kind, position: next.position } });
-                      stageMutation.mutate({ id: next.id, patch: { name: next.name, color: next.color, kind: next.kind, position: s.position } });
+                      stageMutation.mutate({
+                        id: s.id,
+                        patch: {
+                          name: s.name,
+                          color: s.color,
+                          kind: s.kind,
+                          position: next.position,
+                          pipeline,
+                        },
+                      });
+                      stageMutation.mutate({
+                        id: next.id,
+                        patch: {
+                          name: next.name,
+                          color: next.color,
+                          kind: next.kind,
+                          position: s.position,
+                          pipeline,
+                        },
+                      });
                     }}
                   >
                     ↓
@@ -185,6 +242,7 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props
                       color: "#64748b",
                       kind: "open",
                       position: (stages.at(-1)?.position ?? 0) + 1,
+                      pipeline,
                     },
                   });
                   setNewStage("");
@@ -288,6 +346,7 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields }: Props
                       position: (fields.at(-1)?.position ?? 0) + 1,
                       show_in_card: true,
                       archived: false,
+                      pipeline,
                     },
                   });
                   setNewField("");
