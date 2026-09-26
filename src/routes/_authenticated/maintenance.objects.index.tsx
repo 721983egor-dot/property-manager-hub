@@ -16,7 +16,7 @@ import {
   typeLabel,
 } from "@/lib/properties";
 
-export const Route = createFileRoute("/_authenticated/maintenance/objects")({
+export const Route = createFileRoute("/_authenticated/maintenance/objects/")({
   head: () => ({
     meta: [
       { title: "Обслуживание — объекты — RM OS" },

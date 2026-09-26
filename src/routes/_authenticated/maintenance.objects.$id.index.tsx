@@ -42,7 +42,7 @@ import {
   type StaffTask,
 } from "@/lib/tasks";
 
-export const Route = createFileRoute("/_authenticated/maintenance/objects/$id")({
+export const Route = createFileRoute("/_authenticated/maintenance/objects/$id/")({
   head: () => ({
     meta: [
       { title: "Карточка обслуживания — RM OS" },
