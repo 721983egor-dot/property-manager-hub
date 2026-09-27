@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Building2,
   Check,
   ClipboardList,
   FileCheck2,
   HeartHandshake,
+  Home,
   MapPin,
   MessageCircle,
   Minus,
@@ -12,6 +13,7 @@ import {
   Send,
   ShieldCheck,
   Sofa,
+  Wrench,
 } from "lucide-react";
 
 import { PageHero } from "@/components/site/PageHero";
@@ -33,7 +35,7 @@ export const Route = createFileRoute("/about")({
         {
           name: "description",
           content:
-            "«Резиденция & Море» — сервис управления жилой недвижимостью в Сочи. Помогаем собственникам сдавать квартиры, апартаменты, дома и виллы, а арендаторам — находить комфортное жильё.",
+            "«Резиденция & Море» — аренда и сервис обслуживания домов в Сочи. Помогаем сдавать недвижимость и держать частный дом в порядке.",
         },
         {
           property: "og:title",
@@ -42,7 +44,7 @@ export const Route = createFileRoute("/about")({
         {
           property: "og:description",
           content:
-            "Управляем недвижимостью в Сочи системно и прозрачно: поиск арендатора, показы, договор, контроль оплат и сопровождение.",
+            "Аренда квартир, апартаментов, домов и вилл — и отдельный сервис обслуживания частных домов в Сочи.",
         },
         { name: "twitter:card", content: "summary_large_image" },
         { property: "og:url", content: url },
@@ -69,29 +71,47 @@ const US = [
   "показы, договор и заселение;",
   "контроль оплат и коммунальных расходов;",
   "коммуникация с арендатором;",
-  "бытовые и технические заявки.",
+  "бытовые и технические заявки;",
+  "при необходимости — обслуживание дома и территории.",
+];
+
+const DIRECTIONS = [
+  {
+    icon: Building2,
+    title: "Аренда",
+    text: "Подбор и сопровождение среднесрочной и долгосрочной аренды квартир, апартаментов, домов и вилл.",
+    to: "/rent" as const,
+    cta: "Смотреть объекты",
+  },
+  {
+    icon: Wrench,
+    title: "Сервис",
+    text: "Обслуживание частных домов и вилл: территория, бассейн, инженерия, клининг и контроль состояния — отдельно от аренды или вместе с ней.",
+    to: "/service" as const,
+    cta: "Перейти в Сервис",
+  },
 ];
 
 const PRINCIPLES = [
   {
     icon: FileCheck2,
     title: "Прозрачность",
-    text: "Собственник понимает, что происходит с объектом: какие платежи поступают, какие задачи решаются и какие вопросы возникают в процессе аренды.",
+    text: "Собственник понимает, что происходит с объектом: платежи, задачи по аренде и состояние дома при обслуживании.",
   },
   {
     icon: ShieldCheck,
     title: "Ответственность",
-    text: "Мы не исчезаем после заселения арендатора, а сопровождаем объект на протяжении срока аренды и остаёмся точкой контакта по текущим вопросам.",
+    text: "Не исчезаем после заселения и не оставляем дом без присмотра: остаёмся точкой контакта по текущим вопросам.",
   },
   {
-    icon: Building2,
-    title: "Качество объектов",
-    text: "Мы работаем с недвижимостью, которую можно достойно представить рынку и качественно сопровождать: квартирами, апартаментами, домами и виллами в хорошем состоянии.",
+    icon: Home,
+    title: "Два формата работы",
+    text: "Можно подключить управление арендой, сервис обслуживания дома — или оба направления, если так удобнее.",
   },
   {
     icon: Sofa,
     title: "Спокойствие собственника",
-    text: "Наша цель — чтобы собственник получал доход от объекта без ежедневного участия в операционных вопросах аренды и обслуживания.",
+    text: "Цель — доход и порядок без ежедневного участия в операционке аренды и содержания объекта.",
   },
 ];
 
@@ -99,28 +119,34 @@ function AboutPage() {
   return (
     <div className="font-site">
       <PageHero
-        eyebrow="Собственникам · Арендаторам · Управление · Сопровождение"
-        title="Управляем недвижимостью в Сочи системно и прозрачно"
-        description="Помогаем собственникам сдавать квартиры, апартаменты, дома и виллы в среднесрочную и долгосрочную аренду, а арендаторам — находить комфортное жильё для жизни в Сочи."
+        eyebrow="Аренда · Сервис · Управление · Сочи"
+        title="Аренда и обслуживание недвижимости в Сочи"
+        description="Помогаем собственникам сдавать квартиры, апартаменты, дома и виллы — и отдельно организуем сервис обслуживания частных домов, чтобы объект оставался в порядке."
       />
 
       <section className="bg-white py-20">
         <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
           <div>
             <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-              Мы не просто сдаём недвижимость — мы управляем объектом
+              Не только аренда — ещё и сервис для дома
             </h2>
             <div className="mt-6 flex flex-col gap-4 leading-relaxed text-site-muted">
               <p>
-                «Резиденция & Море» — сервис управления жилой недвижимостью в
-                Сочи. Мы работаем с квартирами, апартаментами, домами и виллами,
-                которые подходят для качественной среднесрочной и долгосрочной
-                аренды.
+                «Резиденция & Море» — компания по управлению жилой недвижимостью
+                в Сочи. Мы работаем с квартирами, апартаментами, домами и виллами
+                для качественной среднесрочной и долгосрочной аренды.
               </p>
               <p>
-                Наша задача — снять с собственника операционные вопросы: поиск
-                арендатора, показы, договор, контроль платежей, коммуникацию,
-                бытовые заявки и организацию обслуживания объекта.
+                Параллельно развиваем направление{" "}
+                <Link
+                  to="/service"
+                  className="font-medium text-site-navy underline-offset-2 hover:underline"
+                >
+                  Сервис
+                </Link>
+                : регулярный уход за частным домом — территория, бассейн,
+                инженерия, клининг и контроль состояния. Его можно подключить
+                вместе с арендой или отдельно, если дом не сдаётся.
               </p>
             </div>
           </div>
@@ -149,10 +175,6 @@ function AboutPage() {
                 </div>
               ))}
             </div>
-            <p className="text-sm leading-relaxed text-site-muted">
-              Мы берём в работу не просто объект, а ответственность за его
-              аренду, состояние и коммуникацию между сторонами.
-            </p>
           </div>
         </div>
       </section>
@@ -161,11 +183,48 @@ function AboutPage() {
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+              Два направления
+            </h2>
+            <p className="mt-4 leading-relaxed text-site-muted">
+              Выберите формат под задачу — или объедините оба
+            </p>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
+            {DIRECTIONS.map((item) => (
+              <div
+                key={item.title}
+                className="flex flex-col rounded-2xl border border-site-line bg-white p-6 md:p-8"
+              >
+                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-site-navy-soft text-site-gold">
+                  <item.icon className="size-5" />
+                </span>
+                <p className="mt-4 text-lg font-semibold text-site-navy">
+                  {item.title}
+                </p>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-site-muted">
+                  {item.text}
+                </p>
+                <Link
+                  to={item.to}
+                  className="mt-6 inline-flex w-fit items-center rounded-md bg-site-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+                >
+                  {item.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
               Чем отличаемся от риэлтора
             </h2>
             <p className="mt-4 leading-relaxed text-site-muted">
-              Не просто находим арендатора — управляем объектом после
-              заселения
+              Не просто находим арендатора — сопровождаем объект и при
+              необходимости содерживаем дом
             </p>
           </div>
 
@@ -188,13 +247,13 @@ function AboutPage() {
               </ul>
             </div>
 
-            <div className="flex flex-col rounded-2xl border-2 border-site-gold bg-white p-6 md:p-8 shadow-[0_12px_40px_-24px_rgba(199,158,80,0.35)]">
+            <div className="flex flex-col rounded-2xl border-2 border-site-gold bg-white p-6 shadow-[0_12px_40px_-24px_rgba(199,158,80,0.35)] md:p-8">
               <p className="text-lg font-semibold text-site-navy">
                 Резиденция & Море
               </p>
               <p className="mt-2 text-sm leading-relaxed text-site-muted">
-                Берём на себя полный цикл: готовим объект, ищем арендатора,
-                оформляем договор, контролируем оплаты и сопровождаем аренду.
+                Берём полный цикл аренды и можем организовать обслуживание дома:
+                территория, бассейн, инженерия, клининг и контроль состояния.
               </p>
               <ul className="mt-6 flex flex-col gap-3 text-sm text-site-navy">
                 {US.map((item) => (
@@ -208,15 +267,10 @@ function AboutPage() {
               </ul>
             </div>
           </div>
-
-          <p className="mt-10 text-center leading-relaxed text-site-navy">
-            Мы не просто приводим арендатора — берём на себя управление объектом
-            на весь срок аренды.
-          </p>
         </div>
       </section>
 
-      <section className="bg-white py-20">
+      <section className="bg-site-navy-soft py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
@@ -224,14 +278,14 @@ function AboutPage() {
             </h2>
             <p className="mt-4 leading-relaxed text-site-muted">
               В Сочи много собственников, которые не могут ежедневно заниматься
-              своей недвижимостью. Мы строим работу так, чтобы это не требовало
-              их постоянного участия.
+              недвижимостью и домом. Строим работу так, чтобы это не требовало
+              постоянного участия.
             </p>
           </div>
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-site-line bg-site-navy-soft p-6">
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-site-gold shadow-sm">
+            <div className="rounded-2xl border border-site-line bg-white p-6">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-site-navy-soft text-site-gold shadow-sm">
                 <MapPin className="size-5" />
               </span>
               <p className="mt-4 font-semibold text-site-navy">
@@ -243,21 +297,21 @@ function AboutPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-site-line bg-site-navy-soft p-6">
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-site-gold shadow-sm">
+            <div className="rounded-2xl border border-site-line bg-white p-6">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-site-navy-soft text-site-gold shadow-sm">
                 <ClipboardList className="size-5" />
               </span>
               <p className="mt-4 font-semibold text-site-navy">
                 Объект требует внимания
               </p>
               <p className="mt-2 text-sm leading-relaxed text-site-muted">
-                Арендаторы, показы, договоры, оплаты, бытовые заявки,
-                обслуживание и контроль состояния — всё это нужно вести.
+                Арендаторы, показы, договоры, оплаты, бытовые заявки — и отдельно
+                уход за домом, территорией и инженерией.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-site-line bg-site-navy-soft p-6">
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-site-gold shadow-sm">
+            <div className="rounded-2xl border border-site-line bg-white p-6">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-site-navy-soft text-site-gold shadow-sm">
                 <HeartHandshake className="size-5" />
               </span>
               <p className="mt-4 font-semibold text-site-navy">
@@ -265,24 +319,23 @@ function AboutPage() {
               </p>
               <p className="mt-2 text-sm leading-relaxed text-site-muted">
                 Запускаем аренду, ведём коммуникацию, контролируем платежи и
-                текущие вопросы по объекту.
+                организуем обслуживание по согласованному перечню.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-site-line bg-site-navy-soft p-6">
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-site-gold shadow-sm">
+            <div className="rounded-2xl border border-site-line bg-white p-6">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-site-navy-soft text-site-gold shadow-sm">
                 <Sofa className="size-5" />
               </span>
               <p className="mt-4 font-semibold text-site-navy">
-                Сервис для арендатора
+                Понятный сервис
               </p>
               <p className="mt-2 text-sm leading-relaxed text-site-muted">
-                Арендатор получает понятные условия, быструю связь и помощь на
-                протяжении всего срока проживания.
+                Арендатор получает быструю связь, собственник — порядок в доме и
+                одну точку контакта по аренде и содержанию.
               </p>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -293,7 +346,7 @@ function AboutPage() {
               Выберите удобный способ связи
             </h2>
             <p className="mt-4 text-white/75">
-              Напишите нам в удобный мессендже или позвоните
+              Напишите нам в удобный мессенджер или позвоните
             </p>
             <div className="mt-6 flex flex-wrap gap-3 text-sm text-white/85">
               <a
@@ -321,7 +374,9 @@ function AboutPage() {
             </div>
           </div>
           <div className="rounded-2xl bg-white p-6 shadow-2xl md:p-8">
-            <p className="text-lg font-semibold text-site-navy">Остались вопросы?</p>
+            <p className="text-lg font-semibold text-site-navy">
+              Остались вопросы?
+            </p>
             <p className="mt-1 text-sm text-site-muted">
               Заполните форму и мы свяжемся с вами в ближайшее время
             </p>

@@ -28,9 +28,10 @@ import {
 import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import heroImage from "@/assets/site/hero_villa_sunset.jpg";
-import aboutImg from "@/assets/site/home_about.jpg";
 import selectionImg from "@/assets/site/home_p5.jpg";
 import serviceHomeImg from "@/assets/site/mgmt_p3.jpg";
+
+const DIRECTOR_PHOTO = "/about/egor-moshkov.jpg";
 
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
@@ -140,10 +141,9 @@ const STEPS = [
 ];
 
 const ABOUT_TEXT = [
-  "Резиденция&Море - сервис управления жилой недвижимостью.",
-  "Мы сдаем в аренду апартаменты, дома и виллы бизнес и премиум-класса для жизни, отдыха и длительного проживания в Сочи.",
-  "Наша задача — не просто показать объект, а провести клиента через весь процесс аренды: от подбора и просмотра до договора, заселения и сопровождения на протяжении всего срока проживания.",
-  "Мы работаем с актуальными объектами, проверенными собственниками и понятными условиями аренды.",
+  "Резиденция&Море — управление жилой недвижимостью в Сочи: аренда и сервис обслуживания домов.",
+  "Сдаём в аренду апартаменты, дома и виллы для жизни и длительного проживания — от подбора и просмотра до договора, заселения и сопровождения.",
+  "Отдельно организуем сервис для частных домов: территория, бассейн, инженерия, клининг и контроль состояния — вместе с арендой или без неё.",
 ];
 
 function HomePage() {
@@ -419,13 +419,13 @@ function HomePage() {
       </section>
 
       {/* О компании */}
-      <section className="bg-site-navy-soft py-20">
+      <section id="about" className="bg-site-navy-soft py-20">
         <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl">
+          <div className="overflow-hidden rounded-2xl bg-site-navy/5">
             <img
-              src={aboutImg}
-              alt="Апартаменты Резиденция&Море в Сочи"
-              className="h-full w-full object-cover"
+              src={DIRECTOR_PHOTO}
+              alt="Директор компании Мошков Егор"
+              className="aspect-[4/3] h-full w-full object-cover object-top"
               loading="lazy"
             />
           </div>
@@ -438,6 +438,9 @@ function HomePage() {
                 <p key={p}>{p}</p>
               ))}
             </div>
+            <p className="mt-6 text-base font-medium text-site-navy">
+              С уважением, директор компании Мошков Егор
+            </p>
             <Link
               to="/about"
               className="mt-8 inline-flex items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
