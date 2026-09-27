@@ -280,10 +280,10 @@ function ServicePage() {
                 срок — отдельно от сервиса обслуживания дома.
               </p>
               <Link
-                to="/rent"
+                to="/management"
                 className="mt-6 inline-flex w-fit items-center rounded-md border border-site-line bg-white px-5 py-3 text-sm font-semibold text-site-navy transition-colors hover:border-site-gold"
               >
-                Смотреть объекты
+                Подробнее
               </Link>
             </div>
           </div>
@@ -292,11 +292,11 @@ function ServicePage() {
 
       <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <div className="mx-auto max-w-2xl text-center">
+          <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
               С нами удобно и безопасно
             </h2>
-            <p className="mt-5 leading-relaxed text-site-muted">
+            <p className="mt-4 leading-relaxed text-site-muted">
               Особенно актуально для собственников, которые не проживают в Сочи
               постоянно. Мы — надёжный партнёр с полным комплексом услуг: вы
               сразу получаете информацию о состоянии дома и территории, а также
@@ -304,7 +304,8 @@ function ServicePage() {
             </p>
             <p className="mt-8 text-2xl font-bold text-site-navy md:text-3xl">
               Стоимость услуги от{" "}
-              <span className="text-site-gold">10&nbsp;000&nbsp;₽</span>
+              <span className="text-site-gold">10&nbsp;000&nbsp;₽</span> в
+              месяц
             </p>
           </div>
         </div>
