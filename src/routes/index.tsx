@@ -32,24 +32,10 @@ import selectionImg from "@/assets/site/home_p5.jpg";
 
 const DIRECTOR_PHOTO = "/about/egor-moshkov.jpg";
 
-const SERVICE_STRIP = [
-  {
-    src: "/service/pool-cleaning.png",
-    alt: "Чистка бассейна частного дома в Сочи",
-  },
-  {
-    src: "/service/house-interior-work.png",
-    alt: "Работы внутри дома при обслуживании виллы",
-  },
-  {
-    src: "/service/pool-area-wash.png",
-    alt: "Мойка территории у бассейна на участке",
-  },
-  {
-    src: "/service/interior-cleaning.png",
-    alt: "Клининг интерьера частного дома",
-  },
-];
+const SERVICE_HOME_PHOTO = {
+  src: "/service/service-home-1.jpg",
+  alt: "Мойка и обслуживание территории у виллы с бассейном",
+};
 
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
@@ -405,8 +391,8 @@ function HomePage() {
 
       {/* Обслуживание домов */}
       <section className="bg-white py-20">
-        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2 lg:gap-16">
-          <div>
+        <div className="mx-auto grid max-w-[1280px] gap-8 px-5 md:px-6 lg:grid-cols-2 lg:items-stretch lg:gap-16">
+          <div className="flex flex-col justify-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
               Сервис
             </p>
@@ -423,29 +409,19 @@ function HomePage() {
             </p>
             <Link
               to="/service"
-              className="mt-8 inline-flex items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+              className="mt-8 inline-flex w-fit items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
             >
               Перейти в Сервис
               <ArrowRight className="size-4" />
             </Link>
           </div>
-          <div
-            className="grid grid-cols-2 gap-2 overflow-hidden rounded-2xl sm:gap-2.5"
-            aria-label="Фото услуг обслуживания"
-          >
-            {SERVICE_STRIP.map((item) => (
-              <div
-                key={item.src}
-                className="aspect-square overflow-hidden bg-site-navy-soft"
-              >
-                <img
-                  src={item.src}
-                  alt={item.alt}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-            ))}
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-site-navy-soft lg:aspect-auto lg:min-h-0">
+            <img
+              src={SERVICE_HOME_PHOTO.src}
+              alt={SERVICE_HOME_PHOTO.alt}
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="lazy"
+            />
           </div>
         </div>
       </section>
