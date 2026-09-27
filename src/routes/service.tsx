@@ -240,27 +240,72 @@ function ServicePage() {
 
       <section className="bg-site-navy-soft py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-            Аренда и сервис — отдельно
-          </h2>
-          <p className="mt-4 max-w-2xl leading-relaxed text-site-muted">
-            Если объект сдаётся через нас, обслуживание можно подключить к
-            управлению. Если дом не в аренде — работаем как отдельный сервис
-            по содержанию.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              to="/rent"
-              className="inline-flex items-center rounded-md border border-site-line bg-white px-5 py-3 text-sm font-semibold text-site-navy transition-colors hover:border-site-gold"
-            >
-              Аренда объектов
-            </Link>
-            <Link
-              to="/management"
-              className="inline-flex items-center rounded-md bg-site-navy px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
-            >
-              Собственникам
-            </Link>
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+              Выберите направление
+            </h2>
+            <p className="mt-4 leading-relaxed text-site-muted">
+              Сервис и аренда — два отдельных формата. Можно подключить один
+              или оба.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
+            <div className="flex flex-col rounded-2xl border-2 border-site-gold bg-white p-6 shadow-[0_12px_40px_-24px_rgba(199,158,80,0.35)] md:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
+                Сервис
+              </p>
+              <p className="mt-3 text-xl font-semibold text-site-navy">
+                Обслуживание дома
+              </p>
+              <p className="mt-3 flex-1 text-sm leading-relaxed text-site-muted">
+                Уход за территорией, бассейном, инженерией и клининг — по
+                согласованному перечню, даже если дом не сдаётся в аренду.
+              </p>
+              <a
+                href="#lead"
+                className="mt-6 inline-flex w-fit items-center rounded-md bg-site-navy px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+              >
+                Оставить заявку
+              </a>
+            </div>
+            <div className="flex flex-col rounded-2xl border border-site-line bg-white p-6 md:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
+                Аренда
+              </p>
+              <p className="mt-3 text-xl font-semibold text-site-navy">
+                Сдача объекта
+              </p>
+              <p className="mt-3 flex-1 text-sm leading-relaxed text-site-muted">
+                Подбор арендатора, договор, заселение и сопровождение на весь
+                срок — отдельно от сервиса обслуживания дома.
+              </p>
+              <Link
+                to="/rent"
+                className="mt-6 inline-flex w-fit items-center rounded-md border border-site-line bg-white px-5 py-3 text-sm font-semibold text-site-navy transition-colors hover:border-site-gold"
+              >
+                Смотреть объекты
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+              С нами удобно и безопасно
+            </h2>
+            <p className="mt-5 leading-relaxed text-site-muted">
+              Особенно актуально для собственников, которые не проживают в Сочи
+              постоянно. Мы — надёжный партнёр с полным комплексом услуг: вы
+              сразу получаете информацию о состоянии дома и территории, а также
+              по всем выполненным и запланированным работам.
+            </p>
+            <p className="mt-8 text-2xl font-bold text-site-navy md:text-3xl">
+              Стоимость услуги от{" "}
+              <span className="text-site-gold">10&nbsp;000&nbsp;₽</span>
+            </p>
           </div>
         </div>
       </section>
