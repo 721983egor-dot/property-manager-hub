@@ -32,6 +32,12 @@ export type CrmClient = {
   blacklist_reason: string;
   portfolios: Portfolio[];
   party_kind: ClientPartyKind;
+  /** Источник обращения — тот же список, что у сделки. */
+  source: string;
+  /** Аккаунт Telegram (@username). */
+  telegram: string;
+  /** По какому объекту обратился. */
+  property_id: string | null;
 };
 
 export type ClientStatus = "renting" | "booked" | "left" | "none";
@@ -90,13 +96,21 @@ export function hasCallablePhone(phone: string) {
   return phoneDigits(phone).length === 11;
 }
 
-const SELECT = "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, party_kind";
-
-function mapClient(c: CrmClient & { party_kind?: unknown }): CrmClient {
+function mapClient(
+  c: CrmClient & {
+    party_kind?: unknown;
+    source?: unknown;
+    telegram?: unknown;
+    property_id?: unknown;
+  },
+): CrmClient {
   return {
     ...c,
     portfolios: asPortfolios(c.portfolios),
     party_kind: asPartyKind(c.party_kind),
+    source: typeof c.source === "string" ? c.source : "",
+    telegram: typeof c.telegram === "string" ? c.telegram : "",
+    property_id: typeof c.property_id === "string" ? c.property_id : null,
   };
 }
 
@@ -119,7 +133,26 @@ export type ClientInput = {
   blacklist_reason: string;
   portfolios: Portfolio[];
   party_kind: ClientPartyKind;
+  source: string;
+  telegram: string;
+  property_id: string | null;
 };
+
+function stripMissingClientColumns(message: string, row: Record<string, unknown>) {
+  let next = { ...row };
+  if (/party_kind|schema cache|could not find/i.test(message) && "party_kind" in next) {
+    const { party_kind: _pk, ...rest } = next;
+    next = rest;
+  }
+  if (
+    /source|telegram|property_id|schema cache|could not find/i.test(message) &&
+    ("source" in next || "telegram" in next || "property_id" in next)
+  ) {
+    const { source: _s, telegram: _t, property_id: _p, ...rest } = next;
+    next = rest;
+  }
+  return next;
+}
 
 export async function saveClient(id: string | null, input: ClientInput) {
   const write = async (row: Record<string, unknown>) =>
@@ -127,10 +160,14 @@ export async function saveClient(id: string | null, input: ClientInput) {
       ? supabase.from("clients").update(row as never).eq("id", id)
       : supabase.from("clients").insert(row as never).select("id").single();
 
-  let result = await write(input as never);
-  if (result.error && /party_kind|schema cache|could not find/i.test(result.error.message)) {
-    const { party_kind: _pk, ...rest } = input;
-    result = await write(rest as never);
+  let row: Record<string, unknown> = { ...input };
+  let result = await write(row);
+  if (result.error) {
+    const stripped = stripMissingClientColumns(result.error.message, row);
+    if (JSON.stringify(stripped) !== JSON.stringify(row)) {
+      row = stripped;
+      result = await write(row);
+    }
   }
   if (result.error) throw result.error;
   if (id) return id;

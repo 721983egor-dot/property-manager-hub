@@ -125,8 +125,11 @@ export const getStaffProperty = createServerFn({ method: "POST" })
   });
 
 const CLIENT_COLUMNS =
+  "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, party_kind, source, telegram, property_id";
+const CLIENT_COLUMNS_LEGACY =
   "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, party_kind";
-const CLIENT_COLUMNS_LEGACY = "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios";
+const CLIENT_COLUMNS_LEGACY_NO_PARTY =
+  "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios";
 
 /** Клиенты для вошедших сотрудников. Менеджер получает только чтение. */
 export const listStaffClients = createServerFn({ method: "POST" })
@@ -137,10 +140,16 @@ export const listStaffClients = createServerFn({ method: "POST" })
       .from("clients")
       .select(CLIENT_COLUMNS)
       .order("full_name", { ascending: true });
-    if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
+    if (error && /source|telegram|property_id|schema cache|could not find/i.test(error.message)) {
       ({ data, error } = await admin
         .from("clients")
         .select(CLIENT_COLUMNS_LEGACY)
+        .order("full_name", { ascending: true }));
+    }
+    if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
+      ({ data, error } = await admin
+        .from("clients")
+        .select(CLIENT_COLUMNS_LEGACY_NO_PARTY)
         .order("full_name", { ascending: true }));
     }
     if (error) throw new Error(error.message);
@@ -157,10 +166,17 @@ export const getStaffClient = createServerFn({ method: "POST" })
       .select(CLIENT_COLUMNS)
       .eq("id", input.id)
       .maybeSingle();
-    if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
+    if (error && /source|telegram|property_id|schema cache|could not find/i.test(error.message)) {
       ({ data, error } = await admin
         .from("clients")
         .select(CLIENT_COLUMNS_LEGACY)
+        .eq("id", input.id)
+        .maybeSingle());
+    }
+    if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
+      ({ data, error } = await admin
+        .from("clients")
+        .select(CLIENT_COLUMNS_LEGACY_NO_PARTY)
         .eq("id", input.id)
         .maybeSingle());
     }

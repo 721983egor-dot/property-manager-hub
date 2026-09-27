@@ -378,7 +378,12 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
+          party_kind: string
           phone: string
+          portfolios: string[]
+          property_id: string | null
+          source: string
+          telegram: string
           updated_at: string
         }
         Insert: {
@@ -388,7 +393,12 @@ export type Database = {
           created_at?: string
           full_name: string
           id?: string
+          party_kind?: string
           phone?: string
+          portfolios?: string[]
+          property_id?: string | null
+          source?: string
+          telegram?: string
           updated_at?: string
         }
         Update: {
@@ -398,10 +408,23 @@ export type Database = {
           created_at?: string
           full_name?: string
           id?: string
+          party_kind?: string
           phone?: string
+          portfolios?: string[]
+          property_id?: string | null
+          source?: string
+          telegram?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       complexes: {
         Row: {

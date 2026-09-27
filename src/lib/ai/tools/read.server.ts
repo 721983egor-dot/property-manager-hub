@@ -309,7 +309,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getClients: tool({
       description:
-        "Клиенты RM OS + брони из Календаря (в т.ч. кто живёт/забронировал без сделки CRM). Для человека передай query — ищет по ФИО, телефону и комментарию. Смотри currentRentals и calendarBookings — это не CRM.",
+        "Клиенты RM OS + брони из Календаря (в т.ч. кто живёт/забронировал без сделки CRM). Для человека передай query — ищет по ФИО, телефону, комментарию и Telegram. Смотри currentRentals и calendarBookings — это не CRM.",
       inputSchema: z.object({
         query: z.string().optional(),
         blacklistedOnly: z.boolean().optional(),
@@ -319,7 +319,9 @@ export function createReadTools(ctx: AssistantToolContext) {
         try {
           let q = admin
             .from("clients")
-            .select("id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, created_at")
+            .select(
+              "id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, source, telegram, property_id, created_at",
+            )
             .order("created_at", { ascending: false })
             .limit(query ? 50 : 200);
           if (blacklistedOnly) q = q.eq("blacklisted", true);
@@ -332,12 +334,37 @@ export function createReadTools(ctx: AssistantToolContext) {
               `full_name.ilike.%${clean}%`,
               `phone.ilike.%${clean}%`,
               `comment.ilike.%${clean}%`,
+              `telegram.ilike.%${clean}%`,
+              `source.ilike.%${clean}%`,
               ...words.map((w) => `full_name.ilike.%${w}%`),
             ];
             if (digits.length >= 4) parts.push(`phone.ilike.%${digits.slice(-10)}%`);
             q = q.or(parts.join(","));
           }
-          const { data, error } = await q;
+          let { data, error } = await q;
+          if (error && /source|telegram|property_id|schema cache|could not find/i.test(error.message)) {
+            let fallback = admin
+              .from("clients")
+              .select("id, full_name, phone, comment, blacklisted, blacklist_reason, portfolios, created_at")
+              .order("created_at", { ascending: false })
+              .limit(query ? 50 : 200);
+            if (blacklistedOnly) fallback = fallback.eq("blacklisted", true);
+            if (portfolio) fallback = fallback.contains("portfolios", [portfolio]);
+            if (query) {
+              const clean = query.replace(/[%,()*]/g, "").trim();
+              const digits = clean.replace(/\D/g, "");
+              const words = clean.split(/\s+/).filter((w) => w.length >= 2).slice(0, 4);
+              const parts = [
+                `full_name.ilike.%${clean}%`,
+                `phone.ilike.%${clean}%`,
+                `comment.ilike.%${clean}%`,
+                ...words.map((w) => `full_name.ilike.%${w}%`),
+              ];
+              if (digits.length >= 4) parts.push(`phone.ilike.%${digits.slice(-10)}%`);
+              fallback = fallback.or(parts.join(","));
+            }
+            ({ data, error } = await fallback);
+          }
           if (error) return { error: error.message };
           const clients = data ?? [];
           const ids = clients.map((c) => c.id);
@@ -353,9 +380,15 @@ export function createReadTools(ctx: AssistantToolContext) {
             if (bookingError) return { error: bookingError.message };
             bookingRows.push(...((rows ?? []) as unknown as BookingRow[]));
           }
-          const names = await nameMap([
-            ...new Set(bookingRows.map((b) => b.property_id).filter(Boolean)),
-          ]);
+          const propIds = [
+            ...new Set([
+              ...bookingRows.map((b) => b.property_id).filter(Boolean),
+              ...clients
+                .map((c) => (c as { property_id?: string | null }).property_id)
+                .filter((id): id is string => Boolean(id)),
+            ]),
+          ];
+          const names = await nameMap(propIds);
           const byClient = new Map<string, BookingRow[]>();
           for (const booking of bookingRows) {
             const list = byClient.get(booking.client_id) ?? [];
@@ -373,11 +406,16 @@ export function createReadTools(ctx: AssistantToolContext) {
               const calendar = mapped.filter((b) => b.status !== "cancelled");
               const current = mapped.filter((b) => b.isCurrent);
               const upcoming = mapped.filter((b) => b.isUpcoming);
+              const inquiryId = (c as { property_id?: string | null }).property_id ?? null;
               return {
                 id: c.id,
                 fullName: c.full_name,
                 phone: c.phone,
                 comment: c.comment,
+                source: (c as { source?: string }).source ?? "",
+                telegram: (c as { telegram?: string }).telegram ?? "",
+                inquiryPropertyId: inquiryId,
+                inquiryProperty: inquiryId ? (names.get(inquiryId) ?? inquiryId) : null,
                 portfolio: (c as { portfolios?: string[] }).portfolios ?? ["rm"],
                 blacklisted: c.blacklisted,
                 blacklistReason: c.blacklist_reason,
@@ -451,6 +489,7 @@ export function createReadTools(ctx: AssistantToolContext) {
               ...rentals.map((r) => r.property_id),
               ...(deals ?? []).map((d) => d.property_id).filter(Boolean),
               ...(deals ?? []).map((d) => d.closed_property_id).filter(Boolean),
+              ...(c["property_id"] ? [c["property_id"] as string] : []),
             ]),
           ] as string[];
           const names = await nameMap(propertyIds);
@@ -472,6 +511,12 @@ export function createReadTools(ctx: AssistantToolContext) {
               phone: c["phone"],
               comment: c["comment"],
               blacklisted: c["blacklisted"],
+              source: c["source"] ?? "",
+              telegram: c["telegram"] ?? "",
+              inquiryPropertyId: c["property_id"] ?? null,
+              inquiryProperty: c["property_id"]
+                ? (names.get(c["property_id"] as string) ?? c["property_id"])
+                : null,
             },
             summary: {
               hasCalendarBookings: calendarBookings.length > 0,

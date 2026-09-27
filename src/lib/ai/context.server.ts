@@ -237,18 +237,28 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
         `full_name.ilike.%${clean}%`,
         `phone.ilike.%${clean}%`,
         `comment.ilike.%${clean}%`,
+        `telegram.ilike.%${clean}%`,
       ];
       // По словам: «Сафонов» и «Юрий» по отдельности — клиенты до CRM тоже находятся.
       for (const word of words.slice(0, 4)) {
         parts.push(`full_name.ilike.%${word}%`);
       }
       if (digits.length >= 4) parts.push(`phone.ilike.%${digits.slice(-10)}%`);
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from("clients")
         .select("*")
         .or(parts.join(","))
         .order("created_at", { ascending: false })
         .limit(80);
+      if (error && /telegram|schema cache|could not find/i.test(error.message)) {
+        const legacyParts = parts.filter((p) => !p.startsWith("telegram."));
+        ({ data, error } = await supabaseAdmin
+          .from("clients")
+          .select("*")
+          .or(legacyParts.join(","))
+          .order("created_at", { ascending: false })
+          .limit(80));
+      }
       if (error) {
         console.error("findClient failed", error.message);
         return null;
@@ -261,6 +271,7 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
           const name = normalizeSearch(client["full_name"]);
           const phone = String(client["phone"] ?? "").replace(/\D/g, "");
           const comment = normalizeSearch(client["comment"]);
+          const telegram = normalizeSearch(client["telegram"]);
           const nameWords = name.split(" ").filter(Boolean);
           let score = 0;
           if (name === norm) score = 8;
@@ -272,6 +283,7 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
             score = 7;
           else if (words.some((w) => name.includes(w))) score = 4;
           else if (digits.length >= 4 && phone.includes(digits.slice(-10))) score = 5;
+          else if (telegram && (telegram.includes(norm) || norm.includes(telegram))) score = 5;
           else if (comment.includes(norm)) score = 2;
           else score = 1;
           return { client, score };
