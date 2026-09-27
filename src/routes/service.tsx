@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, Phone, Send } from "lucide-react";
 
+import { PageHero, PageHeroCta } from "@/components/site/PageHero";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import {
   SITE_ORIGIN,
@@ -10,10 +11,7 @@ import {
 } from "@/lib/site";
 import imgTerritory from "@/assets/site/home_alt.jpg";
 import imgPool from "@/assets/site/mgmt_p2.jpg";
-import imgEngineering from "@/assets/site/home_p3.jpg";
 import imgCleaning from "@/assets/site/home_about.jpg";
-import imgRepair from "@/assets/site/home_p2.jpg";
-import imgControl from "@/assets/site/about_hero.jpg";
 
 export const Route = createFileRoute("/service")({
   head: () => {
@@ -55,39 +53,33 @@ const SERVICES = [
   {
     title: "Территория и сад",
     text: "Уход за газоном, растениями, дорожками и зонами отдыха. Держим участок в порядке в течение сезона.",
-    image: imgTerritory,
-    alt: "Частные дома и территория у моря",
   },
   {
     title: "Бассейн",
     text: "Чистка, химия, оборудование и подготовка к сезону — без необходимости искать подрядчиков самостоятельно.",
-    image: imgPool,
-    alt: "Бассейн и терраса частного дома",
   },
   {
     title: "Инженерные системы",
     text: "Контроль отопления, воды, электрики, кондиционеров и другого оборудования дома.",
-    image: imgEngineering,
-    alt: "Интерьер и инженерные детали дома",
   },
   {
     title: "Клининг",
     text: "Регулярная уборка, химчистка текстиля и подготовка дома к приезду собственника или гостей.",
-    image: imgCleaning,
-    alt: "Интерьер дома после уборки",
   },
   {
     title: "Мелкий ремонт",
     text: "Находим специалистов, согласуем работы и контролируем результат по согласованному перечню.",
-    image: imgRepair,
-    alt: "Частный дом премиум-класса",
   },
   {
     title: "Контроль состояния",
     text: "Осмотры, фиксация состояния и понятная обратная связь, если объект остаётся без постоянного присутствия.",
-    image: imgControl,
-    alt: "Вилла с бассейном в Сочи",
   },
+];
+
+const VISUAL_STRIP = [
+  { src: imgTerritory, alt: "Частные дома и территория у моря" },
+  { src: imgPool, alt: "Бассейн и терраса частного дома" },
+  { src: imgCleaning, alt: "Интерьер дома после уборки" },
 ];
 
 const FOR_WHOM = [
@@ -127,34 +119,12 @@ const STEPS = [
 function ServicePage() {
   return (
     <div className="font-site">
-      <section className="relative overflow-hidden bg-site-navy">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,color-mix(in_oklch,var(--site-gold)_22%,transparent),transparent_55%),radial-gradient(ellipse_at_90%_80%,color-mix(in_oklch,var(--site-gold)_12%,transparent),transparent_50%),linear-gradient(135deg,var(--site-navy)_0%,oklch(0.28_0.05_255)_48%,oklch(0.22_0.04_250)_100%)]"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-site-gold/50 to-transparent"
-        />
-        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-12 md:px-6 md:py-14">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-site-gold">
-            Территория · Бассейн · Инженерия · Клининг
-          </p>
-          <h1 className="mt-3 max-w-xl text-2xl font-bold leading-snug text-white md:text-[2rem] md:leading-tight">
-            Обслуживание домов и вилл
-          </h1>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-white/80 md:text-[15px]">
-            Регулярный уход за частным домом: сад, бассейн, инженерия и
-            клининг — по согласованному перечню.
-          </p>
-          <a
-            href="#lead"
-            className="mt-6 inline-flex items-center rounded-md bg-site-gold px-5 py-2.5 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
-          >
-            Оставить заявку
-          </a>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Территория · Бассейн · Инженерия · Клининг"
+        title="Обслуживание домов и вилл"
+        description="Регулярный уход за частным домом: сад, бассейн, инженерия и клининг — по согласованному перечню."
+        cta={<PageHeroCta href="#lead">Оставить заявку</PageHeroCta>}
+      />
 
       <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
@@ -165,31 +135,38 @@ function ServicePage() {
             Частный дом требует постоянного внимания. Мы организуем работу
             подрядчиков и держим процессы в одной точке контакта.
           </p>
-          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {SERVICES.map((item) => (
+
+          <div className="mt-10 grid gap-3 sm:grid-cols-3">
+            {VISUAL_STRIP.map((item) => (
               <div
-                key={item.title}
-                className="overflow-hidden rounded-xl border border-site-line bg-white"
+                key={item.alt}
+                className="aspect-[16/10] overflow-hidden rounded-xl bg-site-navy-soft"
               >
-                <div className="aspect-[16/10] overflow-hidden bg-site-navy-soft">
-                  <img
-                    src={item.image}
-                    alt={item.alt}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="p-5">
-                  <p className="text-base font-semibold text-site-navy">
-                    {item.title}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-site-muted">
-                    {item.text}
-                  </p>
-                </div>
+                <img
+                  src={item.src}
+                  alt={item.alt}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
               </div>
             ))}
           </div>
+
+          <ul className="mt-10 grid gap-5 md:grid-cols-2">
+            {SERVICES.map((item) => (
+              <li
+                key={item.title}
+                className="border-l-2 border-site-gold/70 pl-5"
+              >
+                <p className="text-base font-semibold text-site-navy">
+                  {item.title}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                  {item.text}
+                </p>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 

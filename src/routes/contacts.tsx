@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Mail, MapPin, MessageCircle, Phone, Send } from "lucide-react";
 
+import { PageHero } from "@/components/site/PageHero";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import {
   SITE_ADDRESS,
@@ -46,15 +47,10 @@ export const Route = createFileRoute("/contacts")({
 function ContactsPage() {
   return (
     <div className="font-site">
-      <section className="bg-site-navy py-16">
-        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <h1 className="text-4xl font-bold text-white md:text-5xl">Контакты</h1>
-          <p className="mt-4 max-w-xl leading-relaxed text-white/75">
-            Остались вопросы? Вы можете связаться с нами напрямую по номеру
-            телефона / почте, либо оставить заявку на звонок.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        title="Контакты"
+        description="Остались вопросы? Свяжитесь с нами по телефону или почте — либо оставьте заявку на звонок."
+      />
 
       <section className="bg-white py-16">
         <div className="mx-auto grid max-w-[1280px] gap-10 px-5 md:px-6 lg:grid-cols-2">

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MessageCircle, Phone, Send } from "lucide-react";
 
+import { PageHero, PageHeroCta } from "@/components/site/PageHero";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import {
   SITE_ORIGIN,
@@ -8,7 +9,6 @@ import {
   SITE_TELEGRAM,
   SITE_WHATSAPP,
 } from "@/lib/site";
-import heroImg from "@/assets/site/mgmt_hero.jpg";
 import img3 from "@/assets/site/mgmt_p3.jpg";
 import img4 from "@/assets/site/mgmt_p4.jpg";
 
@@ -146,33 +146,12 @@ const TERMS = [
 function ManagementPage() {
   return (
     <div className="font-site">
-      <section className="relative flex min-h-[75vh] items-center overflow-hidden bg-site-navy">
-        <img
-          src={heroImg}
-          alt="Управление недвижимостью в Сочи"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-site-navy/90 via-site-navy/60 to-site-navy/25" />
-        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-20 md:px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
-            · Поиск арендаторов · Контроль оплат · Обслуживание · Страхование
-          </p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.1] text-white md:text-6xl">
-            Сервис управления жилой недвижимостью
-          </h1>
-          <p className="mt-6 max-w-2xl leading-relaxed text-white/80">
-            Помогаем сдавать квартиры, апартаменты, дома и виллы в среднесрочную
-            и долгосрочную аренду. Берём на себя поиск арендаторов, показы,
-            договор, контроль оплат и сопровождение объекта.
-          </p>
-          <a
-            href="#lead"
-            className="mt-9 inline-flex items-center rounded-md bg-site-gold px-7 py-3.5 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
-          >
-            Свяжитесь с нами
-          </a>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Поиск арендаторов · Контроль оплат · Обслуживание · Страхование"
+        title="Сервис управления жилой недвижимостью"
+        description="Помогаем сдавать квартиры, апартаменты, дома и виллы в среднесрочную и долгосрочную аренду. Берём на себя поиск арендаторов, показы, договор, контроль оплат и сопровождение объекта."
+        cta={<PageHeroCta href="#lead">Свяжитесь с нами</PageHeroCta>}
+      />
 
       <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">

@@ -14,6 +14,7 @@ import {
   Sofa,
 } from "lucide-react";
 
+import { PageHero } from "@/components/site/PageHero";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import {
   SITE_ORIGIN,
@@ -21,7 +22,6 @@ import {
   SITE_TELEGRAM,
   SITE_WHATSAPP,
 } from "@/lib/site";
-import heroImg from "@/assets/site/about_hero.jpg";
 
 export const Route = createFileRoute("/about")({
   head: () => {
@@ -98,27 +98,11 @@ const PRINCIPLES = [
 function AboutPage() {
   return (
     <div className="font-site">
-      <section className="relative flex min-h-[70vh] items-center overflow-hidden bg-site-navy">
-        <img
-          src={heroImg}
-          alt="Недвижимость в Сочи"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-site-navy/90 via-site-navy/60 to-site-navy/25" />
-        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-20 md:px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
-            · Собственникам · Арендаторам · Управление · Сопровождение
-          </p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.1] text-white md:text-6xl">
-            Управляем недвижимостью в Сочи системно и прозрачно
-          </h1>
-          <p className="mt-6 max-w-2xl leading-relaxed text-white/80">
-            Помогаем собственникам сдавать квартиры, апартаменты, дома и виллы в
-            среднесрочную и долгосрочную аренду, а арендаторам — находить
-            комфортное жильё для жизни в Сочи.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Собственникам · Арендаторам · Управление · Сопровождение"
+        title="Управляем недвижимостью в Сочи системно и прозрачно"
+        description="Помогаем собственникам сдавать квартиры, апартаменты, дома и виллы в среднесрочную и долгосрочную аренду, а арендаторам — находить комфортное жильё для жизни в Сочи."
+      />
 
       <section className="bg-white py-20">
         <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
