@@ -239,7 +239,7 @@ function ManagementPage() {
                 </p>
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl max-lg:order-2 lg:order-1">
+            <div className="overflow-hidden rounded-2xl max-lg:order-2 lg:order-1 lg:max-h-[340px]">
               <picture>
                 <source
                   type="image/webp"
@@ -248,7 +248,7 @@ function ManagementPage() {
                 <img
                   src="/service/additional-maintenance.jpg"
                   alt="Обслуживание дома: работы на террасе"
-                  className="aspect-[3/2] w-full object-cover lg:max-h-[360px]"
+                  className="aspect-[3/2] h-full w-full object-cover"
                   width={1536}
                   height={1024}
                   loading="lazy"
