@@ -213,42 +213,49 @@ function ManagementPage() {
         </div>
       </section>
 
+      {/* mobile: заголовок→фото→текст; lg+: фото | текст */}
       <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-            Дополнительное обслуживание домов и вилл
-          </h2>
-          <div className="mt-6 overflow-hidden rounded-2xl">
-            <picture>
-              <source
-                type="image/webp"
-                srcSet="/service/additional-maintenance.webp"
-              />
-              <img
-                src="/service/additional-maintenance.jpg"
-                alt="Обслуживание дома: работы на террасе"
-                className="aspect-[3/2] w-full object-cover lg:aspect-[16/9]"
-                width={1536}
-                height={1024}
-                loading="lazy"
-              />
-            </picture>
+          <div className="grid items-center gap-6 lg:grid-cols-2 lg:gap-10">
+            <div className="contents lg:order-2 lg:flex lg:flex-col">
+              <h2 className="order-1 text-3xl font-bold text-site-navy md:text-4xl">
+                Дополнительное обслуживание домов и вилл
+              </h2>
+              <div className="order-3 mt-6 lg:order-none lg:mt-4">
+                <p className="leading-relaxed text-site-muted">
+                  Частный дом требует регулярного внимания: территория, бассейн,
+                  инженерия, клининг и мелкие технические вопросы. Мы организуем
+                  эти процессы по согласованному перечню задач.
+                </p>
+                <p className="mt-4 text-sm leading-relaxed text-site-muted">
+                  Отдельное направление сервиса — на странице{" "}
+                  <Link
+                    to="/service"
+                    className="font-medium text-site-navy underline-offset-2 hover:underline"
+                  >
+                    Обслуживание домов и вилл
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+            <div className="order-2 overflow-hidden rounded-2xl lg:order-1">
+              <picture>
+                <source
+                  type="image/webp"
+                  srcSet="/service/additional-maintenance.webp"
+                />
+                <img
+                  src="/service/additional-maintenance.jpg"
+                  alt="Обслуживание дома: работы на террасе"
+                  className="aspect-[3/2] h-full w-full object-cover"
+                  width={1536}
+                  height={1024}
+                  loading="lazy"
+                />
+              </picture>
+            </div>
           </div>
-          <p className="mt-6 max-w-3xl leading-relaxed text-site-muted">
-            Частный дом требует регулярного внимания: территория, бассейн,
-            инженерия, клининг и мелкие технические вопросы. Мы организуем
-            эти процессы по согласованному перечню задач.
-          </p>
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-site-muted">
-            Отдельное направление сервиса — на странице{" "}
-            <Link
-              to="/service"
-              className="font-medium text-site-navy underline-offset-2 hover:underline"
-            >
-              Обслуживание домов и вилл
-            </Link>
-            .
-          </p>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {EXTRA.map((item) => (
               <div
