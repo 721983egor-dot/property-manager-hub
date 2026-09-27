@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, Phone, Send } from "lucide-react";
 
 import { PageHero, PageHeroCta } from "@/components/site/PageHero";
@@ -82,7 +82,7 @@ const EXTRA = [
   },
   {
     title: "Бассейн",
-    text: "Обслуживание оборудования, чистка бассейнов, фонтанов и подготовку к сезону.",
+    text: "Обслуживание оборудования, чистка бассейнов и фонтанов, подготовка к сезону.",
   },
   {
     title: "Клининг и химчистка",
@@ -234,6 +234,16 @@ function ManagementPage() {
                 инженерия, клининг и мелкие технические вопросы. Мы организуем
                 эти процессы по согласованному перечню задач.
               </p>
+              <p className="mt-4 text-sm leading-relaxed text-site-muted">
+                Отдельное направление сервиса — на странице{" "}
+                <Link
+                  to="/service"
+                  className="font-medium text-site-navy underline-offset-2 hover:underline"
+                >
+                  Обслуживание домов и вилл
+                </Link>
+                .
+              </p>
             </div>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -335,7 +345,7 @@ function ManagementPage() {
             <p className="mt-5 max-w-md leading-relaxed text-white/75">
               Приедем на объект, оценим состояние, локацию и арендный потенциал.
               Покажем, какой формат подойдёт лучше: среднесрочная аренда, долгий
-              срок, управление или комплексное обслуживание
+              срок, управление или комплексное обслуживание.
             </p>
             <p className="mt-4 text-sm text-site-gold">
               Консультация и оценка объекта — бесплатно.
@@ -370,7 +380,7 @@ function ManagementPage() {
               Заявка на доверительное управление недвижимостью
             </p>
             <p className="mt-1 text-sm text-site-muted">
-              Заполните форму и мы свяжемся с вами для дальнейшего
+              Заполните форму, и мы свяжемся с вами для дальнейшего
               сотрудничества.
             </p>
             <div className="mt-4">

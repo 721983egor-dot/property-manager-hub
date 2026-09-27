@@ -33,10 +33,22 @@ import selectionImg from "@/assets/site/home_p5.jpg";
 const DIRECTOR_PHOTO = "/about/egor-moshkov.jpg";
 
 const SERVICE_STRIP = [
-  { src: "/service/pool-cleaning.png", alt: "Чистка бассейна" },
-  { src: "/service/house-interior-work.png", alt: "Работы внутри дома" },
-  { src: "/service/pool-area-wash.png", alt: "Мойка территории у бассейна" },
-  { src: "/service/interior-cleaning.png", alt: "Клининг внутри дома" },
+  {
+    src: "/service/pool-cleaning.png",
+    alt: "Чистка бассейна частного дома в Сочи",
+  },
+  {
+    src: "/service/house-interior-work.png",
+    alt: "Работы внутри дома при обслуживании виллы",
+  },
+  {
+    src: "/service/pool-area-wash.png",
+    alt: "Мойка территории у бассейна на участке",
+  },
+  {
+    src: "/service/interior-cleaning.png",
+    alt: "Клининг интерьера частного дома",
+  },
 ];
 
 const SERVICE_HOME_POINTS = [
@@ -61,22 +73,22 @@ export const Route = createFileRoute("/")({
       meta: [
         {
           title:
-            "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
+            "Аренда премиум-апартаментов и домов в Сочи — Резиденция&Море",
         },
         {
           name: "description",
           content:
-            "Резиденция&Море — сервис управления жилой недвижимостью. Сдаём в аренду апартаменты, дома и виллы бизнес и премиум-класса для жизни, отдыха и длительного проживания в Сочи.",
+            "Резиденция&Море — сервис управления жилой недвижимостью. Сдаём в аренду апартаменты, дома и виллы бизнес- и премиум-класса для жизни, отдыха и длительного проживания в Сочи.",
         },
         {
           property: "og:title",
           content:
-            "Аренда премиум апартаментов и домов в Сочи — Резиденция&Море",
+            "Аренда премиум-апартаментов и домов в Сочи — Резиденция&Море",
         },
         {
           property: "og:description",
           content:
-            "Апартаменты, дома премиум и бизнес класса в Сочи. Только реальные объекты, прозрачные условия, сервис и обслуживание.",
+            "Апартаменты, дома премиум- и бизнес-класса в Сочи. Только реальные объекты, прозрачные условия, сервис и обслуживание.",
         },
         { name: "twitter:card", content: "summary_large_image" },
         { property: "og:url", content: url },
@@ -116,16 +128,16 @@ const ADVANTAGES = [
 
 const SERVICE = [
   {
-    title: "Надежная аренда",
-    text: "Только актуальные предложения на сайте и комфортная аренда на понятных условиях",
+    title: "Надёжная аренда",
+    text: "Только актуальные предложения на сайте и комфортная аренда на понятных условиях.",
   },
   {
     title: "Сервис на весь срок",
-    text: "Если что-то сломалось, нужен клининг, химчистка или бытовая помощь — по всем вопросам к нам",
+    text: "Если что-то сломалось, нужен клининг, химчистка или бытовая помощь — по всем вопросам к нам.",
   },
   {
     title: "Поддержка",
-    text: "Подскажем по объекту, правилам проживания, коммуникации с собственником и другим вопросам",
+    text: "Подскажем по объекту, правилам проживания, коммуникации с собственником и другим вопросам.",
   },
 ];
 
@@ -196,7 +208,7 @@ function HomePage() {
       <section className="relative flex min-h-[88vh] items-center overflow-hidden bg-site-navy">
         <img
           src={heroImage}
-          alt="Апартаменты и дома премиум класса в Сочи"
+          alt="Апартаменты и дома премиум-класса в Сочи"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-site-navy/90 via-site-navy/55 to-site-navy/20" />
@@ -205,7 +217,7 @@ function HomePage() {
             Аренда в <span className="text-site-gold">Сочи</span>
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
-            Апартаменты, дома премиум и бизнес класса
+            Апартаменты, дома премиум- и бизнес-класса
           </p>
           <HeroSearchBar roomCounts={roomCounts} />
           <div className="mt-12 flex flex-col gap-4 border-l-2 border-site-gold/60 pl-5">
@@ -331,7 +343,7 @@ function HomePage() {
           <div className="rounded-2xl bg-white p-6 shadow-2xl md:p-8">
             <p className="text-lg font-semibold text-site-navy">Остались вопросы?</p>
             <p className="mt-1 text-sm text-site-muted">
-              Заполните форму и мы свяжемся с вами в ближайшее время
+              Заполните форму, и мы свяжемся с вами в ближайшее время.
             </p>
             <div className="mt-4">
               <SiteLeadForm source="home-selection" />
@@ -499,8 +511,8 @@ function HomePage() {
           <div>
             <h2 className="text-3xl font-bold text-white md:text-4xl">Контакты</h2>
             <p className="mt-5 max-w-md leading-relaxed text-white/75">
-              Остались вопросы? Вы можете связаться с нами напрямую по номеру
-              телефона / почте, либо оставить заявку на звонок.
+              Остались вопросы? Свяжитесь с нами по телефону или почте — либо
+              оставьте заявку на звонок.
             </p>
           </div>
           <div className="grid gap-6 text-sm text-white/80 sm:grid-cols-2">

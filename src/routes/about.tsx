@@ -186,7 +186,7 @@ function AboutPage() {
               Два направления
             </h2>
             <p className="mt-4 leading-relaxed text-site-muted">
-              Выберите формат под задачу — или объедините оба
+              Выберите формат под задачу — или объедините оба.
             </p>
           </div>
           <div className="mt-12 grid gap-5 md:grid-cols-2">
@@ -224,7 +224,7 @@ function AboutPage() {
             </h2>
             <p className="mt-4 leading-relaxed text-site-muted">
               Не просто находим арендатора — сопровождаем объект и при
-              необходимости содерживаем дом
+              необходимости обслуживаем дом.
             </p>
           </div>
 
@@ -346,7 +346,7 @@ function AboutPage() {
               Выберите удобный способ связи
             </h2>
             <p className="mt-4 text-white/75">
-              Напишите нам в удобный мессенджер или позвоните
+              Напишите нам в удобный мессенджер или позвоните.
             </p>
             <div className="mt-6 flex flex-wrap gap-3 text-sm text-white/85">
               <a
@@ -378,7 +378,7 @@ function AboutPage() {
               Остались вопросы?
             </p>
             <p className="mt-1 text-sm text-site-muted">
-              Заполните форму и мы свяжемся с вами в ближайшее время
+              Заполните форму, и мы свяжемся с вами в ближайшее время.
             </p>
             <div className="mt-4">
               <SiteLeadForm source="about" />

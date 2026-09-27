@@ -3,8 +3,12 @@ import { Check, MessageCircle, Phone, Send } from "lucide-react";
 
 import { PageHero, PageHeroCta } from "@/components/site/PageHero";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
+import { jsonLdScript } from "@/lib/seo";
 import {
+  SITE_EMAIL,
+  SITE_NAME,
   SITE_ORIGIN,
+  SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
   SITE_TELEGRAM,
   SITE_WHATSAPP,
@@ -14,33 +18,81 @@ export const Route = createFileRoute("/service")({
   head: () => {
     const url = `${SITE_ORIGIN}/service`;
     const image = `${SITE_ORIGIN}/og-cover.jpg`;
+    const title = "Обслуживание домов и вилл в Сочи — Резиденция&Море";
+    const description =
+      "Сервис обслуживания частных домов и вилл в Сочи: территория, сад, бассейн, инженерия, клининг, показания счётчиков и контроль состояния. От 10 000 ₽ в месяц.";
     return {
       meta: [
-        {
-          title:
-            "Обслуживание домов и вилл в Сочи — Резиденция&Море",
-        },
-        {
-          name: "description",
-          content:
-            "Сервис обслуживания частных домов и вилл в Сочи: территория, сад, бассейн, инженерия, клининг и контроль состояния объекта.",
-        },
-        {
-          property: "og:title",
-          content:
-            "Обслуживание домов и вилл в Сочи — Резиденция&Море",
-        },
+        { title },
+        { name: "description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:title", content: title },
         {
           property: "og:description",
           content:
-            "Организуем регулярный уход за домом: бассейн, сад, территория, инженерия, клининг и осмотры.",
+            "Регулярный уход за частным домом в Сочи: бассейн, сад, территория, инженерия, клининг и осмотры — по согласованному перечню.",
         },
         { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
         { property: "og:url", content: url },
         { property: "og:image", content: image },
         { name: "twitter:image", content: image },
       ],
       links: [{ rel: "canonical", href: url }],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: jsonLdScript({
+            "@context": "https://schema.org",
+            "@type": "Service",
+            name: "Обслуживание домов и вилл",
+            serviceType: "Обслуживание частных домов и вилл",
+            description,
+            url,
+            areaServed: {
+              "@type": "City",
+              name: "Сочи",
+            },
+            provider: {
+              "@type": "LocalBusiness",
+              name: SITE_NAME,
+              url: SITE_ORIGIN,
+              telephone: SITE_PHONE_DISPLAY,
+              email: SITE_EMAIL,
+              address: {
+                "@type": "PostalAddress",
+                addressLocality: "Сочи",
+                streetAddress: "ул. Московская, д. 22, офис 72",
+                addressCountry: "RU",
+              },
+            },
+            offers: {
+              "@type": "Offer",
+              priceCurrency: "RUB",
+              price: "10000",
+              priceSpecification: {
+                "@type": "UnitPriceSpecification",
+                price: "10000",
+                priceCurrency: "RUB",
+                unitText: "MONTH",
+              },
+            },
+            hasOfferCatalog: {
+              "@type": "OfferCatalog",
+              name: "Услуги обслуживания дома",
+              itemListElement: [
+                { "@type": "Offer", itemOffered: { "@type": "Service", name: "Территория и сад" } },
+                { "@type": "Offer", itemOffered: { "@type": "Service", name: "Бассейн" } },
+                { "@type": "Offer", itemOffered: { "@type": "Service", name: "Инженерные системы" } },
+                { "@type": "Offer", itemOffered: { "@type": "Service", name: "Клининг" } },
+                { "@type": "Offer", itemOffered: { "@type": "Service", name: "Мелкий ремонт" } },
+                { "@type": "Offer", itemOffered: { "@type": "Service", name: "Контроль состояния" } },
+              ],
+            },
+          }),
+        },
+      ],
     };
   },
   component: ServicePage,
@@ -76,19 +128,19 @@ const SERVICES = [
 const VISUAL_STRIP = [
   {
     src: "/service/pool-cleaning.png",
-    alt: "Чистка бассейна",
+    alt: "Чистка бассейна частного дома в Сочи",
   },
   {
     src: "/service/house-interior-work.png",
-    alt: "Работы внутри дома",
+    alt: "Работы внутри дома при обслуживании виллы",
   },
   {
     src: "/service/pool-area-wash.png",
-    alt: "Мойка территории у бассейна",
+    alt: "Мойка территории у бассейна на участке",
   },
   {
     src: "/service/interior-cleaning.png",
-    alt: "Клининг внутри дома",
+    alt: "Клининг интерьера частного дома",
   },
 ];
 
@@ -175,9 +227,9 @@ function ServicePage() {
                 key={item.title}
                 className="border-l-2 border-site-gold/70 pl-5"
               >
-                <p className="text-base font-semibold text-site-navy">
+                <h3 className="text-base font-semibold text-site-navy">
                   {item.title}
-                </p>
+                </h3>
                 <p className="mt-2 text-sm leading-relaxed text-site-muted">
                   {item.text}
                 </p>
@@ -202,9 +254,9 @@ function ServicePage() {
                 key={item.title}
                 className="rounded-xl border border-site-line bg-white p-6"
               >
-                <p className="text-base font-semibold text-site-navy">
+                <h3 className="text-base font-semibold text-site-navy">
                   {item.title}
-                </p>
+                </h3>
                 <p className="mt-2 text-sm leading-relaxed text-site-muted">
                   {item.text}
                 </p>
@@ -232,9 +284,9 @@ function ServicePage() {
                 <span className="text-3xl font-bold text-site-gold">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <p className="mt-4 text-base font-semibold text-site-navy">
+                <h3 className="mt-4 text-base font-semibold text-site-navy">
                   {step.title}
-                </p>
+                </h3>
                 <p className="mt-2 text-sm leading-relaxed text-site-muted">
                   {step.text}
                 </p>

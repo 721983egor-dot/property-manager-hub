@@ -25,13 +25,13 @@ export const Route = createFileRoute("/contacts")({
         {
           name: "description",
           content:
-            "Остались вопросы? Вы можете связаться с нами напрямую по номеру телефона / почте, либо оставить заявку на звонок. г. Сочи ул. Московская, д. 22, офис 72.",
+            "Остались вопросы? Свяжитесь с нами по телефону или почте — либо оставьте заявку на звонок. г. Сочи, ул. Московская, д. 22, офис 72.",
         },
         { property: "og:title", content: "Контакты — Резиденция&Море" },
         {
           property: "og:description",
           content:
-            "Телефон +7 (938)-442-08-09, residence.more@yandex.ru, г. Сочи ул. Московская, д. 22, офис 72.",
+            "Телефон +7 (938)-442-08-09, residence.more@yandex.ru, г. Сочи, ул. Московская, д. 22, офис 72.",
         },
         { name: "twitter:card", content: "summary_large_image" },
         { property: "og:url", content: url },
@@ -96,7 +96,7 @@ function ContactsPage() {
               </span>
             </div>
             <div className="rounded-xl border border-site-line p-5">
-              <p className="text-xs text-site-muted">Social media</p>
+              <p className="text-xs text-site-muted">Соцсети</p>
               <div className="mt-3 flex flex-wrap gap-3 text-sm">
                 <a
                   href={SITE_TELEGRAM}
@@ -129,7 +129,7 @@ function ContactsPage() {
           <div className="rounded-2xl border border-site-line bg-white p-6 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.3)] md:p-8">
             <p className="text-xl font-bold text-site-navy">Остались вопросы?</p>
             <p className="mt-1 text-sm text-site-muted">
-              Заполните форму и мы свяжемся с вами в ближайшее время
+              Заполните форму, и мы свяжемся с вами в ближайшее время.
             </p>
             <div className="mt-5">
               <SiteLeadForm source="contacts" buttonLabel="Оставить заявку" />
