@@ -215,8 +215,11 @@ function ManagementPage() {
 
       <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
-            <div className="overflow-hidden rounded-2xl">
+          <div className="mx-auto max-w-[720px]">
+            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+              Дополнительное обслуживание домов и вилл
+            </h2>
+            <div className="mt-6 overflow-hidden rounded-2xl">
               <picture>
                 <source
                   type="image/webp"
@@ -225,33 +228,28 @@ function ManagementPage() {
                 <img
                   src="/service/additional-maintenance.jpg"
                   alt="Обслуживание дома: работы на террасе"
-                  className="h-full w-full object-cover"
+                  className="aspect-[3/2] w-full object-cover"
                   width={1536}
                   height={1024}
                   loading="lazy"
                 />
               </picture>
             </div>
-            <div>
-              <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-                Дополнительное обслуживание домов и вилл
-              </h2>
-              <p className="mt-4 leading-relaxed text-site-muted">
-                Частный дом требует регулярного внимания: территория, бассейн,
-                инженерия, клининг и мелкие технические вопросы. Мы организуем
-                эти процессы по согласованному перечню задач.
-              </p>
-              <p className="mt-4 text-sm leading-relaxed text-site-muted">
-                Отдельное направление сервиса — на странице{" "}
-                <Link
-                  to="/service"
-                  className="font-medium text-site-navy underline-offset-2 hover:underline"
-                >
-                  Обслуживание домов и вилл
-                </Link>
-                .
-              </p>
-            </div>
+            <p className="mt-6 leading-relaxed text-site-muted">
+              Частный дом требует регулярного внимания: территория, бассейн,
+              инженерия, клининг и мелкие технические вопросы. Мы организуем
+              эти процессы по согласованному перечню задач.
+            </p>
+            <p className="mt-4 text-sm leading-relaxed text-site-muted">
+              Отдельное направление сервиса — на странице{" "}
+              <Link
+                to="/service"
+                className="font-medium text-site-navy underline-offset-2 hover:underline"
+              >
+                Обслуживание домов и вилл
+              </Link>
+              .
+            </p>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {EXTRA.map((item) => (

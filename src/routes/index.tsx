@@ -391,38 +391,36 @@ function HomePage() {
 
       {/* Обслуживание домов */}
       <section className="bg-white py-20">
-        <div className="mx-auto grid max-w-[1280px] gap-8 px-5 md:px-6 lg:grid-cols-2 lg:items-stretch lg:gap-16">
-          <div className="flex flex-col justify-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
-              Сервис
-            </p>
-            <h2 className="mt-3 text-3xl font-bold text-site-navy md:text-4xl">
-              Обслуживание домов и вилл
-            </h2>
-            <p className="mt-5 max-w-md leading-relaxed text-site-muted">
-              Территория, сад, бассейн, инженерия и клининг — регулярный уход за
-              частным домом, даже если он не сдаётся в аренду.
-            </p>
-            <p className="mt-6 text-2xl font-bold tracking-tight text-site-navy md:text-3xl">
-              от{" "}
-              <span className="text-site-gold">10&nbsp;000&nbsp;₽</span> в месяц
-            </p>
-            <Link
-              to="/service"
-              className="mt-8 inline-flex w-fit items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
-            >
-              Перейти в Сервис
-              <ArrowRight className="size-4" />
-            </Link>
-          </div>
-          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-site-navy-soft lg:aspect-auto lg:min-h-0">
+        <div className="mx-auto max-w-[720px] px-5 md:px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
+            Сервис
+          </p>
+          <h2 className="mt-3 text-3xl font-bold text-site-navy md:text-4xl">
+            Обслуживание домов и вилл
+          </h2>
+          <div className="mt-6 overflow-hidden rounded-2xl bg-site-navy-soft">
             <img
               src={SERVICE_HOME_PHOTO.src}
               alt={SERVICE_HOME_PHOTO.alt}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="aspect-[4/3] w-full object-cover"
               loading="lazy"
             />
           </div>
+          <p className="mt-6 leading-relaxed text-site-muted">
+            Территория, сад, бассейн, инженерия и клининг — регулярный уход за
+            частным домом, даже если он не сдаётся в аренду.
+          </p>
+          <p className="mt-6 text-2xl font-bold tracking-tight text-site-navy md:text-3xl">
+            от{" "}
+            <span className="text-site-gold">10&nbsp;000&nbsp;₽</span> в месяц
+          </p>
+          <Link
+            to="/service"
+            className="mt-8 inline-flex w-fit items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+          >
+            Перейти в Сервис
+            <ArrowRight className="size-4" />
+          </Link>
         </div>
       </section>
 
