@@ -65,7 +65,8 @@ export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
     : isHeader
       ? "flex size-7 cursor-not-allowed items-center justify-center rounded-full border border-site-line/60 text-site-muted/40"
       : "inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-site-line/60 px-4 py-2 text-sm font-medium text-site-muted/60";
-  const iconSize = isHeader ? "size-3.5" : iconClass;
+  // Header: glyph почти на весь круг (size-7), небольшой зазор для клика.
+  const iconSize = isHeader ? "size-[90%]" : iconClass;
 
   return (
     <div

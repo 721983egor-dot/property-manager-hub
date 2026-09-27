@@ -355,7 +355,7 @@ function ServicePage() {
                 постоянно в Сочи: у вас есть надёжный партнёр, который оказывает
                 весь комплекс услуг.
               </p>
-              <p className="mt-4 max-w-lg leading-relaxed text-site-muted first-letter:ml-[1.25em]">
+              <p className="mt-4 max-w-lg leading-relaxed text-site-muted">
                 Вы сразу получаете информацию по состоянию дома и территории, по
                 всем выполненным и запланированным работам.
               </p>
