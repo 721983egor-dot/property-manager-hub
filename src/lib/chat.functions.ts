@@ -393,21 +393,29 @@ export const updateThreadContact = createServerFn({ method: "POST" })
 
 /** Оператор: создать клиента из переписки. */
 export const createClientFromThread = createServerFn({ method: "POST" })
-  .inputValidator((input: { threadId: string; name: string; phone?: string; comment?: string }) =>
-    z
-      .object({
-        threadId: z.string().uuid(),
-        name: z.string().trim().min(1, "Укажите имя").max(120),
-        phone: z.string().trim().max(32).optional().default(""),
-        comment: z.string().trim().max(4000).optional().default(""),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: {
+      threadId: string;
+      name: string;
+      phone?: string;
+      comment?: string;
+      telegram?: string;
+    }) =>
+      z
+        .object({
+          threadId: z.string().uuid(),
+          name: z.string().trim().min(1, "Укажите имя").max(120),
+          phone: z.string().trim().max(32).optional().default(""),
+          comment: z.string().trim().max(4000).optional().default(""),
+          telegram: z.string().trim().max(64).optional().default(""),
+        })
+        .parse(input),
   )
   .handler(async ({ data }) => {
     const db = await admin();
     const { data: thread } = await db
       .from("chat_threads")
-      .select("source, name, phone")
+      .select("source, name, phone, property_id")
       .eq("id", data.threadId)
       .maybeSingle();
     if (!thread) throw new Error("Диалог не найден");
@@ -435,12 +443,26 @@ export const createClientFromThread = createServerFn({ method: "POST" })
     const commentParts = [data.comment.trim(), data.comment.trim() ? "" : `Чат ${source}`]
       .filter(Boolean)
       .join("\n");
+    const telegram = formatTelegramHandle(data.telegram) || data.telegram.trim();
+    const propertyId = (thread.property_id as string | null) ?? null;
 
-    const { data: client, error } = await db
-      .from("clients")
-      .insert({ full_name: data.name, phone: data.phone, comment: commentParts })
-      .select("id")
-      .single();
+    const baseRow = {
+      full_name: data.name,
+      phone: data.phone,
+      comment: commentParts,
+      source,
+      telegram,
+      property_id: propertyId,
+    };
+
+    let { data: client, error } = await db.from("clients").insert(baseRow as never).select("id").single();
+    if (error && /source|telegram|property_id|schema cache|could not find/i.test(error.message)) {
+      ({ data: client, error } = await db
+        .from("clients")
+        .insert({ full_name: data.name, phone: data.phone, comment: commentParts })
+        .select("id")
+        .single());
+    }
     if (error) throw new Error("Не удалось создать клиента");
     await db.from("chat_threads").update({ client_id: client.id } as never).eq("id", data.threadId);
     return { ok: true as const, clientId: client.id as string, created: true };

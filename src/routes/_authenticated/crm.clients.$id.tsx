@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowLeft, Plus, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -34,6 +34,7 @@ import {
   formatBudget,
   type Deal,
 } from "@/lib/deals";
+import { formatTelegramHandle, telegramHref } from "@/lib/chat-contact";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
@@ -127,6 +128,9 @@ function ClientPage() {
 
   const status = clientStatusOf(bookings);
   const today = toISODate(new Date());
+  const inquiryProperty = properties.find((p) => p.id === client.property_id) ?? null;
+  const tg = formatTelegramHandle(client.telegram);
+  const tgUrl = telegramHref(client.telegram);
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
@@ -163,6 +167,25 @@ function ClientPage() {
             {client.phone ? (
               <ClientContactButtons phone={client.phone} className="mt-3" />
             ) : null}
+            <dl className="mt-4 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <Item label="Источник" value={client.source || "—"} />
+              <Item
+                label="Аккаунт Telegram"
+                value={
+                  tgUrl ? (
+                    <a href={tgUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                      {tg}
+                    </a>
+                  ) : (
+                    "—"
+                  )
+                }
+              />
+              <Item
+                label="По какому объекту обратился"
+                value={inquiryProperty ? internalTitle(inquiryProperty) : "—"}
+              />
+            </dl>
             {client.blacklisted && client.blacklist_reason ? (
               <p className="mt-2 text-sm text-red-700">Причина: {client.blacklist_reason}</p>
             ) : null}
@@ -356,7 +379,7 @@ function ClientPage() {
   );
 }
 
-function Item({ label, value }: { label: string; value: string }) {
+function Item({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>

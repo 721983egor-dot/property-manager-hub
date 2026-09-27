@@ -271,28 +271,51 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (input["blacklisted"] != null) patch["blacklisted"] = input["blacklisted"];
     if (input["blacklistReason"] != null) patch["blacklist_reason"] = input["blacklistReason"];
     if (input["partyKind"] != null) patch["party_kind"] = input["partyKind"];
-    if (clientId) {
-      let { error } = await supabaseAdmin
-        .from("clients")
-        .update(patch as never)
-        .eq("id", clientId);
-      if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
-        const { party_kind: _pk, ...rest } = patch;
-        ({ error } = await supabaseAdmin.from("clients").update(rest as never).eq("id", clientId));
+    if (input["source"] != null) patch["source"] = input["source"];
+    if (input["telegram"] != null) {
+      const raw = String(input["telegram"]).trim();
+      const handle = raw.replace(/^@/, "").replace(/^(?:https?:\/\/)?(?:t\.me|telegram\.me)\//i, "");
+      patch["telegram"] = handle ? `@${handle.split(/[/?#]/)[0]}` : raw;
+    }
+    if (input["propertyId"] !== undefined) patch["property_id"] = input["propertyId"];
+
+    const writeWithFallback = async (mode: "update" | "insert", row: Record<string, unknown>) => {
+      let payload = { ...row };
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const result =
+          mode === "update"
+            ? await supabaseAdmin.from("clients").update(payload as never).eq("id", clientId!)
+            : await supabaseAdmin
+                .from("clients")
+                .insert({ full_name: (payload["full_name"] as string) ?? "", ...payload } as never);
+        if (!result.error) return null;
+        const msg = result.error.message;
+        let next = { ...payload };
+        if (/party_kind|schema cache|could not find/i.test(msg) && "party_kind" in next) {
+          const { party_kind: _pk, ...rest } = next;
+          next = rest;
+        } else if (
+          /source|telegram|property_id|schema cache|could not find/i.test(msg) &&
+          ("source" in next || "telegram" in next || "property_id" in next)
+        ) {
+          const { source: _s, telegram: _t, property_id: _p, ...rest } = next;
+          next = rest;
+        } else {
+          return result.error.message;
+        }
+        if (JSON.stringify(next) === JSON.stringify(payload)) return result.error.message;
+        payload = next;
       }
-      if (error) throw new Error(error.message);
+      return "Не удалось сохранить клиента";
+    };
+
+    if (clientId) {
+      const err = await writeWithFallback("update", patch);
+      if (err) throw new Error(err);
       return "Клиент обновлён";
     }
-    let { error } = await supabaseAdmin
-      .from("clients")
-      .insert({ full_name: (patch["full_name"] as string) ?? "", ...patch } as never);
-    if (error && /party_kind|schema cache|could not find/i.test(error.message)) {
-      const { party_kind: _pk, ...rest } = patch;
-      ({ error } = await supabaseAdmin
-        .from("clients")
-        .insert({ full_name: (rest["full_name"] as string) ?? "", ...rest } as never));
-    }
-    if (error) throw new Error(error.message);
+    const err = await writeWithFallback("insert", patch);
+    if (err) throw new Error(err);
     return "Клиент создан";
   },
 

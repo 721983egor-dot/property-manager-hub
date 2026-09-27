@@ -31,7 +31,7 @@ type Props = {
   onCreated?: (clientId: string) => void;
 };
 
-/** Создание клиента из чата: комментарий виден ассистенту при поиске. */
+/** Создание клиента из чата: источник/объект/Telegram пишутся в карточку клиента. */
 export function CreateClientFromChatDialog({
   open,
   onOpenChange,
@@ -42,6 +42,7 @@ export function CreateClientFromChatDialog({
   const createClient = useServerFn(createClientFromThread);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [telegram, setTelegram] = useState("");
   const [comment, setComment] = useState("");
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function CreateClientFromChatDialog({
     const clientName = threadClientName(thread.name);
     setName(clientName === "Клиент" ? "" : thread.name.trim());
     setPhone(thread.phone.trim());
+    setTelegram("");
     setComment(
       [`Чат ${platform}`, thread.property_title ? `Объект: ${thread.property_title}` : ""]
         .filter(Boolean)
@@ -65,6 +67,7 @@ export function CreateClientFromChatDialog({
           name: name.trim(),
           phone: phone.trim(),
           comment: comment.trim(),
+          telegram: telegram.trim(),
         },
       }),
     onSuccess: (result) => {
@@ -77,7 +80,7 @@ export function CreateClientFromChatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Создать клиента</DialogTitle>
         </DialogHeader>
@@ -85,10 +88,7 @@ export function CreateClientFromChatDialog({
           <ChatContactHints
             messages={messages}
             onPhone={setPhone}
-            onTelegram={(handle) => {
-              const tag = `Telegram: ${formatTelegramHandle(handle)}`;
-              setComment((prev) => (prev.includes(tag) ? prev : [prev, tag].filter(Boolean).join(". ")));
-            }}
+            onTelegram={(handle) => setTelegram(formatTelegramHandle(handle))}
           />
           <div className="space-y-1.5">
             <Label htmlFor="chat-client-name">Имя</Label>
@@ -109,16 +109,25 @@ export function CreateClientFromChatDialog({
             />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="chat-client-telegram">Аккаунт в Telegram</Label>
+            <Input
+              id="chat-client-telegram"
+              value={telegram}
+              onChange={(e) => setTelegram(e.target.value)}
+              placeholder="@username"
+            />
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="chat-client-comment">Комментарий</Label>
             <Textarea
               id="chat-client-comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
-              placeholder="Пожелания, Telegram, откуда пишет — ассистент ищет по этому полю"
+              placeholder="Пожелания, детали обращения"
             />
             <p className="text-xs text-muted-foreground">
-              Ассистент видит комментарий и может найти клиента по этим словам.
+              Источник и объект из чата сохраняются в карточку клиента автоматически.
             </p>
           </div>
         </div>

@@ -257,7 +257,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeClient: tool({
       description:
-        "Предложить создание клиента или изменение его данных (комментарий, чёрный список, кто он: РМ / собственник / Н11).",
+        "Предложить создание клиента или изменение его данных (комментарий, чёрный список, кто он: РМ / собственник / Н11, источник, Telegram, объект обращения).",
       inputSchema: z.object({
         fullName: z.string(),
         phone: z.string().optional(),
@@ -268,6 +268,15 @@ export function createMutateTools(ctx: AssistantToolContext) {
           .enum(["rm", "owner", "n11"])
           .optional()
           .describe("Кто он: rm = РМ, owner = собственник, n11 = Н11"),
+        source: z
+          .string()
+          .optional()
+          .describe("Источник: Сайт, Авито, ЦИАН, Telegram, WhatsApp, Рекомендация, Звонок и т.д."),
+        telegram: z.string().optional().describe("Аккаунт Telegram (@username)"),
+        propertyRef: z
+          .string()
+          .optional()
+          .describe("По какому объекту обратился — ID или номер объекта"),
       }),
       execute: async (input) => {
         const existing = await ctx.findClient(input.phone || input.fullName);
@@ -279,13 +288,31 @@ export function createMutateTools(ctx: AssistantToolContext) {
               : input.partyKind === "rm"
                 ? "РМ"
                 : null;
+        let propertyId: string | null | undefined = undefined;
+        let propertyLabel = "";
+        if (input.propertyRef) {
+          const found = await label(input.propertyRef);
+          if (!found) return { error: "Объект не найден", propertyRef: input.propertyRef };
+          propertyId = found.id;
+          propertyLabel = found.text;
+        }
+        const bits = [
+          kindLabel,
+          input.source ? `источник ${input.source}` : null,
+          input.telegram ? `Telegram ${input.telegram}` : null,
+          propertyLabel ? `объект ${propertyLabel}` : null,
+        ].filter(Boolean);
         const summary = existing
-          ? `Обновить клиента ${existing["full_name"] as string}${kindLabel ? ` (${kindLabel})` : ""}`
-          : `Создать клиента ${input.fullName}${input.phone ? ` (${input.phone})` : ""}${kindLabel ? `, ${kindLabel}` : ""}`;
+          ? `Обновить клиента ${existing["full_name"] as string}${bits.length ? ` (${bits.join(", ")})` : ""}`
+          : `Создать клиента ${input.fullName}${input.phone ? ` (${input.phone})` : ""}${bits.length ? `, ${bits.join(", ")}` : ""}`;
         ctx.propose({
           tool: "upsertClient",
           summary,
-          input: { ...input, clientId: existing ? (existing["id"] as string) : null },
+          input: {
+            ...input,
+            clientId: existing ? (existing["id"] as string) : null,
+            propertyId: propertyId === undefined ? undefined : propertyId,
+          },
         });
         return { proposed: true, summary };
       },

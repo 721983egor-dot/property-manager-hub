@@ -24,7 +24,10 @@ import {
   type ClientPartyKind,
   type CrmClient,
 } from "@/lib/clients";
+import { DEAL_SOURCES } from "@/lib/deals";
+import { formatTelegramHandle } from "@/lib/chat-contact";
 import { asPortfolios, PORTFOLIOS, type Portfolio } from "@/lib/portfolios";
+import { fetchProperties, internalTitle } from "@/lib/properties";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -33,6 +36,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const NONE = "__none__";
 
 type Props = {
   open: boolean;
@@ -53,6 +58,9 @@ export function ClientDialog({ open, onOpenChange, client, onSaved, defaultParty
   const [reason, setReason] = useState("");
   const [portfolios, setPortfolios] = useState<Portfolio[]>(["rm"]);
   const [partyKind, setPartyKind] = useState<ClientPartyKind>("rm");
+  const [source, setSource] = useState("");
+  const [telegram, setTelegram] = useState("");
+  const [propertyId, setPropertyId] = useState(NONE);
 
   useEffect(() => {
     if (!open) return;
@@ -63,9 +71,17 @@ export function ClientDialog({ open, onOpenChange, client, onSaved, defaultParty
     setReason(client?.blacklist_reason ?? "");
     setPortfolios(asPortfolios(client?.portfolios));
     setPartyKind(client?.party_kind ?? defaultPartyKind ?? "rm");
+    setSource(client?.source ?? "");
+    setTelegram(client?.telegram ?? "");
+    setPropertyId(client?.property_id ?? NONE);
   }, [open, client?.id, defaultPartyKind]);
 
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
+  const { data: properties = [] } = useQuery({
+    queryKey: ["properties"],
+    queryFn: fetchProperties,
+    enabled: open,
+  });
 
   const duplicate = useMemo(() => {
     const digits = phoneDigits(phone);
@@ -84,6 +100,9 @@ export function ClientDialog({ open, onOpenChange, client, onSaved, defaultParty
         blacklist_reason: blacklisted ? reason.trim() : "",
         portfolios: portfolios.length ? portfolios : ["rm"],
         party_kind: partyKind,
+        source,
+        telegram: formatTelegramHandle(telegram) || telegram.trim(),
+        property_id: propertyId === NONE ? null : propertyId,
       });
     },
     onSuccess: async (id: string) => {
@@ -155,6 +174,51 @@ export function ClientDialog({ open, onOpenChange, client, onSaved, defaultParty
             </Select>
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Источник</Label>
+              <Select value={source || NONE} onValueChange={(v) => setSource(v === NONE ? "" : v)}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Источник" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Не указан</SelectItem>
+                  {DEAL_SOURCES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Аккаунт в Telegram</Label>
+              <Input
+                className="mt-1.5"
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                placeholder="@username"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>По какому объекту обратился</Label>
+            <Select value={propertyId} onValueChange={setPropertyId}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="Объект" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>Не выбран</SelectItem>
+                {properties.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {internalTitle(p)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <Label>Папка</Label>
             <div className="mt-2 flex gap-4">
@@ -183,7 +247,7 @@ export function ClientDialog({ open, onOpenChange, client, onSaved, defaultParty
               rows={3}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Пожелания, Telegram, откуда пишет — ассистент ищет по этому полю"
+              placeholder="Пожелания, детали обращения — ассистент ищет по этому полю"
             />
           </div>
 
