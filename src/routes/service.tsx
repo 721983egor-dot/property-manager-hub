@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, Phone, Send } from "lucide-react";
 
-import { OwnerCabinetMock } from "@/components/site/OwnerCabinetMock";
 import { PageHero, PageHeroCta } from "@/components/site/PageHero";
+import { ServiceWorkTree } from "@/components/site/ServiceWorkTree";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import { jsonLdScript } from "@/lib/seo";
 import {
@@ -353,8 +353,10 @@ function ServicePage() {
               <p className="mt-4 max-w-lg leading-relaxed text-site-muted">
                 С нами удобно и безопасно, особенно это актуально для
                 собственников, не проживающих постоянно в Сочи: у вас есть
-                надёжный партнёр, который оказывает весь комплекс услуг. Вы
-                сразу получаете информацию по состоянию дома и территории, по
+                надёжный партнёр, который оказывает весь комплекс услуг.
+              </p>
+              <p className="mt-4 max-w-lg leading-relaxed text-site-muted first-letter:ml-[1.25em]">
+                Вы сразу получаете информацию по состоянию дома и территории, по
                 всем выполненным и запланированным работам.
               </p>
               <p className="mt-8 text-3xl font-bold tracking-tight text-site-navy md:text-4xl">
@@ -369,7 +371,7 @@ function ServicePage() {
                 Оставить заявку
               </a>
             </div>
-            <OwnerCabinetMock />
+            <ServiceWorkTree />
           </div>
         </div>
       </section>
