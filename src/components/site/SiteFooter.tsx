@@ -8,9 +8,9 @@ import {
   SITE_PHONE_TEL,
   SITE_REQUISITES,
   SITE_TELEGRAM,
-  SITE_VK,
   SITE_WHATSAPP,
 } from "@/lib/site";
+import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 import logo from "@/assets/site/logo.png";
 
 const SECTIONS = [
@@ -34,7 +34,7 @@ export function SiteFooter() {
                 href={SITE_TELEGRAM}
                 target="_blank"
                 rel="noreferrer"
-                aria-label="Telegram"
+                aria-label="Написать в Telegram"
                 className="flex size-9 items-center justify-center rounded-full border border-white/20 text-white/80 transition-colors hover:border-site-gold hover:text-site-gold"
               >
                 <Send className="size-4" />
@@ -48,16 +48,8 @@ export function SiteFooter() {
               >
                 <MessageCircle className="size-4" />
               </a>
-              <a
-                href={SITE_VK}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="ВКонтакте"
-                className="flex size-9 items-center justify-center rounded-full border border-white/20 text-xs font-semibold text-white/80 transition-colors hover:border-site-gold hover:text-site-gold"
-              >
-                VK
-              </a>
             </div>
+            <SiteSocialLinks variant="footer" className="mt-6" />
           </div>
 
           <div>

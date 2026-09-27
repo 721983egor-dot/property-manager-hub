@@ -3,6 +3,7 @@ import { Mail, MapPin, MessageCircle, Phone, Send } from "lucide-react";
 
 import { PageHero } from "@/components/site/PageHero";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
+import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 import {
   SITE_ADDRESS,
   SITE_EMAIL,
@@ -11,7 +12,6 @@ import {
   SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
   SITE_TELEGRAM,
-  SITE_VK,
   SITE_WHATSAPP,
 } from "@/lib/site";
 
@@ -96,7 +96,7 @@ function ContactsPage() {
               </span>
             </div>
             <div className="rounded-xl border border-site-line p-5">
-              <p className="text-xs text-site-muted">Соцсети</p>
+              <p className="text-xs text-site-muted">Написать нам</p>
               <div className="mt-3 flex flex-wrap gap-3 text-sm">
                 <a
                   href={SITE_TELEGRAM}
@@ -114,15 +114,10 @@ function ContactsPage() {
                 >
                   <MessageCircle className="size-4" /> WhatsApp
                 </a>
-                <a
-                  href={SITE_VK}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-md border border-site-line px-4 py-2 font-medium text-site-navy hover:border-site-gold hover:text-site-gold"
-                >
-                  VK
-                </a>
               </div>
+            </div>
+            <div className="rounded-xl border border-site-line p-5">
+              <SiteSocialLinks variant="contacts" />
             </div>
           </div>
 
