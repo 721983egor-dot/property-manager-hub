@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { ArrowRight, MessageCircle, Phone, Send } from "lucide-react";
+import { ArrowRight, Check, MessageCircle, Phone, Send } from "lucide-react";
 
 import { HeroSearchBar } from "@/components/site/HeroSearchBar";
 
@@ -37,6 +37,12 @@ const SERVICE_STRIP = [
   { src: "/service/house-interior-work.png", alt: "Работы внутри дома" },
   { src: "/service/pool-area-wash.png", alt: "Мойка территории у бассейна" },
   { src: "/service/interior-cleaning.png", alt: "Клининг внутри дома" },
+];
+
+const SERVICE_HOME_POINTS = [
+  "Не живёте в Сочи постоянно",
+  "Видите состояние дома и работы",
+  "Один партнёр на весь комплекс",
 ];
 
 export const Route = createFileRoute("/")({
@@ -393,7 +399,7 @@ function HomePage() {
 
       {/* Обслуживание домов */}
       <section className="bg-white py-20">
-        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2 lg:gap-16">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
               Сервис
@@ -401,9 +407,13 @@ function HomePage() {
             <h2 className="mt-3 text-3xl font-bold text-site-navy md:text-4xl">
               Обслуживание домов и вилл
             </h2>
-            <p className="mt-5 max-w-lg leading-relaxed text-site-muted">
-              Территория, сад, бассейн, инженерия и клининг — берём на себя
-              регулярный уход за частным домом, даже если он не сдаётся в аренду.
+            <p className="mt-5 max-w-md leading-relaxed text-site-muted">
+              Территория, сад, бассейн, инженерия и клининг — регулярный уход за
+              частным домом, даже если он не сдаётся в аренду.
+            </p>
+            <p className="mt-6 text-2xl font-bold tracking-tight text-site-navy md:text-3xl">
+              от{" "}
+              <span className="text-site-gold">10&nbsp;000&nbsp;₽</span> в месяц
             </p>
             <Link
               to="/service"
@@ -413,23 +423,38 @@ function HomePage() {
               <ArrowRight className="size-4" />
             </Link>
           </div>
-          <div
-            className="grid grid-cols-2 gap-2 overflow-hidden rounded-2xl"
-            aria-label="Фото услуг обслуживания"
-          >
-            {SERVICE_STRIP.map((item) => (
-              <div
-                key={item.src}
-                className="aspect-[4/3] overflow-hidden bg-site-navy-soft"
-              >
-                <img
-                  src={item.src}
-                  alt={item.alt}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-            ))}
+          <div className="flex flex-col gap-6">
+            <ul className="flex flex-col gap-4 rounded-2xl border border-site-line bg-site-navy-soft/60 p-6 md:p-8">
+              {SERVICE_HOME_POINTS.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-3 text-base text-site-navy"
+                >
+                  <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-site-gold/15 text-site-gold">
+                    <Check className="size-3.5" strokeWidth={2.5} />
+                  </span>
+                  <span className="leading-snug font-medium">{item}</span>
+                </li>
+              ))}
+            </ul>
+            <div
+              className="grid grid-cols-4 gap-1.5 overflow-hidden rounded-xl"
+              aria-label="Фото услуг обслуживания"
+            >
+              {SERVICE_STRIP.map((item) => (
+                <div
+                  key={item.src}
+                  className="aspect-square overflow-hidden bg-site-navy-soft"
+                >
+                  <img
+                    src={item.src}
+                    alt={item.alt}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
