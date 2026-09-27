@@ -8,10 +8,10 @@ import {
   SITE_TELEGRAM,
   SITE_WHATSAPP,
 } from "@/lib/site";
-import heroImg from "@/assets/site/mgmt_hero.jpg";
-import img3 from "@/assets/site/mgmt_p3.jpg";
-import img4 from "@/assets/site/mgmt_p4.jpg";
-import img5 from "@/assets/site/mgmt_p5.jpg";
+import heroImg from "@/assets/site/about_hero.jpg";
+import forWhomImg from "@/assets/site/mgmt_p2.jpg";
+import splitImg from "@/assets/site/home_alt.jpg";
+import leadImg from "@/assets/site/home_selection.jpg";
 
 export const Route = createFileRoute("/service")({
   head: () => {
@@ -113,28 +113,27 @@ const STEPS = [
 function ServicePage() {
   return (
     <div className="font-site">
-      <section className="relative flex min-h-[75vh] items-center overflow-hidden bg-site-navy">
+      <section className="relative flex min-h-[52vh] items-center overflow-hidden bg-site-navy md:min-h-[58vh]">
         <img
           src={heroImg}
           alt="Обслуживание домов и вилл в Сочи"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover object-[center_40%]"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-site-navy/90 via-site-navy/60 to-site-navy/25" />
-        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-20 md:px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-site-gold">
-            · Территория · Бассейн · Инженерия · Клининг
+        <div className="absolute inset-0 bg-gradient-to-r from-site-navy/88 via-site-navy/55 to-site-navy/20" />
+        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-14 md:px-6 md:py-16">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-site-gold">
+            Территория · Бассейн · Инженерия · Клининг
           </p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.1] text-white md:text-6xl">
+          <h1 className="mt-3 max-w-xl text-2xl font-bold leading-snug text-white md:text-[2rem] md:leading-tight">
             Обслуживание домов и вилл
           </h1>
-          <p className="mt-6 max-w-2xl leading-relaxed text-white/80">
-            Берём на себя регулярный уход за частным домом: сад и территория,
-            бассейн, инженерные системы, клининг и контроль состояния — по
-            согласованному перечню задач.
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-white/80 md:text-[15px]">
+            Регулярный уход за частным домом: сад, бассейн, инженерия и
+            клининг — по согласованному перечню.
           </p>
           <a
             href="#lead"
-            className="mt-9 inline-flex items-center rounded-md bg-site-gold px-7 py-3.5 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
+            className="mt-6 inline-flex items-center rounded-md bg-site-gold px-5 py-2.5 text-sm font-semibold text-site-navy transition-colors hover:bg-site-gold/85"
           >
             Оставить заявку
           </a>
@@ -173,9 +172,9 @@ function ServicePage() {
           <div className="grid items-center gap-10 lg:grid-cols-2">
             <div className="overflow-hidden rounded-2xl">
               <img
-                src={img3}
-                alt="Дом с бассейном в Сочи"
-                className="h-full w-full object-cover"
+                src={forWhomImg}
+                alt="Терраса и бассейн частного дома"
+                className="aspect-[4/3] h-full w-full object-cover"
                 loading="lazy"
               />
             </div>
@@ -262,9 +261,9 @@ function ServicePage() {
           </div>
           <div className="overflow-hidden rounded-2xl">
             <img
-              src={img5}
-              alt="Территория частного дома"
-              className="h-full w-full object-cover"
+              src={splitImg}
+              alt="Дома у моря в Сочи"
+              className="aspect-[4/3] h-full w-full object-cover"
               loading="lazy"
             />
           </div>
@@ -273,7 +272,7 @@ function ServicePage() {
 
       <section id="lead" className="relative overflow-hidden py-20">
         <img
-          src={img4}
+          src={leadImg}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover"
