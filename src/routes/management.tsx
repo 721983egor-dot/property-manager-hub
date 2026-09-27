@@ -216,12 +216,12 @@ function ManagementPage() {
       {/* mobile: заголовок→фото→текст; lg+: фото | текст */}
       <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <div className="grid items-center gap-6 lg:grid-cols-2 lg:gap-10">
+          <div className="grid items-center gap-10 lg:grid-cols-2">
             <div className="contents lg:order-2 lg:flex lg:flex-col">
               <h2 className="order-1 text-3xl font-bold text-site-navy md:text-4xl">
                 Дополнительное обслуживание домов и вилл
               </h2>
-              <div className="order-3 mt-6 lg:order-none lg:mt-4">
+              <div className="order-3 mt-4 lg:order-none lg:mt-4">
                 <p className="leading-relaxed text-site-muted">
                   Частный дом требует регулярного внимания: территория, бассейн,
                   инженерия, клининг и мелкие технические вопросы. Мы организуем
@@ -248,7 +248,7 @@ function ManagementPage() {
                 <img
                   src="/service/additional-maintenance.jpg"
                   alt="Обслуживание дома: работы на террасе"
-                  className="aspect-[3/2] h-full w-full object-cover"
+                  className="aspect-[3/2] h-full w-full object-cover lg:aspect-[4/3]"
                   width={1536}
                   height={1024}
                   loading="lazy"
