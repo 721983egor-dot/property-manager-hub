@@ -9,9 +9,6 @@ import {
   SITE_TELEGRAM,
   SITE_WHATSAPP,
 } from "@/lib/site";
-import imgTerritory from "@/assets/site/home_alt.jpg";
-import imgPool from "@/assets/site/mgmt_p2.jpg";
-import imgCleaning from "@/assets/site/home_about.jpg";
 
 export const Route = createFileRoute("/service")({
   head: () => {
@@ -52,15 +49,15 @@ export const Route = createFileRoute("/service")({
 const SERVICES = [
   {
     title: "Территория и сад",
-    text: "Уход за газоном, растениями, дорожками и зонами отдыха. Держим участок в порядке в течение сезона.",
+    text: "Уход за газоном, растениями, дорожками и зонами отдыха. Чистка ливневок и поддержание участка в порядке в течение сезона.",
   },
   {
     title: "Бассейн",
-    text: "Чистка, химия, оборудование и подготовка к сезону — без необходимости искать подрядчиков самостоятельно.",
+    text: "Чистка чаши, химия, оборудование и подготовка к сезону — без необходимости искать подрядчиков самостоятельно.",
   },
   {
     title: "Инженерные системы",
-    text: "Контроль отопления, воды, электрики, кондиционеров и другого оборудования дома.",
+    text: "Контроль состояния, протечек, кондиционеров и другого оборудования дома; передача показаний счётчиков; при необходимости — оплата коммунальных платежей.",
   },
   {
     title: "Клининг",
@@ -77,9 +74,22 @@ const SERVICES = [
 ];
 
 const VISUAL_STRIP = [
-  { src: imgTerritory, alt: "Частные дома и территория у моря" },
-  { src: imgPool, alt: "Бассейн и терраса частного дома" },
-  { src: imgCleaning, alt: "Интерьер дома после уборки" },
+  {
+    src: "/service/pool-cleaning.png",
+    alt: "Чистка бассейна",
+  },
+  {
+    src: "/service/house-interior-work.png",
+    alt: "Работы внутри дома",
+  },
+  {
+    src: "/service/pool-area-wash.png",
+    alt: "Мойка территории у бассейна",
+  },
+  {
+    src: "/service/interior-cleaning.png",
+    alt: "Клининг внутри дома",
+  },
 ];
 
 const FOR_WHOM = [
@@ -132,11 +142,12 @@ function ServicePage() {
             Что входит в сервис
           </h2>
           <p className="mt-4 max-w-2xl leading-relaxed text-site-muted">
-            Частный дом требует постоянного внимания. Мы организуем работу
-            подрядчиков и держим процессы в одной точке контакта.
+            Частный дом требует постоянного внимания и обслуживания. Мы
+            организуем уход, работы по поддержанию дома, территории и контроль
+            состояния.
           </p>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
+          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {VISUAL_STRIP.map((item) => (
               <div
                 key={item.alt}
