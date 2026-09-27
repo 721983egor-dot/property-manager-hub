@@ -7,11 +7,12 @@ export const SITE_PHONE_TEL = "tel:+79384420809";
 export const SITE_WHATSAPP = "https://wa.me/79384420809";
 /** Личный Telegram для связи (написать нам) — по номеру, как в clients.ts. */
 export const SITE_TELEGRAM = "https://t.me/+79384420809";
-/** Группа / канал Telegram (соцсети), не путать с личным SITE_TELEGRAM. */
+/** Группа Telegram @residencemore (соцсети), не путать с личным SITE_TELEGRAM. */
 export const SITE_TELEGRAM_GROUP = "https://t.me/residencemore";
-export const SITE_VK = "https://vk.com/residencemore";
-/** Группа Макс — URL от Егора; пока заглушка (пустая → иконка без ссылки). */
-export const SITE_MAX_GROUP = "";
+/** Группа ВКонтакте. */
+export const SITE_VK = "https://vk.ru/residencemore";
+/** Бизнес-аккаунт / группа Макс. */
+export const SITE_MAX_GROUP = "https://max.ru/id112105421351_biz";
 export const SITE_EMAIL = "residence.more@yandex.ru";
 export const SITE_ADDRESS = "г. Сочи, ул. Московская, д. 22, офис 72";
 export const SITE_ADDRESS_SHORT = "г. Сочи, ул. Московская, д. 22";
