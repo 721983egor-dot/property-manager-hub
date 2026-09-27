@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Phone, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import {
   SITE_ADDRESS_SHORT,
-  SITE_HOURS_HEADER,
   SITE_PHONE_DISPLAY,
   SITE_PHONE_TEL,
 } from "@/lib/site";
 import { ContactMenu } from "@/components/site/ContactMenu";
+import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 import logo from "@/assets/site/logo_navy.png";
 
 const NAV = [
@@ -32,16 +32,7 @@ export function SiteHeader() {
       <div className="hidden border-b border-site-line lg:block">
         <div className="mx-auto flex h-9 max-w-[1280px] items-center justify-between px-6 text-xs text-site-muted">
           <p>{SITE_ADDRESS_SHORT}</p>
-          <div className="flex items-center gap-4">
-            <p>{SITE_HOURS_HEADER}</p>
-            <a
-              href={SITE_PHONE_TEL}
-              className="flex items-center gap-1.5 font-medium text-site-navy hover:text-site-gold"
-            >
-              <Phone className="size-3.5" />
-              {SITE_PHONE_DISPLAY}
-            </a>
-          </div>
+          <SiteSocialLinks variant="header" />
         </div>
       </div>
 

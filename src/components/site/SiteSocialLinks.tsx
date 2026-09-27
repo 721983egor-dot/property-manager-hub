@@ -4,10 +4,10 @@ import {
   SITE_VK,
 } from "@/lib/site";
 
-type Variant = "footer" | "contacts";
+type Variant = "footer" | "contacts" | "header";
 
 type Props = {
-  /** footer — светлые иконки на navy; contacts — на белом. */
+  /** footer — светлые иконки на navy; contacts — на белом с подписями; header — компактные иконки в шапке. */
   variant?: Variant;
   className?: string;
 };
@@ -53,12 +53,19 @@ const LINKS = [
 /** Иконки соцсетей: ВК, Telegram-группа, Max-группа. */
 export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
   const isFooter = variant === "footer";
+  const isHeader = variant === "header";
+  const showLabels = variant === "contacts";
   const linkClass = isFooter
     ? "flex size-9 items-center justify-center rounded-full border border-white/20 text-white/80 transition-colors hover:border-site-gold hover:text-site-gold"
-    : "inline-flex items-center gap-2 rounded-md border border-site-line px-4 py-2 text-sm font-medium text-site-navy transition-colors hover:border-site-gold hover:text-site-gold";
+    : isHeader
+      ? "flex size-7 items-center justify-center rounded-full border border-site-line text-site-muted transition-colors hover:border-site-gold hover:text-site-gold"
+      : "inline-flex items-center gap-2 rounded-md border border-site-line px-4 py-2 text-sm font-medium text-site-navy transition-colors hover:border-site-gold hover:text-site-gold";
   const disabledClass = isFooter
     ? "flex size-9 cursor-not-allowed items-center justify-center rounded-full border border-white/10 text-white/35"
-    : "inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-site-line/60 px-4 py-2 text-sm font-medium text-site-muted/60";
+    : isHeader
+      ? "flex size-7 cursor-not-allowed items-center justify-center rounded-full border border-site-line/60 text-site-muted/40"
+      : "inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-site-line/60 px-4 py-2 text-sm font-medium text-site-muted/60";
+  const iconSize = isHeader ? "size-3.5" : iconClass;
 
   return (
     <div className={className}>
@@ -66,10 +73,12 @@ export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-site-gold">
           Соцсети
         </p>
-      ) : (
+      ) : showLabels ? (
         <p className="text-xs text-site-muted">Мы в соцсетях</p>
-      )}
-      <div className={`flex flex-wrap ${isFooter ? "gap-3" : "mt-3 gap-3"}`}>
+      ) : null}
+      <div
+        className={`flex flex-wrap ${isFooter ? "gap-3" : isHeader ? "gap-2" : "mt-3 gap-3"}`}
+      >
         {LINKS.map(({ href, label, Icon }) =>
           href ? (
             <a
@@ -81,8 +90,8 @@ export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
               title={label}
               className={linkClass}
             >
-              <Icon />
-              {!isFooter ? <span>{label}</span> : null}
+              <Icon className={iconSize} />
+              {showLabels ? <span>{label}</span> : null}
             </a>
           ) : (
             <span
@@ -91,8 +100,8 @@ export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
               title={`${label}: ссылка появится позже`}
               className={disabledClass}
             >
-              <Icon />
-              {!isFooter ? <span>{label}</span> : null}
+              <Icon className={iconSize} />
+              {showLabels ? <span>{label}</span> : null}
             </span>
           ),
         )}
