@@ -3,15 +3,12 @@ import {
   Building2,
   Check,
   ClipboardList,
-  FileCheck2,
   HeartHandshake,
-  Home,
   MapPin,
   MessageCircle,
   Minus,
   Phone,
   Send,
-  ShieldCheck,
   Sofa,
   Wrench,
 } from "lucide-react";
@@ -94,22 +91,18 @@ const DIRECTIONS = [
 
 const PRINCIPLES = [
   {
-    icon: FileCheck2,
     title: "Прозрачность",
     text: "Собственник понимает, что происходит с объектом: платежи, задачи по аренде и состояние дома при обслуживании.",
   },
   {
-    icon: ShieldCheck,
     title: "Ответственность",
     text: "Не исчезаем после заселения и не оставляем дом без присмотра: остаёмся точкой контакта по текущим вопросам.",
   },
   {
-    icon: Home,
     title: "Два формата работы",
     text: "Можно подключить управление арендой, сервис обслуживания дома — или оба направления, если так удобнее.",
   },
   {
-    icon: Sofa,
     title: "Спокойствие собственника",
     text: "Цель — доход и порядок без ежедневного участия в операционке аренды и содержания объекта.",
   },
@@ -160,12 +153,9 @@ function AboutPage() {
                   key={item.title}
                   className="rounded-2xl border border-site-line bg-white p-5 shadow-sm"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl font-bold text-site-gold">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <item.icon className="size-5 text-site-gold" />
-                  </div>
+                  <span className="text-2xl font-bold text-site-gold">
+                    {i + 1}
+                  </span>
                   <p className="mt-3 font-semibold text-site-navy">
                     {item.title}
                   </p>

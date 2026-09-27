@@ -9,7 +9,6 @@ import {
   SITE_TELEGRAM,
   SITE_WHATSAPP,
 } from "@/lib/site";
-import img3 from "@/assets/site/mgmt_p3.jpg";
 import img4 from "@/assets/site/mgmt_p4.jpg";
 
 export const Route = createFileRoute("/management")({
@@ -218,12 +217,20 @@ function ManagementPage() {
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
           <div className="grid items-center gap-10 lg:grid-cols-2">
             <div className="overflow-hidden rounded-2xl">
-              <img
-                src={img3}
-                alt="Дом с бассейном в Сочи"
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
+              <picture>
+                <source
+                  type="image/webp"
+                  srcSet="/service/additional-maintenance.webp"
+                />
+                <img
+                  src="/service/additional-maintenance.jpg"
+                  alt="Обслуживание дома: работы на террасе"
+                  className="h-full w-full object-cover"
+                  width={1536}
+                  height={1024}
+                  loading="lazy"
+                />
+              </picture>
             </div>
             <div>
               <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
