@@ -232,9 +232,57 @@
   animation: chat-ring-pulse 2s ease-out infinite;
 }
 
+@keyframes service-labels-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes service-labels-drift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes service-labels-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--site-gold) 18%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--site-gold) 40%, transparent);
+  }
+}
+
+.service-labels-cube__chip {
+  animation: service-labels-fade 0.7s ease-out both;
+}
+
+.service-labels-cube__chip:nth-child(3n + 1) {
+  animation:
+    service-labels-fade 0.7s ease-out both,
+    service-labels-drift 5.5s ease-in-out 0.8s infinite;
+}
+
+.service-labels-cube__chip:nth-child(5n + 2) {
+  animation:
+    service-labels-fade 0.7s ease-out both,
+    service-labels-glow 4.2s ease-in-out 1s infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ai-glow,
-  .chat-pulse {
+  .chat-pulse,
+  .service-labels-cube__chip {
     animation: none;
   }
 }

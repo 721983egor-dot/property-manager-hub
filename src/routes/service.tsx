@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, Phone, Send } from "lucide-react";
 
 import { PageHero, PageHeroCta } from "@/components/site/PageHero";
-import { ServiceWorkTree } from "@/components/site/ServiceWorkTree";
+import { ServiceLabelsCube } from "@/components/site/ServiceLabelsCube";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import { jsonLdScript } from "@/lib/seo";
 import {
@@ -351,9 +351,9 @@ function ServicePage() {
                 С нами удобно и безопасно
               </h2>
               <p className="mt-4 max-w-lg leading-relaxed text-site-muted">
-                С нами удобно и безопасно, особенно это актуально для
-                собственников, не проживающих постоянно в Сочи: у вас есть
-                надёжный партнёр, который оказывает весь комплекс услуг.
+                Особенно это актуально для собственников, не проживающих
+                постоянно в Сочи: у вас есть надёжный партнёр, который оказывает
+                весь комплекс услуг.
               </p>
               <p className="mt-4 max-w-lg leading-relaxed text-site-muted first-letter:ml-[1.25em]">
                 Вы сразу получаете информацию по состоянию дома и территории, по
@@ -371,7 +371,7 @@ function ServicePage() {
                 Оставить заявку
               </a>
             </div>
-            <ServiceWorkTree />
+            <ServiceLabelsCube />
           </div>
         </div>
       </section>
