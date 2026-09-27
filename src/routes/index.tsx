@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { ArrowRight, Check, MessageCircle, Phone, Send } from "lucide-react";
+import { ArrowRight, MessageCircle, Phone, Send } from "lucide-react";
 
 import { HeroSearchBar } from "@/components/site/HeroSearchBar";
 
@@ -49,12 +49,6 @@ const SERVICE_STRIP = [
     src: "/service/interior-cleaning.png",
     alt: "Клининг интерьера частного дома",
   },
-];
-
-const SERVICE_HOME_POINTS = [
-  "Не живёте в Сочи постоянно",
-  "Видите состояние дома и работы",
-  "Один партнёр на весь комплекс",
 ];
 
 export const Route = createFileRoute("/")({
@@ -435,38 +429,23 @@ function HomePage() {
               <ArrowRight className="size-4" />
             </Link>
           </div>
-          <div className="flex flex-col gap-6">
-            <ul className="flex flex-col gap-4 rounded-2xl border border-site-line bg-site-navy-soft/60 p-6 md:p-8">
-              {SERVICE_HOME_POINTS.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-start gap-3 text-base text-site-navy"
-                >
-                  <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-site-gold/15 text-site-gold">
-                    <Check className="size-3.5" strokeWidth={2.5} />
-                  </span>
-                  <span className="leading-snug font-medium">{item}</span>
-                </li>
-              ))}
-            </ul>
-            <div
-              className="grid grid-cols-4 gap-1.5 overflow-hidden rounded-xl"
-              aria-label="Фото услуг обслуживания"
-            >
-              {SERVICE_STRIP.map((item) => (
-                <div
-                  key={item.src}
-                  className="aspect-square overflow-hidden bg-site-navy-soft"
-                >
-                  <img
-                    src={item.src}
-                    alt={item.alt}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
+          <div
+            className="grid grid-cols-2 gap-2 overflow-hidden rounded-2xl sm:gap-2.5"
+            aria-label="Фото услуг обслуживания"
+          >
+            {SERVICE_STRIP.map((item) => (
+              <div
+                key={item.src}
+                className="aspect-square overflow-hidden bg-site-navy-soft"
+              >
+                <img
+                  src={item.src}
+                  alt={item.alt}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ))}
           </div>
         </div>
       </section>

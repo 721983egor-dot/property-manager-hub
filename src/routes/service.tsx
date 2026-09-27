@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, MessageCircle, Phone, Send } from "lucide-react";
+import { MessageCircle, Phone, Send } from "lucide-react";
 
+import { OwnerCabinetMock } from "@/components/site/OwnerCabinetMock";
 import { PageHero, PageHeroCta } from "@/components/site/PageHero";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import { jsonLdScript } from "@/lib/seo";
@@ -178,12 +179,6 @@ const STEPS = [
   },
 ];
 
-const TRUST_POINTS = [
-  "Не живёте в Сочи постоянно",
-  "Видите состояние дома и работы",
-  "Один партнёр на весь комплекс",
-];
-
 function ServicePage() {
   return (
     <div className="font-site">
@@ -350,14 +345,17 @@ function ServicePage() {
 
       <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-16">
+          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
               <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
                 С нами удобно и безопасно
               </h2>
-              <p className="mt-4 max-w-md leading-relaxed text-site-muted">
-                Надёжный партнёр с полным комплексом услуг: вы всегда в курсе
-                состояния дома, территории и выполненных работ.
+              <p className="mt-4 max-w-lg leading-relaxed text-site-muted">
+                С нами удобно и безопасно, особенно это актуально для
+                собственников, не проживающих постоянно в Сочи: у вас есть
+                надёжный партнёр, который оказывает весь комплекс услуг. Вы
+                сразу получаете информацию по состоянию дома и территории, по
+                всем выполненным и запланированным работам.
               </p>
               <p className="mt-8 text-3xl font-bold tracking-tight text-site-navy md:text-4xl">
                 от{" "}
@@ -371,19 +369,7 @@ function ServicePage() {
                 Оставить заявку
               </a>
             </div>
-            <ul className="flex flex-col gap-5 self-center">
-              {TRUST_POINTS.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-start gap-3 text-base text-site-navy md:text-lg"
-                >
-                  <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-site-gold/15 text-site-gold">
-                    <Check className="size-3.5" strokeWidth={2.5} />
-                  </span>
-                  <span className="leading-snug font-medium">{item}</span>
-                </li>
-              ))}
-            </ul>
+            <OwnerCabinetMock />
           </div>
         </div>
       </section>
