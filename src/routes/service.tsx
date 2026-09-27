@@ -382,14 +382,14 @@ function ServicePage() {
         <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
           <div>
             <h2 className="text-3xl font-bold text-white md:text-4xl">
-              Обсудим обслуживание вашего дома
+              Свяжитесь с нами или оставьте заявку
             </h2>
             <p className="mt-5 max-w-md leading-relaxed text-white/75">
               Расскажите про объект и задачи — предложим формат работ, состав
               услуг и порядок взаимодействия.
             </p>
             <p className="mt-4 text-sm text-site-gold">
-              Первичная консультация — бесплатно.
+              Выезд на объект и оценка стоимости бесплатно
             </p>
             <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/85">
               <a
