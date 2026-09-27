@@ -68,11 +68,19 @@ export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
   const iconSize = isHeader ? "size-3.5" : iconClass;
 
   return (
-    <div className={className}>
+    <div
+      className={
+        isHeader
+          ? `flex items-center gap-2.5 ${className}`.trim()
+          : className
+      }
+    >
       {isFooter ? (
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-site-gold">
           Соцсети
         </p>
+      ) : isHeader ? (
+        <span className="shrink-0 text-xs text-site-muted">Соцсети</span>
       ) : showLabels ? (
         <p className="text-xs text-site-muted">Мы в соцсетях</p>
       ) : null}
