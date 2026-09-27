@@ -29,9 +29,15 @@ import { PropertyCard } from "@/components/site/PropertyCard";
 import { SiteLeadForm } from "@/components/site/SiteLeadForm";
 import heroImage from "@/assets/site/hero_villa_sunset.jpg";
 import selectionImg from "@/assets/site/home_p5.jpg";
-import serviceHomeImg from "@/assets/site/mgmt_p3.jpg";
 
 const DIRECTOR_PHOTO = "/about/egor-moshkov.jpg";
+
+const SERVICE_STRIP = [
+  { src: "/service/pool-cleaning.png", alt: "Чистка бассейна" },
+  { src: "/service/house-interior-work.png", alt: "Работы внутри дома" },
+  { src: "/service/pool-area-wash.png", alt: "Мойка территории у бассейна" },
+  { src: "/service/interior-cleaning.png", alt: "Клининг внутри дома" },
+];
 
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
@@ -354,12 +360,43 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Обслуживание домов */}
+      {/* Как у нас арендовать */}
       <section className="bg-site-navy-soft py-20">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+            Как у нас арендовать?
+          </h2>
+          <p className="mt-5 max-w-2xl leading-relaxed text-site-muted">
+            Простой процесс от выбора объекта до заселения и сопровождения на
+            весь срок аренды.
+          </p>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+            {STEPS.map((step, i) => (
+              <div
+                key={step.title}
+                className="rounded-xl border border-site-line bg-white p-6"
+              >
+                <span className="text-3xl font-bold text-site-gold">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <p className="mt-4 text-base font-semibold text-site-navy">
+                  {step.title}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                  {step.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Обслуживание домов */}
+      <section className="bg-white py-20">
         <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
-              Отдельная линия
+              Сервис
             </p>
             <h2 className="mt-3 text-3xl font-bold text-site-navy md:text-4xl">
               Обслуживание домов и вилл
@@ -376,42 +413,21 @@ function HomePage() {
               <ArrowRight className="size-4" />
             </Link>
           </div>
-          <div className="overflow-hidden rounded-2xl">
-            <img
-              src={serviceHomeImg}
-              alt="Обслуживание частных домов в Сочи"
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Как у нас арендовать */}
-      <section className="bg-white py-20">
-        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-            Как у нас арендовать?
-          </h2>
-          <p className="mt-5 max-w-2xl leading-relaxed text-site-muted">
-            Простой процесс от выбора объекта до заселения и сопровождения на
-            весь срок аренды.
-          </p>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            {STEPS.map((step, i) => (
+          <div
+            className="grid grid-cols-2 gap-2 overflow-hidden rounded-2xl"
+            aria-label="Фото услуг обслуживания"
+          >
+            {SERVICE_STRIP.map((item) => (
               <div
-                key={step.title}
-                className="rounded-xl border border-site-line bg-site-navy-soft p-6"
+                key={item.src}
+                className="aspect-[4/3] overflow-hidden bg-site-navy-soft"
               >
-                <span className="text-3xl font-bold text-site-gold">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <p className="mt-4 text-base font-semibold text-site-navy">
-                  {step.title}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-site-muted">
-                  {step.text}
-                </p>
+                <img
+                  src={item.src}
+                  alt={item.alt}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
               </div>
             ))}
           </div>
