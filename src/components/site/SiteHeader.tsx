@@ -59,7 +59,9 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Мобильная шапка: только значки (top bar с «Соцсети» скрыт ниже lg) */}
+          <SiteSocialLinks variant="headerMobile" className="lg:hidden" />
           <a
             href={SITE_PHONE_TEL}
             className="hidden text-sm font-semibold text-site-navy hover:text-site-gold md:block lg:hidden xl:block"

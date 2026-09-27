@@ -4,10 +4,15 @@ import {
   SITE_VK,
 } from "@/lib/site";
 
-type Variant = "footer" | "contacts" | "header";
+type Variant = "footer" | "contacts" | "header" | "headerMobile";
 
 type Props = {
-  /** footer — светлые иконки на navy; contacts — на белом с подписями; header — компактные иконки в шапке. */
+  /**
+   * footer — светлые иконки на navy;
+   * contacts — на белом с подписями;
+   * header — desktop top bar с лейблом «Соцсети»;
+   * headerMobile — только значки в основной строке шапки (без текста).
+   */
   variant?: Variant;
   className?: string;
 };
@@ -53,7 +58,8 @@ const LINKS = [
 /** Иконки соцсетей: ВК, Telegram-группа, Max-группа. */
 export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
   const isFooter = variant === "footer";
-  const isHeader = variant === "header";
+  const isHeader = variant === "header" || variant === "headerMobile";
+  const showHeaderLabel = variant === "header";
   const showLabels = variant === "contacts";
   const linkClass = isFooter
     ? "flex size-9 items-center justify-center rounded-full border border-white/20 text-white/80 transition-colors hover:border-site-gold hover:text-site-gold"
@@ -65,7 +71,7 @@ export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
     : isHeader
       ? "flex size-7 cursor-not-allowed items-center justify-center rounded-full border border-site-line/60 text-site-muted/40"
       : "inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-site-line/60 px-4 py-2 text-sm font-medium text-site-muted/60";
-  // Header: glyph почти на весь круг (size-7), небольшой зазор для клика.
+  // Header / headerMobile: glyph почти на весь круг (size-7), небольшой зазор для клика.
   const iconSize = isHeader ? "size-[90%]" : iconClass;
 
   return (
@@ -80,13 +86,13 @@ export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-site-gold">
           Соцсети
         </p>
-      ) : isHeader ? (
+      ) : showHeaderLabel ? (
         <span className="shrink-0 text-xs text-site-muted">Соцсети</span>
       ) : showLabels ? (
         <p className="text-xs text-site-muted">Мы в соцсетях</p>
       ) : null}
       <div
-        className={`flex flex-wrap ${isFooter ? "gap-3" : isHeader ? "gap-2" : "mt-3 gap-3"}`}
+        className={`flex flex-wrap ${isFooter ? "gap-3" : isHeader ? "gap-1.5 sm:gap-2" : "mt-3 gap-3"}`}
       >
         {LINKS.map(({ href, label, Icon }) =>
           href ? (
