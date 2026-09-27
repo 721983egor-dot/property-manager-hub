@@ -216,7 +216,7 @@ function ManagementPage() {
       {/* mobile: заголовок→фото→текст; lg+: фото | заголовок→текст */}
       <section className="bg-white py-20">
         <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
+          <div className="grid items-start gap-10 lg:grid-cols-2">
             <div className="contents lg:order-2 lg:flex lg:flex-col">
               <h2 className="text-3xl font-bold text-site-navy max-lg:order-1 md:text-4xl">
                 Дополнительное обслуживание домов и вилл
@@ -248,7 +248,7 @@ function ManagementPage() {
                 <img
                   src="/service/additional-maintenance.jpg"
                   alt="Обслуживание дома: работы на террасе"
-                  className="aspect-[3/2] h-full w-full object-cover lg:aspect-[4/3]"
+                  className="aspect-[3/2] w-full object-cover lg:max-h-[360px]"
                   width={1536}
                   height={1024}
                   loading="lazy"

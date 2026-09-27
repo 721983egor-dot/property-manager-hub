@@ -391,8 +391,8 @@ function HomePage() {
 
       {/* Обслуживание: mobile заголовок→фото→текст; lg+ текст сверху | фото справа */}
       <section className="bg-white py-20">
-        <div className="mx-auto grid max-w-[1280px] gap-8 px-5 md:px-6 lg:grid-cols-2 lg:items-stretch lg:gap-16">
-          <div className="contents lg:flex lg:flex-col lg:justify-center">
+        <div className="mx-auto grid max-w-[1280px] gap-8 px-5 md:px-6 lg:grid-cols-2 lg:items-start lg:gap-16">
+          <div className="contents lg:flex lg:flex-col">
             <div className="max-lg:order-1">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
                 Сервис
@@ -419,7 +419,7 @@ function HomePage() {
               </Link>
             </div>
           </div>
-          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-site-navy-soft max-lg:order-2 lg:aspect-auto lg:min-h-0">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-site-navy-soft max-lg:order-2 lg:aspect-[3/2] lg:max-h-[400px]">
             <img
               src={SERVICE_HOME_PHOTO.src}
               alt={SERVICE_HOME_PHOTO.alt}
