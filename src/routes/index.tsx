@@ -391,7 +391,7 @@ function HomePage() {
 
       {/* Обслуживание домов */}
       <section className="bg-white py-20">
-        <div className="mx-auto max-w-[720px] px-5 md:px-6">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-site-gold">
             Сервис
           </p>
@@ -402,11 +402,11 @@ function HomePage() {
             <img
               src={SERVICE_HOME_PHOTO.src}
               alt={SERVICE_HOME_PHOTO.alt}
-              className="aspect-[4/3] w-full object-cover"
+              className="aspect-[4/3] w-full object-cover lg:aspect-[16/9]"
               loading="lazy"
             />
           </div>
-          <p className="mt-6 leading-relaxed text-site-muted">
+          <p className="mt-6 max-w-3xl leading-relaxed text-site-muted">
             Территория, сад, бассейн, инженерия и клининг — регулярный уход за
             частным домом, даже если он не сдаётся в аренду.
           </p>
@@ -438,7 +438,7 @@ function HomePage() {
               loading="lazy"
             />
           </div>
-          <p className="mt-3 text-base font-medium text-site-navy">
+          <p className="mt-2 text-sm text-site-muted">
             Директор компании Мошков Егор
           </p>
           <div className="mt-6 flex flex-col gap-4 leading-relaxed text-site-muted">

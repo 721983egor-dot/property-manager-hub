@@ -64,15 +64,15 @@ export function SiteSocialLinks({ variant = "footer", className = "" }: Props) {
   const linkClass = isFooter
     ? "flex size-9 items-center justify-center rounded-full border border-white/20 text-white/80 transition-colors hover:border-site-gold hover:text-site-gold"
     : isHeader
-      ? "flex size-7 items-center justify-center rounded-full border border-site-line text-site-muted transition-colors hover:border-site-gold hover:text-site-gold"
+      ? "inline-flex items-center justify-center text-site-muted transition-colors hover:text-site-gold"
       : "inline-flex items-center gap-2 rounded-md border border-site-line px-4 py-2 text-sm font-medium text-site-navy transition-colors hover:border-site-gold hover:text-site-gold";
   const disabledClass = isFooter
     ? "flex size-9 cursor-not-allowed items-center justify-center rounded-full border border-white/10 text-white/35"
     : isHeader
-      ? "flex size-7 cursor-not-allowed items-center justify-center rounded-full border border-site-line/60 text-site-muted/40"
+      ? "inline-flex cursor-not-allowed items-center justify-center text-site-muted/40"
       : "inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-site-line/60 px-4 py-2 text-sm font-medium text-site-muted/60";
-  // Header / headerMobile: glyph почти на весь круг (size-7), небольшой зазор для клика.
-  const iconSize = isHeader ? "size-[90%]" : iconClass;
+  // Header / headerMobile: просто значки без круглой подложки.
+  const iconSize = isHeader ? "size-5" : iconClass;
 
   return (
     <div
