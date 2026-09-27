@@ -8,10 +8,12 @@ import {
   SITE_TELEGRAM,
   SITE_WHATSAPP,
 } from "@/lib/site";
-import heroImg from "@/assets/site/about_hero.jpg";
-import forWhomImg from "@/assets/site/mgmt_p2.jpg";
-import splitImg from "@/assets/site/home_alt.jpg";
-import leadImg from "@/assets/site/home_selection.jpg";
+import imgTerritory from "@/assets/site/home_alt.jpg";
+import imgPool from "@/assets/site/mgmt_p2.jpg";
+import imgEngineering from "@/assets/site/home_p3.jpg";
+import imgCleaning from "@/assets/site/home_about.jpg";
+import imgRepair from "@/assets/site/home_p2.jpg";
+import imgControl from "@/assets/site/about_hero.jpg";
 
 export const Route = createFileRoute("/service")({
   head: () => {
@@ -53,26 +55,38 @@ const SERVICES = [
   {
     title: "Территория и сад",
     text: "Уход за газоном, растениями, дорожками и зонами отдыха. Держим участок в порядке в течение сезона.",
+    image: imgTerritory,
+    alt: "Частные дома и территория у моря",
   },
   {
     title: "Бассейн",
     text: "Чистка, химия, оборудование и подготовка к сезону — без необходимости искать подрядчиков самостоятельно.",
+    image: imgPool,
+    alt: "Бассейн и терраса частного дома",
   },
   {
     title: "Инженерные системы",
     text: "Контроль отопления, воды, электрики, кондиционеров и другого оборудования дома.",
+    image: imgEngineering,
+    alt: "Интерьер и инженерные детали дома",
   },
   {
     title: "Клининг",
     text: "Регулярная уборка, химчистка текстиля и подготовка дома к приезду собственника или гостей.",
+    image: imgCleaning,
+    alt: "Интерьер дома после уборки",
   },
   {
     title: "Мелкий ремонт",
     text: "Находим специалистов, согласуем работы и контролируем результат по согласованному перечню.",
+    image: imgRepair,
+    alt: "Частный дом премиум-класса",
   },
   {
     title: "Контроль состояния",
     text: "Осмотры, фиксация состояния и понятная обратная связь, если объект остаётся без постоянного присутствия.",
+    image: imgControl,
+    alt: "Вилла с бассейном в Сочи",
   },
 ];
 
@@ -113,14 +127,16 @@ const STEPS = [
 function ServicePage() {
   return (
     <div className="font-site">
-      <section className="relative flex min-h-[52vh] items-center overflow-hidden bg-site-navy md:min-h-[58vh]">
-        <img
-          src={heroImg}
-          alt="Обслуживание домов и вилл в Сочи"
-          className="absolute inset-0 h-full w-full object-cover object-[center_40%]"
+      <section className="relative overflow-hidden bg-site-navy">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,color-mix(in_oklch,var(--site-gold)_22%,transparent),transparent_55%),radial-gradient(ellipse_at_90%_80%,color-mix(in_oklch,var(--site-gold)_12%,transparent),transparent_50%),linear-gradient(135deg,var(--site-navy)_0%,oklch(0.28_0.05_255)_48%,oklch(0.22_0.04_250)_100%)]"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-site-navy/88 via-site-navy/55 to-site-navy/20" />
-        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-14 md:px-6 md:py-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-site-gold/50 to-transparent"
+        />
+        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-12 md:px-6 md:py-14">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-site-gold">
             Территория · Бассейн · Инженерия · Клининг
           </p>
@@ -153,6 +169,43 @@ function ServicePage() {
             {SERVICES.map((item) => (
               <div
                 key={item.title}
+                className="overflow-hidden rounded-xl border border-site-line bg-white"
+              >
+                <div className="aspect-[16/10] overflow-hidden bg-site-navy-soft">
+                  <img
+                    src={item.image}
+                    alt={item.alt}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="p-5">
+                  <p className="text-base font-semibold text-site-navy">
+                    {item.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-site-muted">
+                    {item.text}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-site-navy-soft py-20">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+            Для кого этот формат
+          </h2>
+          <p className="mt-4 max-w-2xl leading-relaxed text-site-muted">
+            Подходит собственникам, которым важно сохранить дом в порядке —
+            без ежедневного контроля и поиска разных исполнителей.
+          </p>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {FOR_WHOM.map((item) => (
+              <div
+                key={item.title}
                 className="rounded-xl border border-site-line bg-white p-6"
               >
                 <p className="text-base font-semibold text-site-navy">
@@ -163,42 +216,6 @@ function ServicePage() {
                 </p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-site-navy-soft py-20">
-        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
-            <div className="overflow-hidden rounded-2xl">
-              <img
-                src={forWhomImg}
-                alt="Терраса и бассейн частного дома"
-                className="aspect-[4/3] h-full w-full object-cover"
-                loading="lazy"
-              />
-            </div>
-            <div>
-              <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-                Для кого этот формат
-              </h2>
-              <p className="mt-4 leading-relaxed text-site-muted">
-                Подходит собственникам, которым важно сохранить дом в порядке —
-                без ежедневного контроля и поиска разных исполнителей.
-              </p>
-              <div className="mt-8 flex flex-col gap-5">
-                {FOR_WHOM.map((item) => (
-                  <div key={item.title}>
-                    <p className="text-base font-semibold text-site-navy">
-                      {item.title}
-                    </p>
-                    <p className="mt-1.5 text-sm leading-relaxed text-site-muted">
-                      {item.text}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -234,51 +251,37 @@ function ServicePage() {
       </section>
 
       <section className="bg-site-navy-soft py-20">
-        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
-          <div>
-            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-              Аренда и сервис — отдельно
-            </h2>
-            <p className="mt-4 leading-relaxed text-site-muted">
-              Если объект сдаётся через нас, обслуживание можно подключить к
-              управлению. Если дом не в аренде — работаем как отдельный сервис
-              по содержанию.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                to="/rent"
-                className="inline-flex items-center rounded-md border border-site-line bg-white px-5 py-3 text-sm font-semibold text-site-navy transition-colors hover:border-site-gold"
-              >
-                Аренда объектов
-              </Link>
-              <Link
-                to="/management"
-                className="inline-flex items-center rounded-md bg-site-navy px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
-              >
-                Собственникам
-              </Link>
-            </div>
-          </div>
-          <div className="overflow-hidden rounded-2xl">
-            <img
-              src={splitImg}
-              alt="Дома у моря в Сочи"
-              className="aspect-[4/3] h-full w-full object-cover"
-              loading="lazy"
-            />
+        <div className="mx-auto max-w-[1280px] px-5 md:px-6">
+          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+            Аренда и сервис — отдельно
+          </h2>
+          <p className="mt-4 max-w-2xl leading-relaxed text-site-muted">
+            Если объект сдаётся через нас, обслуживание можно подключить к
+            управлению. Если дом не в аренде — работаем как отдельный сервис
+            по содержанию.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              to="/rent"
+              className="inline-flex items-center rounded-md border border-site-line bg-white px-5 py-3 text-sm font-semibold text-site-navy transition-colors hover:border-site-gold"
+            >
+              Аренда объектов
+            </Link>
+            <Link
+              to="/management"
+              className="inline-flex items-center rounded-md bg-site-navy px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+            >
+              Собственникам
+            </Link>
           </div>
         </div>
       </section>
 
-      <section id="lead" className="relative overflow-hidden py-20">
-        <img
-          src={leadImg}
-          alt=""
+      <section id="lead" className="relative overflow-hidden bg-site-navy py-20">
+        <div
           aria-hidden
-          className="absolute inset-0 h-full w-full object-cover"
-          loading="lazy"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_0%,color-mix(in_oklch,var(--site-gold)_18%,transparent),transparent_50%)]"
         />
-        <div className="absolute inset-0 bg-site-navy/85" />
         <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
           <div>
             <h2 className="text-3xl font-bold text-white md:text-4xl">
