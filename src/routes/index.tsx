@@ -428,35 +428,33 @@ function HomePage() {
 
       {/* О компании */}
       <section id="about" className="bg-site-navy-soft py-20">
-        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-5 md:px-6 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl bg-site-navy/5">
+        <div className="mx-auto max-w-[720px] px-5 md:px-6">
+          <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
+            О компании
+          </h2>
+          <div className="mt-6 overflow-hidden rounded-2xl bg-site-navy/5">
             <img
               src={DIRECTOR_PHOTO}
               alt="Директор компании Мошков Егор"
-              className="aspect-[4/3] h-full w-full object-cover object-top"
+              className="aspect-[4/3] w-full object-cover object-top"
               loading="lazy"
             />
           </div>
-          <div>
-            <h2 className="text-3xl font-bold text-site-navy md:text-4xl">
-              О компании
-            </h2>
-            <div className="mt-5 flex flex-col gap-4 leading-relaxed text-site-muted">
-              {ABOUT_TEXT.map((p) => (
-                <p key={p}>{p}</p>
-              ))}
-            </div>
-            <p className="mt-6 text-base font-medium text-site-navy">
-              С уважением, директор компании Мошков Егор
-            </p>
-            <Link
-              to="/about"
-              className="mt-8 inline-flex items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
-            >
-              О нас
-              <ArrowRight className="size-4" />
-            </Link>
+          <p className="mt-3 text-base font-medium text-site-navy">
+            Директор компании Мошков Егор
+          </p>
+          <div className="mt-6 flex flex-col gap-4 leading-relaxed text-site-muted">
+            {ABOUT_TEXT.map((p) => (
+              <p key={p}>{p}</p>
+            ))}
           </div>
+          <Link
+            to="/about"
+            className="mt-8 inline-flex items-center gap-2 rounded-md bg-site-navy px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-site-navy/90"
+          >
+            О нас
+            <ArrowRight className="size-4" />
+          </Link>
         </div>
       </section>
 
