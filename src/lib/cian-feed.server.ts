@@ -5,6 +5,11 @@
  */
 
 import { cianSchemaGaps, missingCianFields } from "@/lib/cian";
+import {
+  buildListingDescription,
+  fetchComplexesMapForFeeds,
+  type ListingDescriptionComplex,
+} from "@/lib/listing-description.server";
 import { cianFeedVideoUrl } from "@/lib/property-video";
 import type { Property } from "@/lib/properties";
 
@@ -47,6 +52,7 @@ export type FeedSelection = {
   included: { property: Property; externalId: string; gaps: string[] }[];
   skipped: { property: Property; missing: string[] }[];
   autoPublish: boolean;
+  complexes: Map<string, ListingDescriptionComplex>;
 };
 
 /**
@@ -63,9 +69,10 @@ export async function computeFeedSelection(): Promise<FeedSelection> {
     .maybeSingle();
   const autoPublish = Boolean((cred as { auto_publish?: boolean } | null)?.auto_publish);
 
-  const [{ data: properties }, { data: listings }] = await Promise.all([
+  const [{ data: properties }, { data: listings }, complexes] = await Promise.all([
     supabaseAdmin.from("properties").select("*").neq("status", "archived").neq("portfolio", "n11" as never),
     supabaseAdmin.from("property_listings").select("*").eq("platform", "cian"),
+    fetchComplexesMapForFeeds(),
   ]);
 
   const listingByProperty = new Map(
@@ -98,7 +105,7 @@ export async function computeFeedSelection(): Promise<FeedSelection> {
     });
   }
 
-  return { included, skipped, autoPublish };
+  return { included, skipped, autoPublish, complexes };
 }
 
 /** URL фото для фида: всегда HTTPS, постоянный адрес на нашем сайте. */
@@ -134,21 +141,6 @@ function isApartments(property: Property): boolean {
 function clientFeePercent(property: Property): number {
   if (property.commission == null || !Number.isFinite(property.commission)) return 0;
   return Math.max(0, Math.min(100, Math.round(property.commission)));
-}
-
-/** Описание по правилам ЦИАН: 15–3000 символов, без «&», «№», «/», «\». */
-function cleanDescription(raw: string): string {
-  let text = raw
-    .replace(/&/g, " и ")
-    .replace(/[№/\\]/g, " ")
-    .replace(/[«»]/g, '"')
-    .replace(/[–—]/g, "-")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
-  if (text.length > 3000) text = text.slice(0, 3000).trim();
-  return text;
 }
 
 function bargainTermsXml(property: Property): string {
@@ -232,10 +224,16 @@ function yardFeatures(property: Property): string {
 }
 
 /** Один объект фида: порядок элементов ближе к официальному примеру ЦИАН. */
-function offerXml(property: Property, externalId: string, origin: string): string {
+function offerXml(
+  property: Property,
+  externalId: string,
+  origin: string,
+  complexes: Map<string, ListingDescriptionComplex>,
+): string {
   const category = cianCategory(property.type);
   const isLand = category !== "flatRent";
-  const description = cleanDescription(property.description);
+  const complex = property.complex_id ? complexes.get(property.complex_id) : null;
+  const description = buildListingDescription(property, complex, { platform: "cian" });
 
   const coordinates =
     property.latitude != null && property.longitude != null
@@ -309,7 +307,9 @@ function offerXml(property: Property, externalId: string, origin: string): strin
 export function buildFeedXml(selection: FeedSelection, origin: string): string {
   const safeOrigin = (origin || PUBLIC_ORIGIN).replace(/^http:\/\//i, "https://");
   const objects = selection.included
-    .map(({ property, externalId }) => offerXml(property, externalId, safeOrigin))
+    .map(({ property, externalId }) =>
+      offerXml(property, externalId, safeOrigin, selection.complexes),
+    )
     .join("");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<feed><feed_version>2</feed_version>${objects}</feed>`;
 }

@@ -6,6 +6,11 @@
 import { missingYandexFields } from "@/lib/yandex";
 import type { Property } from "@/lib/properties";
 import { feedPhotoUrl } from "@/lib/cian-feed.server";
+import {
+  buildListingDescription,
+  fetchComplexesMapForFeeds,
+  type ListingDescriptionComplex,
+} from "@/lib/listing-description.server";
 import { yandexFeedVideoReview } from "@/lib/property-video";
 import { propertyPath } from "@/lib/seo";
 
@@ -46,6 +51,7 @@ export type YandexFeedSelection = {
   included: { property: Property; externalId: string }[];
   skipped: { property: Property; missing: string[] }[];
   autoPublish: boolean;
+  complexes: Map<string, ListingDescriptionComplex>;
 };
 
 /**
@@ -62,9 +68,10 @@ export async function computeYandexFeedSelection(): Promise<YandexFeedSelection>
     .maybeSingle();
   const autoPublish = Boolean((cred as { auto_publish?: boolean } | null)?.auto_publish);
 
-  const [{ data: properties }, { data: listings }] = await Promise.all([
+  const [{ data: properties }, { data: listings }, complexes] = await Promise.all([
     supabaseAdmin.from("properties").select("*").neq("status", "archived").neq("portfolio", "n11" as never),
     supabaseAdmin.from("property_listings").select("*").eq("platform", "yandex"),
+    fetchComplexesMapForFeeds(),
   ]);
 
   const listingByProperty = new Map(
@@ -94,11 +101,16 @@ export async function computeYandexFeedSelection(): Promise<YandexFeedSelection>
     included.push({ property, externalId });
   }
 
-  return { included, skipped, autoPublish };
+  return { included, skipped, autoPublish, complexes };
 }
 
 /** Один оффер фида. */
-function offerXml(property: Property, externalId: string, origin: string): string {
+function offerXml(
+  property: Property,
+  externalId: string,
+  origin: string,
+  complexes: Map<string, ListingDescriptionComplex>,
+): string {
   const images = (property.photos ?? [])
     .map((p) => p.path)
     .filter((path) => path && !/\.(mp4|m4v|mov|webm)$/i.test(path))
@@ -145,14 +157,18 @@ function offerXml(property: Property, externalId: string, origin: string): strin
       : "";
 
   const creationDate = new Date(property.created_at || Date.now()).toISOString();
+  const complex = property.complex_id ? complexes.get(property.complex_id) : null;
+  const description = buildListingDescription(property, complex, { platform: "yandex" });
 
-  return `<offer internal-id="${esc(externalId)}">${tag("type", "аренда")}${tag("property-type", "жилая")}${tag("category", yandexCategory(property.type))}${tag("creation-date", creationDate)}${tag("url", `${origin}${propertyPath(property)}`)}${location}${salesAgent}${price}${tag("deal-status", "аренда")}${deposit}${utilitiesIncluded}${area}${rooms}${floors}${lotArea}${images}${videoReview}${tag("description", property.description)}</offer>`;
+  return `<offer internal-id="${esc(externalId)}">${tag("type", "аренда")}${tag("property-type", "жилая")}${tag("category", yandexCategory(property.type))}${tag("creation-date", creationDate)}${tag("url", `${origin}${propertyPath(property)}`)}${location}${salesAgent}${price}${tag("deal-status", "аренда")}${deposit}${utilitiesIncluded}${area}${rooms}${floors}${lotArea}${images}${videoReview}${tag("description", description)}</offer>`;
 }
 
 /** Полный XML фида. */
 export function buildYandexFeedXml(selection: YandexFeedSelection, origin: string): string {
   const offers = selection.included
-    .map(({ property, externalId }) => offerXml(property, externalId, origin))
+    .map(({ property, externalId }) =>
+      offerXml(property, externalId, origin, selection.complexes),
+    )
     .join("");
   const generationDate = new Date().toISOString();
   return `<?xml version="1.0" encoding="UTF-8"?>\n<realty-feed xmlns="http://webmaster.yandex.ru/schemas/feed/realty/2010-06">${tag("generation-date", generationDate)}${offers}</realty-feed>`;

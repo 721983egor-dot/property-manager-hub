@@ -13,6 +13,11 @@ import {
 } from "@/lib/yandex-spravochnik";
 import type { Property, PropertyType } from "@/lib/properties";
 import { feedPhotoUrl } from "@/lib/cian-feed.server";
+import {
+  buildListingDescription,
+  fetchComplexesMapForFeeds,
+  type ListingDescriptionComplex,
+} from "@/lib/listing-description.server";
 import { propertyPath } from "@/lib/seo";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/site";
 
@@ -90,6 +95,7 @@ function isAvailableStatus(status: Property["status"]): boolean {
 export type SpravochnikFeedSelection = {
   included: Property[];
   skipped: { property: Property; missing: string[] }[];
+  complexes: Map<string, ListingDescriptionComplex>;
 };
 
 /**
@@ -99,11 +105,10 @@ export type SpravochnikFeedSelection = {
 export async function computeSpravochnikFeedSelection(): Promise<SpravochnikFeedSelection> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const { data: properties } = await supabaseAdmin
-    .from("properties")
-    .select("*")
-    .eq("published", true)
-    .neq("status", "archived");
+  const [{ data: properties }, complexes] = await Promise.all([
+    supabaseAdmin.from("properties").select("*").eq("published", true).neq("status", "archived"),
+    fetchComplexesMapForFeeds(),
+  ]);
 
   const included: Property[] = [];
   const skipped: SpravochnikFeedSelection["skipped"] = [];
@@ -119,19 +124,24 @@ export async function computeSpravochnikFeedSelection(): Promise<SpravochnikFeed
   }
 
   included.sort((a, b) => (a.ref_id ?? 0) - (b.ref_id ?? 0));
-  return { included, skipped };
+  return { included, skipped, complexes };
 }
 
-function offerXml(property: Property, origin: string): string {
+function offerXml(
+  property: Property,
+  origin: string,
+  complexes: Map<string, ListingDescriptionComplex>,
+): string {
   const id = String(property.ref_id || property.id).slice(0, 80);
   const available = isAvailableStatus(property.status) ? undefined : ' available="unknown"';
   const catId = categoryIdForType(property.type);
   const firstPhoto = (property.photos ?? []).map((p) => p.path).find(Boolean);
   const picture = firstPhoto ? feedPhotoUrl(origin, firstPhoto) : "";
 
-  const rawDescription = property.description?.trim() || property.title;
-  const description = sanitizeText(rawDescription, 3000);
-  const shortDescription = sanitizeText(rawDescription, 250);
+  const complex = property.complex_id ? complexes.get(property.complex_id) : null;
+  const assembled = buildListingDescription(property, complex, { platform: "yandex-spravochnik" });
+  const description = sanitizeText(assembled, 5500);
+  const shortDescription = sanitizeText(property.description?.trim() || property.title, 250);
 
   return (
     `<offer id="${esc(id)}"${available ?? ""}>` +
@@ -154,7 +164,9 @@ export function buildSpravochnikFeedYml(selection: SpravochnikFeedSelection, ori
   const categories = SPRAVOCHNIK_CATEGORIES.map(
     (c) => `<category id="${c.id}">${esc(c.name)}</category>`,
   ).join("");
-  const offers = selection.included.map((p) => offerXml(p, origin)).join("");
+  const offers = selection.included
+    .map((p) => offerXml(p, origin, selection.complexes))
+    .join("");
 
   return (
     `<?xml version="1.0" encoding="UTF-8"?>\n` +

@@ -5,6 +5,11 @@
 
 import { isAvitoHouse, missingAvitoFields } from "@/lib/avito";
 import { feedPhotoUrl } from "@/lib/cian-feed.server";
+import {
+  buildListingDescription,
+  fetchComplexesMapForFeeds,
+  type ListingDescriptionComplex,
+} from "@/lib/listing-description.server";
 import { avitoFeedVideo, storedVideoPath } from "@/lib/property-video";
 import { splitPropertyMedia, type Property } from "@/lib/properties";
 
@@ -40,6 +45,7 @@ export type AvitoFeedSelection = {
   included: { property: Property; avitoId: string | null }[];
   skipped: { property: Property; missing: string[] }[];
   autoPublish: boolean;
+  complexes: Map<string, ListingDescriptionComplex>;
 };
 
 /**
@@ -56,9 +62,10 @@ export async function computeAvitoFeedSelection(): Promise<AvitoFeedSelection> {
     .maybeSingle();
   const autoPublish = Boolean((cred as { auto_publish?: boolean } | null)?.auto_publish);
 
-  const [{ data: properties }, { data: listings }] = await Promise.all([
+  const [{ data: properties }, { data: listings }, complexes] = await Promise.all([
     supabaseAdmin.from("properties").select("*").neq("status", "archived").neq("portfolio", "n11" as never),
     supabaseAdmin.from("property_listings").select("*").eq("platform", "avito"),
+    fetchComplexesMapForFeeds(),
   ]);
 
   const listingByProperty = new Map(
@@ -90,7 +97,7 @@ export async function computeAvitoFeedSelection(): Promise<AvitoFeedSelection> {
     });
   }
 
-  return { included, skipped, autoPublish };
+  return { included, skipped, autoPublish, complexes };
 }
 
 function avitoCategory(type: Property["type"]): string {
@@ -204,7 +211,12 @@ function avitoVideoXml(property: Property, origin: string): string {
   return tag("VideoURL", video.videoUrl);
 }
 
-function offerXml(property: Property, avitoId: string | null, origin: string): string {
+function offerXml(
+  property: Property,
+  avitoId: string | null,
+  origin: string,
+  complexes: Map<string, ListingDescriptionComplex>,
+): string {
   const house = isAvitoHouse(property.type);
   const renovation = avitoRenovation(property.repair_type);
   const tenantPaysUtilities = utilitiesPaidByTenant(property);
@@ -212,6 +224,8 @@ function offerXml(property: Property, avitoId: string | null, origin: string): s
     tenantPaysUtilities && property.utilities_month != null ? Math.round(property.utilities_month) : null;
   const floors = property.total_floors != null && property.total_floors > 0 ? property.total_floors : 1;
   const kitchen = !house ? kitchenSpace(property) : null;
+  const complex = property.complex_id ? complexes.get(property.complex_id) : null;
+  const description = buildListingDescription(property, complex, { platform: "avito" });
 
   return [
     "<Ad>",
@@ -257,7 +271,7 @@ function offerXml(property: Property, avitoId: string | null, origin: string): s
     tag("ContactPhone", PHONE),
     tag("ManagerName", MANAGER_NAME),
     tag("ContactMethod", "По телефону и в сообщениях"),
-    tagCdata("Description", property.description.slice(0, 7500)),
+    tagCdata("Description", description),
     imagesXml(property, origin),
     avitoVideoXml(property, origin),
     "</Ad>",
@@ -267,7 +281,7 @@ function offerXml(property: Property, avitoId: string | null, origin: string): s
 /** Полный XML фида автозагрузки Авито. */
 export function buildAvitoFeedXml(selection: AvitoFeedSelection, origin: string): string {
   const ads = selection.included
-    .map(({ property, avitoId }) => offerXml(property, avitoId, origin))
+    .map(({ property, avitoId }) => offerXml(property, avitoId, origin, selection.complexes))
     .join("");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<Ads formatVersion="3" target="Avito.ru">${ads}</Ads>`;
 }
