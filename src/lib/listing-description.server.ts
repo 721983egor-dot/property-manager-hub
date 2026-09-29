@@ -61,7 +61,9 @@ function companyFooter(platform: ListingDescriptionPlatform): string {
 }
 
 function formatMoneyRu(value: number): string {
-  return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
+  // ru-RU даёт NBSP как разделитель тысяч — для фидов нужен обычный пробел
+  // (Циан режет описание по «грязным» символам; NBSP уже ломал выгрузку).
+  return `${new Intl.NumberFormat("ru-RU").format(value).replace(/\u00a0/g, " ")} ₽`;
 }
 
 function normalizeParagraph(text: string): string {
@@ -75,6 +77,8 @@ export function cleanCianDescriptionBody(raw: string): string {
     .replace(/[№/\\]/g, " ")
     .replace(/[«»]/g, '"')
     .replace(/[–—]/g, "-")
+    // NBSP / узкие пробелы из Intl и копипаста — в обычный пробел
+    .replace(/[\u00a0\u202f\u2007\u2009\u200a]/g, " ")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .replace(/[ \t]{2,}/g, " ")
@@ -123,7 +127,8 @@ export function buildRentTermsBullets(
     let text = raw.replace(/\s+/g, " ").replace(/\.?\s*$/, "");
 
     if (utilities != null && /коммунальн/i.test(text) && !/\d/.test(text)) {
-      text = `${text} (ориентир по объекту — ${formatMoneyRu(utilities)}/мес)`;
+      // Без «/» — Циан запрещает его в Description (cleanCian всё равно вырежет).
+      text = `${text} (ориентир по объекту — ${formatMoneyRu(utilities)} в мес)`;
       usedUtilities = true;
     }
 
@@ -139,7 +144,7 @@ export function buildRentTermsBullets(
   });
 
   if (utilities != null && !usedUtilities) {
-    bullets.push(`— Коммунальные платежи — ориентир ${formatMoneyRu(utilities)}/мес.`);
+    bullets.push(`— Коммунальные платежи — ориентир ${formatMoneyRu(utilities)} в мес.`);
   }
   if (deposit != null && !usedDeposit) {
     bullets.push(
