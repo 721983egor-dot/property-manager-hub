@@ -33,7 +33,11 @@ function mediaResponse(bytes: Uint8Array, contentType: string, rangeHeader: stri
     "Cache-Control": "public, max-age=86400",
   };
   if (!VIDEO_TYPES.has(contentType)) {
-    return new Response(bytes, { headers: base });
+    // Content-Length помогает внешним импортёрам (VK/Яндекс) стабильно
+    // скачивать несколько картинок подряд, а не только первую.
+    return new Response(bytes, {
+      headers: { ...base, "Content-Length": String(total) },
+    });
   }
 
   base["Accept-Ranges"] = "bytes";
