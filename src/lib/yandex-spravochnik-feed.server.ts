@@ -36,12 +36,14 @@ export const SPRAVOCHNIK_CATEGORIES: { id: number; name: string; types: Property
 ];
 
 /**
- * Категории для VK: названия ближе к недвижимости/аренде.
- * VK часто игнорирует наши category и ставит дефолт (часто «ювелирные украшения»),
- * если id не из их дерева market.getCategories. Наши id начинаются с 100,
- * чтобы не пересекаться с ранними id их таксономии (1 ≈ ювелирка у части импортов).
- * Подборки в сообществе создаются из названий; товарную категорию VK всё равно
- * может переопределить — после импорта проверить вручную.
+ * Категории для VK: **id из дерева market.getCategories**, не свои.
+ * Раздел «Недвижимость»: 500 Квартиры, 502 Дома/дачи/коттеджи (стабильные id).
+ *
+ * История ошибок:
+ * - id 1–5 — одежда/украшения → импорт часто давал «ювелирку»;
+ * - id 100–105 — «Детские товары» (автокресла, коляски…) — тоже мимо.
+ * Если VK снова проставит чужую категорию — править вручную в карточке товара
+ * или уточнить актуальный id в URL раздела / через market.getCategories.
  */
 export const VK_CATEGORIES: {
   id: number;
@@ -49,21 +51,33 @@ export const VK_CATEGORIES: {
   parentId?: number;
   types?: PropertyType[];
 }[] = [
-  { id: 100, name: "Недвижимость" },
-  { id: 101, name: "Аренда квартир", parentId: 100, types: ["apartment"] },
-  { id: 102, name: "Аренда апартаментов", parentId: 100, types: ["aparts"] },
-  { id: 103, name: "Аренда домов", parentId: 100, types: ["house"] },
-  { id: 104, name: "Аренда вилл", parentId: 100, types: ["villa"] },
-  { id: 105, name: "Аренда таунхаусов", parentId: 100, types: ["townhouse"] },
+  { id: 500, name: "Квартиры", types: ["apartment", "aparts"] },
+  { id: 502, name: "Дома, дачи, коттеджи", types: ["house", "villa", "townhouse"] },
 ];
 
-/** До скольких фото на оффер (YML допускает несколько `<picture>`; VK и Справочник обычно тоже). */
+/** До скольких фото на оффер в YML Справочника. */
 export const YML_MAX_PICTURES = 10;
+
+/**
+ * VK товары сообщества: в UI обычно до 5 изображений (JPG/PNG/GIF, ≥400×400).
+ * Больше тегов `<picture>` парсер может обрезать или хуже подтянуть галерею.
+ */
+export const VK_MAX_PICTURES = 5;
+
+/**
+ * Query на URL фото только для VK: при повторном импорте старые товары
+ * часто оставляют одно фото — смена URL заставляет перекачать галерею.
+ */
+export const VK_PICTURE_CACHE_BUST = "g2";
+
+function maxPictures(variant: YmlFeedVariant): number {
+  return variant === "vk" ? VK_MAX_PICTURES : YML_MAX_PICTURES;
+}
 
 function categoryIdForType(type: PropertyType, variant: YmlFeedVariant): number {
   if (variant === "vk") {
     const found = VK_CATEGORIES.find((c) => c.types?.includes(type));
-    return found?.id ?? 101;
+    return found?.id ?? 500;
   }
   const found = SPRAVOCHNIK_CATEGORIES.find((c) => c.types.includes(type));
   return found?.id ?? 1;
@@ -131,15 +145,25 @@ function isAvailableStatus(status: Property["status"]): boolean {
   return status === "free" || status === "soon_free";
 }
 
-function picturePaths(property: Property): string[] {
+function picturePaths(property: Property, limit: number): string[] {
   const paths: string[] = [];
+  const seen = new Set<string>();
   for (const photo of property.photos ?? []) {
-    const path = photo.path;
+    const path = photo.path?.trim();
     if (!path || /\.(mp4|m4v|mov|webm)$/i.test(path)) continue;
+    if (seen.has(path)) continue;
+    seen.add(path);
     paths.push(path);
-    if (paths.length >= YML_MAX_PICTURES) break;
+    if (paths.length >= limit) break;
   }
   return paths;
+}
+
+function offerPictureUrl(origin: string, path: string, variant: YmlFeedVariant): string {
+  const url = feedPhotoUrl(origin, path);
+  if (variant !== "vk") return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}v=${VK_PICTURE_CACHE_BUST}`;
 }
 
 export type SpravochnikFeedSelection = {
@@ -186,8 +210,8 @@ function offerXml(
   const id = String(property.ref_id || property.id).slice(0, 80);
   const available = isAvailableStatus(property.status) ? undefined : ' available="unknown"';
   const catId = categoryIdForType(property.type, variant);
-  const pictures = picturePaths(property)
-    .map((path) => tag("picture", feedPhotoUrl(origin, path)))
+  const pictures = picturePaths(property, maxPictures(variant))
+    .map((path) => tag("picture", offerPictureUrl(origin, path, variant)))
     .join("");
   const offerUrl = `${SITE_ORIGIN}${propertyPath(property)}`;
 
@@ -258,7 +282,7 @@ export function buildSpravochnikFeedYml(selection: SpravochnikFeedSelection, ori
   return buildYmlCatalog(selection, origin, "spravochnik");
 }
 
-/** YML для товаров сообщества ВКонтакте (ссылка в description, категории аренды, до 10 фото). */
+/** YML для товаров сообщества ВКонтакте (ссылка в description, categoryId из market.getCategories, до 5 фото). */
 export function buildVkFeedYml(selection: SpravochnikFeedSelection, origin: string): string {
   return buildYmlCatalog(selection, origin, "vk");
 }
