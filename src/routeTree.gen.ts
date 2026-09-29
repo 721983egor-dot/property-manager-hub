@@ -77,6 +77,7 @@ import { Route as ApiPublicCronVideoPublishRouteImport } from './routes/api/publ
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsAvitoDotxmlRouteImport } from './routes/api/public/feeds/avito[.]xml'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
+import { Route as ApiPublicFeedsYandexSpravochnikDotymlRouteImport } from './routes/api/public/feeds/yandex-spravochnik[.]yml'
 import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/public/feeds/yandex[.]xml'
 import { Route as ApiPublicSystemPlatformKeysRouteImport } from './routes/api/public/system/platform-keys'
 import { Route as ApiPublicSystemTelegramBootstrapRouteImport } from './routes/api/public/system/telegram-bootstrap'
@@ -455,6 +456,12 @@ const ApiPublicFeedsCianDotxmlRoute =
     path: '/api/public/feeds/cian.xml',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicFeedsYandexSpravochnikDotymlRoute =
+  ApiPublicFeedsYandexSpravochnikDotymlRouteImport.update({
+    id: '/api/public/feeds/yandex-spravochnik.yml',
+    path: '/api/public/feeds/yandex-spravochnik.yml',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicFeedsYandexDotxmlRoute =
   ApiPublicFeedsYandexDotxmlRouteImport.update({
     id: '/api/public/feeds/yandex.xml',
@@ -560,6 +567,7 @@ export interface FileRoutesByFullPath {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
+  '/api/public/feeds/yandex-spravochnik.yml': typeof ApiPublicFeedsYandexSpravochnikDotymlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
@@ -634,6 +642,7 @@ export interface FileRoutesByTo {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
+  '/api/public/feeds/yandex-spravochnik.yml': typeof ApiPublicFeedsYandexSpravochnikDotymlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
@@ -712,6 +721,7 @@ export interface FileRoutesById {
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
+  '/api/public/feeds/yandex-spravochnik.yml': typeof ApiPublicFeedsYandexSpravochnikDotymlRoute
   '/api/public/feeds/yandex.xml': typeof ApiPublicFeedsYandexDotxmlRoute
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
@@ -790,6 +800,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
+    | '/api/public/feeds/yandex-spravochnik.yml'
     | '/api/public/feeds/yandex.xml'
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
@@ -864,6 +875,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
+    | '/api/public/feeds/yandex-spravochnik.yml'
     | '/api/public/feeds/yandex.xml'
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
@@ -941,6 +953,7 @@ export interface FileRouteTypes {
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
+    | '/api/public/feeds/yandex-spravochnik.yml'
     | '/api/public/feeds/yandex.xml'
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
@@ -981,6 +994,7 @@ export interface RootRouteChildren {
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsAvitoDotxmlRoute: typeof ApiPublicFeedsAvitoDotxmlRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
+  ApiPublicFeedsYandexSpravochnikDotymlRoute: typeof ApiPublicFeedsYandexSpravochnikDotymlRoute
   ApiPublicFeedsYandexDotxmlRoute: typeof ApiPublicFeedsYandexDotxmlRoute
   ApiPublicSystemPlatformKeysRoute: typeof ApiPublicSystemPlatformKeysRoute
   ApiPublicSystemTelegramBootstrapRoute: typeof ApiPublicSystemTelegramBootstrapRoute
@@ -1466,6 +1480,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFeedsCianDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/feeds/yandex-spravochnik.yml': {
+      id: '/api/public/feeds/yandex-spravochnik.yml'
+      path: '/api/public/feeds/yandex-spravochnik.yml'
+      fullPath: '/api/public/feeds/yandex-spravochnik.yml'
+      preLoaderRoute: typeof ApiPublicFeedsYandexSpravochnikDotymlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/feeds/yandex.xml': {
       id: '/api/public/feeds/yandex.xml'
       path: '/api/public/feeds/yandex.xml'
@@ -1664,6 +1685,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsAvitoDotxmlRoute: ApiPublicFeedsAvitoDotxmlRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,
+  ApiPublicFeedsYandexSpravochnikDotymlRoute:
+    ApiPublicFeedsYandexSpravochnikDotymlRoute,
   ApiPublicFeedsYandexDotxmlRoute: ApiPublicFeedsYandexDotxmlRoute,
   ApiPublicSystemPlatformKeysRoute: ApiPublicSystemPlatformKeysRoute,
   ApiPublicSystemTelegramBootstrapRoute: ApiPublicSystemTelegramBootstrapRoute,
