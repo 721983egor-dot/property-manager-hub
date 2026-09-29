@@ -19,6 +19,7 @@ import {
   fetchCianOffers,
   getCianFeedInfo,
   linkCianOffers,
+  relinkCianFromFeed,
   setCianAutoPublish,
   testCianConnection,
 } from "@/lib/cian.functions";
@@ -72,6 +73,7 @@ function CianImportPage() {
   const loadOffers = useServerFn(fetchCianOffers);
   const checkConnection = useServerFn(testCianConnection);
   const saveLinks = useServerFn(linkCianOffers);
+  const relinkFromFeed = useServerFn(relinkCianFromFeed);
   const loadFeedInfo = useServerFn(getCianFeedInfo);
   const setAutoPublish = useServerFn(setCianAutoPublish);
   const loadYandexFeedInfo = useServerFn(getYandexFeedInfo);
@@ -81,6 +83,7 @@ function CianImportPage() {
 
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [relinking, setRelinking] = useState(false);
 
   const { data: connection } = useQuery({
     queryKey: ["cian-connection"],
@@ -194,6 +197,28 @@ function CianImportPage() {
     }
   }
 
+  async function relinkPublishedFeedAds() {
+    setRelinking(true);
+    try {
+      const result = await relinkFromFeed({});
+      toast.success(
+        result.relinked > 0
+          ? `Перепривязано к фиду: ${result.relinked}`
+          : "Опубликованных объявлений с UUID из фида пока нет для перепривязки",
+      );
+      await qc.invalidateQueries({ queryKey: ["property-listings"] });
+      await qc.invalidateQueries({ queryKey: ["cian-offers"] });
+      await router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось перепривязать");
+    } finally {
+      setRelinking(false);
+    }
+  }
+
+  const feedOfferCount = matches.filter((m) => m.offer.feedExternalId).length;
+  const manualOfferCount = matches.length - feedOfferCount;
+
   const unmatchedProperties = activeProperties.filter((p) => {
     const linkedIds = new Set<string>([
       ...linkedByExternalId.values(),
@@ -228,7 +253,7 @@ function CianImportPage() {
 
       {avitoFeedInfo ? <FeedSettings label="Авито" cabinetHint="Вставьте ссылку на фид в кабинете Авито Pro (раздел «Автозагрузка»). Уже сопоставленные объявления уйдут с их номером Авито, поэтому дубли не создадутся. В настройках загрузки включите обновление существующих объявлений и снятие тех, которых нет в файле." info={avitoFeedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["avito-feed-info"] })} toggleAuto={(enabled) => setAvitoAuto({ data: { enabled } })} /> : null}
 
-      {feedInfo ? <FeedSettings label="ЦИАН" cabinetHint="Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). Площадка будет забирать файл сама: новые объекты, изменения цены, описания и фото попадут в объявления без лишних действий." info={feedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["cian-feed-info"] })} toggleAuto={(enabled) => setAutoPublish({ data: { enabled } })} /> : null}
+      {feedInfo ? <FeedSettings label="ЦИАН" cabinetHint="Вставьте ссылку на фид в кабинете ЦИАН (раздел «Автозагрузка»). ExternalId в фиде = UUID объекта CRM: обновляются только объявления с тем же ExternalId. Старые ручные карточки без ExternalId фид не заменит — их нужно снять в кабинете, иначе объявления из фида остаются «снятыми» из‑за дублей." info={feedInfo} onChanged={() => qc.invalidateQueries({ queryKey: ["cian-feed-info"] })} toggleAuto={(enabled) => setAutoPublish({ data: { enabled } })} /> : null}
 
       {yandexFeedInfo ? (
         <FeedSettings
@@ -256,6 +281,33 @@ function CianImportPage() {
       {offersResult?.error ? (
         <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/5 p-5 text-sm">
           {offersResult.error}
+        </div>
+      ) : null}
+
+      {!offersLoading && matches.length > 0 ? (
+        <div className="mt-6 rounded-xl border border-amber-500/40 bg-amber-500/5 p-5 text-sm">
+          <h2 className="font-semibold">Почему фид не обновляет старые объявления</h2>
+          <p className="mt-2 text-muted-foreground">
+            В фиде ExternalId = UUID объекта CRM. Сейчас из импорта:{" "}
+            <span className="text-foreground">{feedOfferCount}</span> с UUID,{" "}
+            <span className="text-foreground">{manualOfferCount}</span> без ExternalId (ручные, до
+            автозагрузки). ЦИАН обновляет только карточки с тем же ExternalId — ручные не
+            трогает. Из‑за дублей объявления из фида часто висят как «снятые», а на сайте остаются
+            старые.
+          </p>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-muted-foreground">
+            <li>В кабинете ЦИАН снимите или удалите старые объявления без ExternalId по тем же адресам.</li>
+            <li>Дождитесь цикла автозагрузки или активируйте снятые объявления с UUID из фида.</li>
+            <li>Нажмите «Перепривязать к фиду» — RM OS переключит связки на опубликованные UUID-карточки.</li>
+          </ol>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={relinkPublishedFeedAds}
+            disabled={relinking}
+          >
+            {relinking ? "Перепривязываем…" : "Перепривязать к фиду"}
+          </Button>
         </div>
       ) : null}
 
@@ -315,7 +367,11 @@ function CianImportPage() {
                           {m.offer.title || m.offer.address || `Объявление ${m.offer.externalId}`}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {m.offer.status === "published" ? "На сайте" : "Снято"} · №{m.offer.externalId}
+                          {m.offer.status === "published" ? "На сайте" : "Снято"} · №
+                          {m.offer.externalId}
+                          {m.offer.feedExternalId
+                            ? ` · фид ${m.offer.feedExternalId.slice(0, 8)}…`
+                            : " · без ExternalId (ручное)"}
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">{m.offer.address}</p>
                       <p className="mt-1 text-xs text-muted-foreground">

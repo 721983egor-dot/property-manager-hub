@@ -250,6 +250,16 @@ export const setCianAutoPublish = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Перепривязывает объекты к опубликованным объявлениям из XML-фида
+ * (ExternalId = UUID CRM). Нужно после того, как в кабинете ЦИАН сняли
+ * старые ручные дубли и остались карточки с UUID.
+ */
+export const relinkCianFromFeed = createServerFn({ method: "POST" }).handler(async () => {
+  const { relinkCianListingsToFeedOffers } = await import("@/lib/cian.server");
+  return relinkCianListingsToFeedOffers();
+});
+
 /** Состояние фида ЦИАН: ссылка, флаг автопубликации и счётчики. */
 export const getCianFeedInfo = createServerFn({ method: "GET" }).handler(async () => {
   const { computeFeedSelection } = await import("@/lib/cian-feed.server");

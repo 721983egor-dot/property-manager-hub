@@ -7,7 +7,13 @@ import type { Property } from "@/lib/properties";
 
 /** Объявление, полученное из кабинета ЦИАН. */
 export type CianOffer = {
+  /** Номер объявления ЦИАН (id) — для статистики/чатов и связки в property_listings. */
   externalId: string;
+  /**
+   * ExternalId из XML-фида (у нас = UUID объекта CRM).
+   * Пусто у объявлений, созданных вручную до автозагрузки.
+   */
+  feedExternalId: string;
   url: string;
   title: string;
   address: string;
@@ -127,6 +133,8 @@ export function matchScore(offer: CianOffer, property: Property): number {
 export const EXACT_THRESHOLD = 75;
 export const LIKELY_THRESHOLD = 40;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Подбирает объекты RM OS к каждому объявлению ЦИАН. */
 export function matchOffers(
   offers: CianOffer[],
@@ -134,6 +142,7 @@ export function matchOffers(
   linkedByExternalId: Map<string, string>,
 ): OfferMatch[] {
   const takenExact = new Set(linkedByExternalId.values());
+  const propertyIds = new Set(properties.map((property) => property.id));
 
   return offers.map((offer) => {
     const linked = linkedByExternalId.get(offer.externalId);
@@ -144,6 +153,19 @@ export function matchOffers(
         confidence: "exact" as const,
         candidates: [],
         alreadyLinked: true,
+      };
+    }
+
+    // Объявление из нашего фида: ExternalId = UUID объекта CRM.
+    const feedId = offer.feedExternalId.trim();
+    if (feedId && UUID_RE.test(feedId) && propertyIds.has(feedId) && !takenExact.has(feedId)) {
+      takenExact.add(feedId);
+      return {
+        offer,
+        propertyId: feedId,
+        confidence: "exact" as const,
+        candidates: [{ propertyId: feedId, score: 100 }],
+        alreadyLinked: false,
       };
     }
 
