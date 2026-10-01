@@ -15,7 +15,8 @@ import { AppShell } from "@/components/AppShell";
 import { RmOsPwaHead } from "@/components/RmOsPwaHead";
 import { Toaster } from "@/components/ui/sonner";
 import { YandexMetrika } from "@/components/site/YandexMetrika";
-import { hostnameFromRequestHeaders, isRmOsAppHost, rmOsPwaHead } from "@/lib/rm-os-pwa";
+import { getRmOsPwaEnabled } from "@/lib/rm-os-pwa-host";
+import { rmOsPwaHead } from "@/lib/rm-os-pwa";
 import { startStaffSessionKeeper } from "@/integrations/supabase/staff-session";
 
 
@@ -80,20 +81,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  loader: async () => {
-    let hostname = "";
-    if (typeof window !== "undefined") {
-      hostname = window.location.hostname.toLowerCase();
-    } else {
-      try {
-        const { getRequest } = await import("@tanstack/react-start/server");
-        const request = getRequest();
-        hostname = request ? hostnameFromRequestHeaders(request.headers) : "";
-      } catch {
-        hostname = "";
-      }
-    }
-    return { hostname, rmOsPwa: isRmOsAppHost(hostname) };
+  loader: () => {
+    const rmOsPwa = getRmOsPwaEnabled();
+    return { rmOsPwa };
   },
   head: ({ loaderData }) => {
     const pwa = loaderData?.rmOsPwa ? rmOsPwaHead() : { meta: [], links: [] };
