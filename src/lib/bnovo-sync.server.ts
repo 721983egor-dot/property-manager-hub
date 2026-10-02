@@ -65,14 +65,26 @@ function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
 }
 
 
-/** Категории модуля H11 на сайте (onlyrooms) + устаревший id из ранней миграции. */
-const KNOWN_N11_ROOM_TYPE_IDS = new Set(["461845", "608431", "720995"]);
+/**
+ * Категории H11: ids модуля сайта (onlyrooms) + ids категорий в самом PMS Bnovo.
+ * Они различаются — синк обязан знать оба набора и не затирать сайтный id «обучением».
+ */
+const KNOWN_N11_ROOM_TYPE_IDS = new Set([
+  "461845", // onlyrooms Делюкс
+  "608431", // onlyrooms Стандарт плюс
+  "540419", // PMS Делюкс
+  "720995", // PMS / legacy Стандарт плюс
+]);
 
 const ROOM_TYPE_TO_CATEGORY_CODE: Record<string, string> = {
   "461845": "deluxe",
+  "540419": "deluxe",
   "608431": "standard_plus",
   "720995": "standard_plus",
 };
+
+/** Сайтный id категории — канон в hotel_room_categories.bnovo_room_type_id. */
+const CANONICAL_ROOM_TYPE_IDS = new Set(["461845", "608431"]);
 
 function isUnassignedLane(room: RoomRow) {
   return Boolean(room.is_unassigned_lane);
@@ -143,6 +155,7 @@ function findRoom(
   booking: BnovoBooking,
   occupied: Occupied[],
   preferredRoomId?: string | null,
+  manualRoomAssignment = false,
 ): { room: RoomRow; category: CategoryRow | null; note: string } | null {
   const stayEnd = lastOccupiedNight(booking.arrival, booking.departure);
   const realRooms = rooms.filter((r) => !isUnassignedLane(r));
@@ -177,8 +190,9 @@ function findRoom(
 
   const category = categoryOf(booking, categories);
 
-  // Если в Bnovo ещё нет юнита, но менеджер уже назначил номер в RM OS — не сбрасываем.
-  if (preferredRoomId && !booking.roomId) {
+  // Bnovo без юнита: оставляем RM-назначение только если менеджер явно назначил номер.
+  // Старый автоassign на свободный юнит сюда не попадает — бронь уходит на «без номера».
+  if (preferredRoomId && !booking.roomId && manualRoomAssignment) {
     const preferred = realRooms.find((r) => r.id === preferredRoomId);
     if (preferred && (!category || preferred.room_category_id === category.id)) {
       return {
@@ -209,12 +223,19 @@ function findRoom(
   // Нет конкретного номера в Bnovo → полоса «без номера» категории.
   const lane = rooms.find((r) => isUnassignedLane(r) && r.room_category_id === category.id);
   if (lane) {
+    const movedFromAutoAssign =
+      !booking.roomId &&
+      preferredRoomId &&
+      !manualRoomAssignment &&
+      realRooms.some((r) => r.id === preferredRoomId);
     return {
       room: lane,
       category,
       note: booking.roomId
         ? `Бронь ${booking.id}: номер Bnovo ${booking.roomId} не сопоставлен с юнитом H11 — в «без номера»`
-        : "",
+        : movedFromAutoAssign
+          ? `Бронь ${booking.id}: в Bnovo без номера — вернули на полосу «без номера»`
+          : "",
     };
   }
 
@@ -230,6 +251,17 @@ function findRoom(
     category,
     note: `Нет полосы «без номера» для «${category.name}» — бронь ${booking.id} временно на ${room.internal_name}`,
   };
+}
+
+function shouldLearnRoomTypeId(current: string | null | undefined, incoming: string) {
+  if (!incoming) return false;
+  if (!current) return true;
+  if (current === incoming) return false;
+  // Не затираем сайтный onlyrooms id PMS-ным — оба валидны, канон в БД = сайт.
+  if (CANONICAL_ROOM_TYPE_IDS.has(current) && !CANONICAL_ROOM_TYPE_IDS.has(incoming)) {
+    return false;
+  }
+  return true;
 }
 
 async function markN11(
@@ -365,21 +397,37 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
       : { data: [] };
     const occupied = (occupiedRows ?? []) as Occupied[];
 
-    const { data: existingRows } = await supabaseAdmin
+    const { data: existingRows, error: existingError } = await supabaseAdmin
       .from("bookings")
-      .select("id, bnovo_id, property_id, start_date, end_date, status, comment")
+      .select("id, bnovo_id, property_id, start_date, end_date, status, comment, manual_room_assignment")
       .not("bnovo_id", "is", null);
-    const existingByBnovo = new Map(
-      ((existingRows ?? []) as {
-        id: string;
-        bnovo_id: string;
-        property_id: string;
-        start_date: string;
-        end_date: string;
-        status: string;
-        comment: string;
-      }[]).map((row) => [row.bnovo_id, row]),
-    );
+    let existingList = (existingRows ?? []) as {
+      id: string;
+      bnovo_id: string;
+      property_id: string;
+      start_date: string;
+      end_date: string;
+      status: string;
+      comment: string;
+      manual_room_assignment?: boolean;
+    }[];
+    if (existingError && /manual_room_assignment|schema cache|column/i.test(existingError.message)) {
+      const { data: legacyExisting, error: legacyExistingError } = await supabaseAdmin
+        .from("bookings")
+        .select("id, bnovo_id, property_id, start_date, end_date, status, comment")
+        .not("bnovo_id", "is", null);
+      if (legacyExistingError) throw new Error(legacyExistingError.message);
+      warnings.push(
+        "Колонка manual_room_assignment ещё не применена — примените миграцию 20261002190000. Пока локальные назначения без номера в Bnovo могут сбрасываться на полосу «без номера».",
+      );
+      existingList = ((legacyExisting ?? []) as typeof existingList).map((row) => ({
+        ...row,
+        manual_room_assignment: false,
+      }));
+    } else if (existingError) {
+      throw new Error(existingError.message);
+    }
+    const existingByBnovo = new Map(existingList.map((row) => [row.bnovo_id, row]));
 
     clearBnovoToken();
     const remote = await listBnovoBookings(creds, from, to);
@@ -398,7 +446,7 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
       }
       if (booking.roomTypeId && room?.room_category_id) {
         const category = categories.find((c) => c.id === room.room_category_id);
-        if (category && booking.roomTypeId !== category.bnovo_room_type_id) {
+        if (category && shouldLearnRoomTypeId(category.bnovo_room_type_id, booking.roomTypeId)) {
           const { error: learnTypeError } = await supabaseAdmin
             .from("hotel_room_categories")
             .update({ bnovo_room_type_id: booking.roomTypeId } as never)
@@ -418,11 +466,18 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
 
     for (const booking of n11) {
       const existing = existingByBnovo.get(booking.id);
-      const mapped = findRoom(rooms, categories, booking, occupied, existing?.property_id);
+      const mapped = findRoom(
+        rooms,
+        categories,
+        booking,
+        occupied,
+        existing?.property_id,
+        Boolean(existing?.manual_room_assignment),
+      );
       if (!mapped) {
         skipped += 1;
         warnings.push(
-          `Бронь ${booking.id} (${booking.guestName || "гость"}): не удалось определить категорию H11 «${booking.categoryName || booking.roomTypeId || "без категории"}» — проверьте bnovo_room_type_id (461845 / 608431)`,
+          `Бронь ${booking.id} (${booking.guestName || "гость"}): не удалось определить категорию H11 «${booking.categoryName || booking.roomTypeId || "без категории"}» — проверьте bnovo_room_type_id (461845 / 608431 / 540419)`,
         );
         continue;
       }
@@ -434,7 +489,9 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
         : completedStatus(booking.status)
           ? "completed"
           : "active";
-      const payload = {
+      // Если Bnovo уже отдал конкретный номер — локальный lock больше не нужен.
+      const clearManualLock = Boolean(booking.roomId && existing?.manual_room_assignment);
+      const payload: Record<string, unknown> = {
         property_id: room.id,
         client_id: clientId,
         start_date: booking.arrival,
@@ -452,15 +509,30 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
         children: booking.children,
         comment: [booking.source, booking.comment].filter(Boolean).join(". "),
       };
+      if (clearManualLock) payload.manual_room_assignment = false;
       if (existing) {
         const { error } = await supabaseAdmin
           .from("bookings")
           .update(payload as never)
           .eq("id", existing.id);
         if (error) {
-          skipped += 1;
-          warnings.push(`Бронь ${booking.id}: ${error.message}`);
-          continue;
+          // Колонка manual_room_assignment может ещё не быть применена.
+          if (clearManualLock && /manual_room_assignment|schema cache|column/i.test(error.message)) {
+            delete payload.manual_room_assignment;
+            const { error: retryError } = await supabaseAdmin
+              .from("bookings")
+              .update(payload as never)
+              .eq("id", existing.id);
+            if (retryError) {
+              skipped += 1;
+              warnings.push(`Бронь ${booking.id}: ${retryError.message}`);
+              continue;
+            }
+          } else {
+            skipped += 1;
+            warnings.push(`Бронь ${booking.id}: ${error.message}`);
+            continue;
+          }
         }
         updated += 1;
       } else {
@@ -474,15 +546,15 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
         if (status !== "cancelled") {
           occupied.push({
             property_id: room.id,
-            start_date: payload.start_date,
-            end_date: payload.end_date,
+            start_date: String(payload.start_date),
+            end_date: String(payload.end_date),
             status,
             bnovo_id: booking.id,
           });
         }
       }
 
-      if (category && booking.roomTypeId && booking.roomTypeId !== category.bnovo_room_type_id) {
+      if (category && shouldLearnRoomTypeId(category.bnovo_room_type_id, booking.roomTypeId)) {
         const { error: typeError } = await supabaseAdmin
           .from("hotel_room_categories")
           .update({ bnovo_room_type_id: booking.roomTypeId } as never)

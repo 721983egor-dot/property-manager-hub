@@ -356,9 +356,20 @@ export async function assignHotelBookingRoomCore(
   const roomName = roomRow.internal_name || roomRow.title;
   const { error: updateError } = await admin
     .from("bookings")
-    .update({ property_id: propertyId } as never)
+    .update({ property_id: propertyId, manual_room_assignment: true } as never)
     .eq("id", bookingId);
-  if (updateError) throw new Error(updateError.message);
+  if (updateError) {
+    // Миграция 20261002190000 может ещё не быть применена — назначаем без флага.
+    if (/manual_room_assignment|schema cache|column/i.test(updateError.message)) {
+      const { error: legacyError } = await admin
+        .from("bookings")
+        .update({ property_id: propertyId } as never)
+        .eq("id", bookingId);
+      if (legacyError) throw new Error(legacyError.message);
+    } else {
+      throw new Error(updateError.message);
+    }
+  }
 
   await admin.from("activity_log").insert({
     table_name: "bookings",

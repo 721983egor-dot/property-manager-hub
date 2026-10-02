@@ -61,6 +61,8 @@ export const Route = createFileRoute("/_authenticated/calendar")({
 });
 
 const DAY_WIDTH = 40;
+/** Сколько дней предыдущего месяца показывать в начале вида — иначе выезд 01.10 (ночи до 30.09) невидим в октябре. */
+const MONTH_LEAD_DAYS = 3;
 
 function monthStart(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -68,10 +70,13 @@ function monthStart(date: Date) {
 function monthEnd(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0);
 }
+function monthViewFrom(date: Date) {
+  return addDays(monthStart(date), -MONTH_LEAD_DAYS);
+}
 
 function CalendarPage() {
   const today = useMemo(() => new Date(), []);
-  const [from, setFrom] = useState(() => toISODate(monthStart(new Date())));
+  const [from, setFrom] = useState(() => toISODate(monthViewFrom(new Date())));
   const [to, setTo] = useState(() => toISODate(monthEnd(new Date())));
 
   const fromDate = parseISODate(from);
@@ -199,14 +204,14 @@ function CalendarPage() {
   };
 
   const goToday = () => {
-    setFrom(toISODate(monthStart(today)));
+    setFrom(toISODate(monthViewFrom(today)));
     setTo(toISODate(monthEnd(today)));
   };
 
   const applyMonthYear = (month: number, year: number, months = 1) => {
     const start = new Date(year, month, 1);
     const end = new Date(year, month + months, 0);
-    setFrom(toISODate(start));
+    setFrom(toISODate(addDays(start, -MONTH_LEAD_DAYS)));
     setTo(toISODate(end));
   };
 
