@@ -93,7 +93,7 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       <nav className="px-3 py-2">
         <Link to="/owner" onClick={onNavigate} className={NAV_LINK_CLASS}>
           <Hotel className="size-4 shrink-0" />
-          Кабинет Н11
+          Кабинет H11
         </Link>
       </nav>
     );
@@ -103,7 +103,7 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
     <nav className="px-3 py-2">
       <Link to="/hotel" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Hotel className="size-4 shrink-0" />
-        Н11 Резиденция
+        H11 Резиденция
       </Link>
       <Link to="/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Building2 className="size-4 shrink-0" />

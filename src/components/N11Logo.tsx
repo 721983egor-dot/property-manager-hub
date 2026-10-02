@@ -19,7 +19,7 @@ export function N11Logo({
   return (
     <img
       src={SRC[variant]}
-      alt="Н11 Резиденция"
+      alt="H11 Резиденция"
       className={cn("w-auto", className)}
     />
   );

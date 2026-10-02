@@ -2,7 +2,7 @@
 export type Portfolio = "rm" | "n11";
 
 export const PORTFOLIOS: { value: Portfolio; label: string; short: string }[] = [
-  { value: "n11", label: "Н11 Резиденция", short: "Н11" },
+  { value: "n11", label: "H11 Резиденция", short: "H11" },
   { value: "rm", label: "Резиденция Море", short: "РМ" },
 ];
 
@@ -28,5 +28,10 @@ export function hasPortfolio(list: Portfolio[] | null | undefined, value: Portfo
   return (list ?? []).includes(value);
 }
 
-export const N11_ADDRESS = "Сочи, улица Навагинская";
+/** Бренд на сайте и в UI: H11. В БД портфель по-прежнему `n11`. */
+export const N11_ADDRESS = "Сочи, улица Навагинская, 11";
 export const N11_SITE = "https://n11-residence.ru/";
+export const N11_PHONE_DISPLAY = "+7 (938) 442-08-09";
+export const N11_PHONE_TEL = "tel:+79384420809";
+export const N11_TAGLINE = "Город. Море. Ваш ритм.";
+export const N11_BNOVO_UID = "2be78d5a-bec7-44b5-983f-57bffa544a4d";

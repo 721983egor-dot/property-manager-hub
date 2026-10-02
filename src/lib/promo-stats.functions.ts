@@ -171,7 +171,7 @@ export const getPromoFeedFlags = createServerFn({ method: "GET" }).handler(async
   return flags;
 });
 
-/** Общая статистика просмотров Резиденции Море по дням — без номеров Н11. */
+/** Общая статистика просмотров Резиденции Море по дням — без номеров H11. */
 export const getPromoOverview = createServerFn({ method: "POST" })
   .inputValidator(range)
   .handler(async ({ data }): Promise<PromoOverview> => {

@@ -5,13 +5,13 @@ import { getStaffClient, listStaffClients } from "@/lib/staff-data.functions";
 
 import { asPortfolios, type Portfolio } from "@/lib/portfolios";
 
-/** Кто клиент в CRM: арендатор РМ, собственник или Н11. */
+/** Кто клиент в CRM: арендатор РМ, собственник или H11. */
 export type ClientPartyKind = "rm" | "owner" | "n11";
 
 export const CLIENT_PARTY_KINDS: { value: ClientPartyKind; label: string }[] = [
   { value: "rm", label: "РМ" },
   { value: "owner", label: "Собственник" },
-  { value: "n11", label: "Н11" },
+  { value: "n11", label: "H11" },
 ];
 
 export function asPartyKind(value: unknown): ClientPartyKind {

@@ -154,7 +154,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeChatReply: tool({
       description:
-        "Предложить ответ в чат RM OS (сайт, ЦИАН или Авито) по id диалога. Требует подтверждения.",
+        "Предложить ответ в чат RM OS (сайт РМ, сайт H11, ЦИАН или Авито) по id диалога. Требует подтверждения.",
       inputSchema: z.object({
         threadId: z.string(),
         body: z.string().min(1).max(2000),
@@ -167,7 +167,13 @@ export function createMutateTools(ctx: AssistantToolContext) {
           .maybeSingle();
         if (!thread) return { error: "Диалог не найден" };
         const source =
-          thread.source === "cian" ? "ЦИАН" : thread.source === "avito" ? "Авито" : "Сайт";
+          thread.source === "cian"
+            ? "ЦИАН"
+            : thread.source === "avito"
+              ? "Авито"
+              : thread.source === "n11"
+                ? "H11 сайт"
+                : "Сайт РМ";
         const summary = `Ответить в чат ${source}${thread.name ? ` («${thread.name}»)` : ""}: «${body.slice(0, 80)}${body.length > 80 ? "…" : ""}»`;
         ctx.propose({
           tool: "sendChatMessage",
@@ -257,7 +263,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeClient: tool({
       description:
-        "Предложить создание клиента или изменение его данных (комментарий, чёрный список, кто он: РМ / собственник / Н11, источник, Telegram, объект обращения).",
+        "Предложить создание клиента или изменение его данных (комментарий, чёрный список, кто он: РМ / собственник / H11, источник, Telegram, объект обращения).",
       inputSchema: z.object({
         fullName: z.string(),
         phone: z.string().optional(),
@@ -267,7 +273,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         partyKind: z
           .enum(["rm", "owner", "n11"])
           .optional()
-          .describe("Кто он: rm = РМ, owner = собственник, n11 = Н11"),
+          .describe("Кто он: rm = РМ, owner = собственник, n11 = H11"),
         source: z
           .string()
           .optional()
@@ -284,7 +290,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
           input.partyKind === "owner"
             ? "собственник"
             : input.partyKind === "n11"
-              ? "Н11"
+              ? "H11"
               : input.partyKind === "rm"
                 ? "РМ"
                 : null;
@@ -564,7 +570,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeHotelRoom: tool({
       description:
-        "Предложить добавить или изменить номер апарт-отеля Н11. ID комнаты Bnovo необязателен: бронь приходит на категорию, номер выбирают при заселении.",
+        "Предложить добавить или изменить номер апарт-отеля H11. ID комнаты Bnovo необязателен: бронь приходит на категорию, номер выбирают при заселении.",
       inputSchema: z.object({
         roomId: z.string().optional(),
         name: z.string(),
@@ -575,7 +581,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         floor: z.number().optional(),
       }),
       execute: async (input) => {
-        const summary = `${input.roomId ? "Обновить" : "Добавить"} номер Н11 «${input.name}»`;
+        const summary = `${input.roomId ? "Обновить" : "Добавить"} номер H11 «${input.name}»`;
         ctx.propose({ tool: "saveHotelRoom", summary, input });
         return { proposed: true, summary };
       },
@@ -583,7 +589,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeHotelCategory: tool({
       description:
-        "Предложить добавить или изменить категорию номеров Н11 и ID типа комнаты в Bnovo (room_type_id). Брони падают на категорию.",
+        "Предложить добавить или изменить категорию номеров H11 и ID типа комнаты в Bnovo (room_type_id). Брони падают на категорию.",
       inputSchema: z.object({
         categoryId: z.string().optional(),
         code: z.string(),
@@ -593,14 +599,14 @@ export function createMutateTools(ctx: AssistantToolContext) {
         bnovoRoomTypeId: z.string().optional(),
       }),
       execute: async (input) => {
-        const summary = `${input.categoryId ? "Обновить" : "Добавить"} категорию Н11 «${input.name}»`;
+        const summary = `${input.categoryId ? "Обновить" : "Добавить"} категорию H11 «${input.name}»`;
         ctx.propose({ tool: "saveHotelCategory", summary, input });
         return { proposed: true, summary };
       },
     }),
 
     proposeHotelOwner: tool({
-      description: "Предложить добавить собственника Н11 и привязать к номерам (можно несколько долей).",
+      description: "Предложить добавить собственника H11 и привязать к номерам (можно несколько долей).",
       inputSchema: z.object({
         ownerId: z.string().optional(),
         fullName: z.string(),
@@ -622,7 +628,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         toDate: z.string().optional(),
       }),
       execute: async (input) => {
-        const summary = `Выгрузить брони Н11 из Bnovo${input.fromDate ? ` с ${input.fromDate}` : ""}`;
+        const summary = `Выгрузить брони H11 из Bnovo${input.fromDate ? ` с ${input.fromDate}` : ""}`;
         ctx.propose({ tool: "runBnovoSync", summary, input });
         return { proposed: true, summary };
       },

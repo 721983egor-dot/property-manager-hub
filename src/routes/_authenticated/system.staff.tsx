@@ -60,7 +60,7 @@ export const Route = createFileRoute("/_authenticated/system/staff")({
 const ROLE_LABEL: Record<StaffRole, string> = {
   admin: "Администратор",
   manager: "Менеджер",
-  owner: "Собственник Н11",
+  owner: "Собственник H11",
 };
 
 function StaffPage() {

@@ -57,6 +57,7 @@ import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authe
 import { Route as AuthenticatedSystemUpdateRouteImport } from './routes/_authenticated/system.update'
 import { Route as AuthenticatedSystemVideoRouteImport } from './routes/_authenticated/system.video'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as ApiPublicN11ChatRouteImport } from './routes/api/public/n11-chat'
 import { Route as ApiPublicStaffSessionRouteImport } from './routes/api/public/staff-session'
 import { Route as RentComplexSlugRouteImport } from './routes/rent.$complex.$slug'
 import { Route as RentJkSlugRouteImport } from './routes/rent.jk.$slug'
@@ -343,6 +344,11 @@ const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   path: '/api/public/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicN11ChatRoute = ApiPublicN11ChatRouteImport.update({
+  id: '/api/public/n11-chat',
+  path: '/api/public/n11-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicStaffSessionRoute = ApiPublicStaffSessionRouteImport.update({
   id: '/api/public/staff-session',
   path: '/api/public/staff-session',
@@ -550,6 +556,7 @@ export interface FileRoutesByFullPath {
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/system/video': typeof AuthenticatedSystemVideoRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/n11-chat': typeof ApiPublicN11ChatRoute
   '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/rent/$complex/$slug': typeof RentComplexSlugRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -626,6 +633,7 @@ export interface FileRoutesByTo {
   '/system/update': typeof AuthenticatedSystemUpdateRoute
   '/system/video': typeof AuthenticatedSystemVideoRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/n11-chat': typeof ApiPublicN11ChatRoute
   '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/rent/$complex/$slug': typeof RentComplexSlugRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -706,6 +714,7 @@ export interface FileRoutesById {
   '/_authenticated/system/update': typeof AuthenticatedSystemUpdateRoute
   '/_authenticated/system/video': typeof AuthenticatedSystemVideoRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/n11-chat': typeof ApiPublicN11ChatRoute
   '/api/public/staff-session': typeof ApiPublicStaffSessionRoute
   '/rent/$complex/$slug': typeof RentComplexSlugRoute
   '/rent/jk/$slug': typeof RentJkSlugRoute
@@ -786,6 +795,7 @@ export interface FileRouteTypes {
     | '/system/update'
     | '/system/video'
     | '/api/public/health'
+    | '/api/public/n11-chat'
     | '/api/public/staff-session'
     | '/rent/$complex/$slug'
     | '/rent/jk/$slug'
@@ -862,6 +872,7 @@ export interface FileRouteTypes {
     | '/system/update'
     | '/system/video'
     | '/api/public/health'
+    | '/api/public/n11-chat'
     | '/api/public/staff-session'
     | '/rent/$complex/$slug'
     | '/rent/jk/$slug'
@@ -941,6 +952,7 @@ export interface FileRouteTypes {
     | '/_authenticated/system/update'
     | '/_authenticated/system/video'
     | '/api/public/health'
+    | '/api/public/n11-chat'
     | '/api/public/staff-session'
     | '/rent/$complex/$slug'
     | '/rent/jk/$slug'
@@ -1000,6 +1012,7 @@ export interface RootRouteChildren {
   ApiSocialMediaUploadRoute: typeof ApiSocialMediaUploadRoute
   PCodeRoute: typeof PCodeRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicN11ChatRoute: typeof ApiPublicN11ChatRoute
   ApiPublicStaffSessionRoute: typeof ApiPublicStaffSessionRoute
   ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
@@ -1354,6 +1367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/n11-chat': {
+      id: '/api/public/n11-chat'
+      path: '/api/public/n11-chat'
+      fullPath: '/api/public/n11-chat'
+      preLoaderRoute: typeof ApiPublicN11ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/staff-session': {
       id: '/api/public/staff-session'
       path: '/api/public/staff-session'
@@ -1699,6 +1719,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialMediaUploadRoute: ApiSocialMediaUploadRoute,
   PCodeRoute: PCodeRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicN11ChatRoute: ApiPublicN11ChatRoute,
   ApiPublicStaffSessionRoute: ApiPublicStaffSessionRoute,
   ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,

@@ -313,7 +313,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       inputSchema: z.object({
         query: z.string().optional(),
         blacklistedOnly: z.boolean().optional(),
-        portfolio: z.enum(["rm", "n11"]).optional().describe("Клиенты РМ или гости Н11"),
+        portfolio: z.enum(["rm", "n11"]).optional().describe("Клиенты РМ или гости H11"),
       }),
       execute: async ({ query, blacklistedOnly, portfolio }) => {
         try {
@@ -844,7 +844,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getChats: tool({
       description:
-        "Все чаты RM OS: сайт, ЦИАН и Авито. Без threadId — список диалогов; с threadId — история сообщений. Если из чата создали клиента или сделку, в списке будут clientId и dealId.",
+        "Все чаты RM OS: сайт РМ, сайт H11, ЦИАН и Авито. Без threadId — список диалогов; с threadId — история сообщений. Если из чата создали клиента или сделку, в списке будут clientId и dealId.",
       inputSchema: z.object({ threadId: z.string().optional(), days: z.number().optional() }),
       execute: async ({ threadId, days }) => {
         if (threadId) {
@@ -879,7 +879,8 @@ export function createReadTools(ctx: AssistantToolContext) {
         const sourceLabel = (source: string) => {
           if (source === "cian") return "ЦИАН";
           if (source === "avito") return "Авито";
-          return "Сайт";
+          if (source === "n11") return "H11 сайт";
+          return "Сайт РМ";
         };
         return ((fallback?.data ?? data) ?? []).map((t) => ({
           ...t,
@@ -909,7 +910,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     getListingStats: tool({
       description:
-        "Статистика публикаций Резиденции Море (без Н11): просмотры, обращения и сообщения Авито/ЦИАН за N дней. Раздел «Публикация и реклама».",
+        "Статистика публикаций Резиденции Море (без H11): просмотры, обращения и сообщения Авито/ЦИАН за N дней. Раздел «Публикация и реклама».",
       inputSchema: z.object({ days: z.number().optional(), ref: z.string().optional() }),
       execute: async ({ days, ref }) => {
         const period = days && days > 0 ? days : 30;
@@ -1744,7 +1745,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
     getHotelOverview: tool({
       description:
-        "Н11 Резиденция — отдельный проект, апарт-отель: номера, категории, загрузка, брони короткого проживания, собственники. Не путать с Резиденция Море. Календарь общий. Брони Bnovo приходят на категорию (Стандарт Плюс: 546 и 567, Делюкс: 526 и 530); конкретный номер назначается при заселении.",
+        "H11 Резиденция — отдельный проект, апарт-отель: номера, категории, загрузка, брони короткого проживания, собственники, непрочитанные чаты с сайта. Не путать с Резиденция Море. Календарь общий. Брони Bnovo приходят на категорию (Стандарт Плюс: 546 и 567, Делюкс: 526 и 530); конкретный номер назначается при заселении. Чат сайта — source n11 в getChats.",
       inputSchema: z.object({
         fromDate: z.string().optional(),
         toDate: z.string().optional(),
@@ -1753,13 +1754,14 @@ export function createReadTools(ctx: AssistantToolContext) {
         try {
           const from = fromDate || dateOnly(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
           const to = toDate || dateOnly(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString());
-          const [{ data: rooms }, { data: categories }, { data: owners }, { data: links }, { data: runs }] =
+          const [{ data: rooms }, { data: categories }, { data: owners }, { data: links }, { data: runs }, { data: chatUnread }] =
             await Promise.all([
               admin.from("properties").select("id, internal_name, title, status, room_category_id, bnovo_room_id, price_night, guests_max, floor").eq("portfolio", "n11" as never),
               admin.from("hotel_room_categories").select("id, code, name, guests, sort_order, bnovo_room_type_id").order("sort_order"),
               admin.from("owners").select("id, full_name, phone, email"),
               admin.from("property_owners").select("property_id, owner_id, share_percent"),
               admin.from("bnovo_sync_runs").select("started_at, status, summary").order("started_at", { ascending: false }).limit(5),
+              admin.from("chat_threads").select("id, unread_count").eq("source", "n11" as never).gt("unread_count", 0).limit(200),
             ]);
           const ids = (rooms ?? []).map((r) => r.id);
           const { data: bookingRows } = ids.length
@@ -1777,11 +1779,14 @@ export function createReadTools(ctx: AssistantToolContext) {
               (b) => b.property_id === room.id && b.start_date <= today && b.end_date >= today,
             ),
           ).length;
+          const unreadThreads = chatUnread?.length ?? 0;
+          const unreadMessages = (chatUnread ?? []).reduce((sum, t) => sum + (t.unread_count ?? 0), 0);
           return {
-            hotel: "Н11 Резиденция, Сочи, Навагинская",
+            hotel: "H11 Резиденция, Сочи, Навагинская",
             period: { from, to },
             rooms: rooms?.length ?? 0,
             occupiedToday,
+            siteChatUnread: { threads: unreadThreads, messages: unreadMessages },
             categories: categories ?? [],
             owners: (owners ?? []).map((o) => ({
               ...o,
@@ -1791,12 +1796,12 @@ export function createReadTools(ctx: AssistantToolContext) {
             lastBnovoSync: runs ?? [],
           };
         } catch (e) {
-          return { error: e instanceof Error ? e.message : "Ошибка чтения Н11" };
+          return { error: e instanceof Error ? e.message : "Ошибка чтения H11" };
         }
       },
     }),
     getHotelOccupancy: tool({
-      description: "Загрузка апарт-отеля Н11 за период, можно по категории.",
+      description: "Загрузка апарт-отеля H11 за период, можно по категории.",
       inputSchema: z.object({
         fromDate: z.string().optional(),
         toDate: z.string().optional(),
@@ -1831,7 +1836,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getHotelOwners: tool({
-      description: "Собственники номеров апарт-отеля Н11 и их доли.",
+      description: "Собственники номеров апарт-отеля H11 и их доли.",
       inputSchema: z.object({ query: z.string().optional() }),
       execute: async ({ query }) => {
         const { data: owners, error } = await admin.from("owners").select("*").order("full_name");
@@ -1857,7 +1862,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getBnovoSync: tool({
-      description: "Статус синхронизации броней Н11 с Bnovo API v1 и последние выгрузки.",
+      description: "Статус синхронизации броней H11 с Bnovo API v1 и последние выгрузки.",
       inputSchema: z.object({}),
       execute: async () => {
         const { data, error } = await admin

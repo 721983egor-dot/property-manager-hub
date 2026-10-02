@@ -21,7 +21,7 @@ export type ChatThread = {
   created_at: string;
   last_body: string;
   last_direction: "in" | "out" | null;
-  source: "site" | "cian" | "avito";
+  source: "site" | "cian" | "avito" | "n11";
   external_id: string | null;
   external_offer_id: string | null;
   property_id: string | null;
@@ -40,12 +40,14 @@ export type ChatQuickReply = {
 export function chatSourceLabel(source: ChatThread["source"]) {
   if (source === "cian") return "ЦИАН";
   if (source === "avito") return "Авито";
-  return "Сайт";
+  if (source === "n11") return "H11 сайт";
+  return "Сайт РМ";
 }
 
 export function chatSourceToDealSource(source: ChatThread["source"]) {
   if (source === "cian") return "ЦИАН";
   if (source === "avito") return "Авито";
+  if (source === "n11") return "H11 сайт";
   return "Сайт";
 }
 

@@ -44,8 +44,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { HotelTabs } from "@/components/HotelTabs";
+
+const CHAT_SOURCE_FILTERS = [
+  { value: "all", label: "Все" },
+  { value: "n11", label: "H11 сайт" },
+  { value: "site", label: "Сайт РМ" },
+  { value: "cian", label: "ЦИАН" },
+  { value: "avito", label: "Авито" },
+] as const;
+
+type ChatSourceFilter = (typeof CHAT_SOURCE_FILTERS)[number]["value"];
 
 export const Route = createFileRoute("/_authenticated/chats/")({
+  validateSearch: (search: Record<string, unknown>) => {
+    const raw = typeof search["source"] === "string" ? search["source"] : "all";
+    const source = CHAT_SOURCE_FILTERS.some((f) => f.value === raw)
+      ? (raw as ChatSourceFilter)
+      : "all";
+    return { source };
+  },
   head: () => ({
     meta: [{ title: "Чаты — RM OS" }, { name: "robots", content: "noindex" }],
   }),
@@ -58,6 +76,8 @@ export const Route = createFileRoute("/_authenticated/chats/")({
 
 function ChatsPage() {
   const queryClient = useQueryClient();
+  const navigate = Route.useNavigate();
+  const { source: sourceFilter } = Route.useSearch();
   const loadThreads = useServerFn(fetchThreads);
   const loadMessages = useServerFn(fetchThreadMessages);
   const loadQuickReplies = useServerFn(fetchQuickReplies);
@@ -81,9 +101,13 @@ function ChatsPage() {
     queryFn: () => loadThreads({ data: undefined }),
     refetchInterval: 3000,
   });
-  const threads = threadsData?.threads ?? [];
+  const allThreads = threadsData?.threads ?? [];
+  const threads =
+    sourceFilter === "all"
+      ? allThreads
+      : allThreads.filter((t) => t.source === sourceFilter);
   const active = threads.find((t) => t.id === activeId) ?? null;
-  const unreadTotal = threads.reduce((sum, t) => sum + t.unread_count, 0);
+  const unreadTotal = allThreads.reduce((sum, t) => sum + t.unread_count, 0);
 
   const { data: messagesData } = useQuery({
     queryKey: ["chat-messages", activeId],
@@ -172,20 +196,62 @@ function ChatsPage() {
     onError: (e: Error) => toast.error(e.message || "Не удалось отметить прочитанными"),
   });
 
+  useEffect(() => {
+    if (activeId && !threads.some((t) => t.id === activeId)) {
+      setActiveId(null);
+    }
+  }, [activeId, threads]);
+
+  const isHotelChats = sourceFilter === "n11";
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col lg:h-screen">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4 sm:h-16 sm:px-6">
-        <h1 className="text-base font-semibold tracking-tight sm:text-lg">Чаты</h1>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => markAllMutation.mutate()}
-            disabled={markAllMutation.isPending || unreadTotal === 0}
-          >
-            <MailOpen className="size-4" />
-            Прочитать все
-          </Button>
+      <header className="shrink-0 border-b border-border px-4 pt-4 sm:px-6">
+        <div className="flex h-10 items-center justify-between gap-2 sm:h-12">
+          <h1 className="text-base font-semibold tracking-tight sm:text-lg">
+            {isHotelChats ? "Чаты сайта H11" : "Чаты"}
+          </h1>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => markAllMutation.mutate()}
+              disabled={markAllMutation.isPending || unreadTotal === 0}
+            >
+              <MailOpen className="size-4" />
+              Прочитать все
+            </Button>
+          </div>
+        </div>
+        {isHotelChats ? <HotelTabs active="chats" /> : null}
+        <div className="flex gap-2 overflow-x-auto pb-3 pt-3">
+          {CHAT_SOURCE_FILTERS.map((filter) => {
+            const active = sourceFilter === filter.value;
+            const count =
+              filter.value === "all"
+                ? allThreads.length
+                : allThreads.filter((t) => t.source === filter.value).length;
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                onClick={() =>
+                  void navigate({
+                    search: { source: filter.value },
+                  })
+                }
+                className={
+                  "shrink-0 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors " +
+                  (active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground")
+                }
+              >
+                {filter.label}
+                <span className="ml-1 opacity-70">{count}</span>
+              </button>
+            );
+          })}
         </div>
       </header>
 
@@ -197,7 +263,11 @@ function ChatsPage() {
           }
         >
           {threads.length === 0 && (
-            <p className="p-4 text-sm text-muted-foreground">Пока нет сообщений.</p>
+            <p className="p-4 text-sm text-muted-foreground">
+              {isHotelChats
+                ? "Пока нет сообщений с сайта H11. Виджет пишет сюда вместо Bitrix."
+                : "Пока нет сообщений."}
+            </p>
           )}
           {threads.map((t) => (
             <ThreadCard

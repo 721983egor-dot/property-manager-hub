@@ -723,14 +723,14 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   saveHotelRoom: async (input) => {
     const name = must(String(input["name"] ?? "").trim(), "Не указан номер");
     const row = {
-      title: name.startsWith("N-11") || name.startsWith("Н11") ? name : `Н11 ${name}`,
+      title: name.startsWith("N-11") || name.startsWith("H11") ? name : `H11 ${name}`,
       internal_name: name,
       type: "aparts",
       portfolio: "n11",
       published: false,
       service_type: "management",
       address: "Сочи, улица Навагинская",
-      complex_name: "Н11 Резиденция",
+      complex_name: "H11 Резиденция",
       room_category_id: (input["category"] as string) || null,
       bnovo_room_id: String(input["bnovoRoomId"] ?? "").trim() || null,
       price_night: (input["priceNight"] as number) ?? null,
@@ -748,7 +748,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       const { error } = await supabaseAdmin.from("properties").insert(row as never);
       if (error) throw new Error(error.message);
     }
-    return "Номер Н11 сохранён";
+    return "Номер H11 сохранён";
   },
 
   saveHotelCategory: async (input) => {
@@ -769,7 +769,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       const { error } = await supabaseAdmin.from("hotel_room_categories").insert(row as never);
       if (error) throw new Error(error.message);
     }
-    return "Категория Н11 сохранена";
+    return "Категория H11 сохранена";
   },
 
   saveHotelOwner: async (input) => {
@@ -797,7 +797,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       );
       if (error) throw new Error(error.message);
     }
-    return "Собственник Н11 сохранён";
+    return "Собственник H11 сохранён";
   },
 
   runBnovoSync: async (input) => {

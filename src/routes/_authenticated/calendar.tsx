@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/calendar")({
       {
         name: "description",
         content:
-          "Шахматка занятости двух проектов: сверху Н11 Резиденция, ниже Резиденция Море.",
+          "Шахматка занятости двух проектов: сверху H11 Резиденция, ниже Резиденция Море.",
       },
       { property: "og:title", content: "Календарь занятости — RM OS" },
       {
@@ -235,7 +235,7 @@ function CalendarPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Календарь</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Два проекта в одной шахматке: сверху Н11 Резиденция, ниже Резиденция Море.
+            Два проекта в одной шахматке: сверху H11 Резиденция, ниже Резиденция Море.
           </p>
         </div>
         <Button
@@ -258,7 +258,7 @@ function CalendarPage() {
           {(
             [
               ["all", "Все"],
-              ["n11", "Н11"],
+              ["n11", "H11"],
               ["rm", "РМ"],
             ] as const
           ).map(([key, label]) => (
@@ -424,7 +424,7 @@ function CalendarPage() {
                     style={{ width: nameWidth }}
                     className="sticky left-0 z-20 shrink-0 border-b border-r border-border bg-muted px-3 py-2 text-xs font-semibold uppercase tracking-wide"
                   >
-                    {namesCollapsed ? "Н11" : `Н11 · ${group.category?.name ?? "Без категории"}`}
+                    {namesCollapsed ? "H11" : `H11 · ${group.category?.name ?? "Без категории"}`}
                   </div>
                   <div
                     style={{ width: gridWidth }}
@@ -437,7 +437,7 @@ function CalendarPage() {
                     <CalendarPropertyRow
                       key={property.id}
                       property={property}
-                      subtitle={group.category?.name ?? "Н11"}
+                      subtitle={group.category?.name ?? "H11"}
                       nameWidth={nameWidth}
                       namesCollapsed={namesCollapsed}
                       gridWidth={gridWidth}
