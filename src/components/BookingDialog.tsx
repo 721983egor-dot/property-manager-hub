@@ -46,6 +46,8 @@ import {
 import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 import { useAccess } from "@/hooks/useAccess";
+import { useServerFn } from "@tanstack/react-start";
+import { assignHotelBookingRoom } from "@/lib/hotel.functions";
 
 type Props = {
   open: boolean;
@@ -123,6 +125,8 @@ export function BookingDialog({
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientSearch, setClientSearch] = useState("");
+  const [assignRoomId, setAssignRoomId] = useState("");
+  const assignRoomFn = useServerFn(assignHotelBookingRoom);
 
   useEffect(() => {
     if (!open) return;
@@ -132,6 +136,7 @@ export function BookingDialog({
     setClientName("");
     setClientPhone("");
     setClientSearch("");
+    setAssignRoomId("");
   }, [open, booking?.id, defaultPropertyId, defaultClientId]);
 
 
@@ -229,6 +234,37 @@ export function BookingDialog({
   });
 
   const property = properties.find((p) => p.id === (booking?.property_id ?? form.property_id));
+  const needsRoomAssignment = Boolean(property?.is_unassigned_lane && booking);
+  const assignCandidates = useMemo(() => {
+    if (!property?.is_unassigned_lane) return [];
+    return properties.filter(
+      (p) =>
+        p.portfolio === "n11" &&
+        !p.is_unassigned_lane &&
+        p.status !== "archived" &&
+        (!property.room_category_id || p.room_category_id === property.room_category_id),
+    );
+  }, [properties, property]);
+
+  const assignRoom = useMutation({
+    mutationFn: async () => {
+      if (!booking) throw new Error("Бронь не выбрана");
+      if (!assignRoomId) throw new Error("Выберите номер");
+      return assignRoomFn({ data: { bookingId: booking.id, propertyId: assignRoomId } });
+    },
+    onSuccess: async (result) => {
+      await qc.invalidateQueries({ queryKey: ["bookings"] });
+      await qc.invalidateQueries({ queryKey: ["properties"] });
+      toast.success(`Номер ${result.roomName} назначен`);
+      if (!result.bnovoSynced) toast.message(result.bnovoMessage);
+      else toast.message(result.bnovoMessage);
+      onOpenChange(false);
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : String(e));
+    },
+  });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -245,7 +281,7 @@ export function BookingDialog({
         {mode === "view" && booking ? (
           <div className="space-y-4">
             <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
-              <Field label="Объект" value={property ? internalTitle(property) : "—"} />
+              <Field label="Объект" value={property ? (property.is_unassigned_lane ? "без номера (нужно назначить)" : internalTitle(property)) : "—"} />
               <Field label="Статус" value={statusLabel(booking.status)} />
               <Field label="ФИО" value={booking.client?.full_name ?? "—"} />
               <Field label="Телефон" value={booking.client?.phone || "—"} />
@@ -262,6 +298,43 @@ export function BookingDialog({
               <Field label="Источник" value={sourceLabel(booking.source)} />
               <Field label="Комментарий" value={booking.comment || "—"} />
             </dl>
+
+            {needsRoomAssignment ? (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+                <p className="text-sm font-medium text-amber-950">Бронь без номера</p>
+                <p className="mt-1 text-xs text-amber-900/80">
+                  OTA-бронь пришла на категорию. Назначьте конкретный апартамент H11.
+                </p>
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <div className="min-w-[180px] flex-1">
+                    <Label className="text-amber-950">Номер</Label>
+                    <Select value={assignRoomId} onValueChange={setAssignRoomId}>
+                      <SelectTrigger className="mt-1.5 bg-card">
+                        <SelectValue placeholder="Выберите номер" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {assignCandidates.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {internalTitle(p)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={() => assignRoom.mutate()}
+                    disabled={assignRoom.isPending || !assignRoomId}
+                  >
+                    {assignRoom.isPending ? "Назначаем…" : "Назначить номер"}
+                  </Button>
+                </div>
+                {assignCandidates.length === 0 ? (
+                  <p className="mt-2 text-xs text-amber-900/70">
+                    В этой категории нет свободных номеров в справочнике H11.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {booking.price_type === "periodic" && booking.periods.length > 0 ? (
               <div>
@@ -317,7 +390,7 @@ export function BookingDialog({
                     <SelectGroup>
                       <SelectLabel>H11 Резиденция</SelectLabel>
                       {properties
-                        .filter((p) => p.portfolio === "n11")
+                        .filter((p) => p.portfolio === "n11" && !p.is_unassigned_lane)
                         .map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {internalTitle(p)}

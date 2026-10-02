@@ -809,6 +809,25 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return result.summary;
   },
 
+  assignHotelBookingRoom: async (input) => {
+    const bookingId = must(input["bookingId"] as string, "Не указана бронь");
+    const propertyId = must(input["propertyId"] as string, "Не указан номер");
+    const { assignHotelBookingRoomCore } = await import("@/lib/hotel.functions");
+    const result = await assignHotelBookingRoomCore(supabaseAdmin, {
+      bookingId,
+      propertyId,
+      source: "assistant",
+    });
+    await logAction(
+      `H11: брони назначен номер ${result.roomName}`,
+      "assignHotelBookingRoom",
+      input,
+    );
+    return result.bnovoSynced
+      ? `Номер ${result.roomName} назначен, Bnovo обновлён`
+      : `Номер ${result.roomName} назначен в RM OS. ${result.bnovoMessage}`;
+  },
+
   upsertTask: async (input) => {
     const taskId = (input["taskId"] as string | null) || null;
     const patch: Record<string, unknown> = {};

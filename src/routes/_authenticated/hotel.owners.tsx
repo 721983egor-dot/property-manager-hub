@@ -58,7 +58,10 @@ function HotelOwnersPage() {
   });
 
   const rooms = useMemo(
-    () => properties.filter((p) => p.portfolio === "n11" && p.status !== "archived"),
+    () =>
+      properties.filter(
+        (p) => p.portfolio === "n11" && p.status !== "archived" && !p.is_unassigned_lane,
+      ),
     [properties],
   );
 

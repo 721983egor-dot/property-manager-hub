@@ -65,7 +65,7 @@ function HotelRoomsPage() {
   });
 
   const rooms = useMemo(
-    () => properties.filter((p) => p.portfolio === "n11"),
+    () => properties.filter((p) => p.portfolio === "n11" && !p.is_unassigned_lane),
     [properties],
   );
   const ownersByRoom = useMemo(() => {

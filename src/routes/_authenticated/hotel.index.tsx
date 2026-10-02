@@ -78,9 +78,18 @@ function HotelSummaryPage() {
   });
 
   const rooms = useMemo(
-    () => properties.filter((p) => p.portfolio === "n11" && p.status !== "archived"),
+    () =>
+      properties.filter(
+        (p) => p.portfolio === "n11" && p.status !== "archived" && !p.is_unassigned_lane,
+      ),
     [properties],
   );
+  const unassignedBookings = useMemo(() => {
+    const lanes = new Set(
+      properties.filter((p) => p.portfolio === "n11" && p.is_unassigned_lane).map((p) => p.id),
+    );
+    return bookings.filter((b) => b.status !== "cancelled" && lanes.has(b.property_id));
+  }, [bookings, properties]);
   const hotelBookings = useMemo(
     () => bookings.filter((b) => rooms.some((r) => r.id === b.property_id)),
     [bookings, rooms],
@@ -181,7 +190,13 @@ function HotelSummaryPage() {
           icon={Users}
           label="Заезды / выезды сегодня"
           value={`${arrivals.length} / ${departures.length}`}
-          hint={untyped ? `${untyped} категорий без ID Bnovo` : "Категории сопоставлены с Bnovo"}
+          hint={
+            unassignedBookings.length
+              ? `${unassignedBookings.length} без номера — назначьте в календаре`
+              : untyped
+                ? `${untyped} категорий без ID Bnovo`
+                : "Категории сопоставлены с Bnovo"
+          }
         />
         <Stat
           icon={MessageCircle}

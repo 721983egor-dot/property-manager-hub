@@ -15,6 +15,7 @@ type RoomRow = {
   internal_name: string;
   title: string;
   room_category_id: string | null;
+  is_unassigned_lane: boolean;
 };
 
 type CategoryRow = {
@@ -63,6 +64,19 @@ function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
   return aStart <= bEnd && bStart <= aEnd;
 }
 
+
+/** Категории модуля H11 на сайте (onlyrooms) + устаревший id из ранней миграции. */
+const KNOWN_N11_ROOM_TYPE_IDS = new Set(["461845", "608431", "720995"]);
+
+const ROOM_TYPE_TO_CATEGORY_CODE: Record<string, string> = {
+  "461845": "deluxe",
+  "608431": "standard_plus",
+  "720995": "standard_plus",
+};
+
+function isUnassignedLane(room: RoomRow) {
+  return Boolean(room.is_unassigned_lane);
+}
 function n11Needle(value: string) {
   return /n[-\s]?11|н[-\s]?11/.test(value.toLowerCase());
 }
@@ -80,6 +94,7 @@ function isN11Booking(booking: BnovoBooking, categories: CategoryRow[]) {
   if (n11Needle(blob)) return true;
   if (roomNumberFrom(booking)) return true;
   if (/стандарт\s*плюс|делюкс|deluxe|деклюкс/.test(blob)) return true;
+  if (booking.roomTypeId && KNOWN_N11_ROOM_TYPE_IDS.has(booking.roomTypeId)) return true;
   if (booking.roomTypeId && categories.some((c) => c.bnovo_room_type_id === booking.roomTypeId)) {
     return true;
   }
@@ -90,6 +105,11 @@ function categoryOf(booking: BnovoBooking, categories: CategoryRow[]) {
   if (booking.roomTypeId) {
     const byType = categories.find((c) => c.bnovo_room_type_id === booking.roomTypeId);
     if (byType) return byType;
+    const code = ROOM_TYPE_TO_CATEGORY_CODE[booking.roomTypeId];
+    if (code) {
+      const byCode = categories.find((c) => c.code === code);
+      if (byCode) return byCode;
+    }
   }
   const blob = `${booking.roomName} ${booking.categoryName} ${roomNumberFrom(booking)}`.toLowerCase();
   if (/\b(546|567)\b/.test(blob) || /стандарт/.test(blob)) {
@@ -125,13 +145,22 @@ function findRoom(
   preferredRoomId?: string | null,
 ): { room: RoomRow; category: CategoryRow | null; note: string } | null {
   const stayEnd = lastOccupiedNight(booking.arrival, booking.departure);
+  const realRooms = rooms.filter((r) => !isUnassignedLane(r));
+
   if (booking.roomId) {
-    const byId = rooms.find((r) => r.bnovo_room_id && r.bnovo_room_id === booking.roomId);
-    if (byId) return { room: byId, category: categories.find((c) => c.id === byId.room_category_id) ?? null, note: "" };
+    const byId = realRooms.find((r) => r.bnovo_room_id && r.bnovo_room_id === booking.roomId);
+    if (byId) {
+      return {
+        room: byId,
+        category: categories.find((c) => c.id === byId.room_category_id) ?? null,
+        note: "",
+      };
+    }
   }
+
   const number = roomNumberFrom(booking);
   if (number) {
-    const byNumber = rooms.find(
+    const byNumber = realRooms.find(
       (r) =>
         r.internal_name.trim() === number ||
         r.title.replace(/\s/g, "").includes(number) ||
@@ -145,9 +174,23 @@ function findRoom(
       };
     }
   }
+
   const category = categoryOf(booking, categories);
-  if (preferredRoomId) {
-    const preferred = rooms.find((r) => r.id === preferredRoomId);
+
+  // Если в Bnovo ещё нет юнита, но менеджер уже назначил номер в RM OS — не сбрасываем.
+  if (preferredRoomId && !booking.roomId) {
+    const preferred = realRooms.find((r) => r.id === preferredRoomId);
+    if (preferred && (!category || preferred.room_category_id === category.id)) {
+      return {
+        room: preferred,
+        category: category ?? categories.find((c) => c.id === preferred.room_category_id) ?? null,
+        note: "",
+      };
+    }
+  }
+
+  if (preferredRoomId && booking.roomId) {
+    const preferred = realRooms.find((r) => r.id === preferredRoomId);
     if (
       preferred &&
       isFree(preferred.id, booking.arrival, stayEnd, occupied, booking.id) &&
@@ -160,8 +203,23 @@ function findRoom(
       };
     }
   }
+
   if (!category) return null;
-  const inCategory = rooms
+
+  // Нет конкретного номера в Bnovo → полоса «без номера» категории.
+  const lane = rooms.find((r) => isUnassignedLane(r) && r.room_category_id === category.id);
+  if (lane) {
+    return {
+      room: lane,
+      category,
+      note: booking.roomId
+        ? `Бронь ${booking.id}: номер Bnovo ${booking.roomId} не сопоставлен с юнитом H11 — в «без номера»`
+        : "",
+    };
+  }
+
+  // Запасной путь, если миграция полос ещё не применена: не теряем бронь.
+  const inCategory = realRooms
     .filter((r) => r.room_category_id === category.id)
     .sort((a, b) => a.internal_name.localeCompare(b.internal_name, "ru"));
   const free = inCategory.find((r) => isFree(r.id, booking.arrival, stayEnd, occupied, booking.id));
@@ -170,9 +228,7 @@ function findRoom(
   return {
     room,
     category,
-    note: free
-      ? ""
-      : `Категория «${category.name}» на эти даты уже занята, бронь ${booking.id} поставили на ${room.internal_name}`,
+    note: `Нет полосы «без номера» для «${category.name}» — бронь ${booking.id} временно на ${room.internal_name}`,
   };
 }
 
@@ -268,10 +324,30 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
   try {
     const { data: roomRows, error: roomError } = await supabaseAdmin
       .from("properties")
-      .select("id, bnovo_room_id, internal_name, title, room_category_id")
+      .select("id, bnovo_room_id, internal_name, title, room_category_id, is_unassigned_lane")
       .eq("portfolio", "n11" as never);
-    if (roomError) throw new Error(roomError.message);
-    const rooms = (roomRows ?? []) as RoomRow[];
+    let rooms: RoomRow[];
+    if (roomError && /is_unassigned_lane|schema cache|column/i.test(roomError.message)) {
+      const { data: legacyRows, error: legacyError } = await supabaseAdmin
+        .from("properties")
+        .select("id, bnovo_room_id, internal_name, title, room_category_id")
+        .eq("portfolio", "n11" as never);
+      if (legacyError) throw new Error(legacyError.message);
+      warnings.push(
+        "Колонка is_unassigned_lane ещё не применена — примените миграцию 20261002180000. Пока брони без номера могут садиться на свободный юнит.",
+      );
+      rooms = ((legacyRows ?? []) as RoomRow[]).map((row) => ({
+        ...row,
+        is_unassigned_lane: false,
+      }));
+    } else if (roomError) {
+      throw new Error(roomError.message);
+    } else {
+      rooms = ((roomRows ?? []) as RoomRow[]).map((row) => ({
+        ...row,
+        is_unassigned_lane: Boolean(row.is_unassigned_lane),
+      }));
+    }
 
     const { data: categoryRows, error: catError } = await supabaseAdmin
       .from("hotel_room_categories")
@@ -346,7 +422,7 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
       if (!mapped) {
         skipped += 1;
         warnings.push(
-          `Бронь ${booking.id} (${booking.guestName || "гость"}): нет номера в категории «${booking.categoryName || booking.roomTypeId || "без категории"}»`,
+          `Бронь ${booking.id} (${booking.guestName || "гость"}): не удалось определить категорию H11 «${booking.categoryName || booking.roomTypeId || "без категории"}» — проверьте bnovo_room_type_id (461845 / 608431)`,
         );
         continue;
       }

@@ -149,6 +149,8 @@ export type Property = {
   portfolio: Portfolio;
   room_category_id: string | null;
   bnovo_room_id: string | null;
+  /** Служебная полоса H11 «без номера» для OTA-броней без юнита. */
+  is_unassigned_lane: boolean;
   price_night: number | null;
   guests_max: number | null;
   created_at: string;
@@ -501,6 +503,7 @@ function normalize(row: Record<string, unknown>): Property {
     portfolio: asPortfolio(row['portfolio']),
     room_category_id: typeof row['room_category_id'] === "string" ? row['room_category_id'] : null,
     bnovo_room_id: typeof row['bnovo_room_id'] === "string" ? row['bnovo_room_id'] : null,
+    is_unassigned_lane: Boolean(row["is_unassigned_lane"]),
     price_night: num(row['price_night']),
     guests_max: num(row['guests_max']),
   };

@@ -433,11 +433,13 @@ function CalendarPage() {
                 </div>
                 {group.rooms.map((property) => {
                   const list = bookingsByProperty.get(property.id) ?? [];
+                  const unassigned = Boolean(property.is_unassigned_lane);
                   return (
                     <CalendarPropertyRow
                       key={property.id}
                       property={property}
-                      subtitle={group.category?.name ?? "H11"}
+                      subtitle={unassigned ? "нужно назначить номер" : (group.category?.name ?? "H11")}
+                      unassignedLane={unassigned}
                       nameWidth={nameWidth}
                       namesCollapsed={namesCollapsed}
                       gridWidth={gridWidth}
@@ -645,6 +647,7 @@ function CalendarPage() {
 function CalendarPropertyRow({
   property,
   subtitle,
+  unassignedLane = false,
   nameWidth,
   namesCollapsed,
   gridWidth,
@@ -658,6 +661,7 @@ function CalendarPropertyRow({
 }: {
   property: Property;
   subtitle: string;
+  unassignedLane?: boolean;
   nameWidth: number;
   namesCollapsed: boolean;
   gridWidth: number;
@@ -670,20 +674,27 @@ function CalendarPropertyRow({
   onOpen: (booking: Booking) => void;
 }) {
   return (
-    <div className="flex">
+    <div className={cn("flex", unassignedLane && "bg-amber-50/40")}>
       <div
         style={{ width: nameWidth }}
         title={internalTitle(property)}
-        className="sticky left-0 z-20 flex shrink-0 items-center gap-2 border-b border-r border-border bg-card px-2 py-3"
+        className={cn(
+          "sticky left-0 z-20 flex shrink-0 items-center gap-2 border-b border-r border-border px-2 py-3",
+          unassignedLane ? "bg-amber-50" : "bg-card",
+        )}
       >
         {namesCollapsed ? (
           <span className="line-clamp-2 w-full text-center text-[10px] font-semibold leading-tight">
-            {shortPropertyLabel(property)}
+            {unassignedLane ? "без №" : shortPropertyLabel(property)}
           </span>
         ) : (
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">{internalTitle(property)}</div>
-            <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
+            <div className={cn("truncate text-sm font-medium", unassignedLane && "text-amber-900")}>
+              {unassignedLane ? "без номера" : internalTitle(property)}
+            </div>
+            <div className={cn("truncate text-xs", unassignedLane ? "text-amber-800/80" : "text-muted-foreground")}>
+              {subtitle}
+            </div>
           </div>
         )}
       </div>
@@ -700,6 +711,7 @@ function CalendarPropertyRow({
                   "relative h-[68px] shrink-0 border-r border-border",
                   weekend && "bg-muted/40",
                   isToday && "bg-sky-100",
+                  unassignedLane && !isToday && "bg-amber-50/50",
                 )}
               />
             );
@@ -712,20 +724,34 @@ function CalendarPropertyRow({
           const length = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
           if (length <= 0) return null;
           const past = booking.end_date < todayIso;
+          const label = booking.client ? shortName(booking.client.full_name) : "Занято";
           return (
             <button
               type="button"
               key={booking.id}
               onClick={() => onOpen(booking)}
-              title={`${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
+              title={`${unassignedLane ? "Без номера · " : ""}${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
               style={{ left: offset * DAY_WIDTH + 2, width: length * DAY_WIDTH - 4 }}
               className={cn(
                 "absolute top-1/2 flex h-8 -translate-y-1/2 items-center overflow-hidden rounded-md border px-2.5 text-left transition-opacity hover:opacity-90",
-                past ? "border-border bg-muted" : "border-sky-200 bg-sky-50",
+                past
+                  ? "border-border bg-muted"
+                  : unassignedLane
+                    ? "border-amber-300 bg-amber-100"
+                    : "border-sky-200 bg-sky-50",
               )}
             >
-              <span className={cn("truncate text-xs font-medium", past ? "text-muted-foreground" : "text-sky-800")}>
-                {booking.client ? shortName(booking.client.full_name) : "Занято"}
+              <span
+                className={cn(
+                  "truncate text-xs font-medium",
+                  past
+                    ? "text-muted-foreground"
+                    : unassignedLane
+                      ? "text-amber-950"
+                      : "text-sky-800",
+                )}
+              >
+                {unassignedLane ? `без № · ${label}` : label}
               </span>
             </button>
           );

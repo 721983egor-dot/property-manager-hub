@@ -288,3 +288,67 @@ export async function getBnovoBooking(creds: BnovoCredentials, id: string): Prom
   const inner = rec ? recordOf(rec["data"]) ?? rec : null;
   return inner ? normalizeBnovoBooking(inner) : null;
 }
+
+/**
+ * Попытка назначить номер брони в Bnovo.
+ * В открытой доке Open API v1/v2 нет метода «выбрать номер» — пробуем типичные PUT-пути
+ * и возвращаем ошибку, если Bnovo отклонил. Локальное назначение в RM OS при этом уже сохранено.
+ */
+export async function tryAssignBnovoRoom(
+  creds: BnovoCredentials,
+  bookingId: string,
+  room: { bnovoRoomId: string | null; roomTypeId: string | null; label: string },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!room.bnovoRoomId) {
+    return {
+      ok: false,
+      message:
+        "У выбранного номера в RM OS нет bnovo_room_id — в Bnovo номер не отправили. Назначение сохранено только в календаре RM OS.",
+    };
+  }
+  const token = await bnovoAuth(creds);
+  const base = (creds.baseUrl || DEFAULT_BASE).replace(/\/$/, "");
+  const bodies: Record<string, unknown>[] = [
+    { room_id: room.bnovoRoomId },
+    { room: { id: room.bnovoRoomId } },
+    {
+      room_id: room.bnovoRoomId,
+      ...(room.roomTypeId ? { room_type_id: room.roomTypeId } : {}),
+    },
+  ];
+  const paths = [
+    `/api/v1/bookings/${encodeURIComponent(bookingId)}`,
+    `/api/v2/bookings/${encodeURIComponent(bookingId)}`,
+    `/api/v1/bookings/${encodeURIComponent(bookingId)}/room`,
+    `/api/v2/bookings/${encodeURIComponent(bookingId)}/room`,
+  ];
+  const errors: string[] = [];
+  for (const path of paths) {
+    for (const body of bodies) {
+      try {
+        await requestJson(`${base}${path}`, {
+          method: "PUT",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+        return { ok: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        errors.push(`${path}: ${message}`);
+        if (/404|not found|не найден/i.test(message)) break;
+      }
+    }
+  }
+  return {
+    ok: false,
+    message:
+      `Bnovo Open API не принял назначение номера «${room.label}» для брони ${bookingId}. ` +
+      `Назначение сохранено в RM OS; в шахматке Bnovo номер нужно выбрать вручную. ` +
+      `(${errors[0] ?? "нет ответа"})`,
+  };
+}
+

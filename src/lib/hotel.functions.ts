@@ -310,6 +310,113 @@ export const grantOwnerAccess = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export type AssignHotelRoomResult = {
+  ok: true;
+  roomName: string;
+  bnovoSynced: boolean;
+  bnovoMessage: string;
+};
+
+export async function assignHotelBookingRoomCore(
+  admin: Awaited<ReturnType<typeof adminClient>>,
+  input: { bookingId: string; propertyId: string; source?: string },
+): Promise<AssignHotelRoomResult> {
+  const bookingId = input.bookingId.trim();
+  const propertyId = input.propertyId.trim();
+  if (!bookingId || !propertyId) throw new Error("Укажите бронь и номер");
+
+  const { data: booking, error: bookingError } = await admin
+    .from("bookings")
+    .select("id, property_id, start_date, end_date, status, bnovo_id, comment")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (bookingError || !booking) throw new Error(bookingError?.message ?? "Бронь не найдена");
+  if ((booking as { status: string }).status === "cancelled") {
+    throw new Error("Нельзя назначить номер отменённой брони");
+  }
+
+  const { data: room, error: roomError } = await admin
+    .from("properties")
+    .select("id, internal_name, title, portfolio, room_category_id, bnovo_room_id, is_unassigned_lane")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (roomError || !room) throw new Error(roomError?.message ?? "Номер не найден");
+  const roomRow = room as {
+    id: string;
+    internal_name: string;
+    title: string;
+    portfolio: string;
+    room_category_id: string | null;
+    bnovo_room_id: string | null;
+    is_unassigned_lane: boolean;
+  };
+  if (roomRow.portfolio !== "n11") throw new Error("Можно назначить только номер H11");
+  if (roomRow.is_unassigned_lane) throw new Error("Выберите конкретный номер, не полосу «без номера»");
+
+  const roomName = roomRow.internal_name || roomRow.title;
+  const { error: updateError } = await admin
+    .from("bookings")
+    .update({ property_id: propertyId } as never)
+    .eq("id", bookingId);
+  if (updateError) throw new Error(updateError.message);
+
+  await admin.from("activity_log").insert({
+    table_name: "bookings",
+    record_id: bookingId,
+    action: "assign_hotel_room",
+    source: input.source || "staff",
+    summary: `H11: брони ${bookingId} назначен номер ${roomName}`,
+    changes: {
+      property_id: propertyId,
+      previous_property_id: (booking as { property_id: string }).property_id,
+      bnovo_id: (booking as { bnovo_id: string | null }).bnovo_id,
+    },
+  } as never);
+
+  let bnovoSynced = false;
+  let bnovoMessage = "В Bnovo не отправляли: у брони нет bnovo_id.";
+  const bnovoId = (booking as { bnovo_id: string | null }).bnovo_id;
+  if (bnovoId) {
+    const { loadBnovoCredentials } = await import("@/lib/bnovo-sync.server");
+    const { tryAssignBnovoRoom } = await import("@/lib/bnovo.server");
+    const creds = await loadBnovoCredentials();
+    if (!creds) {
+      bnovoMessage =
+        "Назначение сохранено в RM OS. Ключ Bnovo не настроен — номер в Bnovo не меняли.";
+    } else {
+      let roomTypeId: string | null = null;
+      if (roomRow.room_category_id) {
+        const { data: category } = await admin
+          .from("hotel_room_categories")
+          .select("bnovo_room_type_id")
+          .eq("id", roomRow.room_category_id)
+          .maybeSingle();
+        roomTypeId =
+          (category as { bnovo_room_type_id: string | null } | null)?.bnovo_room_type_id ?? null;
+      }
+      const result = await tryAssignBnovoRoom(creds, bnovoId, {
+        bnovoRoomId: roomRow.bnovo_room_id,
+        roomTypeId,
+        label: roomName,
+      });
+      bnovoSynced = result.ok;
+      bnovoMessage = result.ok
+        ? `Номер также отправлен в Bnovo (бронь ${bnovoId}).`
+        : result.message;
+    }
+  }
+
+  return { ok: true, roomName, bnovoSynced, bnovoMessage };
+}
+
+export const assignHotelBookingRoom = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .inputValidator((input: unknown) => input as { bookingId: string; propertyId: string })
+  .handler(async ({ context, data }): Promise<AssignHotelRoomResult> => {
+    const admin = await requireStaff(context.userId);
+    return assignHotelBookingRoomCore(admin, data);
+  });
+
 export async function addClientPortfolio(clientId: string, portfolio: Portfolio) {
   const admin = await adminClient();
   const { data } = await admin.from("clients").select("portfolios").eq("id", clientId).maybeSingle();

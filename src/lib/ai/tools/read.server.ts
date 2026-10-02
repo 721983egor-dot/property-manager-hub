@@ -1756,7 +1756,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           const to = toDate || dateOnly(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString());
           const [{ data: rooms }, { data: categories }, { data: owners }, { data: links }, { data: runs }, { data: chatUnread }] =
             await Promise.all([
-              admin.from("properties").select("id, internal_name, title, status, room_category_id, bnovo_room_id, price_night, guests_max, floor").eq("portfolio", "n11" as never),
+              admin.from("properties").select("id, internal_name, title, status, room_category_id, bnovo_room_id, price_night, guests_max, floor, is_unassigned_lane").eq("portfolio", "n11" as never),
               admin.from("hotel_room_categories").select("id, code, name, guests, sort_order, bnovo_room_type_id").order("sort_order"),
               admin.from("owners").select("id, full_name, phone, email"),
               admin.from("property_owners").select("property_id, owner_id, share_percent"),

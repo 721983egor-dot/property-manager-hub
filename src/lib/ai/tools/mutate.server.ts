@@ -634,6 +634,44 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeAssignHotelBookingRoom: tool({
+      description:
+        "Предложить назначить конкретный номер H11 брони из полосы «без номера» (OTA без юнита в Bnovo). Требует подтверждения менеджера.",
+      inputSchema: z.object({
+        bookingId: z.string().uuid().describe("ID брони в RM OS"),
+        roomQuery: z.string().describe("Номер апартамента: 526, 530, 546, 567 или название"),
+      }),
+      execute: async (input) => {
+        const { data: booking } = await ctx.admin
+          .from("bookings")
+          .select("id, property_id, start_date, end_date, bnovo_id, clients(full_name)")
+          .eq("id", input.bookingId)
+          .maybeSingle();
+        if (!booking) return { error: "Бронь не найдена" };
+        const term = input.roomQuery.trim().toLowerCase();
+        const { data: rooms } = await ctx.admin
+          .from("properties")
+          .select("id, internal_name, title, is_unassigned_lane, portfolio")
+          .eq("portfolio", "n11" as never);
+        const room = (rooms ?? []).find((r) => {
+          if ((r as { is_unassigned_lane?: boolean }).is_unassigned_lane) return false;
+          const name = `${r.internal_name} ${r.title}`.toLowerCase();
+          return name.includes(term) || r.internal_name === input.roomQuery.trim();
+        });
+        if (!room) return { error: "Номер H11 не найден" };
+        const guest =
+          (booking as { clients?: { full_name?: string } | null }).clients?.full_name || "гость";
+        const summary = `Назначить номер ${room.internal_name || room.title} брони ${guest} (${booking.start_date} — ${booking.end_date})`;
+        ctx.propose({
+          tool: "assignHotelBookingRoom",
+          summary,
+          input: { bookingId: input.bookingId, propertyId: room.id },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+
     proposeTask: tool({
       description:
         "Предложить создание или изменение задачи RM OS: название, тип, дата, интервал времени (например 10:00–10:30), регулярность (повтор daily/weekly/monthly и срок жизни recurrenceUntil), исполнитель, объект, сделка CRM, комментарий, пункты чеклиста. С датой и временем задача видна в календаре. После выполнения регулярной задачи создаётся следующее повторение. Требует подтверждения менеджера.",
