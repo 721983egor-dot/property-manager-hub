@@ -252,7 +252,7 @@ services:
     networks:
       - rm-os
 
-  # Регулярное обновление статистики и чатов площадок на рабочем сервере.
+  # Регулярная выгрузка: ЦИАН + брони H11 из Bnovo (каждые 10 минут).
   stats-cron:
     image: alpine:3.20
     restart: unless-stopped
@@ -268,7 +268,9 @@ services:
           SECRET="$${CRON_SECRET:-$$DEPLOY_AGENT_TOKEN}"
           curl -fsS -X POST http://app:3000/api/public/cron/cian-sync \
             -H "x-cron-secret: $$SECRET" || true
-          sleep 900
+          curl -fsS -X POST http://app:3000/api/public/cron/bnovo-sync \
+            -H "x-cron-secret: $$SECRET" || true
+          sleep 600
         done
     depends_on:
       - app

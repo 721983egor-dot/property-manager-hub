@@ -1862,7 +1862,8 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getBnovoSync: tool({
-      description: "Статус синхронизации броней H11 с Bnovo API v1 и последние выгрузки.",
+      description:
+        "Статус синхронизации броней H11 с Bnovo API v1 и последние выгрузки. На рабочем сервере выгрузка идёт автоматически каждые ~10 минут; журнал включает и cron, и ручные запуски.",
       inputSchema: z.object({}),
       execute: async () => {
         const { data, error } = await admin

@@ -70,7 +70,10 @@ function HotelSyncPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Bnovo API v1</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Выгрузка броней из Bnovo в календарь RM OS. OTA-брони часто приходят на категорию
+          Выгрузка броней из Bnovo в календарь RM OS. На рабочем сервере брони подтягиваются
+          автоматически каждые 10 минут (серверный cron →{" "}
+          <code className="text-xs">/api/public/cron/bnovo-sync</code>
+          ); кнопка ниже — внеочередная выгрузка. OTA-брони часто приходят на категорию
           (Стандарт Плюс / Делюкс, room_type_id 608431 / 461845) без конкретного номера — они
           попадают в полосу «новая бронь». Назначить апартамент можно из карточки брони в
           календаре. Если бронь удалили или отменили в Bnovo, после выгрузки она снимается и в RM OS.
