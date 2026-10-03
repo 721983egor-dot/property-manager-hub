@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateField } from "@/components/DateField";
 import {
   Select,
   SelectContent,
@@ -296,18 +296,18 @@ function CalendarPage() {
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">с</span>
-          <Input
-            type="date"
+          <DateField
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onValueChange={setFrom}
             className="h-8 w-[150px]"
+            aria-label="Дата начала периода"
           />
           <span className="text-xs text-muted-foreground">по</span>
-          <Input
-            type="date"
+          <DateField
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onValueChange={setTo}
             className="h-8 w-[150px]"
+            aria-label="Дата конца периода"
           />
         </div>
 
