@@ -622,7 +622,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
     }),
 
     proposeBnovoSync: tool({
-      description: "Предложить выгрузить брони апарт-отеля из Bnovo API v1 в календарь RM OS. Новые и изменённые брони подтягиваются, удалённые или отменённые в Bnovo снимаются в календаре.",
+      description:
+        "Предложить внеочередную выгрузку броней апарт-отеля из Bnovo API v1 в календарь RM OS (обычный cron уже обновляет каждые ~10 минут). Новые и изменённые брони подтягиваются, удалённые или отменённые в Bnovo снимаются в календаре.",
       inputSchema: z.object({
         fromDate: z.string().optional(),
         toDate: z.string().optional(),
