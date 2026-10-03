@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { getOwnerCabinet } from "@/lib/owner.functions";
 import { groupHotelRooms, UNASSIGNED_LANE_LABEL } from "@/lib/hotel";
@@ -136,45 +136,68 @@ function OwnerCabinetPage() {
 
   const basePrices = (data?.categories ?? []).filter((c) => c.price_night != null);
 
-  return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
-      <N11Logo variant="compact" className="h-7 sm:h-8" />
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Кабинет собственника</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">
-        {data?.owner.full_name ?? "H11"} · календарь по вашим номерам · загрузка по котловану
-        категории
-      </p>
+  const nameColClass =
+    "sticky left-0 z-10 w-[7.25rem] shrink-0 border-r border-border bg-card px-2 py-2 sm:w-40 sm:px-3";
+  const gridWidth = days.length * DAY_WIDTH;
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  return (
+    <div className="mx-auto max-w-[1400px] px-3 py-5 sm:px-6 sm:py-8">
+      <header className="flex items-start gap-3">
+        <N11Logo variant="compact" className="mt-0.5 h-7 shrink-0 sm:h-8" />
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            Кабинет собственника
+          </h1>
+          <p className="mt-1 text-sm leading-snug text-muted-foreground">
+            {data?.owner.full_name ?? "H11"}
+            <span className="hidden sm:inline">
+              {" "}
+              · календарь по вашим номерам · загрузка по котловану категории
+            </span>
+            <span className="sm:hidden"> · котлован категории</span>
+          </p>
+        </div>
+      </header>
+
+      <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3">
         <StatCard label="Ваших номеров" value={data?.rooms.length ?? "—"} />
         <StatCard
           label="Загрузка периода"
           value={`${data?.occupancy.percent ?? 0}%`}
           hint={
             data?.occupancy.rooms
-              ? `котлован: ${data.occupancy.occupied} из ${data.occupancy.roomNights} номеро-ночей (${data.occupancy.rooms} в категории)`
+              ? `котлован: ${data.occupancy.occupied}/${data.occupancy.roomNights} нн`
               : undefined
           }
         />
-        <StatCard
-          label="Категории"
-          value={
-            (data?.occupancyByCategory ?? [])
-              .map((row) => `${row.category.name} ${row.occupancy.percent}%`)
-              .join(" · ") || "—"
-          }
-          compact
-        />
+        <StatCard label="Категории" className="col-span-2 sm:col-span-1 lg:col-span-1">
+          {(data?.occupancyByCategory ?? []).length === 0 ? (
+            <span className="text-2xl font-semibold">—</span>
+          ) : (
+            <ul className="mt-1 space-y-1">
+              {(data?.occupancyByCategory ?? []).map((row) => (
+                <li
+                  key={row.category.id}
+                  className="flex items-baseline justify-between gap-2 text-sm font-semibold leading-snug"
+                >
+                  <span className="min-w-0 truncate">{row.category.name}</span>
+                  <span className="shrink-0 tabular-nums">{row.occupancy.percent}%</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </StatCard>
         <StatCard
           label="Ближайшие заезды"
           value={data?.nextArrivals.length ? String(data.nextArrivals.length) : "нет"}
+          className="col-span-2 sm:col-span-1"
         />
       </div>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <div className="rounded-xl border border-border p-4">
+      <section className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_1fr] lg:gap-4">
+        <div className="rounded-xl border border-border p-3.5 sm:p-4">
           <h2 className="text-sm font-semibold">Ваши апартаменты</h2>
-          <ul className="mt-3 space-y-2 text-sm">
+          <ul className="mt-3 space-y-2.5 text-sm">
             {(data?.rooms ?? []).length === 0 && !isLoading ? (
               <li className="text-muted-foreground">К вам пока не привязаны номера.</li>
             ) : (
@@ -187,48 +210,48 @@ function OwnerCabinetPage() {
                       ? category.price_night
                       : null;
                 return (
-                  <li key={room.id} className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="font-medium">{internalTitle(room)}</span>
-                    {category ? (
-                      <span className="text-muted-foreground">· {category.name}</span>
-                    ) : null}
-                    {night != null ? (
-                      <span className="text-muted-foreground">
-                        · от {night.toLocaleString("ru-RU")} ₽/ночь
-                      </span>
-                    ) : null}
+                  <li key={room.id} className="min-w-0">
+                    <div className="font-medium">{internalTitle(room)}</div>
+                    <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                      {[
+                        category?.name,
+                        night != null ? `от ${night.toLocaleString("ru-RU")} ₽/ночь` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </div>
                   </li>
                 );
               })
             )}
           </ul>
           {basePrices.length > 0 ? (
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-3 text-xs leading-snug text-muted-foreground">
               Базовая цена в карточке категории RM OS — не открытые тарифы Bnovo по датам.
             </p>
           ) : (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Цены по тарифу на даты из Bnovo в кабинет пока не подтягиваются (см. документацию H11).
+            <p className="mt-3 text-xs leading-snug text-muted-foreground">
+              Цены по тарифу на даты из Bnovo в кабинет пока не подтягиваются.
             </p>
           )}
         </div>
-        <div className="rounded-xl border border-border p-4">
+        <div className="rounded-xl border border-border p-3.5 sm:p-4">
           <h2 className="text-sm font-semibold">Ближайшие заезды</h2>
-          <ul className="mt-3 space-y-2 text-sm">
+          <ul className="mt-3 space-y-2.5 text-sm">
             {(data?.nextArrivals ?? []).length === 0 && !isLoading ? (
               <li className="text-muted-foreground">Нет заездов с сегодняшнего дня.</li>
             ) : (
               (data?.nextArrivals ?? []).slice(0, 8).map((row) => (
-                <li key={row.bookingId} className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
-                  <span className="font-medium tabular-nums">{formatDateRu(row.startDate)}</span>
-                  <span>
+                <li key={row.bookingId} className="min-w-0">
+                  <div className="font-medium tabular-nums">{formatDateRu(row.startDate)}</div>
+                  <div className="mt-0.5 text-xs leading-snug">
                     {row.guestName}
                     <span className="text-muted-foreground">
                       {" "}
                       · {row.unassigned ? UNASSIGNED_LANE_LABEL : row.propertyLabel}
                       {row.categoryName ? ` · ${row.categoryName}` : ""}
                     </span>
-                  </span>
+                  </div>
                 </li>
               ))
             )}
@@ -236,42 +259,44 @@ function OwnerCabinetPage() {
         </div>
       </section>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Button variant="outline" size="sm" onClick={goToday}>
-          Сегодня
-        </Button>
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="size-8" onClick={() => shift(-1)}>
-            <ChevronLeft className="size-4" />
+      <div className="mt-5 flex flex-col gap-2.5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-3">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8" onClick={goToday}>
+            Сегодня
           </Button>
-          <Button variant="outline" size="icon" className="size-8" onClick={() => shift(1)}>
-            <ChevronRight className="size-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="size-8" onClick={() => shift(-1)}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="size-8" onClick={() => shift(1)}>
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-2 lg:flex lg:w-auto lg:items-center lg:gap-2">
           <span className="text-xs text-muted-foreground">с</span>
           <DateField
             value={from}
             onValueChange={setFrom}
-            className="h-8 w-[150px]"
+            className="h-8 w-full min-w-0 lg:w-[150px]"
             aria-label="Дата начала периода"
           />
           <span className="text-xs text-muted-foreground">по</span>
           <DateField
             value={to}
             onValueChange={setTo}
-            className="h-8 w-[150px]"
+            className="h-8 w-full min-w-0 lg:w-[150px]"
             aria-label="Дата конца периода"
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-3 gap-2 lg:flex lg:w-auto lg:items-center">
           <Select
             value={String(activeMonth)}
             onValueChange={(v) => applyMonthYear(Number(v), activeYear, Number(span))}
           >
-            <SelectTrigger className="h-8 w-[140px]">
+            <SelectTrigger className="h-8 w-full min-w-0 lg:w-[140px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -286,7 +311,7 @@ function OwnerCabinetPage() {
             value={String(activeYear)}
             onValueChange={(v) => applyMonthYear(activeMonth, Number(v), Number(span))}
           >
-            <SelectTrigger className="h-8 w-[100px]">
+            <SelectTrigger className="h-8 w-full min-w-0 lg:w-[100px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -304,7 +329,7 @@ function OwnerCabinetPage() {
               applyMonthYear(activeMonth, activeYear, Number(v));
             }}
           >
-            <SelectTrigger className="h-8 w-[130px]">
+            <SelectTrigger className="h-8 w-full min-w-0 lg:w-[130px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -317,18 +342,18 @@ function OwnerCabinetPage() {
         </div>
       </div>
 
-      <div className="mt-6 overflow-auto rounded-lg border border-border bg-card">
+      <div className="mt-5 -mx-3 overflow-x-auto overscroll-x-contain border-y border-border bg-card sm:mx-0 sm:rounded-lg sm:border">
         {isLoading ? (
           <div className="p-6 text-sm text-muted-foreground">Загрузка календаря…</div>
         ) : groups.length === 0 ? (
           <div className="p-6 text-sm text-muted-foreground">К вам пока не привязаны номера.</div>
         ) : (
-          <>
+          <div className="min-w-max">
             <div className="flex border-b border-border">
-              <div className="sticky left-0 z-10 w-40 shrink-0 bg-card px-3 py-2 text-xs font-medium text-muted-foreground">
+              <div className={cn(nameColClass, "text-xs font-medium text-muted-foreground")}>
                 Номер
               </div>
-              <div className="shrink-0" style={{ width: days.length * DAY_WIDTH }}>
+              <div className="shrink-0" style={{ width: gridWidth }}>
                 <div className="flex">
                   {monthGroups.map((g) => (
                     <div
@@ -370,9 +395,21 @@ function OwnerCabinetPage() {
               )?.occupancy;
               return (
                 <div key={group.category?.id ?? "none"}>
-                  <div className="sticky left-0 border-b border-border bg-muted/60 px-4 py-2 text-sm font-semibold">
-                    {group.category?.name ?? "Без категории"} · загрузка категории{" "}
-                    {poolStat?.percent ?? 0}%
+                  <div className="flex border-b border-border bg-muted/60">
+                    <div
+                      className={cn(
+                        nameColClass,
+                        "bg-muted/60 px-2 py-2 text-xs font-semibold leading-snug sm:px-3 sm:text-sm",
+                      )}
+                    >
+                      <span className="block truncate">
+                        {group.category?.name ?? "Без категории"}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
+                        загрузка {poolStat?.percent ?? 0}%
+                      </span>
+                    </div>
+                    <div className="shrink-0" style={{ width: gridWidth }} aria-hidden />
                   </div>
                   {group.rooms.map((room) => (
                     <OwnerRoomRow
@@ -382,15 +419,16 @@ function OwnerCabinetPage() {
                       from={from}
                       todayIso={todayIso}
                       bookings={bookingsByRoom.get(room.id) ?? []}
+                      nameColClass={nameColClass}
                     />
                   ))}
                 </div>
               );
             })}
-          </>
+          </div>
         )}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-3 text-xs leading-snug text-muted-foreground">
         Полоса «новая бронь» — брони категории без назначенного апартамента; они входят в загрузку
         котлована. Чужие номера и телефоны гостей не показываются.
       </p>
@@ -402,20 +440,22 @@ function StatCard({
   label,
   value,
   hint,
-  compact = false,
+  children,
+  className,
 }: {
   label: string;
-  value: string | number;
+  value?: string | number;
   hint?: string;
-  compact?: boolean;
+  children?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border p-4">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className={cn("mt-1 font-semibold", compact ? "text-sm leading-snug" : "text-2xl")}>
-        {value}
-      </div>
-      {hint ? <div className="mt-1 text-xs text-muted-foreground">{hint}</div> : null}
+    <div className={cn("rounded-xl border border-border p-3 sm:p-4", className)}>
+      <div className="text-xs text-muted-foreground sm:text-sm">{label}</div>
+      {children ?? (
+        <div className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">{value}</div>
+      )}
+      {hint ? <div className="mt-1 text-[11px] leading-snug text-muted-foreground">{hint}</div> : null}
     </div>
   );
 }
@@ -426,28 +466,33 @@ function OwnerRoomRow({
   from,
   todayIso,
   bookings,
+  nameColClass,
 }: {
   room: Property;
   days: Date[];
   from: string;
   todayIso: string;
   bookings: Booking[];
+  nameColClass: string;
 }) {
   const unassigned = Boolean(room.is_unassigned_lane);
   return (
     <div className={cn("flex border-b border-border", unassigned && "bg-amber-50/40")}>
       <div
         className={cn(
-          "sticky left-0 z-10 w-40 shrink-0 px-3 py-3 text-sm font-medium",
+          nameColClass,
+          "py-2.5 text-sm font-medium leading-snug",
           unassigned ? "bg-amber-50 text-amber-900" : "bg-card",
         )}
       >
-        {unassigned ? UNASSIGNED_LANE_LABEL : internalTitle(room)}
+        <span className="block truncate">
+          {unassigned ? UNASSIGNED_LANE_LABEL : internalTitle(room)}
+        </span>
         {unassigned ? (
-          <div className="text-xs font-normal text-amber-800/80">категория</div>
+          <div className="text-[11px] font-normal text-amber-800/80">категория</div>
         ) : null}
       </div>
-      <div className="relative" style={{ width: days.length * DAY_WIDTH, height: 44 }}>
+      <div className="relative shrink-0" style={{ width: days.length * DAY_WIDTH, height: 44 }}>
         {days.map((d, index) => {
           const iso = toISODate(d);
           return (
