@@ -122,7 +122,7 @@ function HotelSummaryPage() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h1>
-            <N11Logo variant="full" className="h-11 sm:h-14" />
+            <N11Logo variant="compact" className="h-8 sm:h-9" />
             <span className="sr-only">H11 Резиденция</span>
           </h1>
           <p className="mt-2 text-sm font-medium tracking-wide text-muted-foreground uppercase">
