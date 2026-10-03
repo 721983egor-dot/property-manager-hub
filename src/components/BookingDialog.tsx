@@ -47,6 +47,7 @@ import { formatDateRu, toISODate } from "@/lib/rentals";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
 import { useAccess } from "@/hooks/useAccess";
 import { useServerFn } from "@tanstack/react-start";
+import { UNASSIGNED_LANE_LABEL } from "@/lib/hotel";
 import { assignHotelBookingRoom } from "@/lib/hotel.functions";
 
 type Props = {
@@ -274,14 +275,27 @@ export function BookingDialog({
             {mode === "view" ? "Бронирование" : booking ? "Редактирование брони" : "Новое бронирование"}
           </DialogTitle>
           <DialogDescription>
-            {property ? internalTitle(property) : "Выберите объект и клиента"}
+            {property
+              ? property.is_unassigned_lane
+                ? UNASSIGNED_LANE_LABEL
+                : internalTitle(property)
+              : "Выберите объект и клиента"}
           </DialogDescription>
         </DialogHeader>
 
         {mode === "view" && booking ? (
           <div className="space-y-4">
             <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
-              <Field label="Объект" value={property ? (property.is_unassigned_lane ? "без номера (нужно назначить)" : internalTitle(property)) : "—"} />
+              <Field
+                label="Объект"
+                value={
+                  property
+                    ? property.is_unassigned_lane
+                      ? `${UNASSIGNED_LANE_LABEL} (нужно назначить)`
+                      : internalTitle(property)
+                    : "—"
+                }
+              />
               <Field label="Статус" value={statusLabel(booking.status)} />
               <Field label="ФИО" value={booking.client?.full_name ?? "—"} />
               <Field label="Телефон" value={booking.client?.phone || "—"} />
@@ -301,7 +315,7 @@ export function BookingDialog({
 
             {needsRoomAssignment ? (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
-                <p className="text-sm font-medium text-amber-950">Бронь без номера</p>
+                <p className="text-sm font-medium text-amber-950">Новая бронь</p>
                 <p className="mt-1 text-xs text-amber-900/80">
                   OTA-бронь пришла на категорию. Назначьте конкретный апартамент H11.
                 </p>

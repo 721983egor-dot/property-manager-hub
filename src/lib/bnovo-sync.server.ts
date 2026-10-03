@@ -191,7 +191,7 @@ function findRoom(
   const category = categoryOf(booking, categories);
 
   // Bnovo без юнита: оставляем RM-назначение только если менеджер явно назначил номер.
-  // Старый автоassign на свободный юнит сюда не попадает — бронь уходит на «без номера».
+  // Старый автоassign на свободный юнит сюда не попадает — бронь уходит на «новая бронь».
   if (preferredRoomId && !booking.roomId && manualRoomAssignment) {
     const preferred = realRooms.find((r) => r.id === preferredRoomId);
     if (preferred && (!category || preferred.room_category_id === category.id)) {
@@ -220,7 +220,7 @@ function findRoom(
 
   if (!category) return null;
 
-  // Нет конкретного номера в Bnovo → полоса «без номера» категории.
+  // Нет конкретного номера в Bnovo → полоса «новая бронь» категории.
   const lane = rooms.find((r) => isUnassignedLane(r) && r.room_category_id === category.id);
   if (lane) {
     const movedFromAutoAssign =
@@ -232,9 +232,9 @@ function findRoom(
       room: lane,
       category,
       note: booking.roomId
-        ? `Бронь ${booking.id}: номер Bnovo ${booking.roomId} не сопоставлен с юнитом H11 — в «без номера»`
+        ? `Бронь ${booking.id}: номер Bnovo ${booking.roomId} не сопоставлен с юнитом H11 — в «новая бронь»`
         : movedFromAutoAssign
-          ? `Бронь ${booking.id}: в Bnovo без номера — вернули на полосу «без номера»`
+          ? `Бронь ${booking.id}: в Bnovo без номера — вернули на полосу «новая бронь»`
           : "",
     };
   }
@@ -249,7 +249,7 @@ function findRoom(
   return {
     room,
     category,
-    note: `Нет полосы «без номера» для «${category.name}» — бронь ${booking.id} временно на ${room.internal_name}`,
+    note: `Нет полосы «новая бронь» для «${category.name}» — бронь ${booking.id} временно на ${room.internal_name}`,
   };
 }
 
@@ -366,7 +366,7 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
         .eq("portfolio", "n11" as never);
       if (legacyError) throw new Error(legacyError.message);
       warnings.push(
-        "Колонка is_unassigned_lane ещё не применена — примените миграцию 20261002180000. Пока брони без номера могут садиться на свободный юнит.",
+        "Колонка is_unassigned_lane ещё не применена — примените миграцию 20261002180000. Пока брони без юнита могут садиться на свободный номер.",
       );
       rooms = ((legacyRows ?? []) as RoomRow[]).map((row) => ({
         ...row,
@@ -418,7 +418,7 @@ export async function syncBnovoBookings(range?: { from?: string; to?: string }) 
         .not("bnovo_id", "is", null);
       if (legacyExistingError) throw new Error(legacyExistingError.message);
       warnings.push(
-        "Колонка manual_room_assignment ещё не применена — примените миграцию 20261002190000. Пока локальные назначения без номера в Bnovo могут сбрасываться на полосу «без номера».",
+        "Колонка manual_room_assignment ещё не применена — примените миграцию 20261002190000. Пока локальные назначения без юнита в Bnovo могут сбрасываться на полосу «новая бронь».",
       );
       existingList = ((legacyExisting ?? []) as typeof existingList).map((row) => ({
         ...row,

@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { getOwnerCabinet } from "@/lib/owner.functions";
-import { groupHotelRooms, occupancyOf } from "@/lib/hotel";
+import { groupHotelRooms, UNASSIGNED_LANE_LABEL } from "@/lib/hotel";
 import { shortName, type Booking } from "@/lib/bookings";
 import { internalTitle, type Property } from "@/lib/properties";
 import {
@@ -141,14 +141,20 @@ function OwnerCabinetPage() {
       <N11Logo variant="compact" className="h-7 sm:h-8" />
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Кабинет собственника</h1>
       <p className="mt-1.5 text-sm text-muted-foreground">
-        {data?.owner.full_name ?? "H11"} · только ваши номера и загрузка по вашим категориям
+        {data?.owner.full_name ?? "H11"} · календарь по вашим номерам · загрузка по котловану
+        категории
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Ваших номеров" value={data?.occupancy.rooms ?? "—"} />
+        <StatCard label="Ваших номеров" value={data?.rooms.length ?? "—"} />
         <StatCard
           label="Загрузка периода"
           value={`${data?.occupancy.percent ?? 0}%`}
+          hint={
+            data?.occupancy.rooms
+              ? `котлован: ${data.occupancy.occupied} из ${data.occupancy.roomNights} номеро-ночей (${data.occupancy.rooms} в категории)`
+              : undefined
+          }
         />
         <StatCard
           label="Категории"
@@ -219,7 +225,7 @@ function OwnerCabinetPage() {
                     {row.guestName}
                     <span className="text-muted-foreground">
                       {" "}
-                      · {row.unassigned ? "без номера" : row.propertyLabel}
+                      · {row.unassigned ? UNASSIGNED_LANE_LABEL : row.propertyLabel}
                       {row.categoryName ? ` · ${row.categoryName}` : ""}
                     </span>
                   </span>
@@ -359,13 +365,14 @@ function OwnerCabinetPage() {
               </div>
             </div>
             {groups.map((group) => {
-              const ownedInGroup = group.rooms.filter((r) => !r.is_unassigned_lane);
-              const stat = occupancyOf(ownedInGroup, data?.bookings ?? [], from, to);
+              const poolStat = (data?.occupancyByCategory ?? []).find(
+                (row) => row.category.id === group.category?.id,
+              )?.occupancy;
               return (
                 <div key={group.category?.id ?? "none"}>
                   <div className="sticky left-0 border-b border-border bg-muted/60 px-4 py-2 text-sm font-semibold">
-                    {group.category?.name ?? "Без категории"} · загрузка ваших{" "}
-                    {stat.percent}%
+                    {group.category?.name ?? "Без категории"} · загрузка категории{" "}
+                    {poolStat?.percent ?? 0}%
                   </div>
                   {group.rooms.map((room) => (
                     <OwnerRoomRow
@@ -384,8 +391,8 @@ function OwnerCabinetPage() {
         )}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Полоса «без номера» — брони категории, которым ещё не назначили апартамент. Чужие номера в
-        категории не показываются.
+        Полоса «новая бронь» — брони категории без назначенного апартамента; они входят в загрузку
+        котлована. Чужие номера и телефоны гостей не показываются.
       </p>
     </div>
   );
@@ -394,10 +401,12 @@ function OwnerCabinetPage() {
 function StatCard({
   label,
   value,
+  hint,
   compact = false,
 }: {
   label: string;
   value: string | number;
+  hint?: string;
   compact?: boolean;
 }) {
   return (
@@ -406,6 +415,7 @@ function StatCard({
       <div className={cn("mt-1 font-semibold", compact ? "text-sm leading-snug" : "text-2xl")}>
         {value}
       </div>
+      {hint ? <div className="mt-1 text-xs text-muted-foreground">{hint}</div> : null}
     </div>
   );
 }
@@ -432,7 +442,7 @@ function OwnerRoomRow({
           unassigned ? "bg-amber-50 text-amber-900" : "bg-card",
         )}
       >
-        {unassigned ? "без номера" : internalTitle(room)}
+        {unassigned ? UNASSIGNED_LANE_LABEL : internalTitle(room)}
         {unassigned ? (
           <div className="text-xs font-normal text-amber-800/80">категория</div>
         ) : null}
@@ -476,7 +486,7 @@ function OwnerRoomRow({
           return (
             <div
               key={booking.id}
-              title={`${unassigned ? "Без номера · " : ""}${shortName(booking.client?.full_name ?? "Гость")}: ${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
+              title={`${unassigned ? `${UNASSIGNED_LANE_LABEL} · ` : ""}${shortName(booking.client?.full_name ?? "Гость")}: ${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
               className={cn(
                 "absolute top-1.5 h-8 overflow-hidden rounded-md px-2 text-[11px] leading-8 text-white",
                 unassigned ? "bg-amber-600/85" : "bg-emerald-600/80",
@@ -487,7 +497,7 @@ function OwnerRoomRow({
               }}
             >
               {unassigned
-                ? `без № · ${shortName(booking.client?.full_name ?? "Гость")}`
+                ? `${UNASSIGNED_LANE_LABEL} · ${shortName(booking.client?.full_name ?? "Гость")}`
                 : shortName(booking.client?.full_name ?? "Гость")}
             </div>
           );

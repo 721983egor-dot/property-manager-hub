@@ -48,6 +48,9 @@ export type OccupancyStat = {
   percent: number;
 };
 
+/** Подпись служебной полосы H11 (`is_unassigned_lane`) в UI staff и кабинета собственника. */
+export const UNASSIGNED_LANE_LABEL = "новая бронь";
+
 export function isHotelProperty(property: Pick<Property, "portfolio">) {
   return property.portfolio === "n11";
 }
@@ -91,6 +94,57 @@ export function occupancyOf(
       }
     }
   }
+  return {
+    rooms: rooms.length,
+    roomNights,
+    occupied,
+    percent: Math.round((occupied / roomNights) * 1000) / 10,
+  };
+}
+
+/**
+ * Загрузка категории по модели «котлован»: знаменатель — все физические номера
+ * категории × дни периода; числитель — занятые номеро-ночи по этим номерам плюс
+ * проданные ночи на полосе «новая бронь» (каждая бронь = 1 ночь). Сверху в день
+ * не больше числа номеров категории.
+ */
+export function categoryPoolOccupancy(
+  rooms: Pick<Property, "id">[],
+  bookings: Pick<Booking, "property_id" | "start_date" | "end_date" | "status">[],
+  from: string,
+  to: string,
+): OccupancyStat {
+  const days = eachDay(parseISODate(from), parseISODate(to));
+  const roomNights = rooms.length * days.length;
+  if (roomNights === 0) return { rooms: rooms.length, roomNights: 0, occupied: 0, percent: 0 };
+
+  const roomIds = new Set(rooms.map((r) => r.id));
+  const active = bookings.filter((b) => b.status !== "cancelled");
+  const onRooms = active.filter((b) => roomIds.has(b.property_id));
+  const unassigned = active.filter((b) => !roomIds.has(b.property_id));
+
+  let occupied = 0;
+  for (const day of days) {
+    const iso = toISODate(day);
+    let sold = 0;
+    for (const room of rooms) {
+      if (
+        onRooms.some(
+          (booking) =>
+            booking.property_id === room.id &&
+            booking.start_date <= iso &&
+            booking.end_date >= iso,
+        )
+      ) {
+        sold += 1;
+      }
+    }
+    for (const booking of unassigned) {
+      if (booking.start_date <= iso && booking.end_date >= iso) sold += 1;
+    }
+    occupied += Math.min(sold, rooms.length);
+  }
+
   return {
     rooms: rooms.length,
     roomNights,

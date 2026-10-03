@@ -636,7 +636,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeAssignHotelBookingRoom: tool({
       description:
-        "Предложить назначить конкретный номер H11 брони из полосы «без номера» (OTA без юнита в Bnovo). Требует подтверждения менеджера.",
+        "Предложить назначить конкретный номер H11 брони из полосы «новая бронь» (OTA без юнита в Bnovo). Требует подтверждения менеджера.",
       inputSchema: z.object({
         bookingId: z.string().uuid().describe("ID брони в RM OS"),
         roomQuery: z.string().describe("Номер апартамента: 526, 530, 546, 567 или название"),

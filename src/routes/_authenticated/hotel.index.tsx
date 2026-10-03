@@ -20,7 +20,7 @@ import { N11Logo } from "@/components/N11Logo";
 import { Button } from "@/components/ui/button";
 import { getBnovoStatus } from "@/lib/bnovo.functions";
 import { fetchBookings } from "@/lib/bookings";
-import { occupancyOf, groupHotelRooms } from "@/lib/hotel";
+import { occupancyOf, groupHotelRooms, UNASSIGNED_LANE_LABEL } from "@/lib/hotel";
 import { listHotelCategories } from "@/lib/hotel.functions";
 import { fetchN11ChatStats } from "@/lib/n11-chat.functions";
 import {
@@ -192,7 +192,7 @@ function HotelSummaryPage() {
           value={`${arrivals.length} / ${departures.length}`}
           hint={
             unassignedBookings.length
-              ? `${unassignedBookings.length} без номера — назначьте в календаре`
+              ? `${unassignedBookings.length} «${UNASSIGNED_LANE_LABEL}» — назначьте в календаре`
               : untyped
                 ? `${untyped} категорий без ID Bnovo`
                 : "Категории сопоставлены с Bnovo"

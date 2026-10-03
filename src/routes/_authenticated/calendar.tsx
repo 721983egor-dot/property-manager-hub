@@ -27,7 +27,7 @@ import { fetchProperties, internalTitle, savePropertyOrder, shortPropertyLabel, 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchComplexes } from "@/lib/complexes";
 import { type Booking, fetchBookings, shortName } from "@/lib/bookings";
-import { groupHotelRooms } from "@/lib/hotel";
+import { groupHotelRooms, UNASSIGNED_LANE_LABEL } from "@/lib/hotel";
 import { listHotelCategories } from "@/lib/hotel.functions";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -690,12 +690,12 @@ function CalendarPropertyRow({
       >
         {namesCollapsed ? (
           <span className="line-clamp-2 w-full text-center text-[10px] font-semibold leading-tight">
-            {unassignedLane ? "без №" : shortPropertyLabel(property)}
+            {unassignedLane ? UNASSIGNED_LANE_LABEL : shortPropertyLabel(property)}
           </span>
         ) : (
           <div className="min-w-0 flex-1">
             <div className={cn("truncate text-sm font-medium", unassignedLane && "text-amber-900")}>
-              {unassignedLane ? "без номера" : internalTitle(property)}
+              {unassignedLane ? UNASSIGNED_LANE_LABEL : internalTitle(property)}
             </div>
             <div className={cn("truncate text-xs", unassignedLane ? "text-amber-800/80" : "text-muted-foreground")}>
               {subtitle}
@@ -735,7 +735,7 @@ function CalendarPropertyRow({
               type="button"
               key={booking.id}
               onClick={() => onOpen(booking)}
-              title={`${unassignedLane ? "Без номера · " : ""}${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
+              title={`${unassignedLane ? `${UNASSIGNED_LANE_LABEL} · ` : ""}${formatDateRu(booking.start_date)} — ${formatDateRu(booking.end_date)}`}
               style={{ left: offset * DAY_WIDTH + 2, width: length * DAY_WIDTH - 4 }}
               className={cn(
                 "absolute top-1/2 flex h-8 -translate-y-1/2 items-center overflow-hidden rounded-md border px-2.5 text-left transition-opacity hover:opacity-90",
@@ -756,7 +756,7 @@ function CalendarPropertyRow({
                       : "text-sky-800",
                 )}
               >
-                {unassignedLane ? `без № · ${label}` : label}
+                {unassignedLane ? `${UNASSIGNED_LANE_LABEL} · ${label}` : label}
               </span>
             </button>
           );

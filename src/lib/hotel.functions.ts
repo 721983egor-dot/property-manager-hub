@@ -351,7 +351,7 @@ export async function assignHotelBookingRoomCore(
     is_unassigned_lane: boolean;
   };
   if (roomRow.portfolio !== "n11") throw new Error("Можно назначить только номер H11");
-  if (roomRow.is_unassigned_lane) throw new Error("Выберите конкретный номер, не полосу «без номера»");
+  if (roomRow.is_unassigned_lane) throw new Error("Выберите конкретный номер, не полосу «новая бронь»");
 
   const roomName = roomRow.internal_name || roomRow.title;
   const { error: updateError } = await admin

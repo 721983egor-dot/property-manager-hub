@@ -3,12 +3,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireUser } from "@/lib/auth-user-middleware";
 import { shortName, type Booking } from "@/lib/bookings";
 import type { HotelRoomCategory, OccupancyStat } from "@/lib/hotel";
-import { occupancyOf } from "@/lib/hotel";
+import { categoryPoolOccupancy, UNASSIGNED_LANE_LABEL } from "@/lib/hotel";
 import type { Property } from "@/lib/properties";
 import { toISODate } from "@/lib/rentals";
 
 const BOOKING_COLUMNS =
   "id, property_id, client_id, start_date, end_date, price_type, price_month, price_night, payment_day, deposit, source, status, comment, stay_kind, clients(id, full_name)";
+
+const OCCUPANCY_BOOKING_COLUMNS = "property_id, start_date, end_date, status";
 
 export type OwnerArrival = {
   bookingId: string;
@@ -24,11 +26,13 @@ export type OwnerArrival = {
 export type OwnerCabinet = {
   owner: { id: string; full_name: string; email: string };
   categories: HotelRoomCategory[];
-  /** Только юниты собственника (без полос «без номера»). */
+  /** Только юниты собственника (без полос «новая бронь»). */
   rooms: Property[];
-  /** Юниты + полосы «без номера» категорий собственника — для календаря. */
+  /** Юниты + полосы «новая бронь» категорий собственника — для календаря. */
   calendarRooms: Property[];
+  /** Только брони своих юнитов и полос «новая бронь» (чужие номера не отдаём). */
   bookings: Booking[];
+  /** Загрузка котлована по всем категориям собственника. rooms = число юнитов в пуле. */
   occupancy: OccupancyStat;
   occupancyByCategory: { category: HotelRoomCategory; occupancy: OccupancyStat }[];
   nextArrivals: OwnerArrival[];
@@ -49,7 +53,7 @@ function mapBookingRow(row: Record<string, unknown>): Booking {
 }
 
 function propertyLabel(room: Pick<Property, "internal_name" | "title" | "is_unassigned_lane">) {
-  if (room.is_unassigned_lane) return "без номера";
+  if (room.is_unassigned_lane) return UNASSIGNED_LANE_LABEL;
   return room.internal_name || room.title || "номер";
 }
 
@@ -107,36 +111,61 @@ export const getOwnerCabinet = createServerFn({ method: "POST" })
     const categoryIds = [
       ...new Set(rooms.map((r) => r.room_category_id).filter(Boolean) as string[]),
     ];
+    const cats = (categories ?? []) as HotelRoomCategory[];
+    const catsById = new Map(cats.map((c) => [c.id, c]));
+    const ownerCategories = cats.filter((c) => categoryIds.includes(c.id));
 
+    // Пул категории (котлован): все H11-юниты + полосы «новая бронь» в категориях собственника.
+    let poolRooms: Property[] = [];
     let laneRooms: Property[] = [];
     if (categoryIds.length > 0) {
-      const { data: lanes, error: laneError } = await supabaseAdmin
+      const { data: poolRows, error: poolError } = await supabaseAdmin
         .from("properties")
         .select("*")
         .eq("portfolio", "n11" as never)
-        .eq("is_unassigned_lane", true)
-        .in("room_category_id", categoryIds);
-      if (laneError) throw new Error(laneError.message);
-      laneRooms = (lanes ?? []) as unknown as Property[];
+        .in("room_category_id", categoryIds)
+        .neq("status", "archived");
+      if (poolError) throw new Error(poolError.message);
+      const allInCategories = (poolRows ?? []) as unknown as Property[];
+      poolRooms = allInCategories.filter((r) => !r.is_unassigned_lane);
+      laneRooms = allInCategories.filter((r) => r.is_unassigned_lane);
     }
 
+    // Календарь: только свои юниты + полосы категорий (чужие номера не показываем).
     const calendarRooms = [...laneRooms, ...rooms];
     const calendarIds = calendarRooms.map((r) => r.id);
-    const cats = (categories ?? []) as HotelRoomCategory[];
-    const catsById = new Map(cats.map((c) => [c.id, c]));
+    const poolIds = [...poolRooms, ...laneRooms].map((r) => r.id);
 
-    const { data: bookingRows, error: bookingError } = await supabaseAdmin
-      .from("bookings")
-      .select(BOOKING_COLUMNS)
-      .in("property_id", calendarIds)
-      .lte("start_date", to)
-      .gte("end_date", from)
-      .order("start_date", { ascending: true });
+    const [{ data: bookingRows, error: bookingError }, { data: poolBookingRows, error: poolBookingError }] =
+      await Promise.all([
+        calendarIds.length
+          ? supabaseAdmin
+              .from("bookings")
+              .select(BOOKING_COLUMNS)
+              .in("property_id", calendarIds)
+              .lte("start_date", to)
+              .gte("end_date", from)
+              .order("start_date", { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
+        poolIds.length
+          ? supabaseAdmin
+              .from("bookings")
+              .select(OCCUPANCY_BOOKING_COLUMNS)
+              .in("property_id", poolIds)
+              .lte("start_date", to)
+              .gte("end_date", from)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
     if (bookingError) throw new Error(bookingError.message);
+    if (poolBookingError) throw new Error(poolBookingError.message);
 
     const mappedBookings = (bookingRows ?? []).map((row) =>
       mapBookingRow(row as Record<string, unknown>),
     );
+    const poolBookings = (poolBookingRows ?? []) as Pick<
+      Booking,
+      "property_id" | "start_date" | "end_date" | "status"
+    >[];
 
     // Ближайшие заезды: свои юниты + полосы категорий (без чужих номеров).
     const { data: upcomingRows, error: upcomingError } = await supabaseAdmin
@@ -170,17 +199,26 @@ export const getOwnerCabinet = createServerFn({ method: "POST" })
       },
     );
 
-    const occupancy = occupancyOf(rooms, mappedBookings, from, to);
-    const occupancyByCategory = cats
+    const occupancyByCategory = ownerCategories
       .map((category) => {
-        const group = rooms.filter((r) => r.room_category_id === category.id);
-        return { category, occupancy: occupancyOf(group, mappedBookings, from, to) };
+        const groupRooms = poolRooms.filter((r) => r.room_category_id === category.id);
+        const groupLanes = new Set(
+          laneRooms.filter((r) => r.room_category_id === category.id).map((r) => r.id),
+        );
+        const groupIds = new Set([...groupRooms.map((r) => r.id), ...groupLanes]);
+        const groupBookings = poolBookings.filter((b) => groupIds.has(b.property_id));
+        return {
+          category,
+          occupancy: categoryPoolOccupancy(groupRooms, groupBookings, from, to),
+        };
       })
       .filter((row) => row.occupancy.rooms > 0);
 
+    const occupancy = categoryPoolOccupancy(poolRooms, poolBookings, from, to);
+
     return {
       owner: owner as OwnerCabinet["owner"],
-      categories: cats.filter((c) => categoryIds.includes(c.id)),
+      categories: ownerCategories,
       rooms,
       calendarRooms,
       bookings: mappedBookings,

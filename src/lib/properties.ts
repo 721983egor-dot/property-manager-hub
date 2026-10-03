@@ -149,7 +149,7 @@ export type Property = {
   portfolio: Portfolio;
   room_category_id: string | null;
   bnovo_room_id: string | null;
-  /** Служебная полоса H11 «без номера» для OTA-броней без юнита. */
+  /** Служебная полоса H11 «новая бронь» для OTA-броней без юнита. */
   is_unassigned_lane: boolean;
   price_night: number | null;
   guests_max: number | null;
