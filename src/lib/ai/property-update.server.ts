@@ -1,6 +1,8 @@
 /**
- * Защита updateProperty Ассистента от «полного затирания» карточки.
- * Модель часто присылает все поля схемы пустыми строками/нулями вместе с нужной ценой.
+ * Частичные обновления объекта через Ассистента.
+ * Правило: в БД уходят только явно переданные и осмысленные поля.
+ * Пустые строки / нули из «дампа схемы» модели никогда не затирают карточку.
+ * Осознанная очистка — только через clearFields (или одиночный videoUrl="").
  */
 
 export type PropertyUpdateFields = {
@@ -26,7 +28,8 @@ export type PropertyUpdateFields = {
   videoUrl?: string;
 };
 
-const TEXT_NO_CLEAR = new Set([
+/** Поля, которые можно осознанно очистить через clearFields. */
+export const PROPERTY_CLEARABLE_FIELDS = [
   "title",
   "internalName",
   "address",
@@ -34,13 +37,30 @@ const TEXT_NO_CLEAR = new Set([
   "description",
   "rentTerms",
   "availabilityNote",
+  "videoUrl",
+  "deposit",
+  "commission",
+  "utilitiesMonth",
+] as const;
+
+export type PropertyClearableField = (typeof PROPERTY_CLEARABLE_FIELDS)[number];
+
+const TEXT_FIELDS = new Set<string>([
+  "title",
+  "internalName",
+  "address",
+  "complexName",
+  "description",
+  "rentTerms",
+  "availabilityNote",
+  "videoUrl",
 ]);
 
 /** Структурные числа: 0 почти всегда галлюцинация, а не осознанное значение. */
 const STRUCTURAL_NUMBERS = new Set(["rooms", "bathrooms", "area", "floor", "totalFloors"]);
 
-/** Деньги: обнуление вместе с пачкой пустых полей — типичный wipe. */
-const MONEY_NO_ZERO_WIPE = new Set(["deposit", "commission", "utilitiesMonth"]);
+/** Деньги: обнуление без clearFields — типичный wipe. */
+const MONEY_FIELDS = new Set(["deposit", "commission", "utilitiesMonth", "priceMonth"]);
 
 function sameValue(a: unknown, b: unknown): boolean {
   if (a == null && b == null) return true;
@@ -88,44 +108,58 @@ function currentOf(
 }
 
 /** Считаем «мусор» в сыром payload — признак полного дампа схемы с дефолтами. */
-function countWipeNoise(raw: Record<string, unknown>): number {
+export function countWipeNoise(raw: Record<string, unknown>): number {
   let n = 0;
   for (const [key, value] of Object.entries(raw)) {
-    if (value === undefined || value === null) continue;
+    if (key === "clearFields" || value === undefined || value === null) continue;
     if (typeof value === "string" && value.trim() === "") n += 1;
     else if (typeof value === "number" && value === 0 && STRUCTURAL_NUMBERS.has(key)) n += 1;
-    else if (typeof value === "number" && value === 0 && MONEY_NO_ZERO_WIPE.has(key)) n += 1;
+    else if (typeof value === "number" && value === 0 && MONEY_FIELDS.has(key) && key !== "priceMonth")
+      n += 1;
   }
   return n;
 }
 
+function normalizeClearFields(raw: unknown): Set<string> {
+  if (!Array.isArray(raw)) return new Set();
+  return new Set(
+    raw
+      .map((item) => String(item ?? "").trim())
+      .filter((item): item is PropertyClearableField =>
+        (PROPERTY_CLEARABLE_FIELDS as readonly string[]).includes(item),
+      ),
+  );
+}
+
 /**
- * Оставляет только осмысленные частичные правки.
- * Пустые строки для текста и нули для комнат/площади/этажа отбрасываются.
- * videoUrl="" допускается только если это единственное оставшееся изменение
- * (осознанное «убрать видео»), иначе вместе с wipe затирало ролик.
- * При «шумном» payload (много пустых/нулей) статус тоже не меняем — только явные правки вроде цены.
+ * Оставляет только осмысленный частичный патч.
+ * - отсутствуют / null / undefined → не трогаем;
+ * - "" и 0 → отбрасываем, кроме явного clearFields (и одиночного videoUrl="");
+ * - значения без изменения относительно current → отбрасываем;
+ * - «шумный» dump (≥5 пустых/нулей) → только цена и непустые текстовые правки.
  */
 export function sanitizePropertyUpdateFields(
   raw: Record<string, unknown>,
   current?: Record<string, unknown> | null,
 ): PropertyUpdateFields {
+  const clearFields = normalizeClearFields(raw["clearFields"]);
   const wipeNoise = countWipeNoise(raw);
   const massWipe = wipeNoise >= 5;
   const out: PropertyUpdateFields = {};
 
   for (const [key, value] of Object.entries(raw)) {
+    if (key === "clearFields") continue;
     if (value === undefined || value === null) continue;
     const k = key as keyof PropertyUpdateFields;
 
-    if (massWipe && k === "status") continue;
+    if (massWipe && (k === "status" || k === "type" || k === "forRent")) continue;
 
     if (typeof value === "string") {
       const trimmed = value.trim();
-      if (TEXT_NO_CLEAR.has(k) && trimmed === "") continue;
-      if (k === "videoUrl" && trimmed === "") {
-        // отложим решение — см. ниже
-        (out as Record<string, unknown>)[k] = "";
+      if (trimmed === "") {
+        if (clearFields.has(k) || (k === "videoUrl" && !massWipe)) {
+          (out as Record<string, unknown>)[k] = "";
+        }
         continue;
       }
       if (sameValue(trimmed, currentOf(current, k))) continue;
@@ -134,9 +168,12 @@ export function sanitizePropertyUpdateFields(
     }
 
     if (typeof value === "number") {
-      if (STRUCTURAL_NUMBERS.has(k) && value === 0) continue;
-      // Обнуление денег через Ассистента почти всегда wipe; осознанный 0 — в карточке UI.
-      if (MONEY_NO_ZERO_WIPE.has(k) && value === 0) continue;
+      if (value === 0) {
+        // 0 для комнат/площади/этажа и денег — wipe-дефолт; деньги только через clearFields.
+        if (STRUCTURAL_NUMBERS.has(k)) continue;
+        if (k === "priceMonth") continue;
+        if (MONEY_FIELDS.has(k) && !clearFields.has(k)) continue;
+      }
       if (sameValue(value, currentOf(current, k))) continue;
       (out as Record<string, unknown>)[k] = value;
       continue;
@@ -152,10 +189,24 @@ export function sanitizePropertyUpdateFields(
     (out as Record<string, unknown>)[k] = value;
   }
 
-  // Пустой videoUrl — только как одиночное действие «убрать видео».
+  // Явные очистки из clearFields (если модель не продублировала "" в том же ключе).
+  for (const key of clearFields) {
+    if (key in out) continue;
+    if (TEXT_FIELDS.has(key)) {
+      const cur = String(currentOf(current, key as keyof PropertyUpdateFields) ?? "").trim();
+      if (cur) (out as Record<string, unknown>)[key] = "";
+    } else if (MONEY_FIELDS.has(key) && key !== "priceMonth") {
+      const cur = currentOf(current, key as keyof PropertyUpdateFields);
+      if (cur != null && Number(cur) !== 0) (out as Record<string, unknown>)[key] = 0;
+    }
+  }
+
+  // Пустой videoUrl — только clearFields или одиночное «убрать видео».
   if (out.videoUrl === "") {
-    const keys = Object.keys(out);
-    if (keys.length !== 1 || massWipe) {
+    const alone = Object.keys(out).length === 1;
+    if (massWipe) {
+      delete out.videoUrl;
+    } else if (!clearFields.has("videoUrl") && !alone) {
       delete out.videoUrl;
     } else {
       const cur = String(currentOf(current, "videoUrl") ?? "").trim();
@@ -163,10 +214,9 @@ export function sanitizePropertyUpdateFields(
     }
   }
 
-  // Шумный payload: оставляем цену и непустые текстовые правки, без type/status/forRent.
   if (massWipe) {
     const keep: PropertyUpdateFields = {};
-    if (out.priceMonth != null) keep.priceMonth = out.priceMonth;
+    if (out.priceMonth != null && out.priceMonth !== 0) keep.priceMonth = out.priceMonth;
     for (const key of [
       "title",
       "internalName",
@@ -211,4 +261,29 @@ export function propertyUpdateFieldsToDbPatch(
   if (fields.forRent != null) patch["for_rent"] = Boolean(fields.forRent);
   if (fields.videoUrl != null) patch["video_url"] = String(fields.videoUrl).trim();
   return patch;
+}
+
+/**
+ * Общий helper для partial-update: в патч попадают только ключи с осмысленным значением.
+ * Пустые строки и null не пишутся, если ключ не в allowEmpty.
+ */
+export function pickDefinedPatch<T extends Record<string, unknown>>(
+  source: T,
+  keys: (keyof T)[],
+  options?: { allowEmpty?: (keyof T)[] },
+): Partial<T> {
+  const allowEmpty = new Set(options?.allowEmpty ?? []);
+  const out: Partial<T> = {};
+  for (const key of keys) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+    const value = source[key];
+    if (value === undefined) continue;
+    if (value === null) {
+      if (allowEmpty.has(key)) out[key] = value;
+      continue;
+    }
+    if (typeof value === "string" && value.trim() === "" && !allowEmpty.has(key)) continue;
+    out[key] = value;
+  }
+  return out;
 }

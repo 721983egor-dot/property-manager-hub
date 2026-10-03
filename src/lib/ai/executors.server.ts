@@ -141,7 +141,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const patch = propertyUpdateFieldsToDbPatch(fields);
     if (!Object.keys(patch).length) {
       throw new Error(
-        "Нет осмысленных изменений (пустые строки/нули отброшены). Передай только поля, которые нужно изменить.",
+        "Нет осмысленных изменений. Передай только поля, которые нужно изменить (для очистки — clearFields).",
       );
     }
     const { error } = await supabaseAdmin
@@ -261,20 +261,38 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
 
   upsertClient: async (input) => {
     const clientId = input["clientId"] as string | null;
+    const clearFields = new Set(
+      Array.isArray(input["clearFields"])
+        ? (input["clearFields"] as unknown[]).map((item) => String(item))
+        : [],
+    );
     const patch: Record<string, unknown> = {};
     if (input["fullName"]) patch["full_name"] = input["fullName"];
-    if (input["phone"] != null) patch["phone"] = input["phone"];
-    if (input["comment"] != null) patch["comment"] = input["comment"];
+    const setText = (key: string, dbKey: string) => {
+      if (!Object.prototype.hasOwnProperty.call(input, key) && !clearFields.has(key)) return;
+      const raw = input[key];
+      if (raw === undefined && !clearFields.has(key)) return;
+      const text = raw == null ? "" : String(raw).trim();
+      if (!text && !clearFields.has(key) && clientId) return; // не затираем пустым при update
+      patch[dbKey] = text;
+    };
+    setText("phone", "phone");
+    setText("comment", "comment");
+    setText("blacklistReason", "blacklist_reason");
+    setText("source", "source");
     if (input["blacklisted"] != null) patch["blacklisted"] = input["blacklisted"];
-    if (input["blacklistReason"] != null) patch["blacklist_reason"] = input["blacklistReason"];
     if (input["partyKind"] != null) patch["party_kind"] = input["partyKind"];
-    if (input["source"] != null) patch["source"] = input["source"];
-    if (input["telegram"] != null) {
-      const raw = String(input["telegram"]).trim();
-      const handle = raw.replace(/^@/, "").replace(/^(?:https?:\/\/)?(?:t\.me|telegram\.me)\//i, "");
-      patch["telegram"] = handle ? `@${handle.split(/[/?#]/)[0]}` : raw;
+    if (Object.prototype.hasOwnProperty.call(input, "telegram") || clearFields.has("telegram")) {
+      const raw = String(input["telegram"] ?? "").trim();
+      if (!raw && !clearFields.has("telegram") && clientId) {
+        // skip wipe
+      } else {
+        const handle = raw.replace(/^@/, "").replace(/^(?:https?:\/\/)?(?:t\.me|telegram\.me)\//i, "");
+        patch["telegram"] = handle ? `@${handle.split(/[/?#]/)[0]}` : raw;
+      }
     }
-    if (input["propertyId"] !== undefined) patch["property_id"] = input["propertyId"];
+    if (clearFields.has("propertyId")) patch["property_id"] = null;
+    else if (input["propertyId"] !== undefined) patch["property_id"] = input["propertyId"];
 
     const writeWithFallback = async (mode: "update" | "insert", row: Record<string, unknown>) => {
       let payload = { ...row };
@@ -718,30 +736,52 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   },
 
   saveHotelRoom: async (input) => {
-    const name = must(String(input["name"] ?? "").trim(), "Не указан номер");
-    const row = {
-      title: name.startsWith("N-11") || name.startsWith("H11") ? name : `H11 ${name}`,
-      internal_name: name,
-      type: "aparts",
-      portfolio: "n11",
-      published: false,
-      service_type: "management",
-      address: "Сочи, улица Навагинская",
-      complex_name: "H11 Резиденция",
-      room_category_id: (input["category"] as string) || null,
-      bnovo_room_id: String(input["bnovoRoomId"] ?? "").trim() || null,
-      price_night: (input["priceNight"] as number) ?? null,
-      guests_max: (input["guests"] as number) ?? null,
-      floor: (input["floor"] as number) ?? null,
-      status: "free",
-      rooms: 1,
-      bathrooms: 1,
-    };
     const roomId = (input["roomId"] as string) || "";
     if (roomId) {
-      const { error } = await supabaseAdmin.from("properties").update(row as never).eq("id", roomId);
+      const patch: Record<string, unknown> = {};
+      if (Object.prototype.hasOwnProperty.call(input, "name")) {
+        const name = must(String(input["name"] ?? "").trim(), "Не указан номер");
+        patch["title"] = name.startsWith("N-11") || name.startsWith("H11") ? name : `H11 ${name}`;
+        patch["internal_name"] = name;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "category")) {
+        patch["room_category_id"] = (input["category"] as string) || null;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "bnovoRoomId")) {
+        patch["bnovo_room_id"] = String(input["bnovoRoomId"] ?? "").trim() || null;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "priceNight")) {
+        patch["price_night"] = (input["priceNight"] as number) ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "guests")) {
+        patch["guests_max"] = (input["guests"] as number) ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "floor")) {
+        patch["floor"] = (input["floor"] as number) ?? null;
+      }
+      if (!Object.keys(patch).length) throw new Error("Нет полей для обновления номера");
+      const { error } = await supabaseAdmin.from("properties").update(patch as never).eq("id", roomId);
       if (error) throw new Error(error.message);
     } else {
+      const name = must(String(input["name"] ?? "").trim(), "Не указан номер");
+      const row = {
+        title: name.startsWith("N-11") || name.startsWith("H11") ? name : `H11 ${name}`,
+        internal_name: name,
+        type: "aparts",
+        portfolio: "n11",
+        published: false,
+        service_type: "management",
+        address: "Сочи, улица Навагинская",
+        complex_name: "H11 Резиденция",
+        room_category_id: (input["category"] as string) || null,
+        bnovo_room_id: String(input["bnovoRoomId"] ?? "").trim() || null,
+        price_night: (input["priceNight"] as number) ?? null,
+        guests_max: (input["guests"] as number) ?? null,
+        floor: (input["floor"] as number) ?? null,
+        status: "free",
+        rooms: 1,
+        bathrooms: 1,
+      };
       const { error } = await supabaseAdmin.from("properties").insert(row as never);
       if (error) throw new Error(error.message);
     }
@@ -749,20 +789,40 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   },
 
   saveHotelCategory: async (input) => {
-    const code = must(String(input["code"] ?? "").trim().toLowerCase(), "Не указан код категории");
-    const name = must(String(input["name"] ?? "").trim(), "Не указано название категории");
-    const row = {
-      code,
-      name,
-      description: String(input["description"] ?? "").trim(),
-      guests: Number(input["guests"] ?? 2) || 2,
-      bnovo_room_type_id: String(input["bnovoRoomTypeId"] ?? "").trim() || null,
-    };
     const categoryId = String(input["categoryId"] ?? "");
     if (categoryId) {
-      const { error } = await supabaseAdmin.from("hotel_room_categories").update(row as never).eq("id", categoryId);
+      const patch: Record<string, unknown> = {};
+      if (Object.prototype.hasOwnProperty.call(input, "code")) {
+        patch["code"] = must(String(input["code"] ?? "").trim().toLowerCase(), "Не указан код категории");
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "name")) {
+        patch["name"] = must(String(input["name"] ?? "").trim(), "Не указано название категории");
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "description")) {
+        patch["description"] = String(input["description"] ?? "").trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "guests")) {
+        patch["guests"] = Number(input["guests"] ?? 2) || 2;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "bnovoRoomTypeId")) {
+        patch["bnovo_room_type_id"] = String(input["bnovoRoomTypeId"] ?? "").trim() || null;
+      }
+      if (!Object.keys(patch).length) throw new Error("Нет полей для обновления категории");
+      const { error } = await supabaseAdmin
+        .from("hotel_room_categories")
+        .update(patch as never)
+        .eq("id", categoryId);
       if (error) throw new Error(error.message);
     } else {
+      const code = must(String(input["code"] ?? "").trim().toLowerCase(), "Не указан код категории");
+      const name = must(String(input["name"] ?? "").trim(), "Не указано название категории");
+      const row = {
+        code,
+        name,
+        description: String(input["description"] ?? "").trim(),
+        guests: Number(input["guests"] ?? 2) || 2,
+        bnovo_room_type_id: String(input["bnovoRoomTypeId"] ?? "").trim() || null,
+      };
       const { error } = await supabaseAdmin.from("hotel_room_categories").insert(row as never);
       if (error) throw new Error(error.message);
     }
@@ -770,29 +830,45 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   },
 
   saveHotelOwner: async (input) => {
-    const fullName = must(String(input["fullName"] ?? "").trim(), "Не указан собственник");
     const ownerId = (input["ownerId"] as string) || "";
-    const row = {
-      full_name: fullName,
-      phone: String(input["phone"] ?? ""),
-      email: String(input["email"] ?? ""),
-    };
     let id = ownerId;
     if (id) {
-      const { error } = await supabaseAdmin.from("owners").update(row as never).eq("id", id);
-      if (error) throw new Error(error.message);
+      const patch: Record<string, unknown> = {};
+      if (Object.prototype.hasOwnProperty.call(input, "fullName")) {
+        patch["full_name"] = must(String(input["fullName"] ?? "").trim(), "Не указан собственник");
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "phone")) {
+        const phone = String(input["phone"] ?? "").trim();
+        if (phone) patch["phone"] = phone;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "email")) {
+        const email = String(input["email"] ?? "").trim();
+        if (email) patch["email"] = email;
+      }
+      if (Object.keys(patch).length) {
+        const { error } = await supabaseAdmin.from("owners").update(patch as never).eq("id", id);
+        if (error) throw new Error(error.message);
+      }
     } else {
+      const fullName = must(String(input["fullName"] ?? "").trim(), "Не указан собственник");
+      const row = {
+        full_name: fullName,
+        phone: String(input["phone"] ?? ""),
+        email: String(input["email"] ?? ""),
+      };
       const { data, error } = await supabaseAdmin.from("owners").insert(row as never).select("id").single();
       if (error || !data) throw new Error(error?.message ?? "Не удалось сохранить собственника");
       id = (data as { id: string }).id;
     }
-    const rooms = (input["rooms"] as string[]) ?? [];
-    if (rooms.length) {
+    if (Object.prototype.hasOwnProperty.call(input, "rooms")) {
+      const rooms = (input["rooms"] as string[]) ?? [];
       await supabaseAdmin.from("property_owners").delete().eq("owner_id", id);
-      const { error } = await supabaseAdmin.from("property_owners").insert(
-        rooms.map((propertyId) => ({ owner_id: id, property_id: propertyId })) as never,
-      );
-      if (error) throw new Error(error.message);
+      if (rooms.length) {
+        const { error } = await supabaseAdmin.from("property_owners").insert(
+          rooms.map((propertyId) => ({ owner_id: id, property_id: propertyId })) as never,
+        );
+        if (error) throw new Error(error.message);
+      }
     }
     return "Собственник H11 сохранён";
   },
@@ -1082,16 +1158,25 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
 
   upsertTaskType: async (input) => {
     const typeId = (input["typeId"] as string | null) || null;
+    if (typeId) {
+      const row: Record<string, unknown> = {};
+      if (Object.prototype.hasOwnProperty.call(input, "name")) {
+        row["name"] = String(input["name"] ?? "Тип").trim() || "Тип";
+      }
+      if (Object.prototype.hasOwnProperty.call(input, "color")) {
+        row["color"] = String(input["color"] ?? "#3b82f6");
+      }
+      if (input["position"] != null) row["position"] = Number(input["position"]);
+      if (!Object.keys(row).length) throw new Error("Нет полей для обновления типа задачи");
+      const { error } = await supabaseAdmin.from("task_types").update(row as never).eq("id", typeId);
+      if (error) throw new Error(error.message);
+      return "Тип задачи обновлён";
+    }
     const row: Record<string, unknown> = {
       name: String(input["name"] ?? "Тип").trim() || "Тип",
       color: String(input["color"] ?? "#3b82f6"),
     };
     if (input["position"] != null) row["position"] = Number(input["position"]);
-    if (typeId) {
-      const { error } = await supabaseAdmin.from("task_types").update(row as never).eq("id", typeId);
-      if (error) throw new Error(error.message);
-      return "Тип задачи обновлён";
-    }
     const { count } = await supabaseAdmin
       .from("task_types")
       .select("id", { count: "exact", head: true });

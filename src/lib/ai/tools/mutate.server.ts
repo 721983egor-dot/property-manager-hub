@@ -2,7 +2,10 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { propertyLabel } from "@/lib/ai/context.server";
-import { sanitizePropertyUpdateFields } from "@/lib/ai/property-update.server";
+import {
+  PROPERTY_CLEARABLE_FIELDS,
+  sanitizePropertyUpdateFields,
+} from "@/lib/ai/property-update.server";
 
 import type { AssistantToolContext } from "@/lib/ai/context.server";
 
@@ -50,11 +53,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposePropertyUpdate: tool({
       description:
-        "Предложить изменение ТОЛЬКО указанных полей объекта. Передавай лишь то, что реально меняешь (например только priceMonth). Не заполняй остальные поля пустыми строками или нулями — это затрёт карточку. Поля: публичное название, ВНУТРЕННЕЕ название, адрес, тип, комнаты, площадь, этаж, цена, статус, депозит, комиссия (%), коммунальные, описание, условия аренды, заметка о доступности, комплекс, ссылка на видео (файл уходит в Авито, VK — в ЦИАН).",
+        "Частичное изменение объекта: передай ТОЛЬКО поля, которые менеджер явно попросил изменить (часто одно: priceMonth). Остальные ключи не указывай. Не заполняй схему пустыми строками или нулями — сервер их отбросит. Чтобы очистить поле, используй clearFields (например clearFields:[\"videoUrl\"]). Поля: title, internalName, address, complexName, type, rooms, bathrooms, area, floor, totalFloors, priceMonth, status, deposit, commission, utilitiesMonth, description, rentTerms, availabilityNote, forRent, videoUrl.",
       inputSchema: z.object({
-        ref: z.string(),
-        title: z.string().optional(),
-        internalName: z.string().optional(),
+        ref: z.string().describe("Внутреннее имя, номер ref_id или UUID объекта"),
+        title: z.string().optional().describe("Только если меняем публичное название"),
+        internalName: z.string().optional().describe("Только если меняем внутреннее название"),
         address: z.string().optional(),
         complexName: z.string().optional(),
         type: z.enum(["apartment", "aparts", "house", "villa", "townhouse"]).optional(),
@@ -63,7 +66,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         area: z.number().optional(),
         floor: z.number().optional(),
         totalFloors: z.number().optional(),
-        priceMonth: z.number().optional(),
+        priceMonth: z.number().optional().describe("Новая цена в месяц; другие поля не передавай"),
         status: z.enum(["free", "soon_free", "rented", "booked", "archived"]).optional(),
         deposit: z.number().optional(),
         commission: z.number().optional(),
@@ -78,7 +81,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
         videoUrl: z
           .string()
           .optional()
-          .describe("Ссылка YouTube / VK / Rutube или пустая строка, чтобы убрать видео"),
+          .describe("Новая ссылка на видео; чтобы убрать — clearFields:[\"videoUrl\"] или videoUrl=\"\""),
+        clearFields: z
+          .array(z.enum(PROPERTY_CLEARABLE_FIELDS))
+          .optional()
+          .describe("Явная очистка полей (пусто/0). Без этого пустые значения не применяются."),
       }),
       execute: async ({ ref, ...rawFields }) => {
         const p = await label(ref);
@@ -88,10 +95,13 @@ export function createMutateTools(ctx: AssistantToolContext) {
           p.row as Record<string, unknown>,
         );
         const parts: string[] = [];
-        if (fields.title) parts.push(`название «${fields.title}»`);
-        if (fields.internalName != null) parts.push(`внутреннее «${fields.internalName}»`);
-        if (fields.address) parts.push("адрес");
-        if (fields.complexName != null) parts.push(`комплекс «${fields.complexName}»`);
+        if (fields.title != null)
+          parts.push(fields.title ? `название «${fields.title}»` : "очистить название");
+        if (fields.internalName != null)
+          parts.push(fields.internalName ? `внутреннее «${fields.internalName}»` : "очистить внутреннее");
+        if (fields.address != null) parts.push(fields.address ? "адрес" : "очистить адрес");
+        if (fields.complexName != null)
+          parts.push(fields.complexName ? `комплекс «${fields.complexName}»` : "очистить комплекс");
         if (fields.type) parts.push(`тип «${fields.type}»`);
         if (fields.rooms != null) parts.push(`${fields.rooms} комн.`);
         if (fields.bathrooms != null) parts.push(`${fields.bathrooms} с/у`);
@@ -100,13 +110,21 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (fields.totalFloors != null) parts.push(`этажей ${fields.totalFloors}`);
         if (fields.priceMonth != null) parts.push(`цена ${money(fields.priceMonth)}/мес`);
         if (fields.status) parts.push(`статус «${fields.status}»`);
-        if (fields.deposit != null) parts.push(`депозит ${money(fields.deposit)}`);
+        if (fields.deposit != null)
+          parts.push(fields.deposit ? `депозит ${money(fields.deposit)}` : "очистить депозит");
         if (fields.commission != null) parts.push(`комиссия ${fields.commission}%`);
         if (fields.utilitiesMonth != null)
-          parts.push(`коммунальные ${money(fields.utilitiesMonth)}`);
-        if (fields.description) parts.push("новое описание");
-        if (fields.rentTerms) parts.push("новые условия аренды");
-        if (fields.availabilityNote) parts.push("заметка о доступности");
+          parts.push(
+            fields.utilitiesMonth
+              ? `коммунальные ${money(fields.utilitiesMonth)}`
+              : "очистить коммунальные",
+          );
+        if (fields.description != null)
+          parts.push(fields.description ? "новое описание" : "очистить описание");
+        if (fields.rentTerms != null)
+          parts.push(fields.rentTerms ? "новые условия аренды" : "очистить условия аренды");
+        if (fields.availabilityNote != null)
+          parts.push(fields.availabilityNote ? "заметка о доступности" : "очистить заметку");
         if (fields.forRent === true) parts.push("в аренду");
         if (fields.forRent === false) parts.push("только обслуживание (не в аренду)");
         if (fields.videoUrl != null)
@@ -114,7 +132,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (!parts.length) {
           return {
             error:
-              "Нет осмысленных изменений (пустые строки/нули отброшены). Передай только поля, которые нужно изменить.",
+              "Нет осмысленных изменений. Передай только поля, которые нужно изменить (без пустых строк и нулей). Для очистки — clearFields.",
           };
         }
         const summary = `Изменить «${p.text}»: ${parts.join(", ")}`;
@@ -273,7 +291,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeClient: tool({
       description:
-        "Предложить создание клиента или изменение его данных (комментарий, чёрный список, кто он: РМ / собственник / H11, источник, Telegram, объект обращения).",
+        "Создать клиента или частично обновить данные. При изменении передавай только нужные поля (плюс fullName для поиска). Пустые строки не затирают телефон/комментарий/Telegram — для очистки укажи clearFields.",
       inputSchema: z.object({
         fullName: z.string(),
         phone: z.string().optional(),
@@ -293,6 +311,10 @@ export function createMutateTools(ctx: AssistantToolContext) {
           .string()
           .optional()
           .describe("По какому объекту обратился — ID или номер объекта"),
+        clearFields: z
+          .array(z.enum(["phone", "comment", "blacklistReason", "telegram", "source", "propertyId"]))
+          .optional()
+          .describe("Явная очистка полей клиента"),
       }),
       execute: async (input) => {
         const existing = await ctx.findClient(input.phone || input.fullName);
@@ -317,18 +339,28 @@ export function createMutateTools(ctx: AssistantToolContext) {
           input.source ? `источник ${input.source}` : null,
           input.telegram ? `Telegram ${input.telegram}` : null,
           propertyLabel ? `объект ${propertyLabel}` : null,
+          input.clearFields?.length ? `очистить ${input.clearFields.join(", ")}` : null,
         ].filter(Boolean);
         const summary = existing
           ? `Обновить клиента ${existing["full_name"] as string}${bits.length ? ` (${bits.join(", ")})` : ""}`
           : `Создать клиента ${input.fullName}${input.phone ? ` (${input.phone})` : ""}${bits.length ? `, ${bits.join(", ")}` : ""}`;
+        const payload: Record<string, unknown> = {
+          fullName: input.fullName,
+          clientId: existing ? (existing["id"] as string) : null,
+        };
+        if (input.phone !== undefined) payload.phone = input.phone;
+        if (input.comment !== undefined) payload.comment = input.comment;
+        if (input.blacklisted !== undefined) payload.blacklisted = input.blacklisted;
+        if (input.blacklistReason !== undefined) payload.blacklistReason = input.blacklistReason;
+        if (input.partyKind !== undefined) payload.partyKind = input.partyKind;
+        if (input.source !== undefined) payload.source = input.source;
+        if (input.telegram !== undefined) payload.telegram = input.telegram;
+        if (propertyId !== undefined) payload.propertyId = propertyId;
+        if (input.clearFields?.length) payload.clearFields = input.clearFields;
         ctx.propose({
           tool: "upsertClient",
           summary,
-          input: {
-            ...input,
-            clientId: existing ? (existing["id"] as string) : null,
-            propertyId: propertyId === undefined ? undefined : propertyId,
-          },
+          input: payload,
         });
         return { proposed: true, summary };
       },
@@ -464,7 +496,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeDeal: tool({
       description:
-        "Предложить создание или изменение сделки CRM (аренда) или карточки «Новый объект» (воронка собственников). pipeline=rental по умолчанию, intake — новые объекты. Требует подтверждения менеджера.",
+        "Создать или частично изменить сделку CRM / карточку «Новый объект». При изменении передавай dealId и ТОЛЬКО меняемые поля — остальные не указывай (пустые/null не затирают карточку). pipeline=rental по умолчанию при создании, intake — новые объекты.",
       inputSchema: z.object({
         dealId: z.string().optional(),
         pipeline: z
@@ -506,20 +538,30 @@ export function createMutateTools(ctx: AssistantToolContext) {
           .describe("Черновик полей объекта для pipeline=intake"),
       }),
       execute: async (input) => {
-        const pipeline = input.pipeline === "intake" ? "intake" : "rental";
-        let stagesQuery = ctx.admin.from("deal_stages").select("id, name, pipeline").order("position");
-        let { data: stages, error: stagesError } = await stagesQuery.eq("pipeline", pipeline);
-        if (stagesError && /pipeline|schema cache|could not find/i.test(stagesError.message)) {
-          ({ data: stages } = await ctx.admin.from("deal_stages").select("id, name").order("position"));
+        const isCreate = !input.dealId;
+        const pipeline =
+          input.pipeline === "intake" ? "intake" : input.pipeline === "rental" ? "rental" : isCreate ? "rental" : null;
+        let stages: { id: string; name: string; pipeline?: string }[] | null = null;
+        if (input.stage || isCreate) {
+          const pipeFilter = pipeline ?? "rental";
+          let stagesQuery = ctx.admin.from("deal_stages").select("id, name, pipeline").order("position");
+          let { data, error: stagesError } = await stagesQuery.eq("pipeline", pipeFilter);
+          if (stagesError && /pipeline|schema cache|could not find/i.test(stagesError.message)) {
+            ({ data } = await ctx.admin.from("deal_stages").select("id, name").order("position"));
+          }
+          stages = data;
         }
         const stageRow = input.stage
           ? (stages ?? []).find((s) => s.name.toLowerCase() === input.stage!.toLowerCase())
           : null;
         if (input.stage && !stageRow) return { error: "Стадия не найдена в этой воронке" };
         const client = input.clientRef ? await ctx.findClient(input.clientRef) : null;
+        if (input.clientRef && !client) return { error: "Клиент не найден" };
         const property = input.propertyRef ? await label(input.propertyRef) : null;
+        if (input.propertyRef && !property) return { error: "Объект не найден" };
         const parts: string[] = [];
-        parts.push(pipeline === "intake" ? "новый объект" : "сделка");
+        if (pipeline) parts.push(pipeline === "intake" ? "новый объект" : "сделка");
+        else parts.push("сделка");
         if (input.title) parts.push(`«${input.title}»`);
         if (stageRow) parts.push(`стадия «${stageRow.name}»`);
         if (client) parts.push(`клиент ${client["full_name"] as string}`);
@@ -536,25 +578,27 @@ export function createMutateTools(ctx: AssistantToolContext) {
           ...(input.custom ?? {}),
           ...(input.intakeDraft ? { intake_draft: input.intakeDraft } : {}),
         };
+        const payload: Record<string, unknown> = {
+          dealId: input.dealId ?? null,
+        };
+        if (pipeline) payload.pipeline = pipeline;
+        if (stageRow) payload.stageId = stageRow.id;
+        else if (isCreate) payload.stageId = (stages ?? [])[0]?.id ?? null;
+        if (input.clientRef) payload.clientId = client ? (client["id"] as string) : null;
+        if (input.propertyRef) payload.propertyId = property?.id ?? null;
+        if (input.title !== undefined) payload.title = input.title;
+        if (input.source !== undefined) payload.source = input.source;
+        if (input.budget !== undefined) payload.budget = input.budget;
+        if (input.adults !== undefined) payload.adults = input.adults;
+        if (input.children !== undefined) payload.children = input.children;
+        if (input.comment !== undefined) payload.comment = input.comment;
+        if (input.telegram !== undefined) payload.telegram = input.telegram;
+        if (input.preferredMessenger !== undefined) payload.preferredMessenger = input.preferredMessenger;
+        if (Object.keys(custom).length) payload.custom = custom;
         ctx.propose({
           tool: "upsertDeal",
           summary,
-          input: {
-            dealId: input.dealId ?? null,
-            pipeline,
-            stageId: stageRow?.id ?? (stages ?? [])[0]?.id ?? null,
-            clientId: client ? (client["id"] as string) : null,
-            propertyId: property?.id ?? null,
-            title: input.title ?? null,
-            source: input.source ?? null,
-            budget: input.budget ?? null,
-            adults: input.adults ?? null,
-            children: input.children ?? null,
-            comment: input.comment ?? null,
-            telegram: input.telegram ?? null,
-            preferredMessenger: input.preferredMessenger ?? null,
-            custom: Object.keys(custom).length ? custom : null,
-          },
+          input: payload,
         });
         return { proposed: true, summary };
       },
@@ -580,10 +624,10 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeHotelRoom: tool({
       description:
-        "Предложить добавить или изменить номер апарт-отеля H11. ID комнаты Bnovo необязателен: бронь приходит на категорию, номер выбирают при заселении.",
+        "Добавить или частично изменить номер H11. При изменении передавай roomId и только нужные поля — пустые/отсутствующие не затирают цену, этаж и т.д. ID комнаты Bnovo необязателен.",
       inputSchema: z.object({
         roomId: z.string().optional(),
-        name: z.string(),
+        name: z.string().optional().describe("Название/номер; обязательно при создании"),
         category: z.string().optional(),
         bnovoRoomId: z.string().optional(),
         priceNight: z.number().optional(),
@@ -591,42 +635,73 @@ export function createMutateTools(ctx: AssistantToolContext) {
         floor: z.number().optional(),
       }),
       execute: async (input) => {
-        const summary = `${input.roomId ? "Обновить" : "Добавить"} номер H11 «${input.name}»`;
-        ctx.propose({ tool: "saveHotelRoom", summary, input });
+        if (!input.roomId && !input.name?.trim()) {
+          return { error: "Для нового номера укажите name" };
+        }
+        const summary = `${input.roomId ? "Обновить" : "Добавить"} номер H11 «${input.name?.trim() || input.roomId}»`;
+        const payload: Record<string, unknown> = {};
+        if (input.roomId) payload.roomId = input.roomId;
+        if (input.name !== undefined) payload.name = input.name;
+        if (input.category !== undefined) payload.category = input.category;
+        if (input.bnovoRoomId !== undefined) payload.bnovoRoomId = input.bnovoRoomId;
+        if (input.priceNight !== undefined) payload.priceNight = input.priceNight;
+        if (input.guests !== undefined) payload.guests = input.guests;
+        if (input.floor !== undefined) payload.floor = input.floor;
+        ctx.propose({ tool: "saveHotelRoom", summary, input: payload });
         return { proposed: true, summary };
       },
     }),
 
     proposeHotelCategory: tool({
       description:
-        "Предложить добавить или изменить категорию номеров H11 и ID типа комнаты в Bnovo (room_type_id). Брони падают на категорию.",
+        "Добавить или частично изменить категорию H11 / Bnovo room_type_id. При изменении — только нужные поля.",
       inputSchema: z.object({
         categoryId: z.string().optional(),
-        code: z.string(),
-        name: z.string(),
+        code: z.string().optional().describe("Обязателен при создании"),
+        name: z.string().optional().describe("Обязателен при создании"),
         description: z.string().optional(),
         guests: z.number().optional(),
         bnovoRoomTypeId: z.string().optional(),
       }),
       execute: async (input) => {
-        const summary = `${input.categoryId ? "Обновить" : "Добавить"} категорию H11 «${input.name}»`;
-        ctx.propose({ tool: "saveHotelCategory", summary, input });
+        if (!input.categoryId && (!input.code?.trim() || !input.name?.trim())) {
+          return { error: "Для новой категории укажите code и name" };
+        }
+        const summary = `${input.categoryId ? "Обновить" : "Добавить"} категорию H11 «${input.name?.trim() || input.code || input.categoryId}»`;
+        const payload: Record<string, unknown> = {};
+        if (input.categoryId) payload.categoryId = input.categoryId;
+        if (input.code !== undefined) payload.code = input.code;
+        if (input.name !== undefined) payload.name = input.name;
+        if (input.description !== undefined) payload.description = input.description;
+        if (input.guests !== undefined) payload.guests = input.guests;
+        if (input.bnovoRoomTypeId !== undefined) payload.bnovoRoomTypeId = input.bnovoRoomTypeId;
+        ctx.propose({ tool: "saveHotelCategory", summary, input: payload });
         return { proposed: true, summary };
       },
     }),
 
     proposeHotelOwner: tool({
-      description: "Предложить добавить собственника H11 и привязать к номерам (можно несколько долей).",
+      description:
+        "Добавить или частично изменить собственника H11. При изменении передавай только нужные поля — пустые phone/email не затирают данные.",
       inputSchema: z.object({
         ownerId: z.string().optional(),
-        fullName: z.string(),
+        fullName: z.string().optional().describe("Обязателен при создании"),
         phone: z.string().optional(),
         email: z.string().optional(),
         rooms: z.array(z.string()).optional(),
       }),
       execute: async (input) => {
-        const summary = `${input.ownerId ? "Обновить" : "Добавить"} собственника ${input.fullName}`;
-        ctx.propose({ tool: "saveHotelOwner", summary, input });
+        if (!input.ownerId && !input.fullName?.trim()) {
+          return { error: "Для нового собственника укажите fullName" };
+        }
+        const summary = `${input.ownerId ? "Обновить" : "Добавить"} собственника ${input.fullName?.trim() || input.ownerId}`;
+        const payload: Record<string, unknown> = {};
+        if (input.ownerId) payload.ownerId = input.ownerId;
+        if (input.fullName !== undefined) payload.fullName = input.fullName;
+        if (input.phone !== undefined) payload.phone = input.phone;
+        if (input.email !== undefined) payload.email = input.email;
+        if (input.rooms !== undefined) payload.rooms = input.rooms;
+        ctx.propose({ tool: "saveHotelOwner", summary, input: payload });
         return { proposed: true, summary };
       },
     }),
@@ -876,19 +951,25 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeTaskType: tool({
       description:
-        "Предложить создание или изменение типа задачи (название, цвет HEX, порядок position). Порядок в UI меняется drag-and-drop. Требует подтверждения.",
+        "Создать или частично изменить тип задачи (название, цвет HEX, порядок position). При изменении не передавай color/position, если их не просили менять.",
       inputSchema: z.object({
         typeId: z.string().optional(),
-        name: z.string(),
+        name: z.string().optional().describe("Обязателен при создании"),
         color: z.string().optional().describe("HEX цвет, например #3b82f6"),
         position: z.number().optional().describe("Позиция в списке типов, начиная с 0"),
       }),
       execute: async ({ typeId, name, color, position }) => {
-        const summary = `${typeId ? "Изменить" : "Создать"} тип задачи «${name}»${color ? ` (${color})` : ""}${position != null ? `, позиция ${position}` : ""}`;
+        if (!typeId && !name?.trim()) return { error: "Укажите название типа" };
+        const summary = `${typeId ? "Изменить" : "Создать"} тип задачи «${name?.trim() || typeId}»${color ? ` (${color})` : ""}${position != null ? `, позиция ${position}` : ""}`;
+        const payload: Record<string, unknown> = { typeId: typeId ?? null };
+        if (name !== undefined) payload.name = name;
+        if (color !== undefined) payload.color = color;
+        else if (!typeId) payload.color = "#3b82f6";
+        if (position !== undefined) payload.position = position;
         ctx.propose({
           tool: "upsertTaskType",
           summary,
-          input: { typeId: typeId ?? null, name, color: color ?? "#3b82f6", position: position ?? null },
+          input: payload,
         });
         return { proposed: true, summary };
       },
