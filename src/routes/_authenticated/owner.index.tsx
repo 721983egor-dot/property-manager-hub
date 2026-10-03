@@ -170,9 +170,9 @@ function OwnerCabinetPage() {
               : undefined
           }
         />
-        <StatCard label="Категории" className="col-span-2 sm:col-span-1 lg:col-span-1">
+        <StatCard label="Категории">
           {(data?.occupancyByCategory ?? []).length === 0 ? (
-            <span className="text-2xl font-semibold">—</span>
+            <div className="mt-1 text-xl font-semibold sm:text-2xl">—</div>
           ) : (
             <ul className="mt-1 space-y-1">
               {(data?.occupancyByCategory ?? []).map((row) => (
@@ -190,7 +190,6 @@ function OwnerCabinetPage() {
         <StatCard
           label="Ближайшие заезды"
           value={data?.nextArrivals.length ? String(data.nextArrivals.length) : "нет"}
-          className="col-span-2 sm:col-span-1"
         />
       </div>
 
