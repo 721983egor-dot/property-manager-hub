@@ -4,6 +4,7 @@ import { z } from "zod";
 import { propertyLabel } from "@/lib/ai/context.server";
 import {
   PROPERTY_CLEARABLE_FIELDS,
+  formatPropertyUpdateConfirmLabel,
   sanitizePropertyUpdateFields,
 } from "@/lib/ai/property-update.server";
 
@@ -90,52 +91,19 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async ({ ref, ...rawFields }) => {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
+        // Sanitize ДО сохранения propose и ДО текста подтверждения —
+        // иначе UI показывает полный wipe с «», 0 комн., «убрать видео».
         const fields = sanitizePropertyUpdateFields(
           rawFields as Record<string, unknown>,
           p.row as Record<string, unknown>,
         );
-        const parts: string[] = [];
-        if (fields.title != null)
-          parts.push(fields.title ? `название «${fields.title}»` : "очистить название");
-        if (fields.internalName != null)
-          parts.push(fields.internalName ? `внутреннее «${fields.internalName}»` : "очистить внутреннее");
-        if (fields.address != null) parts.push(fields.address ? "адрес" : "очистить адрес");
-        if (fields.complexName != null)
-          parts.push(fields.complexName ? `комплекс «${fields.complexName}»` : "очистить комплекс");
-        if (fields.type) parts.push(`тип «${fields.type}»`);
-        if (fields.rooms != null) parts.push(`${fields.rooms} комн.`);
-        if (fields.bathrooms != null) parts.push(`${fields.bathrooms} с/у`);
-        if (fields.area != null) parts.push(`площадь ${fields.area}`);
-        if (fields.floor != null) parts.push(`этаж ${fields.floor}`);
-        if (fields.totalFloors != null) parts.push(`этажей ${fields.totalFloors}`);
-        if (fields.priceMonth != null) parts.push(`цена ${money(fields.priceMonth)}/мес`);
-        if (fields.status) parts.push(`статус «${fields.status}»`);
-        if (fields.deposit != null)
-          parts.push(fields.deposit ? `депозит ${money(fields.deposit)}` : "очистить депозит");
-        if (fields.commission != null) parts.push(`комиссия ${fields.commission}%`);
-        if (fields.utilitiesMonth != null)
-          parts.push(
-            fields.utilitiesMonth
-              ? `коммунальные ${money(fields.utilitiesMonth)}`
-              : "очистить коммунальные",
-          );
-        if (fields.description != null)
-          parts.push(fields.description ? "новое описание" : "очистить описание");
-        if (fields.rentTerms != null)
-          parts.push(fields.rentTerms ? "новые условия аренды" : "очистить условия аренды");
-        if (fields.availabilityNote != null)
-          parts.push(fields.availabilityNote ? "заметка о доступности" : "очистить заметку");
-        if (fields.forRent === true) parts.push("в аренду");
-        if (fields.forRent === false) parts.push("только обслуживание (не в аренду)");
-        if (fields.videoUrl != null)
-          parts.push(fields.videoUrl.trim() ? "ссылка на видео" : "убрать видео");
-        if (!parts.length) {
+        const summary = formatPropertyUpdateConfirmLabel(p.text, fields);
+        if (!summary) {
           return {
             error:
               "Нет осмысленных изменений. Передай только поля, которые нужно изменить (без пустых строк и нулей). Для очистки — clearFields.",
           };
         }
-        const summary = `Изменить «${p.text}»: ${parts.join(", ")}`;
         ctx.propose({ tool: "updateProperty", summary, input: { propertyId: p.id, fields } });
         return { proposed: true, summary };
       },

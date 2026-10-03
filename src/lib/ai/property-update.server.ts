@@ -144,7 +144,10 @@ export function sanitizePropertyUpdateFields(
 ): PropertyUpdateFields {
   const clearFields = normalizeClearFields(raw["clearFields"]);
   const wipeNoise = countWipeNoise(raw);
-  const massWipe = wipeNoise >= 5;
+  const hasPriceIntent =
+    typeof raw["priceMonth"] === "number" && Number(raw["priceMonth"]) > 0;
+  // Полный dump схемы: много пустых/нулей. С ценой — достаточно ≥3 шума (типичный «поставь цену»).
+  const massWipe = wipeNoise >= 5 || (hasPriceIntent && wipeNoise >= 3);
   const out: PropertyUpdateFields = {};
 
   for (const [key, value] of Object.entries(raw)) {
@@ -286,4 +289,70 @@ export function pickDefinedPatch<T extends Record<string, unknown>>(
     out[key] = value;
   }
   return out;
+}
+
+const moneyRu = (v: number) => `${v.toLocaleString("ru-RU")} ₽`;
+
+/**
+ * Текст подтверждения для Ассистента: только ключи из уже санитизированного патча.
+ * Никогда не перечисляет пустые «» / нули из дампа схемы модели.
+ */
+export function summarizePropertyUpdateFields(fields: PropertyUpdateFields): string[] {
+  const parts: string[] = [];
+  if (Object.prototype.hasOwnProperty.call(fields, "title")) {
+    parts.push(fields.title ? `название «${fields.title}»` : "очистить название");
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "internalName")) {
+    parts.push(fields.internalName ? `внутреннее «${fields.internalName}»` : "очистить внутреннее");
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "address")) {
+    parts.push(fields.address ? "адрес" : "очистить адрес");
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "complexName")) {
+    parts.push(fields.complexName ? `комплекс «${fields.complexName}»` : "очистить комплекс");
+  }
+  if (fields.type) parts.push(`тип «${fields.type}»`);
+  if (fields.rooms != null) parts.push(`${fields.rooms} комн.`);
+  if (fields.bathrooms != null) parts.push(`${fields.bathrooms} с/у`);
+  if (fields.area != null) parts.push(`площадь ${fields.area}`);
+  if (fields.floor != null) parts.push(`этаж ${fields.floor}`);
+  if (fields.totalFloors != null) parts.push(`этажей ${fields.totalFloors}`);
+  if (fields.priceMonth != null) parts.push(`цена ${moneyRu(fields.priceMonth)}/мес`);
+  if (fields.status) parts.push(`статус «${fields.status}»`);
+  if (Object.prototype.hasOwnProperty.call(fields, "deposit")) {
+    parts.push(fields.deposit ? `депозит ${moneyRu(fields.deposit)}` : "очистить депозит");
+  }
+  if (fields.commission != null) parts.push(`комиссия ${fields.commission}%`);
+  if (Object.prototype.hasOwnProperty.call(fields, "utilitiesMonth")) {
+    parts.push(
+      fields.utilitiesMonth
+        ? `коммунальные ${moneyRu(fields.utilitiesMonth)}`
+        : "очистить коммунальные",
+    );
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "description")) {
+    parts.push(fields.description ? "новое описание" : "очистить описание");
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "rentTerms")) {
+    parts.push(fields.rentTerms ? "новые условия аренды" : "очистить условия аренды");
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "availabilityNote")) {
+    parts.push(fields.availabilityNote ? "заметка о доступности" : "очистить заметку");
+  }
+  if (fields.forRent === true) parts.push("в аренду");
+  if (fields.forRent === false) parts.push("только обслуживание (не в аренду)");
+  if (Object.prototype.hasOwnProperty.call(fields, "videoUrl")) {
+    parts.push(String(fields.videoUrl ?? "").trim() ? "ссылка на видео" : "убрать видео");
+  }
+  return parts;
+}
+
+/** Полная строка «Изменить …» для кнопки подтверждения. */
+export function formatPropertyUpdateConfirmLabel(
+  propertyText: string,
+  fields: PropertyUpdateFields,
+): string | null {
+  const parts = summarizePropertyUpdateFields(fields);
+  if (!parts.length) return null;
+  return `Изменить «${propertyText}»: ${parts.join(", ")}`;
 }
