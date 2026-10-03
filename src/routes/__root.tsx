@@ -12,8 +12,11 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/AppShell";
+import { RmOsPwaHead } from "@/components/RmOsPwaHead";
 import { Toaster } from "@/components/ui/sonner";
 import { YandexMetrika } from "@/components/site/YandexMetrika";
+import { getRmOsPwaEnabled } from "@/lib/rm-os-pwa-host";
+import { rmOsPwaHead } from "@/lib/rm-os-pwa";
 import { startStaffSessionKeeper } from "@/integrations/supabase/staff-session";
 
 
@@ -78,29 +81,42 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "Резиденция&Море" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "icon", href: "/favicon.png", type: "image/png" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap",
-      },
-    ],
-  }),
+  loader: () => {
+    const rmOsPwa = getRmOsPwaEnabled();
+    return { rmOsPwa };
+  },
+  head: ({ loaderData }) => {
+    const pwa = loaderData?.rmOsPwa ? rmOsPwaHead() : { meta: [], links: [] };
+    const viewport = loaderData?.rmOsPwa
+      ? "width=device-width, initial-scale=1, viewport-fit=cover"
+      : "width=device-width, initial-scale=1";
+
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: viewport },
+        { property: "og:type", content: "website" },
+        { property: "og:site_name", content: "Резиденция&Море" },
+        { name: "twitter:card", content: "summary_large_image" },
+        ...pwa.meta,
+      ],
+      links: [
+        {
+          rel: "stylesheet",
+          href: appCss,
+        },
+        { rel: "icon", href: "/favicon.png", type: "image/png" },
+        { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap",
+        },
+        ...pwa.links,
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -130,6 +146,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <RmOsPwaHead />
       <AppShell>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
