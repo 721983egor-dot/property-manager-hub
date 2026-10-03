@@ -1,4 +1,8 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  propertyUpdateFieldsToDbPatch,
+  sanitizePropertyUpdateFields,
+} from "@/lib/ai/property-update.server";
 
 type Input = Record<string, unknown>;
 type Executor = (input: Input) => Promise<string>;
@@ -124,29 +128,22 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
 
   updateProperty: async (input) => {
     const propertyId = must(input["propertyId"] as string, "Не указан объект");
-    const f = (input["fields"] ?? {}) as Input;
-    const patch: Record<string, unknown> = {};
-    if (f["title"] != null) patch["title"] = f["title"];
-    if (f["internalName"] != null) patch["internal_name"] = f["internalName"];
-    if (f["address"] != null) patch["address"] = f["address"];
-    if (f["complexName"] != null) patch["complex_name"] = f["complexName"];
-    if (f["type"] != null) patch["type"] = f["type"];
-    if (f["rooms"] != null) patch["rooms"] = f["rooms"];
-    if (f["bathrooms"] != null) patch["bathrooms"] = f["bathrooms"];
-    if (f["area"] != null) patch["area"] = f["area"];
-    if (f["floor"] != null) patch["floor"] = f["floor"];
-    if (f["totalFloors"] != null) patch["total_floors"] = f["totalFloors"];
-    if (f["priceMonth"] != null) patch["price_month"] = f["priceMonth"];
-    if (f["status"]) patch["status"] = f["status"];
-    if (f["deposit"] != null) patch["deposit"] = f["deposit"];
-    if (f["commission"] != null) patch["commission"] = f["commission"];
-    if (f["utilitiesMonth"] != null) patch["utilities_month"] = f["utilitiesMonth"];
-    if (f["description"] != null) patch["description"] = f["description"];
-    if (f["rentTerms"] != null) patch["rent_terms"] = f["rentTerms"];
-    if (f["availabilityNote"] != null) patch["availability_note"] = f["availabilityNote"];
-    if (f["forRent"] != null) patch["for_rent"] = Boolean(f["forRent"]);
-    if (f["videoUrl"] != null) patch["video_url"] = String(f["videoUrl"]).trim();
-    if (!Object.keys(patch).length) throw new Error("Нет изменений");
+    const raw = (input["fields"] ?? {}) as Input;
+    const { data: current, error: loadError } = await supabaseAdmin
+      .from("properties")
+      .select(
+        "title, internal_name, address, complex_name, type, rooms, bathrooms, area, floor, total_floors, price_month, status, deposit, commission, utilities_month, description, rent_terms, availability_note, for_rent, video_url",
+      )
+      .eq("id", propertyId)
+      .maybeSingle();
+    if (loadError) throw new Error(loadError.message);
+    const fields = sanitizePropertyUpdateFields(raw, (current ?? null) as Record<string, unknown> | null);
+    const patch = propertyUpdateFieldsToDbPatch(fields);
+    if (!Object.keys(patch).length) {
+      throw new Error(
+        "Нет осмысленных изменений (пустые строки/нули отброшены). Передай только поля, которые нужно изменить.",
+      );
+    }
     const { error } = await supabaseAdmin
       .from("properties")
       .update(patch as never)

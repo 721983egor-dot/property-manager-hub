@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { propertyLabel } from "@/lib/ai/context.server";
+import { sanitizePropertyUpdateFields } from "@/lib/ai/property-update.server";
 
 import type { AssistantToolContext } from "@/lib/ai/context.server";
 
@@ -49,7 +50,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposePropertyUpdate: tool({
       description:
-        "Предложить изменение полей объекта: публичное название, ВНУТРЕННЕЕ название, адрес, тип, комнаты, площадь, этаж, цена, статус, депозит, комиссия (%), коммунальные, описание, условия аренды, заметка о доступности, комплекс, ссылка на видео (файл уходит в Авито, VK — в ЦИАН).",
+        "Предложить изменение ТОЛЬКО указанных полей объекта. Передавай лишь то, что реально меняешь (например только priceMonth). Не заполняй остальные поля пустыми строками или нулями — это затрёт карточку. Поля: публичное название, ВНУТРЕННЕЕ название, адрес, тип, комнаты, площадь, этаж, цена, статус, депозит, комиссия (%), коммунальные, описание, условия аренды, заметка о доступности, комплекс, ссылка на видео (файл уходит в Авито, VK — в ЦИАН).",
       inputSchema: z.object({
         ref: z.string(),
         title: z.string().optional(),
@@ -79,9 +80,13 @@ export function createMutateTools(ctx: AssistantToolContext) {
           .optional()
           .describe("Ссылка YouTube / VK / Rutube или пустая строка, чтобы убрать видео"),
       }),
-      execute: async ({ ref, ...fields }) => {
+      execute: async ({ ref, ...rawFields }) => {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
+        const fields = sanitizePropertyUpdateFields(
+          rawFields as Record<string, unknown>,
+          p.row as Record<string, unknown>,
+        );
         const parts: string[] = [];
         if (fields.title) parts.push(`название «${fields.title}»`);
         if (fields.internalName != null) parts.push(`внутреннее «${fields.internalName}»`);
@@ -106,7 +111,12 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (fields.forRent === false) parts.push("только обслуживание (не в аренду)");
         if (fields.videoUrl != null)
           parts.push(fields.videoUrl.trim() ? "ссылка на видео" : "убрать видео");
-        if (!parts.length) return { error: "Не указано ни одного изменения" };
+        if (!parts.length) {
+          return {
+            error:
+              "Нет осмысленных изменений (пустые строки/нули отброшены). Передай только поля, которые нужно изменить.",
+          };
+        }
         const summary = `Изменить «${p.text}»: ${parts.join(", ")}`;
         ctx.propose({ tool: "updateProperty", summary, input: { propertyId: p.id, fields } });
         return { proposed: true, summary };
