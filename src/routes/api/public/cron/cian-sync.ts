@@ -17,7 +17,18 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { fetchOfferStatsByDays } = await import("@/lib/cian.server");
+        const { fetchOfferStatsByDays, relinkCianListingsToFeedOffers } = await import(
+          "@/lib/cian.server"
+        );
+
+        const errors: string[] = [];
+        let relinked = 0;
+        try {
+          const relink = await relinkCianListingsToFeedOffers();
+          relinked = relink.relinked;
+        } catch (e) {
+          errors.push(e instanceof Error ? e.message : "Не удалось перепривязать фид ЦИАН");
+        }
 
         const { data: listings, error } = await supabaseAdmin
           .from("property_listings")
@@ -30,7 +41,6 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
         const from = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
 
         let synced = 0;
-        const errors: string[] = [];
 
         for (const row of (listings ?? []) as { property_id: string; external_id: string }[]) {
           const offerId = Number(row.external_id);
@@ -116,6 +126,7 @@ export const Route = createFileRoute("/api/public/cron/cian-sync")({
   return Response.json({
     ok: true,
     synced,
+    relinked,
     chats,
     messages,
     avitoChats,
