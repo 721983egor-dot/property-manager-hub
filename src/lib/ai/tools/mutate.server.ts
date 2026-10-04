@@ -1116,5 +1116,210 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+
+    proposeCreatePayment: tool({
+      description:
+        "Предложить создание платежа в календаре Финансов: дата, сумма, приход/расход, статья, объект, контрагент, статус. Требует подтверждения менеджера.",
+      inputSchema: z.object({
+        plannedDate: z.string().describe("ГГГГ-ММ-ДД"),
+        amount: z.number(),
+        direction: z.enum(["in", "out"]).optional(),
+        kind: z
+          .enum([
+            "rent_in",
+            "deposit_in",
+            "deposit_out",
+            "owner_payout",
+            "contractor",
+            "agency_cost",
+            "other",
+          ])
+          .optional(),
+        status: z.enum(["expected", "partial", "paid"]).optional(),
+        propertyRef: z.string().optional(),
+        clientQuery: z.string().optional().describe("ФИО или телефон клиента CRM"),
+        counterpartyName: z.string().optional(),
+        comment: z.string().optional(),
+        paidAt: z.string().optional(),
+        paidAmount: z.number().optional(),
+      }),
+      execute: async (input) => {
+        if (!input.plannedDate) return { error: "Укажите дату" };
+        if (!Number.isFinite(input.amount) || input.amount < 0) return { error: "Укажите сумму" };
+        const kind = input.kind ?? "other";
+        const direction =
+          input.direction ??
+          (kind === "deposit_out" ||
+          kind === "owner_payout" ||
+          kind === "contractor" ||
+          kind === "agency_cost"
+            ? "out"
+            : "in");
+        const property = input.propertyRef ? await label(input.propertyRef) : null;
+        if (input.propertyRef && !property) return { error: "Объект не найден" };
+        let clientId: string | null = null;
+        let clientName = "";
+        if (input.clientQuery) {
+          const term = input.clientQuery.toLowerCase();
+          const { data: clients } = await ctx.admin
+            .from("clients")
+            .select("id, full_name, phone")
+            .limit(300);
+          const found = (clients ?? []).find((c) =>
+            `${c.full_name} ${c.phone}`.toLowerCase().includes(term),
+          );
+          if (!found) return { error: "Клиент не найден" };
+          clientId = found.id;
+          clientName = found.full_name;
+        }
+        const parts = [
+          `${direction === "in" ? "приход" : "расход"} ${money(input.amount)}`,
+          input.plannedDate,
+          kind,
+        ];
+        if (property) parts.push(`объект ${property.text}`);
+        if (clientName) parts.push(clientName);
+        else if (input.counterpartyName) parts.push(input.counterpartyName);
+        const summary = `Создать платёж: ${parts.join(", ")}`;
+        ctx.propose({
+          tool: "createPayment",
+          summary,
+          input: {
+            plannedDate: input.plannedDate,
+            amount: input.amount,
+            direction,
+            kind,
+            status: input.status ?? "expected",
+            propertyId: property?.id ?? null,
+            clientId,
+            counterpartyName: input.counterpartyName ?? clientName ?? "",
+            comment: input.comment ?? "",
+            paidAt: input.paidAt ?? null,
+            paidAmount: input.paidAmount ?? null,
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeUpdatePayment: tool({
+      description:
+        "Предложить изменение платежа Финансов (частичный патч: дата, сумма, статус, объект, комментарий…). Требует подтверждения.",
+      inputSchema: z.object({
+        paymentId: z.string(),
+        plannedDate: z.string().optional(),
+        amount: z.number().optional(),
+        direction: z.enum(["in", "out"]).optional(),
+        kind: z
+          .enum([
+            "rent_in",
+            "deposit_in",
+            "deposit_out",
+            "owner_payout",
+            "contractor",
+            "agency_cost",
+            "other",
+          ])
+          .optional(),
+        status: z.enum(["expected", "partial", "paid", "overdue"]).optional(),
+        propertyRef: z.string().optional(),
+        clearProperty: z.boolean().optional(),
+        clientQuery: z.string().optional(),
+        clearClient: z.boolean().optional(),
+        counterpartyName: z.string().optional(),
+        comment: z.string().optional(),
+        paidAt: z.string().optional(),
+        paidAmount: z.number().optional(),
+      }),
+      execute: async (input) => {
+        const { data: payment } = await ctx.admin
+          .from("payments")
+          .select("id, planned_date, amount, kind, status")
+          .eq("id", input.paymentId)
+          .maybeSingle();
+        if (!payment) return { error: "Платёж не найден" };
+        let propertyId: string | null | undefined;
+        let propertyText = "";
+        if (input.clearProperty) propertyId = null;
+        else if (input.propertyRef) {
+          const property = await label(input.propertyRef);
+          if (!property) return { error: "Объект не найден" };
+          propertyId = property.id;
+          propertyText = property.text;
+        }
+        let clientId: string | null | undefined;
+        let clientName = "";
+        if (input.clearClient) clientId = null;
+        else if (input.clientQuery) {
+          const term = input.clientQuery.toLowerCase();
+          const { data: clients } = await ctx.admin
+            .from("clients")
+            .select("id, full_name, phone")
+            .limit(300);
+          const found = (clients ?? []).find((c) =>
+            `${c.full_name} ${c.phone}`.toLowerCase().includes(term),
+          );
+          if (!found) return { error: "Клиент не найден" };
+          clientId = found.id;
+          clientName = found.full_name;
+        }
+        const parts: string[] = [`${payment.planned_date}, ${money(Number(payment.amount))}`];
+        if (input.plannedDate) parts.push(`дата → ${input.plannedDate}`);
+        if (input.amount != null) parts.push(`сумма → ${money(input.amount)}`);
+        if (input.status) parts.push(`статус → ${input.status}`);
+        if (propertyText) parts.push(`объект → ${propertyText}`);
+        if (clientName) parts.push(`клиент → ${clientName}`);
+        const summary = `Изменить платёж: ${parts.join(", ")}`;
+        ctx.propose({
+          tool: "updatePayment",
+          summary,
+          input: {
+            paymentId: input.paymentId,
+            plannedDate: input.plannedDate ?? null,
+            amount: input.amount ?? null,
+            direction: input.direction ?? null,
+            kind: input.kind ?? null,
+            status: input.status ?? null,
+            propertyId: propertyId === undefined ? undefined : propertyId,
+            setProperty: propertyId !== undefined,
+            clientId: clientId === undefined ? undefined : clientId,
+            setClient: clientId !== undefined,
+            counterpartyName: input.counterpartyName ?? null,
+            comment: input.comment ?? null,
+            paidAt: input.paidAt ?? null,
+            paidAmount: input.paidAmount ?? null,
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeMarkPaymentPaid: tool({
+      description: "Предложить отметить платёж оплаченным (вручную, без банка). Требует подтверждения.",
+      inputSchema: z.object({
+        paymentId: z.string(),
+        paidAt: z.string().optional().describe("ГГГГ-ММ-ДД"),
+        paidAmount: z.number().optional(),
+      }),
+      execute: async ({ paymentId, paidAt, paidAmount }) => {
+        const { data: payment } = await ctx.admin
+          .from("payments")
+          .select("id, planned_date, amount, kind, status")
+          .eq("id", paymentId)
+          .maybeSingle();
+        if (!payment) return { error: "Платёж не найден" };
+        const summary = `Отметить оплаченным платёж ${payment.planned_date}, ${money(Number(payment.amount))} (${payment.kind})`;
+        ctx.propose({
+          tool: "markPaymentPaid",
+          summary,
+          input: {
+            paymentId,
+            paidAt: paidAt ?? null,
+            paidAmount: paidAmount ?? null,
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
   };
 }

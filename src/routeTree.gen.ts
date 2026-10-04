@@ -34,6 +34,10 @@ import { Route as AuthenticatedAssistantIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats.index'
 import { Route as AuthenticatedComplexesIndexRouteImport } from './routes/_authenticated/complexes.index'
 import { Route as AuthenticatedComplexesNewRouteImport } from './routes/_authenticated/complexes.new'
+import { Route as AuthenticatedFinanceIndexRouteImport } from './routes/_authenticated/finance.index'
+import { Route as AuthenticatedFinanceCalendarRouteImport } from './routes/_authenticated/finance.calendar'
+import { Route as AuthenticatedFinanceCounterpartiesRouteImport } from './routes/_authenticated/finance.counterparties'
+import { Route as AuthenticatedFinanceReportsRouteImport } from './routes/_authenticated/finance.reports'
 import { Route as AuthenticatedHotelIndexRouteImport } from './routes/_authenticated/hotel.index'
 import { Route as AuthenticatedHotelOwnersRouteImport } from './routes/_authenticated/hotel.owners'
 import { Route as AuthenticatedHotelRoomsRouteImport } from './routes/_authenticated/hotel.rooms'
@@ -78,8 +82,8 @@ import { Route as ApiPublicCronVideoPublishRouteImport } from './routes/api/publ
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsAvitoDotxmlRouteImport } from './routes/api/public/feeds/avito[.]xml'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
-import { Route as ApiPublicFeedsYandexSpravochnikDotymlRouteImport } from './routes/api/public/feeds/yandex-spravochnik[.]yml'
 import { Route as ApiPublicFeedsVkDotymlRouteImport } from './routes/api/public/feeds/vk[.]yml'
+import { Route as ApiPublicFeedsYandexSpravochnikDotymlRouteImport } from './routes/api/public/feeds/yandex-spravochnik[.]yml'
 import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/public/feeds/yandex[.]xml'
 import { Route as ApiPublicSystemPlatformKeysRouteImport } from './routes/api/public/system/platform-keys'
 import { Route as ApiPublicSystemTelegramBootstrapRouteImport } from './routes/api/public/system/telegram-bootstrap'
@@ -213,6 +217,30 @@ const AuthenticatedComplexesNewRoute =
   AuthenticatedComplexesNewRouteImport.update({
     id: '/complexes/new',
     path: '/complexes/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceIndexRoute =
+  AuthenticatedFinanceIndexRouteImport.update({
+    id: '/finance/',
+    path: '/finance/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceCalendarRoute =
+  AuthenticatedFinanceCalendarRouteImport.update({
+    id: '/finance/calendar',
+    path: '/finance/calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceCounterpartiesRoute =
+  AuthenticatedFinanceCounterpartiesRouteImport.update({
+    id: '/finance/counterparties',
+    path: '/finance/counterparties',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceReportsRoute =
+  AuthenticatedFinanceReportsRouteImport.update({
+    id: '/finance/reports',
+    path: '/finance/reports',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedHotelIndexRoute = AuthenticatedHotelIndexRouteImport.update({
@@ -463,12 +491,11 @@ const ApiPublicFeedsCianDotxmlRoute =
     path: '/api/public/feeds/cian.xml',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicFeedsVkDotymlRoute =
-  ApiPublicFeedsVkDotymlRouteImport.update({
-    id: '/api/public/feeds/vk.yml',
-    path: '/api/public/feeds/vk.yml',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ApiPublicFeedsVkDotymlRoute = ApiPublicFeedsVkDotymlRouteImport.update({
+  id: '/api/public/feeds/vk.yml',
+  path: '/api/public/feeds/vk.yml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicFeedsYandexSpravochnikDotymlRoute =
   ApiPublicFeedsYandexSpravochnikDotymlRouteImport.update({
     id: '/api/public/feeds/yandex-spravochnik.yml',
@@ -540,6 +567,9 @@ export interface FileRoutesByFullPath {
   '/blog/': typeof BlogIndexRoute
   '/rent/': typeof RentIndexRoute
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
+  '/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
+  '/finance/counterparties': typeof AuthenticatedFinanceCounterpartiesRoute
+  '/finance/reports': typeof AuthenticatedFinanceReportsRoute
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/hotel/sync': typeof AuthenticatedHotelSyncRoute
@@ -563,6 +593,7 @@ export interface FileRoutesByFullPath {
   '/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/complexes/': typeof AuthenticatedComplexesIndexRoute
+  '/finance/': typeof AuthenticatedFinanceIndexRoute
   '/hotel/': typeof AuthenticatedHotelIndexRoute
   '/maintenance/': typeof AuthenticatedMaintenanceIndexRoute
   '/objects/': typeof AuthenticatedObjectsIndexRoute
@@ -617,6 +648,9 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogIndexRoute
   '/rent': typeof RentIndexRoute
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
+  '/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
+  '/finance/counterparties': typeof AuthenticatedFinanceCounterpartiesRoute
+  '/finance/reports': typeof AuthenticatedFinanceReportsRoute
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/hotel/sync': typeof AuthenticatedHotelSyncRoute
@@ -640,6 +674,7 @@ export interface FileRoutesByTo {
   '/assistant': typeof AuthenticatedAssistantIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/complexes': typeof AuthenticatedComplexesIndexRoute
+  '/finance': typeof AuthenticatedFinanceIndexRoute
   '/hotel': typeof AuthenticatedHotelIndexRoute
   '/maintenance': typeof AuthenticatedMaintenanceIndexRoute
   '/objects': typeof AuthenticatedObjectsIndexRoute
@@ -698,6 +733,9 @@ export interface FileRoutesById {
   '/blog/': typeof BlogIndexRoute
   '/rent/': typeof RentIndexRoute
   '/_authenticated/complexes/new': typeof AuthenticatedComplexesNewRoute
+  '/_authenticated/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
+  '/_authenticated/finance/counterparties': typeof AuthenticatedFinanceCounterpartiesRoute
+  '/_authenticated/finance/reports': typeof AuthenticatedFinanceReportsRoute
   '/_authenticated/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/_authenticated/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/_authenticated/hotel/sync': typeof AuthenticatedHotelSyncRoute
@@ -721,6 +759,7 @@ export interface FileRoutesById {
   '/_authenticated/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/complexes/': typeof AuthenticatedComplexesIndexRoute
+  '/_authenticated/finance/': typeof AuthenticatedFinanceIndexRoute
   '/_authenticated/hotel/': typeof AuthenticatedHotelIndexRoute
   '/_authenticated/maintenance/': typeof AuthenticatedMaintenanceIndexRoute
   '/_authenticated/objects/': typeof AuthenticatedObjectsIndexRoute
@@ -779,6 +818,9 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/rent/'
     | '/complexes/new'
+    | '/finance/calendar'
+    | '/finance/counterparties'
+    | '/finance/reports'
     | '/hotel/owners'
     | '/hotel/rooms'
     | '/hotel/sync'
@@ -802,6 +844,7 @@ export interface FileRouteTypes {
     | '/assistant/'
     | '/chats/'
     | '/complexes/'
+    | '/finance/'
     | '/hotel/'
     | '/maintenance/'
     | '/objects/'
@@ -856,6 +899,9 @@ export interface FileRouteTypes {
     | '/blog'
     | '/rent'
     | '/complexes/new'
+    | '/finance/calendar'
+    | '/finance/counterparties'
+    | '/finance/reports'
     | '/hotel/owners'
     | '/hotel/rooms'
     | '/hotel/sync'
@@ -879,6 +925,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/chats'
     | '/complexes'
+    | '/finance'
     | '/hotel'
     | '/maintenance'
     | '/objects'
@@ -936,6 +983,9 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/rent/'
     | '/_authenticated/complexes/new'
+    | '/_authenticated/finance/calendar'
+    | '/_authenticated/finance/counterparties'
+    | '/_authenticated/finance/reports'
     | '/_authenticated/hotel/owners'
     | '/_authenticated/hotel/rooms'
     | '/_authenticated/hotel/sync'
@@ -959,6 +1009,7 @@ export interface FileRouteTypes {
     | '/_authenticated/assistant/'
     | '/_authenticated/chats/'
     | '/_authenticated/complexes/'
+    | '/_authenticated/finance/'
     | '/_authenticated/hotel/'
     | '/_authenticated/maintenance/'
     | '/_authenticated/objects/'
@@ -1204,6 +1255,34 @@ declare module '@tanstack/react-router' {
       path: '/complexes/new'
       fullPath: '/complexes/new'
       preLoaderRoute: typeof AuthenticatedComplexesNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance/': {
+      id: '/_authenticated/finance/'
+      path: '/finance'
+      fullPath: '/finance/'
+      preLoaderRoute: typeof AuthenticatedFinanceIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance/calendar': {
+      id: '/_authenticated/finance/calendar'
+      path: '/finance/calendar'
+      fullPath: '/finance/calendar'
+      preLoaderRoute: typeof AuthenticatedFinanceCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance/counterparties': {
+      id: '/_authenticated/finance/counterparties'
+      path: '/finance/counterparties'
+      fullPath: '/finance/counterparties'
+      preLoaderRoute: typeof AuthenticatedFinanceCounterpartiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance/reports': {
+      id: '/_authenticated/finance/reports'
+      path: '/finance/reports'
+      fullPath: '/finance/reports'
+      preLoaderRoute: typeof AuthenticatedFinanceReportsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/hotel/': {
@@ -1583,6 +1662,9 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedComplexesNewRoute: typeof AuthenticatedComplexesNewRoute
+  AuthenticatedFinanceCalendarRoute: typeof AuthenticatedFinanceCalendarRoute
+  AuthenticatedFinanceCounterpartiesRoute: typeof AuthenticatedFinanceCounterpartiesRoute
+  AuthenticatedFinanceReportsRoute: typeof AuthenticatedFinanceReportsRoute
   AuthenticatedHotelOwnersRoute: typeof AuthenticatedHotelOwnersRoute
   AuthenticatedHotelRoomsRoute: typeof AuthenticatedHotelRoomsRoute
   AuthenticatedHotelSyncRoute: typeof AuthenticatedHotelSyncRoute
@@ -1601,6 +1683,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssistantIndexRoute: typeof AuthenticatedAssistantIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedComplexesIndexRoute: typeof AuthenticatedComplexesIndexRoute
+  AuthenticatedFinanceIndexRoute: typeof AuthenticatedFinanceIndexRoute
   AuthenticatedHotelIndexRoute: typeof AuthenticatedHotelIndexRoute
   AuthenticatedMaintenanceIndexRoute: typeof AuthenticatedMaintenanceIndexRoute
   AuthenticatedObjectsIndexRoute: typeof AuthenticatedObjectsIndexRoute
@@ -1626,6 +1709,10 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedComplexesNewRoute: AuthenticatedComplexesNewRoute,
+  AuthenticatedFinanceCalendarRoute: AuthenticatedFinanceCalendarRoute,
+  AuthenticatedFinanceCounterpartiesRoute:
+    AuthenticatedFinanceCounterpartiesRoute,
+  AuthenticatedFinanceReportsRoute: AuthenticatedFinanceReportsRoute,
   AuthenticatedHotelOwnersRoute: AuthenticatedHotelOwnersRoute,
   AuthenticatedHotelRoomsRoute: AuthenticatedHotelRoomsRoute,
   AuthenticatedHotelSyncRoute: AuthenticatedHotelSyncRoute,
@@ -1644,6 +1731,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssistantIndexRoute: AuthenticatedAssistantIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedComplexesIndexRoute: AuthenticatedComplexesIndexRoute,
+  AuthenticatedFinanceIndexRoute: AuthenticatedFinanceIndexRoute,
   AuthenticatedHotelIndexRoute: AuthenticatedHotelIndexRoute,
   AuthenticatedMaintenanceIndexRoute: AuthenticatedMaintenanceIndexRoute,
   AuthenticatedObjectsIndexRoute: AuthenticatedObjectsIndexRoute,

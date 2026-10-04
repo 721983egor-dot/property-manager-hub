@@ -18,6 +18,7 @@ import {
   Sparkles,
   UserRound,
   Users,
+  Wallet,
   Wrench,
   Zap,
 } from "lucide-react";
@@ -56,6 +57,7 @@ const CRM_PREFIXES = [
   "/hotel",
   "/owner",
   "/maintenance",
+  "/finance",
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -116,6 +118,10 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
       <Link to="/maintenance/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <Wrench className="size-4 shrink-0" />
         Обслуживание
+      </Link>
+      <Link to="/finance/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Wallet className="size-4 shrink-0" />
+        Финансы
       </Link>
       {isSocialOwner && (
         <Link to="/social" onClick={onNavigate} className={NAV_LINK_CLASS}>

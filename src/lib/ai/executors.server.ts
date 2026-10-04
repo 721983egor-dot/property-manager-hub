@@ -1241,6 +1241,79 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     }
     return "Услуги объекта обновлены";
   },
+
+  createPayment: async (input) => {
+    const plannedDate = must(input["plannedDate"] as string, "Не указана дата");
+    const amount = Number(input["amount"]);
+    if (!Number.isFinite(amount) || amount < 0) throw new Error("Некорректная сумма");
+    const status = String(input["status"] ?? "expected");
+    const row: Record<string, unknown> = {
+      planned_date: plannedDate,
+      amount,
+      direction: String(input["direction"] ?? "in"),
+      kind: String(input["kind"] ?? "other"),
+      status,
+      property_id: (input["propertyId"] as string | null) || null,
+      client_id: (input["clientId"] as string | null) || null,
+      counterparty_name: String(input["counterpartyName"] ?? ""),
+      comment: String(input["comment"] ?? ""),
+      paid_at: status === "paid" ? (input["paidAt"] as string | null) || plannedDate : (input["paidAt"] as string | null) || null,
+      paid_amount:
+        status === "paid"
+          ? Number(input["paidAmount"] ?? amount)
+          : input["paidAmount"] == null
+            ? null
+            : Number(input["paidAmount"]),
+    };
+    const { error } = await supabaseAdmin.from("payments").insert(row as never);
+    if (error) throw new Error(error.message);
+    return "Платёж создан";
+  },
+
+  updatePayment: async (input) => {
+    const paymentId = must(input["paymentId"] as string, "Не указан платёж");
+    const patch: Record<string, unknown> = {};
+    if (input["plannedDate"] != null) patch["planned_date"] = input["plannedDate"];
+    if (input["amount"] != null) patch["amount"] = Number(input["amount"]);
+    if (input["direction"] != null) patch["direction"] = input["direction"];
+    if (input["kind"] != null) patch["kind"] = input["kind"];
+    if (input["status"] != null) patch["status"] = input["status"];
+    if (input["setProperty"]) patch["property_id"] = (input["propertyId"] as string | null) || null;
+    if (input["setClient"]) patch["client_id"] = (input["clientId"] as string | null) || null;
+    if (input["counterpartyName"] != null) patch["counterparty_name"] = input["counterpartyName"];
+    if (input["comment"] != null) patch["comment"] = input["comment"];
+    if (input["paidAt"] != null) patch["paid_at"] = input["paidAt"] || null;
+    if (input["paidAmount"] != null) patch["paid_amount"] = Number(input["paidAmount"]);
+    if (patch["status"] === "paid" && patch["paid_at"] == null) {
+      patch["paid_at"] = new Date().toISOString().slice(0, 10);
+    }
+    if (!Object.keys(patch).length) throw new Error("Нет полей для обновления платежа");
+    const { error } = await supabaseAdmin.from("payments").update(patch as never).eq("id", paymentId);
+    if (error) throw new Error(error.message);
+    return "Платёж обновлён";
+  },
+
+  markPaymentPaid: async (input) => {
+    const paymentId = must(input["paymentId"] as string, "Не указан платёж");
+    const { data: current, error: loadError } = await supabaseAdmin
+      .from("payments")
+      .select("amount")
+      .eq("id", paymentId)
+      .maybeSingle();
+    if (loadError) throw new Error(loadError.message);
+    if (!current) throw new Error("Платёж не найден");
+    const amount = Number((current as { amount: number }).amount);
+    const { error } = await supabaseAdmin
+      .from("payments")
+      .update({
+        status: "paid",
+        paid_at: (input["paidAt"] as string | null) || new Date().toISOString().slice(0, 10),
+        paid_amount: input["paidAmount"] == null ? amount : Number(input["paidAmount"]),
+      } as never)
+      .eq("id", paymentId);
+    if (error) throw new Error(error.message);
+    return "Платёж отмечен оплаченным";
+  },
 };
 
 /** Выполняет подтверждённое действие и пишет его в журнал. */

@@ -879,6 +879,92 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          id: string
+          planned_date: string
+          amount: number
+          direction: Database["public"]["Enums"]["payment_direction"]
+          status: Database["public"]["Enums"]["payment_status"]
+          kind: Database["public"]["Enums"]["payment_kind"]
+          property_id: string | null
+          client_id: string | null
+          booking_id: string | null
+          deal_id: string | null
+          counterparty_name: string
+          comment: string
+          paid_at: string | null
+          paid_amount: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          planned_date: string
+          amount: number
+          direction?: Database["public"]["Enums"]["payment_direction"]
+          status?: Database["public"]["Enums"]["payment_status"]
+          kind?: Database["public"]["Enums"]["payment_kind"]
+          property_id?: string | null
+          client_id?: string | null
+          booking_id?: string | null
+          deal_id?: string | null
+          counterparty_name?: string
+          comment?: string
+          paid_at?: string | null
+          paid_amount?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          planned_date?: string
+          amount?: number
+          direction?: Database["public"]["Enums"]["payment_direction"]
+          status?: Database["public"]["Enums"]["payment_status"]
+          kind?: Database["public"]["Enums"]["payment_kind"]
+          property_id?: string | null
+          client_id?: string | null
+          booking_id?: string | null
+          deal_id?: string | null
+          counterparty_name?: string
+          comment?: string
+          paid_at?: string | null
+          paid_amount?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_credentials: {
         Row: {
           account_id: string
@@ -2191,6 +2277,16 @@ export type Database = {
       lead_status: "new" | "in_work" | "done" | "rejected"
       listing_platform: "site" | "avito" | "cian" | "yandex"
       management_fee_type: "percent" | "amount"
+      payment_direction: "in" | "out"
+      payment_status: "expected" | "partial" | "paid" | "overdue"
+      payment_kind:
+        | "rent_in"
+        | "deposit_in"
+        | "deposit_out"
+        | "owner_payout"
+        | "contractor"
+        | "agency_cost"
+        | "other"
       property_event_type:
         | "page_view"
         | "contact_click"
@@ -2346,6 +2442,17 @@ export const Constants = {
       lead_status: ["new", "in_work", "done", "rejected"],
       listing_platform: ["site", "avito", "cian", "yandex"],
       management_fee_type: ["percent", "amount"],
+      payment_direction: ["in", "out"],
+      payment_status: ["expected", "partial", "paid", "overdue"],
+      payment_kind: [
+        "rent_in",
+        "deposit_in",
+        "deposit_out",
+        "owner_payout",
+        "contractor",
+        "agency_cost",
+        "other",
+      ],
       property_event_type: [
         "page_view",
         "contact_click",

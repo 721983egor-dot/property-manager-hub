@@ -1983,5 +1983,224 @@ export function createReadTools(ctx: AssistantToolContext) {
         return { count: (tasks ?? []).length, type: maintenance, tasks: tasks ?? [] };
       },
     }),
+
+    listPayments: tool({
+      description:
+        "Список платежей блока «Финансы»: период, объект, статус, направление. Просрочка считается по plannedDate, если статус не paid.",
+      inputSchema: z.object({
+        from: z.string().optional().describe("ГГГГ-ММ-ДД"),
+        to: z.string().optional().describe("ГГГГ-ММ-ДД"),
+        propertyRef: z.string().optional(),
+        status: z.enum(["expected", "partial", "paid", "overdue", "open", "all"]).optional(),
+        direction: z.enum(["in", "out", "all"]).optional(),
+      }),
+      execute: async ({ from, to, propertyRef, status, direction }) => {
+        let query = admin
+          .from("payments")
+          .select(
+            "id, planned_date, amount, direction, status, kind, property_id, client_id, counterparty_name, comment, paid_at, paid_amount, booking_id, deal_id",
+          )
+          .order("planned_date", { ascending: true })
+          .limit(300);
+        if (from) query = query.gte("planned_date", from);
+        if (to) query = query.lte("planned_date", to);
+        if (direction === "in" || direction === "out") query = query.eq("direction", direction);
+        if (status === "expected" || status === "partial" || status === "paid" || status === "overdue") {
+          query = query.eq("status", status);
+        }
+        if (status === "open") query = query.in("status", ["expected", "partial", "overdue"]);
+        if (propertyRef) {
+          const found = await ctx.findProperty(propertyRef);
+          if (!found) return { error: "Объект не найден" };
+          query = query.eq("property_id", found["id"] as string);
+        }
+        const { data, error } = await query;
+        if (error) return { error: error.message };
+        const today = dateOnly(new Date().toISOString());
+        const propIds = Array.from(
+          new Set((data ?? []).map((r) => r.property_id).filter(Boolean) as string[]),
+        );
+        const names = new Map<string, string>();
+        if (propIds.length) {
+          const rows = await allProperties();
+          for (const row of rows) {
+            if (propIds.includes(String(row["id"]))) {
+              names.set(String(row["id"]), propertyLabel(row as never));
+            }
+          }
+        }
+        const payments = (data ?? []).map((row) => {
+          const effective =
+            row.status === "paid"
+              ? "paid"
+              : row.planned_date < today
+                ? "overdue"
+                : row.status;
+          return {
+            id: row.id,
+            plannedDate: row.planned_date,
+            amount: row.amount,
+            direction: row.direction,
+            status: row.status,
+            effectiveStatus: effective,
+            kind: row.kind,
+            property: row.property_id ? (names.get(row.property_id) ?? row.property_id) : null,
+            propertyId: row.property_id,
+            clientId: row.client_id,
+            counterpartyName: row.counterparty_name,
+            comment: row.comment,
+            paidAt: row.paid_at,
+            paidAmount: row.paid_amount,
+            bookingId: row.booking_id,
+            dealId: row.deal_id,
+          };
+        });
+        return { count: payments.length, payments };
+      },
+    }),
+
+    getPaymentCalendar: tool({
+      description:
+        "Календарь оплат за месяц (ГГГГ-ММ): сводка по дням + список платежей. Синоним listPayments с месячным окном.",
+      inputSchema: z.object({
+        month: z.string().describe("ГГГГ-ММ"),
+        propertyRef: z.string().optional(),
+      }),
+      execute: async ({ month, propertyRef }) => {
+        if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Месяц в формате ГГГГ-ММ" };
+        const from = `${month}-01`;
+        const y = Number(month.slice(0, 4));
+        const m = Number(month.slice(5, 7));
+        const lastDay = new Date(y, m, 0).getDate();
+        const to = `${month}-${String(lastDay).padStart(2, "0")}`;
+        let query = admin
+          .from("payments")
+          .select(
+            "id, planned_date, amount, direction, status, kind, property_id, counterparty_name, paid_amount",
+          )
+          .gte("planned_date", from)
+          .lte("planned_date", to)
+          .order("planned_date");
+        if (propertyRef) {
+          const found = await ctx.findProperty(propertyRef);
+          if (!found) return { error: "Объект не найден" };
+          query = query.eq("property_id", found["id"] as string);
+        }
+        const { data, error } = await query;
+        if (error) return { error: error.message };
+        const today = dateOnly(new Date().toISOString());
+        const byDay: Record<string, number> = {};
+        let planIn = 0;
+        let planOut = 0;
+        for (const row of data ?? []) {
+          byDay[row.planned_date] = (byDay[row.planned_date] ?? 0) + 1;
+          if (row.direction === "in") planIn += Number(row.amount);
+          else planOut += Number(row.amount);
+        }
+        return {
+          month,
+          from,
+          to,
+          today,
+          planIn,
+          planOut,
+          byDay,
+          count: (data ?? []).length,
+          payments: data ?? [],
+        };
+      },
+    }),
+
+    listOverduePayments: tool({
+      description: "Просроченные платежи: plannedDate < сегодня и статус не paid.",
+      inputSchema: z.object({
+        propertyRef: z.string().optional(),
+      }),
+      execute: async ({ propertyRef }) => {
+        const today = dateOnly(new Date().toISOString());
+        let query = admin
+          .from("payments")
+          .select(
+            "id, planned_date, amount, direction, status, kind, property_id, counterparty_name, paid_amount, comment",
+          )
+          .lt("planned_date", today)
+          .neq("status", "paid")
+          .order("planned_date")
+          .limit(200);
+        if (propertyRef) {
+          const found = await ctx.findProperty(propertyRef);
+          if (!found) return { error: "Объект не найден" };
+          query = query.eq("property_id", found["id"] as string);
+        }
+        const { data, error } = await query;
+        if (error) return { error: error.message };
+        return { count: (data ?? []).length, today, payments: data ?? [] };
+      },
+    }),
+
+    getFinanceSummary: tool({
+      description: "Сводка финансов за месяц: план/факт приход и расход, число просрочек.",
+      inputSchema: z.object({
+        month: z.string().describe("ГГГГ-ММ"),
+        propertyRef: z.string().optional(),
+      }),
+      execute: async ({ month, propertyRef }) => {
+        if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Месяц в формате ГГГГ-ММ" };
+        const from = `${month}-01`;
+        const y = Number(month.slice(0, 4));
+        const m = Number(month.slice(5, 7));
+        const lastDay = new Date(y, m, 0).getDate();
+        const to = `${month}-${String(lastDay).padStart(2, "0")}`;
+        const today = dateOnly(new Date().toISOString());
+        let query = admin
+          .from("payments")
+          .select("planned_date, amount, direction, status, paid_amount")
+          .gte("planned_date", from)
+          .lte("planned_date", to);
+        if (propertyRef) {
+          const found = await ctx.findProperty(propertyRef);
+          if (!found) return { error: "Объект не найден" };
+          query = query.eq("property_id", found["id"] as string);
+        }
+        const { data, error } = await query;
+        if (error) return { error: error.message };
+        let planIn = 0;
+        let planOut = 0;
+        let factIn = 0;
+        let factOut = 0;
+        let overdueCount = 0;
+        let overdueAmount = 0;
+        for (const row of data ?? []) {
+          const amount = Number(row.amount);
+          if (row.direction === "in") planIn += amount;
+          else planOut += amount;
+          if (row.status === "paid") {
+            const fact = Number(row.paid_amount ?? amount);
+            if (row.direction === "in") factIn += fact;
+            else factOut += fact;
+          } else if (row.status === "partial") {
+            const fact = Number(row.paid_amount ?? 0);
+            if (row.direction === "in") factIn += fact;
+            else factOut += fact;
+          }
+          if (row.status !== "paid" && row.planned_date < today) {
+            overdueCount += 1;
+            overdueAmount += Math.max(0, amount - Number(row.paid_amount ?? 0));
+          }
+        }
+        return {
+          month,
+          planIn,
+          planOut,
+          factIn,
+          factOut,
+          netPlan: planIn - planOut,
+          netFact: factIn - factOut,
+          overdueCount,
+          overdueAmount,
+          count: (data ?? []).length,
+        };
+      },
+    }),
   };
 }
