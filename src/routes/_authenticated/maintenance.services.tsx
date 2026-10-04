@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { AdminOnly } from "@/components/AdminOnly";
 import { MaintenanceTabs } from "@/components/MaintenanceTabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +34,11 @@ export const Route = createFileRoute("/_authenticated/maintenance/services")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: MaintenanceServicesPage,
+  component: () => (
+    <AdminOnly>
+      <MaintenanceServicesPage />
+    </AdminOnly>
+  ),
 });
 
 function MaintenanceServicesPage() {

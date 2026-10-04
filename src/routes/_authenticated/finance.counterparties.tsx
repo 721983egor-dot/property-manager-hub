@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
+import { AdminOnly } from "@/components/AdminOnly";
 import { FinanceTabs } from "@/components/FinanceTabs";
 import { buildCounterparties, fetchPayments } from "@/lib/finance";
 import { fetchCrmClients, CLIENT_PARTY_KINDS } from "@/lib/clients";
@@ -18,7 +19,11 @@ export const Route = createFileRoute("/_authenticated/finance/counterparties")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: FinanceCounterpartiesPage,
+  component: () => (
+    <AdminOnly>
+      <FinanceCounterpartiesPage />
+    </AdminOnly>
+  ),
 });
 
 function FinanceCounterpartiesPage() {

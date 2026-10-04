@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CalendarDays, Check, ListTodo, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
+import { AdminOnly } from "@/components/AdminOnly";
 import { MaintenanceTabs } from "@/components/MaintenanceTabs";
 import { TaskDialog } from "@/components/TaskDialog";
 import { TasksCalendar } from "@/components/TasksCalendar";
@@ -45,7 +46,11 @@ export const Route = createFileRoute("/_authenticated/maintenance/tasks")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: () => <MaintenanceTasksPage defaultView="board" />,
+  component: () => (
+    <AdminOnly>
+      <MaintenanceTasksPage defaultView="board" />
+    </AdminOnly>
+  ),
 });
 
 export function MaintenanceTasksPage({ defaultView }: { defaultView: "board" | "calendar" }) {

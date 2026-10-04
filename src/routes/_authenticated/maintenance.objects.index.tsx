@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ImageIcon, Pencil, Plus, Search } from "lucide-react";
 
+import { AdminOnly } from "@/components/AdminOnly";
 import { MaintenanceTabs } from "@/components/MaintenanceTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,11 @@ export const Route = createFileRoute("/_authenticated/maintenance/objects/")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: MaintenanceObjectsPage,
+  component: () => (
+    <AdminOnly>
+      <MaintenanceObjectsPage />
+    </AdminOnly>
+  ),
 });
 
 function MaintenanceObjectsPage() {

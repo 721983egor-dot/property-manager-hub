@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Plus, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { AdminOnly } from "@/components/AdminOnly";
 import { FinanceTabs } from "@/components/FinanceTabs";
 import {
   PaymentCalendarMonth,
@@ -48,7 +49,11 @@ export const Route = createFileRoute("/_authenticated/finance/calendar")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: FinanceCalendarPage,
+  component: () => (
+    <AdminOnly>
+      <FinanceCalendarPage />
+    </AdminOnly>
+  ),
 });
 
 type ViewMode = "month" | "list";

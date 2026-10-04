@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 
+import { AdminOnly } from "@/components/AdminOnly";
 import { MaintenanceTabs } from "@/components/MaintenanceTabs";
 import { PropertyForm } from "@/components/PropertyForm";
 import { fetchProperty, updateProperty, type PropertyInput } from "@/lib/properties";
@@ -14,7 +15,11 @@ export const Route = createFileRoute("/_authenticated/maintenance/objects/$id/ed
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: EditMaintenanceObjectPage,
+  component: () => (
+    <AdminOnly>
+      <EditMaintenanceObjectPage />
+    </AdminOnly>
+  ),
 });
 
 function EditMaintenanceObjectPage() {

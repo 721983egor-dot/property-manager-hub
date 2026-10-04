@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { AdminOnly } from "@/components/AdminOnly";
 import { FinanceTabs } from "@/components/FinanceTabs";
 import { Button } from "@/components/ui/button";
 import { fetchPayments, monthBounds, summarizeMonth } from "@/lib/finance";
@@ -29,7 +30,11 @@ export const Route = createFileRoute("/_authenticated/finance/reports")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: FinanceReportsPage,
+  component: () => (
+    <AdminOnly>
+      <FinanceReportsPage />
+    </AdminOnly>
+  ),
 });
 
 function FinanceReportsPage() {

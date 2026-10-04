@@ -115,14 +115,19 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <CalendarDays className="size-4 shrink-0" />
         Календарь
       </Link>
-      <Link to="/maintenance/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Wrench className="size-4 shrink-0" />
-        Обслуживание
-      </Link>
-      <Link to="/finance/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Wallet className="size-4 shrink-0" />
-        Финансы
-      </Link>
+      {/* Новые блоки (Обслуживание, Финансы и далее) — только админ, пока Егор явно не откроет менеджерам. */}
+      {isAdmin && (
+        <>
+          <Link to="/maintenance/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <Wrench className="size-4 shrink-0" />
+            Обслуживание
+          </Link>
+          <Link to="/finance/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
+            <Wallet className="size-4 shrink-0" />
+            Финансы
+          </Link>
+        </>
+      )}
       {isSocialOwner && (
         <Link to="/social" onClick={onNavigate} className={NAV_LINK_CLASS}>
           <Share2 className="size-4 shrink-0" />

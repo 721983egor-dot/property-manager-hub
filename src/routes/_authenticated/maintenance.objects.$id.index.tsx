@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, Circle, ImageIcon, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
+import { AdminOnly } from "@/components/AdminOnly";
 import { MaintenanceTabs } from "@/components/MaintenanceTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,11 @@ export const Route = createFileRoute("/_authenticated/maintenance/objects/$id/")
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: MaintenanceObjectCardPage,
+  component: () => (
+    <AdminOnly>
+      <MaintenanceObjectCardPage />
+    </AdminOnly>
+  ),
 });
 
 const BOILER_NONE = "__none__";
