@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, Settings2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { FinanceTabs } from "@/components/FinanceTabs";
+import {
+  PaymentCalendarMonth,
+  type CellMode,
+} from "@/components/PaymentCalendarMonth";
 import { PaymentDialog } from "@/components/PaymentDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -15,12 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  buildMonthDayLedger,
   counterpartyLabel,
   effectivePaymentStatus,
   fetchPayments,
   kindLabel,
+  loadMonthOpeningBalance,
   markPaymentPaid,
   monthBounds,
+  saveMonthOpeningBalance,
   statusLabel,
   type Payment,
   type PaymentStatus,
@@ -32,10 +40,10 @@ import { toISODate } from "@/lib/rentals";
 export const Route = createFileRoute("/_authenticated/finance/calendar")({
   head: () => ({
     meta: [
-      { title: "Финансы — календарь оплат — RM OS" },
+      { title: "Финансы — платёжный календарь — RM OS" },
       {
         name: "description",
-        content: "Календарь ожидаемых и фактических оплат по объектам.",
+        content: "Платёжный календарь: приходы, расходы и прогноз остатка по дням.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -43,14 +51,14 @@ export const Route = createFileRoute("/_authenticated/finance/calendar")({
   component: FinanceCalendarPage,
 });
 
-type ViewMode = "list" | "month";
+type ViewMode = "month" | "list";
 type StatusFilter = "all" | "open" | PaymentStatus;
 
 const STATUS_TONE: Record<PaymentStatus, string> = {
   expected: "bg-sky-500/15 text-sky-700",
   partial: "bg-amber-500/15 text-amber-800",
   paid: "bg-emerald-500/15 text-emerald-800",
-  overdue: "bg-destructive/15 text-destructive",
+  overdue: "bg-red-500/15 text-red-700",
 };
 
 function FinanceCalendarPage() {
@@ -59,14 +67,23 @@ function FinanceCalendarPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [monthIndex, setMonthIndex] = useState(now.getMonth());
-  const [view, setView] = useState<ViewMode>("list");
+  const [view, setView] = useState<ViewMode>("month");
+  const [cellMode, setCellMode] = useState<CellMode>("sums");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [propertyId, setPropertyId] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Payment | null>(null);
   const [defaultDate, setDefaultDate] = useState<string>("");
+  const [openingDraft, setOpeningDraft] = useState("0");
+  const [showOpening, setShowOpening] = useState(false);
 
   const bounds = useMemo(() => monthBounds(year, monthIndex), [year, monthIndex]);
+
+  useEffect(() => {
+    setOpeningDraft(String(loadMonthOpeningBalance(bounds.monthKey)));
+  }, [bounds.monthKey]);
+
+  const openingBalance = Number(openingDraft) || 0;
 
   const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
@@ -92,6 +109,11 @@ function FinanceCalendarPage() {
     });
   }, [payments, statusFilter, today]);
 
+  const ledger = useMemo(
+    () => buildMonthDayLedger(filtered, year, monthIndex, openingBalance),
+    [filtered, year, monthIndex, openingBalance],
+  );
+
   const totals = useMemo(() => {
     let inSum = 0;
     let outSum = 0;
@@ -101,31 +123,10 @@ function FinanceCalendarPage() {
       else outSum += payment.amount;
       if (effectivePaymentStatus(payment, today) === "overdue") overdue += 1;
     }
-    return { inSum, outSum, overdue };
-  }, [filtered, today]);
-
-  const byDay = useMemo(() => {
-    const map = new Map<string, Payment[]>();
-    for (const payment of filtered) {
-      const list = map.get(payment.planned_date) ?? [];
-      list.push(payment);
-      map.set(payment.planned_date, list);
-    }
-    return map;
-  }, [filtered]);
-
-  const calendarDays = useMemo(() => {
-    const first = new Date(year, monthIndex, 1);
-    const startPad = (first.getDay() + 6) % 7; // Monday-first
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-    const cells: Array<{ date: string | null; day: number | null }> = [];
-    for (let i = 0; i < startPad; i += 1) cells.push({ date: null, day: null });
-    for (let d = 1; d <= daysInMonth; d += 1) {
-      cells.push({ date: toISODate(new Date(year, monthIndex, d)), day: d });
-    }
-    while (cells.length % 7 !== 0) cells.push({ date: null, day: null });
-    return cells;
-  }, [year, monthIndex]);
+    const end = ledger.length > 0 ? ledger[ledger.length - 1]!.closing : openingBalance;
+    const gaps = ledger.filter((d) => d.hasGap).length;
+    return { inSum, outSum, overdue, end, gaps };
+  }, [filtered, today, ledger, openingBalance]);
 
   const markPaidMutation = useMutation({
     mutationFn: (id: string) => markPaymentPaid(id),
@@ -159,56 +160,90 @@ function FinanceCalendarPage() {
     year: "numeric",
   }).format(new Date(year, monthIndex, 1));
 
+  const applyOpening = () => {
+    const value = Number(openingDraft) || 0;
+    saveMonthOpeningBalance(bounds.monthKey, value);
+    setOpeningDraft(String(value));
+    toast.success("Начальный остаток сохранён");
+  };
+
   return (
-    <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+    <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Финансы</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Платёжный календарь
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Календарь оплат: аренда, депозиты, выплаты собственникам и расходы.
+            Планируйте приходы и расходы по дням — остаток и кассовые разрывы видны сразу.
           </p>
         </div>
         <Button type="button" onClick={() => openCreate()}>
           <Plus className="size-4" />
-          Платёж
+          Операция
         </Button>
       </header>
 
       <FinanceTabs active="calendar" />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1">
-          <Button type="button" variant="outline" size="icon" onClick={() => shiftMonth(-1)}>
+        <div className="flex items-center gap-1 rounded-md border border-border bg-card p-0.5">
+          <Button type="button" variant="ghost" size="icon" onClick={() => shiftMonth(-1)}>
             <ChevronLeft className="size-4" />
           </Button>
-          <p className="min-w-[10rem] text-center text-sm font-medium capitalize">{monthTitle}</p>
-          <Button type="button" variant="outline" size="icon" onClick={() => shiftMonth(1)}>
+          <p className="min-w-[10rem] text-center text-sm font-semibold capitalize">{monthTitle}</p>
+          <Button type="button" variant="ghost" size="icon" onClick={() => shiftMonth(1)}>
             <ChevronRight className="size-4" />
           </Button>
         </div>
 
-        <div className="flex rounded-md border border-border p-0.5">
+        <div className="flex rounded-md border border-border bg-card p-0.5">
           <button
             type="button"
             className={cn(
               "rounded px-3 py-1.5 text-sm",
-              view === "list" ? "bg-muted font-medium" : "text-muted-foreground",
+              view === "month" ? "bg-teal-700 text-white" : "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() => setView("month")}
+          >
+            Календарь
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "rounded px-3 py-1.5 text-sm",
+              view === "list" ? "bg-teal-700 text-white" : "text-muted-foreground hover:text-foreground",
             )}
             onClick={() => setView("list")}
           >
             Список
           </button>
-          <button
-            type="button"
-            className={cn(
-              "rounded px-3 py-1.5 text-sm",
-              view === "month" ? "bg-muted font-medium" : "text-muted-foreground",
-            )}
-            onClick={() => setView("month")}
-          >
-            Месяц
-          </button>
         </div>
+
+        {view === "month" && (
+          <div className="flex rounded-md border border-border bg-card p-0.5">
+            <button
+              type="button"
+              className={cn(
+                "rounded px-3 py-1.5 text-sm",
+                cellMode === "sums" ? "bg-muted font-medium" : "text-muted-foreground",
+              )}
+              onClick={() => setCellMode("sums")}
+            >
+              Суммы
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "rounded px-3 py-1.5 text-sm",
+                cellMode === "ops" ? "bg-muted font-medium" : "text-muted-foreground",
+              )}
+              onClick={() => setCellMode("ops")}
+            >
+              Операции
+            </button>
+          </div>
+        )}
 
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
           <SelectTrigger className="w-[160px]">
@@ -240,27 +275,95 @@ function FinanceCalendarPage() {
               ))}
           </SelectContent>
         </Select>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowOpening((v) => !v)}
+        >
+          <Settings2 className="size-4" />
+          Остаток
+        </Button>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
-        <span>
-          Приход: <span className="font-medium text-foreground">{formatMoney(totals.inSum)}</span>
-        </span>
-        <span>
-          Расход: <span className="font-medium text-foreground">{formatMoney(totals.outSum)}</span>
-        </span>
-        {totals.overdue > 0 && (
-          <span className="text-destructive">Просрочено: {totals.overdue}</span>
-        )}
+      {showOpening && (
+        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-border bg-muted/30 px-3 py-3">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">
+              Начальный остаток на {bounds.from}
+            </p>
+            <Input
+              type="number"
+              className="w-[180px]"
+              value={openingDraft}
+              onChange={(e) => setOpeningDraft(e.target.value)}
+            />
+          </div>
+          <Button type="button" size="sm" onClick={applyOpening}>
+            Применить
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Хранится в браузере для этого месяца. Нужен, чтобы видеть кассовые разрывы.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi
+          label="Приход"
+          value={formatMoney(totals.inSum)}
+          tone="text-emerald-700"
+        />
+        <Kpi label="Расход" value={formatMoney(totals.outSum)} tone="text-red-600" />
+        <Kpi
+          label="Остаток на конец"
+          value={formatMoney(totals.end)}
+          tone={totals.end < 0 ? "text-red-700" : "text-teal-800"}
+        />
+        <Kpi
+          label={totals.overdue > 0 ? "Просрочено" : "Разрывы"}
+          value={
+            totals.overdue > 0
+              ? String(totals.overdue)
+              : totals.gaps > 0
+                ? `${totals.gaps} дн.`
+                : "нет"
+          }
+          tone={
+            totals.overdue > 0 || totals.gaps > 0 ? "text-red-700" : "text-muted-foreground"
+          }
+        />
       </div>
 
       {isLoading && <p className="mt-8 text-sm text-muted-foreground">Загрузка…</p>}
 
+      {!isLoading && view === "month" && (
+        <div className="mt-6">
+          <PaymentCalendarMonth
+            year={year}
+            monthIndex={monthIndex}
+            ledger={ledger}
+            today={today}
+            cellMode={cellMode}
+            onAdd={openCreate}
+            onEdit={openEdit}
+          />
+        </div>
+      )}
+
       {!isLoading && view === "list" && (
-        <div className="mt-6 space-y-2">
+        <div className="mt-6 overflow-hidden rounded-lg border border-border">
+          <div className="hidden grid-cols-[7rem_1fr_8rem_7rem_6rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+            <span>Дата</span>
+            <span>Операция</span>
+            <span className="text-right">Сумма</span>
+            <span>Статус</span>
+            <span />
+          </div>
           {filtered.length === 0 && (
-            <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
-              За этот месяц платежей нет. Добавьте аренду, депозит или выплату собственнику.
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+              За этот месяц операций нет. Нажмите «Операция» или «+» в дне календаря.
             </p>
           )}
           {filtered.map((payment) => {
@@ -271,118 +374,57 @@ function FinanceCalendarPage() {
             return (
               <div
                 key={payment.id}
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+                className="grid gap-2 border-b border-border px-4 py-3 last:border-b-0 sm:grid-cols-[7rem_1fr_8rem_7rem_6rem] sm:items-center sm:gap-3"
               >
                 <button
                   type="button"
-                  className="min-w-0 flex-1 text-left"
+                  className="text-left text-sm font-medium tabular-nums sm:col-span-1"
                   onClick={() => openEdit(payment)}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">{payment.planned_date}</span>
-                    <span
-                      className={cn("rounded px-2 py-0.5 text-xs font-medium", STATUS_TONE[status])}
-                    >
-                      {statusLabel(status)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{kindLabel(payment.kind)}</span>
-                  </div>
-                  <p className="mt-1 text-sm">
-                    <span
-                      className={
-                        payment.direction === "in" ? "text-emerald-700" : "text-destructive"
-                      }
-                    >
-                      {payment.direction === "in" ? "+" : "−"}
-                      {formatMoney(payment.amount)}
-                    </span>
-                    <span className="text-muted-foreground"> · {counterpartyLabel(payment)}</span>
-                    <span className="text-muted-foreground"> · {propertyTitle}</span>
-                  </p>
-                  {payment.comment && (
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {payment.comment}
-                    </p>
-                  )}
+                  {payment.planned_date}
                 </button>
-                {status !== "paid" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={markPaidMutation.isPending}
-                    onClick={() => markPaidMutation.mutate(payment.id)}
-                  >
-                    Оплачено
-                  </Button>
-                )}
+                <button type="button" className="min-w-0 text-left" onClick={() => openEdit(payment)}>
+                  <p className="truncate text-sm">
+                    <span className="font-medium">{kindLabel(payment.kind)}</span>
+                    <span className="text-muted-foreground"> · {counterpartyLabel(payment)}</span>
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{propertyTitle}</p>
+                </button>
+                <p
+                  className={cn(
+                    "text-sm font-semibold tabular-nums sm:text-right",
+                    payment.direction === "in" ? "text-emerald-700" : "text-red-600",
+                  )}
+                >
+                  {payment.direction === "in" ? "+" : "−"}
+                  {formatMoney(payment.amount)}
+                </p>
+                <span
+                  className={cn(
+                    "inline-flex w-fit rounded px-2 py-0.5 text-xs font-medium",
+                    STATUS_TONE[status],
+                  )}
+                >
+                  {statusLabel(status)}
+                </span>
+                <div className="sm:justify-self-end">
+                  {status !== "paid" ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={markPaidMutation.isPending}
+                      onClick={() => markPaidMutation.mutate(payment.id)}
+                    >
+                      Оплачено
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">✓</span>
+                  )}
+                </div>
               </div>
             );
           })}
-        </div>
-      )}
-
-      {!isLoading && view === "month" && (
-        <div className="mt-6 overflow-x-auto">
-          <div className="grid min-w-[640px] grid-cols-7 gap-px rounded-xl border border-border bg-border">
-            {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => (
-              <div
-                key={d}
-                className="bg-muted/50 px-2 py-2 text-center text-xs font-medium text-muted-foreground"
-              >
-                {d}
-              </div>
-            ))}
-            {calendarDays.map((cell, idx) => {
-              const dayPayments = cell.date ? (byDay.get(cell.date) ?? []) : [];
-              const isToday = cell.date === today;
-              return (
-                <div
-                  key={idx}
-                  className={cn(
-                    "min-h-[96px] bg-card p-1.5",
-                    cell.date ? "cursor-pointer hover:bg-muted/40" : "bg-muted/20",
-                  )}
-                  onClick={() => {
-                    if (cell.date) openCreate(cell.date);
-                  }}
-                >
-                  {cell.day != null && (
-                    <p className={cn("mb-1 text-xs font-medium", isToday && "text-primary")}>
-                      {cell.day}
-                    </p>
-                  )}
-                  <div className="space-y-1">
-                    {dayPayments.slice(0, 3).map((payment) => {
-                      const status = effectivePaymentStatus(payment, today);
-                      return (
-                        <button
-                          key={payment.id}
-                          type="button"
-                          className={cn(
-                            "block w-full truncate rounded px-1 py-0.5 text-left text-[11px]",
-                            STATUS_TONE[status],
-                          )}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(payment);
-                          }}
-                        >
-                          {payment.direction === "in" ? "+" : "−"}
-                          {Math.round(payment.amount).toLocaleString("ru-RU")}
-                        </button>
-                      );
-                    })}
-                    {dayPayments.length > 3 && (
-                      <p className="px-1 text-[10px] text-muted-foreground">
-                        +{dayPayments.length - 3}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 
@@ -393,6 +435,15 @@ function FinanceCalendarPage() {
         defaultPropertyId={propertyId === "all" ? undefined : propertyId}
         defaultDate={defaultDate}
       />
+    </div>
+  );
+}
+
+function Kpi({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2.5">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn("mt-1 text-base font-semibold tabular-nums", tone)}>{value}</p>
     </div>
   );
 }

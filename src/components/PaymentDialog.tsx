@@ -180,7 +180,7 @@ export function PaymentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{payment ? "Изменить платёж" : "Новый платёж"}</DialogTitle>
+          <DialogTitle>{payment ? "Изменить операцию" : "Добавить операцию"}</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-2">

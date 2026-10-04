@@ -39,27 +39,34 @@ function FinanceCounterpartiesPage() {
   }, [clients, counterparties]);
 
   return (
-    <div className="mx-auto max-w-[900px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+    <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Финансы</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Контрагенты</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Контрагенты собираются из платежей и клиентов CRM. Отдельная карточка контрагента — позже.
+          Из платежей и CRM. Отдельная карточка контрагента — позже.
         </p>
       </header>
 
       <FinanceTabs active="counterparties" />
 
-      <div className="mt-6 space-y-2">
-        {isLoading && <p className="text-sm text-muted-foreground">Загрузка…</p>}
+      <div className="mt-6 overflow-hidden rounded-lg border border-border">
+        <div className="hidden grid-cols-[1fr_10rem_8rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+          <span>Контрагент</span>
+          <span>Роль</span>
+          <span className="text-right">Открыто</span>
+        </div>
+        {isLoading && (
+          <p className="px-4 py-8 text-sm text-muted-foreground">Загрузка…</p>
+        )}
         {!isLoading && counterparties.length === 0 && (
-          <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
-            Пока нет контрагентов. Они появятся после первых платежей в календаре.
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+            Пока нет контрагентов. Они появятся после первых операций в календаре.
           </p>
         )}
         {counterparties.map((item) => (
           <div
             key={item.key}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3"
+            className="grid gap-1 border-b border-border px-4 py-3 last:border-b-0 sm:grid-cols-[1fr_10rem_8rem] sm:items-center sm:gap-3"
           >
             <div className="min-w-0">
               <p className="font-medium">
@@ -67,7 +74,7 @@ function FinanceCounterpartiesPage() {
                   <Link
                     to="/crm/clients/$id"
                     params={{ id: item.clientId }}
-                    className="hover:text-primary"
+                    className="hover:text-teal-800"
                   >
                     {item.name}
                   </Link>
@@ -75,14 +82,24 @@ function FinanceCounterpartiesPage() {
                   item.name
                 )}
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground sm:hidden">
                 {item.roles.join(" · ") || "Прочее"} · платежей: {item.paymentCount}
               </p>
+              <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
+                платежей: {item.paymentCount}
+              </p>
             </div>
-            <div className="text-right text-sm">
-              <p className="text-muted-foreground">Открыто</p>
-              <p className="font-medium">{formatMoney(item.openAmount)}</p>
-            </div>
+            <p className="hidden text-sm text-muted-foreground sm:block">
+              {item.roles.join(" · ") || "Прочее"}
+            </p>
+            <p
+              className={
+                "text-sm font-semibold tabular-nums sm:text-right " +
+                (item.openAmount > 0 ? "text-red-700" : "text-muted-foreground")
+              }
+            >
+              {formatMoney(item.openAmount)}
+            </p>
           </div>
         ))}
       </div>

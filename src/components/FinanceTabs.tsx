@@ -9,7 +9,7 @@ const ITEMS = [
 export function FinanceTabs({ active }: { active: "calendar" | "counterparties" | "reports" }) {
   return (
     <div className="mt-6 border-b border-border">
-      <div className="flex gap-5 overflow-x-auto whitespace-nowrap sm:gap-6">
+      <div className="flex gap-1 overflow-x-auto whitespace-nowrap sm:gap-2">
         {ITEMS.map((item) => {
           const isActive = item.active === active;
           return (
@@ -17,9 +17,9 @@ export function FinanceTabs({ active }: { active: "calendar" | "counterparties" 
               key={item.to}
               to={item.to}
               className={
-                "-mb-px border-b-2 pb-3 text-sm font-medium transition-colors " +
+                "-mb-px border-b-2 px-3 pb-3 text-sm font-medium transition-colors " +
                 (isActive
-                  ? "border-primary text-primary"
+                  ? "border-teal-700 text-teal-800"
                   : "border-transparent text-muted-foreground hover:text-foreground")
               }
             >

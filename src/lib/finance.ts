@@ -374,3 +374,92 @@ export function monthBounds(year: number, monthIndex: number) {
   const to = toISODate(new Date(year, monthIndex + 1, 0));
   return { from, to, monthKey: from.slice(0, 7) };
 }
+
+/** Сводка дня для платёжного календаря (как в Адеске). */
+export type DayMoneyLedger = {
+  date: string;
+  day: number;
+  income: number;
+  expense: number;
+  saldo: number;
+  opening: number;
+  closing: number;
+  /** Кассовый разрыв: остаток уходит в минус. */
+  hasGap: boolean;
+  payments: Payment[];
+};
+
+/** По дням месяца: приход/расход/сальдо и накопительный остаток с openingBalance. */
+export function buildMonthDayLedger(
+  payments: Payment[],
+  year: number,
+  monthIndex: number,
+  openingBalance = 0,
+): DayMoneyLedger[] {
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const byDay = new Map<string, Payment[]>();
+  for (const payment of payments) {
+    const list = byDay.get(payment.planned_date) ?? [];
+    list.push(payment);
+    byDay.set(payment.planned_date, list);
+  }
+
+  let opening = openingBalance;
+  const rows: DayMoneyLedger[] = [];
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = toISODate(new Date(year, monthIndex, day));
+    const dayPayments = byDay.get(date) ?? [];
+    let income = 0;
+    let expense = 0;
+    for (const payment of dayPayments) {
+      if (payment.direction === "in") income += payment.amount;
+      else expense += payment.amount;
+    }
+    const saldo = income - expense;
+    const closing = opening + saldo;
+    rows.push({
+      date,
+      day,
+      income,
+      expense,
+      saldo,
+      opening,
+      closing,
+      hasGap: closing < 0 || opening < 0,
+      payments: dayPayments,
+    });
+    opening = closing;
+  }
+  return rows;
+}
+
+const OPENING_STORAGE_PREFIX = "rm-os-finance-opening:";
+
+export function loadMonthOpeningBalance(monthKey: string): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = window.localStorage.getItem(`${OPENING_STORAGE_PREFIX}${monthKey}`);
+    if (raw == null || raw === "") return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveMonthOpeningBalance(monthKey: string, value: number) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(`${OPENING_STORAGE_PREFIX}${monthKey}`, String(value));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+export function formatCompactMoney(value: number) {
+  const abs = Math.abs(Math.round(value));
+  const formatted = abs.toLocaleString("ru-RU");
+  if (value > 0) return `+${formatted}`;
+  if (value < 0) return `−${formatted}`;
+  return "0";
+}

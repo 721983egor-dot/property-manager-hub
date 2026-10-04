@@ -2,11 +2,21 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { FinanceTabs } from "@/components/FinanceTabs";
 import { Button } from "@/components/ui/button";
 import { fetchPayments, monthBounds, summarizeMonth } from "@/lib/finance";
 import { formatMoney } from "@/lib/properties";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/finance/reports")({
   head: () => ({
@@ -52,23 +62,28 @@ function FinanceReportsPage() {
   const netPlan = summary.planIn - summary.planOut;
   const netFact = summary.factIn - summary.factOut;
 
+  const chart = [
+    { name: "Приход", plan: summary.planIn, fact: summary.factIn },
+    { name: "Расход", plan: summary.planOut, fact: summary.factOut },
+  ];
+
   return (
-    <div className="mx-auto max-w-[900px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+    <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Финансы</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Отчёты</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Простой отчёт план/факт за месяц. Полный ДДС и банк — позже.
+          План и факт за месяц. Полный ДДС и банк — позже.
         </p>
       </header>
 
       <FinanceTabs active="reports" />
 
-      <div className="mt-6 flex items-center gap-1">
-        <Button type="button" variant="outline" size="icon" onClick={() => shiftMonth(-1)}>
+      <div className="mt-6 flex items-center gap-1 rounded-md border border-border bg-card p-0.5 w-fit">
+        <Button type="button" variant="ghost" size="icon" onClick={() => shiftMonth(-1)}>
           <ChevronLeft className="size-4" />
         </Button>
-        <p className="min-w-[10rem] text-center text-sm font-medium capitalize">{monthTitle}</p>
-        <Button type="button" variant="outline" size="icon" onClick={() => shiftMonth(1)}>
+        <p className="min-w-[10rem] text-center text-sm font-semibold capitalize">{monthTitle}</p>
+        <Button type="button" variant="ghost" size="icon" onClick={() => shiftMonth(1)}>
           <ChevronRight className="size-4" />
         </Button>
       </div>
@@ -76,28 +91,55 @@ function FinanceReportsPage() {
       {isLoading ? (
         <p className="mt-8 text-sm text-muted-foreground">Загрузка…</p>
       ) : (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <ReportCard title="План приход" value={formatMoney(summary.planIn)} />
-          <ReportCard title="План расход" value={formatMoney(summary.planOut)} />
-          <ReportCard title="Факт приход" value={formatMoney(summary.factIn)} />
-          <ReportCard title="Факт расход" value={formatMoney(summary.factOut)} />
-          <ReportCard
-            title="Остаток плана (приход − расход)"
-            value={formatMoney(netPlan)}
-            emphasize
-          />
-          <ReportCard
-            title="Остаток факта (приход − расход)"
-            value={formatMoney(netFact)}
-            emphasize
-          />
-          <ReportCard
-            title="Просрочено"
-            value={`${summary.overdueCount} · ${formatMoney(summary.overdueAmount)}`}
-            danger={summary.overdueCount > 0}
-          />
-          <ReportCard title="Строк в месяце" value={String(payments.length)} />
-        </div>
+        <>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <ReportCard title="План приход" value={formatMoney(summary.planIn)} tone="text-emerald-700" />
+            <ReportCard title="План расход" value={formatMoney(summary.planOut)} tone="text-red-600" />
+            <ReportCard title="Факт приход" value={formatMoney(summary.factIn)} tone="text-emerald-700" />
+            <ReportCard title="Факт расход" value={formatMoney(summary.factOut)} tone="text-red-600" />
+            <ReportCard
+              title="Сальдо плана"
+              value={formatMoney(netPlan)}
+              tone={netPlan < 0 ? "text-red-700" : "text-teal-800"}
+            />
+            <ReportCard
+              title="Сальдо факта"
+              value={formatMoney(netFact)}
+              tone={netFact < 0 ? "text-red-700" : "text-teal-800"}
+            />
+            <ReportCard
+              title="Просрочено"
+              value={`${summary.overdueCount} · ${formatMoney(summary.overdueAmount)}`}
+              {...(summary.overdueCount > 0 ? { tone: "text-red-700" } : {})}
+            />
+            <ReportCard title="Операций" value={String(payments.length)} />
+          </div>
+
+          <div className="mt-6 rounded-lg border border-border bg-card p-4">
+            <h2 className="text-sm font-semibold">План / факт</h2>
+            <p className="mb-3 text-xs text-muted-foreground">Сравнение сумм прихода и расхода.</p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chart} barGap={8}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={56}
+                    tickFormatter={(v: number) =>
+                      Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}к` : String(Math.round(v))
+                    }
+                  />
+                  <Tooltip formatter={(value: number) => formatMoney(value)} />
+                  <Bar dataKey="plan" name="План" fill="#99f6e4" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="fact" name="Факт" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -106,23 +148,16 @@ function FinanceReportsPage() {
 function ReportCard({
   title,
   value,
-  emphasize,
-  danger,
+  tone,
 }: {
   title: string;
   value: string;
-  emphasize?: boolean;
-  danger?: boolean;
+  tone?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-4">
-      <p className="text-xs text-muted-foreground">{title}</p>
-      <p
-        className={
-          "mt-2 text-xl font-semibold tracking-tight " +
-          (danger ? "text-destructive" : emphasize ? "text-foreground" : "text-foreground")
-        }
-      >
+    <div className="rounded-lg border border-border bg-card px-4 py-4">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className={cn("mt-2 text-xl font-semibold tracking-tight tabular-nums", tone)}>
         {value}
       </p>
     </div>
