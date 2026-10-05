@@ -88,7 +88,9 @@ export function propertyUrl(p: { title: string; ref_id: number }): string {
 function pathnameFromMaybeUrl(value: string): string {
   const raw = value.trim();
   try {
-    const url = raw.includes("://") ? new URL(raw) : new URL(raw.startsWith("/") ? raw : `/rent/${raw}`, SITE_ORIGIN);
+    const url = raw.includes("://")
+      ? new URL(raw)
+      : new URL(raw.startsWith("/") ? raw : `/rent/${raw}`, SITE_ORIGIN);
     return (url.pathname.replace(/\/+$/, "") || "/").toLowerCase();
   } catch {
     const path = raw.startsWith("/") ? raw : `/rent/${raw}`;
@@ -115,11 +117,7 @@ export function propertyMatchesLegacyPath(
 
 /** Постоянный публичный URL фото (без подписи). */
 export function publicPhotoUrl(path: string): string {
-  const encoded = path
-    .split("/")
-    .filter(Boolean)
-    .map(encodeURIComponent)
-    .join("/");
+  const encoded = path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
   return `${SITE_ORIGIN}/api/public/feed-photo/${encoded}`;
 }
 
@@ -183,7 +181,9 @@ function pickFittingTitle(candidates: string[]): string {
 }
 
 /** H1 карточки: «Снять студию в ЖК Лазурный берег 2 в Сочи». */
-export function propertyPageHeading(p: Pick<Property, "type" | "rooms" | "is_apartments" | "complex_name">): string {
+export function propertyPageHeading(
+  p: Pick<Property, "type" | "rooms" | "is_apartments" | "complex_name">,
+): string {
   const phrase = rentListingPhrase(p);
   const jk = p.complex_name?.trim() ? ` в ЖК ${p.complex_name.trim()}` : "";
   return `Снять ${phrase}${jk} в Сочи`;
@@ -200,11 +200,7 @@ export function propertyMetaTitle(p: Property): string {
   const maxCore = META_TITLE_MAX - suffix.length;
 
   const complex = p.complex_name?.trim();
-  const place = complex
-    ? `ЖК ${complex}`
-    : p.address?.trim()
-      ? shortAddress(p.address)
-      : "";
+  const place = complex ? `ЖК ${complex}` : p.address?.trim() ? shortAddress(p.address) : "";
 
   const uniqueBits = [
     p.area ? formatArea(p.area) : "",
@@ -241,8 +237,7 @@ export function propertyMetaDescription(p: Property): string {
   if (complex) bits.push(`ЖК ${complex}`);
   else if (p.address?.trim()) bits.push(shortAddress(p.address));
   const lead = name ? `${name}. ` : "";
-  const sentence =
-    `${lead}${bits.join(" — ")}. Долгосрочная аренда от Резиденция&Море, прозрачные условия и сопровождение.`;
+  const sentence = `${lead}${bits.join(" — ")}. Долгосрочная аренда от Резиденция&Море, прозрачные условия и сопровождение.`;
   if (sentence.length <= 170) return sentence;
   return `${sentence.slice(0, 169).replace(/\s+\S*$/, "")}…`;
 }
@@ -331,7 +326,9 @@ export function jsonLdScript(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
-export function buildSitemapXml(urls: { loc: string; lastmod?: string; changefreq?: string; priority?: string }[]) {
+export function buildSitemapXml(
+  urls: { loc: string; lastmod?: string; changefreq?: string; priority?: string }[],
+) {
   const body = urls
     .map((u) => {
       const lastmod = u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : "";
