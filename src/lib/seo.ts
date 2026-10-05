@@ -1,4 +1,4 @@
-import { formatArea, formatMoney, roomsLabel, type Property } from "@/lib/properties";
+import { formatArea, formatMoney, roomsLabel, shortAddress, type Property } from "@/lib/properties";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/site";
 
 const RU_TRANSLIT: Record<string, string> = {
@@ -88,7 +88,9 @@ export function propertyUrl(p: { title: string; ref_id: number }): string {
 function pathnameFromMaybeUrl(value: string): string {
   const raw = value.trim();
   try {
-    const url = raw.includes("://") ? new URL(raw) : new URL(raw.startsWith("/") ? raw : `/rent/${raw}`, SITE_ORIGIN);
+    const url = raw.includes("://")
+      ? new URL(raw)
+      : new URL(raw.startsWith("/") ? raw : `/rent/${raw}`, SITE_ORIGIN);
     return (url.pathname.replace(/\/+$/, "") || "/").toLowerCase();
   } catch {
     const path = raw.startsWith("/") ? raw : `/rent/${raw}`;
@@ -115,11 +117,7 @@ export function propertyMatchesLegacyPath(
 
 /** Постоянный публичный URL фото (без подписи). */
 export function publicPhotoUrl(path: string): string {
-  const encoded = path
-    .split("/")
-    .filter(Boolean)
-    .map(encodeURIComponent)
-    .join("/");
+  const encoded = path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
   return `${SITE_ORIGIN}/api/public/feed-photo/${encoded}`;
 }
 
@@ -152,36 +150,94 @@ export function rentListingPhrase(p: Pick<Property, "type" | "rooms" | "is_apart
   return adj ? `${adj} квартиру` : `${p.rooms}-комнатную квартиру`;
 }
 
+const META_TITLE_MAX = 70;
+
+function titleSuffix(): string {
+  return ` — ${SITE_NAME}`;
+}
+
+/** Укладывает core в лимит; при обрезке сохраняет хвостовой «№N». */
 function fitTitle(core: string): string {
-  const suffix = ` — ${SITE_NAME}`;
-  if ((core + suffix).length <= 70) return core + suffix;
-  const maxCore = 69 - suffix.length;
+  const suffix = titleSuffix();
+  if ((core + suffix).length <= META_TITLE_MAX) return core + suffix;
+  const maxCore = META_TITLE_MAX - 1 - suffix.length;
+  const numMatch = core.match(/(№\s*\d+)\s*$/u);
+  if (numMatch) {
+    const num = numMatch[1]!.replace(/\s+/g, "");
+    const budget = maxCore - num.length - 1;
+    const head = core.slice(0, Math.max(1, budget)).replace(/[\s,;:–-]+$/u, "");
+    return `${head} ${num}${suffix}`;
+  }
   const trimmed = core.slice(0, Math.max(1, maxCore)).replace(/[\s,;:–-]+$/u, "");
   return `${trimmed}${suffix}`;
 }
 
+function pickFittingTitle(candidates: string[]): string {
+  const suffix = titleSuffix();
+  for (const core of candidates) {
+    if ((core + suffix).length <= META_TITLE_MAX) return core + suffix;
+  }
+  return fitTitle(candidates[candidates.length - 1] ?? "");
+}
+
 /** H1 карточки: «Снять студию в ЖК Лазурный берег 2 в Сочи». */
-export function propertyPageHeading(p: Pick<Property, "type" | "rooms" | "is_apartments" | "complex_name">): string {
+export function propertyPageHeading(
+  p: Pick<Property, "type" | "rooms" | "is_apartments" | "complex_name">,
+): string {
   const phrase = rentListingPhrase(p);
   const jk = p.complex_name?.trim() ? ` в ЖК ${p.complex_name.trim()}` : "";
   return `Снять ${phrase}${jk} в Сочи`;
 }
 
-/** Title карточки объекта под поисковые запросы «снять … в ЖК … Сочи». */
+/**
+ * Title карточки: уникальное название + площадь/цена/локация (что влезает).
+ * Шаблон: «{title}, {area}, {price}/мес, {ЖК|адрес} — аренда в Сочи — Резиденция&Море».
+ * Сначала уникальные поля, мягкий хвост «аренда в Сочи» — только если остаётся место.
+ */
 export function propertyMetaTitle(p: Property): string {
-  const price = p.price_month ? ` — ${formatMoney(p.price_month)}` : "";
-  return fitTitle(`${propertyPageHeading(p)}${price}`);
+  const name = p.title.trim() || propertyPageHeading(p);
+  const suffix = titleSuffix();
+  const maxCore = META_TITLE_MAX - suffix.length;
+
+  const complex = p.complex_name?.trim();
+  const place = complex ? `ЖК ${complex}` : p.address?.trim() ? shortAddress(p.address) : "";
+
+  const uniqueBits = [
+    p.area ? formatArea(p.area) : "",
+    p.price_month ? `${formatMoney(p.price_month)}/мес` : "",
+    place,
+    p.floor != null ? `${p.floor} этаж` : "",
+  ].filter(Boolean);
+
+  let core = name;
+  for (const bit of uniqueBits) {
+    const next = `${core}, ${bit}`;
+    if (next.length <= maxCore) core = next;
+  }
+
+  const withRent = `${core} — аренда в Сочи`;
+  if (withRent.length <= maxCore) return withRent + suffix;
+
+  // Если ядро уже уникально заполнено — не режем title ради хвоста.
+  if (core !== name) return core + suffix;
+
+  // Короткое имя без доп. полей: пробуем мягкий хвост или аккуратную обрезку с «№N».
+  return pickFittingTitle([`${name} — аренда в Сочи`, name]);
 }
 
+/** Description: начинается с уникального title, дальше тип/площадь/этаж/цена/локация. */
 export function propertyMetaDescription(p: Property): string {
-  const parts = [`Снять ${rentListingPhrase(p)} в Сочи`];
-  if (p.area) parts.push(formatArea(p.area));
-  if (p.rooms != null) parts.push(roomsLabel(p.rooms));
-  if (p.price_month) parts.push(`${formatMoney(p.price_month)}/мес`);
-  const location = p.complex_id ? p.complex_name : "";
-  if (location) parts.push(`ЖК ${location}`);
-  const sentence =
-    parts.join(" — ") + ". Долгосрочная аренда от Резиденция&Море, прозрачные условия и сопровождение.";
+  const name = p.title.trim();
+  const bits = [`Снять ${rentListingPhrase(p)} в Сочи`];
+  if (p.area) bits.push(formatArea(p.area));
+  if (p.rooms != null) bits.push(roomsLabel(p.rooms));
+  if (p.floor != null) bits.push(`${p.floor} этаж`);
+  if (p.price_month) bits.push(`${formatMoney(p.price_month)}/мес`);
+  const complex = p.complex_name?.trim();
+  if (complex) bits.push(`ЖК ${complex}`);
+  else if (p.address?.trim()) bits.push(shortAddress(p.address));
+  const lead = name ? `${name}. ` : "";
+  const sentence = `${lead}${bits.join(" — ")}. Долгосрочная аренда от Резиденция&Море, прозрачные условия и сопровождение.`;
   if (sentence.length <= 170) return sentence;
   return `${sentence.slice(0, 169).replace(/\s+\S*$/, "")}…`;
 }
@@ -270,7 +326,9 @@ export function jsonLdScript(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
-export function buildSitemapXml(urls: { loc: string; lastmod?: string; changefreq?: string; priority?: string }[]) {
+export function buildSitemapXml(
+  urls: { loc: string; lastmod?: string; changefreq?: string; priority?: string }[],
+) {
   const body = urls
     .map((u) => {
       const lastmod = u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : "";
