@@ -2,8 +2,7 @@
 
 Нативный блок учёта. **Адеск не подключаем** — UI как на скринах Адеска (календарь, форма операции, карточка контрагента).
 
-Тест: [preview-rm-os.residence-more.ru](https://preview-rm-os.residence-more.ru) → меню **Финансы**.  
-PR [#20](https://github.com/721983egor-dot/property-manager-hub/pull/20) (ветка `cursor/finance-block-mvp-94b3`).
+Тест: [preview-rm-os.residence-more.ru](https://preview-rm-os.residence-more.ru) → меню **Финансы**.
 
 **Доступ:** только Администратор.
 
@@ -15,6 +14,7 @@ PR [#20](https://github.com/721983egor-dot/property-manager-hub/pull/20) (вет
 | Контрагенты | `/finance/counterparties` |
 | Карточка | `/finance/counterparties/:id` |
 | Отчёты | `/finance/reports` |
+| Настройки статей | `/finance/settings` |
 
 ## Календарь
 
@@ -22,7 +22,19 @@ PR [#20](https://github.com/721983egor-dot/property-manager-hub/pull/20) (вет
 - Плюсик на дате → Приход/Расход → боковая форма (как в Адеске).
 - **Повторять операцию:** период (месяц/неделя) + срок жизни — количество раз или до даты; создаётся серия платежей в календаре (до 36).
 - График «ДЕНЬГИ НА СЧЕТАХ» (ленивая подгрузка Recharts).
-- **Скорость:** фильтр проектов — лёгкий `select` (id/название), не полный каталог объектов `select(*)` через server fn (~1.5 с / 126 КБ → ~0.3 с / 5 КБ).
+- **Скорость:** фильтр проектов — лёгкий `select` (id/название), не полный каталог объектов.
+
+## Статьи и категории
+
+Справочник в **Финансы → Настройки** (`/finance/settings`):
+
+- вкладки Расход / Приход;
+- **категории** — группы для отчётов;
+- **статьи** внутри категории — поле «Статья» в форме операции;
+- порядок меняется **перетаскиванием мышкой** (категории и статьи; статью можно бросить в другую группу);
+- добавить / переименовать (blur по названию) / удалить.
+
+Форма операции и отчёты «Приход/расход по категориям» читают этот справочник, не хардкод. Старые платежи привязаны к сидам (Аренда, Депозит, Выплата собственнику и т.д.).
 
 ## Контрагенты
 
@@ -30,5 +42,5 @@ PR [#20](https://github.com/721983egor-dot/property-manager-hub/pull/20) (вет
 
 ## Ассистент
 
-Чтение: платежи + `listCounterparties` / `getCounterparty` / `listObligations`.  
-Предложения: платежи + `proposeCreateCounterparty` / `proposeUpdateCounterpartyKind` / `proposeCreateObligation`.
+Чтение: платежи + `listFinanceCatalog` + `listCounterparties` / `getCounterparty` / `listObligations`.  
+Предложения: платежи + статьи (`proposeSaveFinanceArticle`, `proposeSaveFinanceArticleCategory`, удаление и порядок) + контрагенты.

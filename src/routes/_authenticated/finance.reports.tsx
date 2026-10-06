@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, Fragment } from "react";
 import {
   Bar,
   BarChart,
@@ -16,6 +16,7 @@ import { AdminOnly } from "@/components/AdminOnly";
 import { FinanceTabs } from "@/components/FinanceTabs";
 import { Button } from "@/components/ui/button";
 import { fetchPayments, monthBounds, summarizeMonth } from "@/lib/finance";
+import { fetchFinanceCatalog, summarizeByArticleCategory } from "@/lib/finance-articles";
 import { formatMoney } from "@/lib/properties";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,11 @@ function FinanceReportsPage() {
     queryKey: ["payments", "report", bounds.from, bounds.to],
     queryFn: () => fetchPayments({ from: bounds.from, to: bounds.to }),
   });
+  const { data: catalog } = useQuery({
+    queryKey: ["finance-catalog"],
+    queryFn: fetchFinanceCatalog,
+    staleTime: 60 * 1000,
+  });
 
   const summary = useMemo(
     () => summarizeMonth(payments, bounds.monthKey),
@@ -66,6 +72,16 @@ function FinanceReportsPage() {
 
   const netPlan = summary.planIn - summary.planOut;
   const netFact = summary.factIn - summary.factOut;
+  const byIncome = useMemo(
+    () =>
+      summarizeByArticleCategory(payments, catalog ?? { categories: [], articles: [] }, "in"),
+    [payments, catalog],
+  );
+  const byExpense = useMemo(
+    () =>
+      summarizeByArticleCategory(payments, catalog ?? { categories: [], articles: [] }, "out"),
+    [payments, catalog],
+  );
 
   const chart = [
     { name: "Приход", plan: summary.planIn, fact: summary.factIn },
@@ -144,7 +160,62 @@ function FinanceReportsPage() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          <CategoryReport title="Приход по категориям" rows={byIncome} />
+          <CategoryReport title="Расход по категориям" rows={byExpense} />
         </>
+      )}
+    </div>
+  );
+}
+
+function CategoryReport({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: { key: string; categoryName: string; plan: number; fact: number; articles: { key: string; name: string; plan: number; fact: number }[] }[];
+}) {
+  return (
+    <div className="mt-6 rounded-lg border border-border bg-card p-4">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      <p className="mb-3 text-xs text-muted-foreground">Группы статей из настроек финансов.</p>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">За месяц нет операций этого типа.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <th className="py-2 pr-3 font-medium">Статья</th>
+                <th className="py-2 pr-3 text-right font-medium">План</th>
+                <th className="py-2 text-right font-medium">Факт</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <Fragment key={row.key}>
+                  <tr className="border-b border-border bg-muted/40">
+                    <td className="py-2 pr-3 font-medium">{row.categoryName}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(row.plan)}</td>
+                    <td className="py-2 text-right tabular-nums">{formatMoney(row.fact)}</td>
+                  </tr>
+                  {row.articles.map((article) => (
+                    <tr key={article.key} className="border-b border-border/60">
+                      <td className="py-1.5 pl-4 pr-3 text-muted-foreground">{article.name}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
+                        {formatMoney(article.plan)}
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">
+                        {formatMoney(article.fact)}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

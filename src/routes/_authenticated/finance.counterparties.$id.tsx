@@ -351,7 +351,7 @@ function CounterpartyCardPage() {
                       )}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {payment.comment || kindLabel(payment.kind)}
+                      {payment.comment || payment.article?.name || kindLabel(payment.kind)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {propertyLabel(payment.property_id)}

@@ -1998,7 +1998,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         let query = admin
           .from("payments")
           .select(
-            "id, planned_date, amount, direction, status, kind, property_id, client_id, counterparty_name, comment, paid_at, paid_amount, booking_id, deal_id",
+            "id, planned_date, amount, direction, status, kind, article_id, property_id, client_id, counterparty_name, comment, paid_at, paid_amount, booking_id, deal_id",
           )
           .order("planned_date", { ascending: true })
           .limit(300);
@@ -2044,6 +2044,7 @@ export function createReadTools(ctx: AssistantToolContext) {
             status: row.status,
             effectiveStatus: effective,
             kind: row.kind,
+            articleId: (row as { article_id?: string | null }).article_id ?? null,
             property: row.property_id ? (names.get(row.property_id) ?? row.property_id) : null,
             propertyId: row.property_id,
             clientId: row.client_id,
@@ -2354,6 +2355,41 @@ export function createReadTools(ctx: AssistantToolContext) {
             ...row,
             counterparty: names.get(row.counterparty_id) ?? row.counterparty_id,
           })),
+        };
+      },
+    }),
+
+    listFinanceCatalog: tool({
+      description:
+        "Справочник статей и категорий Финансов: приход/расход. Категории — группы для отчётов, статьи выбираются в форме операции.",
+      inputSchema: z.object({
+        direction: z.enum(["in", "out", "all"]).optional(),
+      }),
+      execute: async ({ direction }) => {
+        let catQuery = admin
+          .from("finance_article_categories")
+          .select("id, name, direction, position")
+          .order("direction")
+          .order("position");
+        let artQuery = admin
+          .from("finance_articles")
+          .select("id, name, direction, category_id, position, code")
+          .order("direction")
+          .order("position");
+        if (direction === "in" || direction === "out") {
+          catQuery = catQuery.eq("direction", direction);
+          artQuery = artQuery.eq("direction", direction);
+        }
+        const [cats, arts] = await Promise.all([catQuery, artQuery]);
+        if (cats.error) return { error: cats.error.message };
+        if (arts.error) return { error: arts.error.message };
+        return {
+          categories: cats.data ?? [],
+          articles: arts.data ?? [],
+          count: {
+            categories: (cats.data ?? []).length,
+            articles: (arts.data ?? []).length,
+          },
         };
       },
     }),

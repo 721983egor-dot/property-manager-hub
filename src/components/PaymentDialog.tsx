@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -27,10 +29,15 @@ import {
   type CounterpartyKind,
 } from "@/lib/finance-counterparties";
 import {
+  defaultArticleForDirection,
+  fetchFinanceCatalog,
+  findArticle,
+  groupArticlesByCategory,
+  kindFromArticle,
+} from "@/lib/finance-articles";
+import {
   PAYMENT_ACCOUNTS,
-  PAYMENT_KINDS,
   buildPaymentSeriesDates,
-  defaultDirectionForKind,
   deletePayment,
   fetchFinancePropertyOptions,
   financePropertyLabel,
@@ -64,6 +71,7 @@ type FormState = {
   direction: PaymentDirection;
   status: PaymentStatus;
   kind: PaymentKind;
+  article_id: string;
   account: string;
   property_id: string;
   counterparty_id: string;
@@ -95,6 +103,7 @@ function emptyForm(
     direction,
     status: "expected",
     kind,
+    article_id: "",
     account: "Основной",
     property_id: propertyId,
     counterparty_id: counterpartyId,
@@ -120,6 +129,7 @@ function fromPayment(payment: Payment): FormState {
     direction: payment.direction,
     status: payment.status === "overdue" ? "expected" : payment.status,
     kind: payment.kind,
+    article_id: payment.article_id ?? payment.article?.id ?? "",
     account: payment.account || "Основной",
     property_id: payment.property_id ?? "",
     counterparty_id: payment.counterparty_id ?? "",
@@ -165,6 +175,16 @@ export function PaymentDialog({
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
+  const { data: catalog } = useQuery({
+    queryKey: ["finance-catalog"],
+    queryFn: fetchFinanceCatalog,
+    enabled: open,
+    staleTime: 60 * 1000,
+  });
+  const articles = catalog?.articles;
+  const categories = catalog?.categories;
+  const articleList = articles ?? [];
+  const categoryList = categories ?? [];
   const { data: counterparties = [] } = useQuery({
     queryKey: ["finance-counterparties"],
     queryFn: () => fetchCounterparties(),
@@ -195,13 +215,25 @@ export function PaymentDialog({
     defaultCounterpartyName,
   ]);
 
+  useEffect(() => {
+    if (!open || payment) return;
+    setForm((prev) => {
+      const current = findArticle(articleList, prev.article_id);
+      if (current && current.direction === prev.direction) return prev;
+      const next = defaultArticleForDirection(articleList, prev.direction);
+      if (!next) return prev;
+      return { ...prev, article_id: next.id, kind: kindFromArticle(next) };
+    });
+  }, [open, payment, articles]);
+
   const propertyOptions = useMemo(
     () => properties.map((p) => ({ id: p.id, label: financePropertyLabel(p) })),
     [properties],
   );
 
-  const kinds = PAYMENT_KINDS.filter(
-    (k) => k.value === "other" || k.direction === form.direction,
+  const articleGroups = useMemo(
+    () => groupArticlesByCategory(categoryList, articleList, form.direction),
+    [categoryList, articleList, form.direction],
   );
 
   const seriesDates = useMemo(() => {
@@ -242,12 +274,14 @@ export function PaymentDialog({
         name: form.counterparty_name,
         kind: kindFromPaymentDirection(form.direction, form.kind) as CounterpartyKind,
       });
+      const selectedArticle = findArticle(articleList, form.article_id);
       const input = {
         planned_date: form.planned_date,
         amount: Number(form.amount),
         direction: form.direction,
         status: form.status,
-        kind: form.kind,
+        kind: selectedArticle ? kindFromArticle(selectedArticle) : form.kind,
+        article_id: form.article_id || null,
         property_id: form.property_id || null,
         client_id: null as string | null,
         counterparty_id: party.id,
@@ -318,14 +352,6 @@ export function PaymentDialog({
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось удалить"),
   });
 
-  const setKind = (kind: PaymentKind) => {
-    setForm((prev) => ({
-      ...prev,
-      kind,
-      direction: defaultDirectionForKind(kind) === prev.direction ? prev.direction : prev.direction,
-    }));
-  };
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -377,15 +403,35 @@ export function PaymentDialog({
             </Select>
           </Field>
           <Field label="Статья">
-            <Select value={form.kind} onValueChange={(v) => setKind(v as PaymentKind)}>
+            <Select
+              value={form.article_id || "__none__"}
+              onValueChange={(v) => {
+                if (v === "__none__") {
+                  setForm((p) => ({ ...p, article_id: "" }));
+                  return;
+                }
+                const found = findArticle(articleList, v);
+                setForm((p) => ({
+                  ...p,
+                  article_id: v,
+                  kind: found ? kindFromArticle(found) : p.kind,
+                }));
+              }}
+            >
               <SelectTrigger className="h-9 border-0 px-0 shadow-none focus:ring-0">
                 <SelectValue placeholder="Выберите статью…" />
               </SelectTrigger>
               <SelectContent>
-                {kinds.map((k) => (
-                  <SelectItem key={k.value} value={k.value}>
-                    {k.label}
-                  </SelectItem>
+                <SelectItem value="__none__">Без статьи</SelectItem>
+                {articleGroups.map((group) => (
+                  <SelectGroup key={group.category?.id ?? "none"}>
+                    <SelectLabel>{group.category?.name ?? "Без категории"}</SelectLabel>
+                    {group.articles.map((article) => (
+                      <SelectItem key={article.id} value={article.id}>
+                        {article.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>

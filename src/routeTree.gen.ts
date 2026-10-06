@@ -37,6 +37,7 @@ import { Route as AuthenticatedComplexesNewRouteImport } from './routes/_authent
 import { Route as AuthenticatedFinanceIndexRouteImport } from './routes/_authenticated/finance.index'
 import { Route as AuthenticatedFinanceCalendarRouteImport } from './routes/_authenticated/finance.calendar'
 import { Route as AuthenticatedFinanceReportsRouteImport } from './routes/_authenticated/finance.reports'
+import { Route as AuthenticatedFinanceSettingsRouteImport } from './routes/_authenticated/finance.settings'
 import { Route as AuthenticatedHotelIndexRouteImport } from './routes/_authenticated/hotel.index'
 import { Route as AuthenticatedHotelOwnersRouteImport } from './routes/_authenticated/hotel.owners'
 import { Route as AuthenticatedHotelRoomsRouteImport } from './routes/_authenticated/hotel.rooms'
@@ -236,6 +237,12 @@ const AuthenticatedFinanceReportsRoute =
   AuthenticatedFinanceReportsRouteImport.update({
     id: '/finance/reports',
     path: '/finance/reports',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceSettingsRoute =
+  AuthenticatedFinanceSettingsRouteImport.update({
+    id: '/finance/settings',
+    path: '/finance/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedHotelIndexRoute = AuthenticatedHotelIndexRouteImport.update({
@@ -576,6 +583,7 @@ export interface FileRoutesByFullPath {
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
   '/finance/reports': typeof AuthenticatedFinanceReportsRoute
+  '/finance/settings': typeof AuthenticatedFinanceSettingsRoute
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/hotel/sync': typeof AuthenticatedHotelSyncRoute
@@ -658,6 +666,7 @@ export interface FileRoutesByTo {
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
   '/finance/reports': typeof AuthenticatedFinanceReportsRoute
+  '/finance/settings': typeof AuthenticatedFinanceSettingsRoute
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/hotel/sync': typeof AuthenticatedHotelSyncRoute
@@ -744,6 +753,7 @@ export interface FileRoutesById {
   '/_authenticated/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/_authenticated/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
   '/_authenticated/finance/reports': typeof AuthenticatedFinanceReportsRoute
+  '/_authenticated/finance/settings': typeof AuthenticatedFinanceSettingsRoute
   '/_authenticated/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/_authenticated/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
   '/_authenticated/hotel/sync': typeof AuthenticatedHotelSyncRoute
@@ -830,6 +840,7 @@ export interface FileRouteTypes {
     | '/complexes/new'
     | '/finance/calendar'
     | '/finance/reports'
+    | '/finance/settings'
     | '/hotel/owners'
     | '/hotel/rooms'
     | '/hotel/sync'
@@ -912,6 +923,7 @@ export interface FileRouteTypes {
     | '/complexes/new'
     | '/finance/calendar'
     | '/finance/reports'
+    | '/finance/settings'
     | '/hotel/owners'
     | '/hotel/rooms'
     | '/hotel/sync'
@@ -997,6 +1009,7 @@ export interface FileRouteTypes {
     | '/_authenticated/complexes/new'
     | '/_authenticated/finance/calendar'
     | '/_authenticated/finance/reports'
+    | '/_authenticated/finance/settings'
     | '/_authenticated/hotel/owners'
     | '/_authenticated/hotel/rooms'
     | '/_authenticated/hotel/sync'
@@ -1289,6 +1302,13 @@ declare module '@tanstack/react-router' {
       path: '/finance/reports'
       fullPath: '/finance/reports'
       preLoaderRoute: typeof AuthenticatedFinanceReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance/settings': {
+      id: '/_authenticated/finance/settings'
+      path: '/finance/settings'
+      fullPath: '/finance/settings'
+      preLoaderRoute: typeof AuthenticatedFinanceSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/hotel/': {
@@ -1684,6 +1704,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedComplexesNewRoute: typeof AuthenticatedComplexesNewRoute
   AuthenticatedFinanceCalendarRoute: typeof AuthenticatedFinanceCalendarRoute
   AuthenticatedFinanceReportsRoute: typeof AuthenticatedFinanceReportsRoute
+  AuthenticatedFinanceSettingsRoute: typeof AuthenticatedFinanceSettingsRoute
   AuthenticatedHotelOwnersRoute: typeof AuthenticatedHotelOwnersRoute
   AuthenticatedHotelRoomsRoute: typeof AuthenticatedHotelRoomsRoute
   AuthenticatedHotelSyncRoute: typeof AuthenticatedHotelSyncRoute
@@ -1732,6 +1753,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedComplexesNewRoute: AuthenticatedComplexesNewRoute,
   AuthenticatedFinanceCalendarRoute: AuthenticatedFinanceCalendarRoute,
   AuthenticatedFinanceReportsRoute: AuthenticatedFinanceReportsRoute,
+  AuthenticatedFinanceSettingsRoute: AuthenticatedFinanceSettingsRoute,
   AuthenticatedHotelOwnersRoute: AuthenticatedHotelOwnersRoute,
   AuthenticatedHotelRoomsRoute: AuthenticatedHotelRoomsRoute,
   AuthenticatedHotelSyncRoute: AuthenticatedHotelSyncRoute,

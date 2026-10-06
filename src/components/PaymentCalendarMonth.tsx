@@ -215,7 +215,7 @@ const DayCell = memo(function DayCell({
                 type="button"
                 className="flex w-full items-center gap-1 rounded px-0.5 py-0.5 text-left text-[11px] hover:bg-slate-50"
                 onClick={() => onEdit(payment)}
-                title={`${kindLabel(payment.kind)} · ${counterpartyLabel(payment)}`}
+                title={`${payment.article?.name ?? kindLabel(payment.kind)} · ${counterpartyLabel(payment)}`}
               >
                 <span className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[status])} />
                 <span

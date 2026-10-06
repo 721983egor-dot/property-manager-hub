@@ -4,9 +4,14 @@ const ITEMS = [
   { to: "/finance/calendar", label: "Календарь", active: "calendar" },
   { to: "/finance/counterparties", label: "Контрагенты", active: "counterparties" },
   { to: "/finance/reports", label: "Отчёты", active: "reports" },
+  { to: "/finance/settings", label: "Настройки", active: "settings" },
 ] as const;
 
-export function FinanceTabs({ active }: { active: "calendar" | "counterparties" | "reports" }) {
+export function FinanceTabs({
+  active,
+}: {
+  active: "calendar" | "counterparties" | "reports" | "settings";
+}) {
   return (
     <div className="mt-6 border-b border-border">
       <div className="flex gap-1 overflow-x-auto whitespace-nowrap sm:gap-2">
