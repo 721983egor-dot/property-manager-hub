@@ -311,20 +311,76 @@ function addMonthsIso(iso: string, months: number) {
   return toISODate(new Date(date.getFullYear(), date.getMonth(), day));
 }
 
-/** Сохранить операцию: опционально повтор по месяцам. */
+function addWeeksIso(iso: string, weeks: number) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+  date.setDate(date.getDate() + weeks * 7);
+  return toISODate(date);
+}
+
+export type PaymentRepeatInterval = "month" | "week";
+
+/** Параметры серии для арендного календаря: период + срок (до даты или число раз). */
+export type PaymentRepeatOptions = {
+  interval: PaymentRepeatInterval;
+  /** Всего операций, включая первую. */
+  count?: number;
+  /** Повторять, пока planned_date <= untilDate (включительно). */
+  untilDate?: string;
+};
+
+const MAX_SERIES = 36;
+
+/** Даты серии (первая + повторы), без записи в БД. */
+export function buildPaymentSeriesDates(
+  startDate: string,
+  opts: PaymentRepeatOptions | null | undefined,
+): string[] {
+  if (!opts) return [startDate];
+  const dates = [startDate];
+  const shift = opts.interval === "week" ? addWeeksIso : addMonthsIso;
+
+  if (opts.untilDate) {
+    for (let i = 1; i < MAX_SERIES; i += 1) {
+      const next = shift(startDate, i);
+      if (next > opts.untilDate) break;
+      dates.push(next);
+    }
+    return dates;
+  }
+
+  const total = Math.min(MAX_SERIES, Math.max(1, Math.floor(opts.count ?? 1)));
+  for (let i = 1; i < total; i += 1) dates.push(shift(startDate, i));
+  return dates;
+}
+
+/** Сохранить операцию: опционально серия по периоду до даты или N раз. */
 export async function savePaymentSeries(
   id: string | null,
   input: PaymentInput,
-  repeatMonths = 0,
+  repeat: PaymentRepeatOptions | number | null = null,
 ): Promise<string> {
   const firstId = await savePayment(id, input);
-  if (id || repeatMonths <= 0) return firstId;
-  const extras = Math.min(11, Math.floor(repeatMonths));
-  for (let i = 1; i <= extras; i += 1) {
+  if (id || repeat == null) return firstId;
+
+  // Совместимость: число = доп. месяцы после первой (старый API).
+  const opts: PaymentRepeatOptions =
+    typeof repeat === "number"
+      ? { interval: "month", count: Math.max(1, Math.floor(repeat) + 1) }
+      : repeat;
+
+  const dates = buildPaymentSeriesDates(input.planned_date, opts);
+  for (let i = 1; i < dates.length; i += 1) {
+    const planned = dates[i]!;
+    const monthsOrWeeks = i;
     await savePayment(null, {
       ...input,
-      planned_date: addMonthsIso(input.planned_date, i),
-      accrual_date: input.accrual_date ? addMonthsIso(input.accrual_date, i) : null,
+      planned_date: planned,
+      accrual_date: input.accrual_date
+        ? opts.interval === "week"
+          ? addWeeksIso(input.accrual_date, monthsOrWeeks)
+          : addMonthsIso(input.accrual_date, monthsOrWeeks)
+        : null,
     });
   }
   return firstId;
