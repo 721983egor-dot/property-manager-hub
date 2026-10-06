@@ -29,6 +29,7 @@ import {
 import {
   PAYMENT_ACCOUNTS,
   PAYMENT_KINDS,
+  buildPaymentSeriesDates,
   defaultDirectionForKind,
   deletePayment,
   fetchFinancePropertyOptions,
@@ -38,10 +39,13 @@ import {
   type Payment,
   type PaymentDirection,
   type PaymentKind,
+  type PaymentRepeatInterval,
   type PaymentStatus,
 } from "@/lib/finance";
 import { toISODate } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
+
+type RepeatEndMode = "count" | "until";
 
 type Props = {
   open: boolean;
@@ -71,6 +75,10 @@ type FormState = {
   otherAccrual: boolean;
   accrual_date: string;
   repeat: boolean;
+  repeatInterval: PaymentRepeatInterval;
+  repeatEndMode: RepeatEndMode;
+  repeatCount: string;
+  repeatUntil: string;
 };
 
 function emptyForm(
@@ -98,6 +106,10 @@ function emptyForm(
     otherAccrual: false,
     accrual_date: "",
     repeat: false,
+    repeatInterval: "month",
+    repeatEndMode: "count",
+    repeatCount: "12",
+    repeatUntil: "",
   };
 }
 
@@ -119,6 +131,10 @@ function fromPayment(payment: Payment): FormState {
     otherAccrual: Boolean(payment.accrual_date),
     accrual_date: payment.accrual_date ?? "",
     repeat: false,
+    repeatInterval: "month",
+    repeatEndMode: "count",
+    repeatCount: "12",
+    repeatUntil: "",
   };
 }
 
@@ -188,6 +204,30 @@ export function PaymentDialog({
     (k) => k.value === "other" || k.direction === form.direction,
   );
 
+  const seriesDates = useMemo(() => {
+    if (payment || !form.repeat || !form.planned_date) return [form.planned_date].filter(Boolean);
+    if (form.repeatEndMode === "until") {
+      if (!form.repeatUntil) return [form.planned_date];
+      return buildPaymentSeriesDates(form.planned_date, {
+        interval: form.repeatInterval,
+        untilDate: form.repeatUntil,
+      });
+    }
+    const count = Number(form.repeatCount);
+    return buildPaymentSeriesDates(form.planned_date, {
+      interval: form.repeatInterval,
+      count: Number.isFinite(count) && count > 0 ? count : 1,
+    });
+  }, [
+    payment,
+    form.repeat,
+    form.planned_date,
+    form.repeatEndMode,
+    form.repeatUntil,
+    form.repeatCount,
+    form.repeatInterval,
+  ]);
+
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["payments"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
@@ -219,11 +259,26 @@ export function PaymentDialog({
         accrual_date: form.otherAccrual ? form.accrual_date || null : null,
         obligation_id: payment?.obligation_id ?? null,
       };
-      const id = await savePaymentSeries(
-        payment?.id ?? null,
-        input,
-        !payment && form.repeat ? 11 : 0,
-      );
+      let repeatOpts = null as
+        | { interval: PaymentRepeatInterval; count?: number; untilDate?: string }
+        | null;
+      if (!payment && form.repeat) {
+        if (form.repeatEndMode === "until") {
+          if (!form.repeatUntil) throw new Error("Укажите дату окончания повтора");
+          if (form.repeatUntil < form.planned_date) {
+            throw new Error("Дата окончания не раньше первой операции");
+          }
+          repeatOpts = { interval: form.repeatInterval, untilDate: form.repeatUntil };
+        } else {
+          const count = Number(form.repeatCount);
+          if (!Number.isFinite(count) || count < 1) {
+            throw new Error("Укажите число повторов (от 1)");
+          }
+          if (count > 36) throw new Error("Не больше 36 операций в серии");
+          repeatOpts = { interval: form.repeatInterval, count };
+        }
+      }
+      const id = await savePaymentSeries(payment?.id ?? null, input, repeatOpts);
       if (form.countInObligations && party.id && !payment?.obligation_id) {
         const obligationId = await saveObligation(null, {
           counterparty_id: party.id,
@@ -239,7 +294,13 @@ export function PaymentDialog({
     onSuccess: () => {
       invalidate();
       onOpenChange(false);
-      toast.success(payment ? "Операция обновлена" : "Операция добавлена");
+      toast.success(
+        payment
+          ? "Операция обновлена"
+          : form.repeat && seriesDates.length > 1
+            ? `Добавлено операций: ${seriesDates.length}`
+            : "Операция добавлена",
+      );
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Ошибка сохранения"),
   });
@@ -434,22 +495,116 @@ export function PaymentDialog({
             />
           )}
           {!payment && (
-            <label className="flex items-start gap-2.5 text-sm text-slate-700">
-              <Checkbox
-                checked={form.repeat}
-                onCheckedChange={(v) => setForm((p) => ({ ...p, repeat: v === true }))}
-              />
-              <span>Повторять операцию</span>
-            </label>
+            <div className="space-y-3">
+              <label className="flex items-start gap-2.5 text-sm text-slate-700">
+                <Checkbox
+                  checked={form.repeat}
+                  onCheckedChange={(v) => setForm((p) => ({ ...p, repeat: v === true }))}
+                />
+                <span>Повторять операцию</span>
+              </label>
+              {form.repeat && (
+                <div className="space-y-3 rounded-lg border border-[#e8edf2] bg-white p-3">
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                      Период
+                    </p>
+                    <Select
+                      value={form.repeatInterval}
+                      onValueChange={(v) =>
+                        setForm((p) => ({ ...p, repeatInterval: v as PaymentRepeatInterval }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 border-[#e8edf2]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="month">Каждый месяц</SelectItem>
+                        <SelectItem value="week">Каждую неделю</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                      Срок жизни
+                    </p>
+                    <Select
+                      value={form.repeatEndMode}
+                      onValueChange={(v) =>
+                        setForm((p) => ({ ...p, repeatEndMode: v as RepeatEndMode }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 border-[#e8edf2]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="count">Количество раз</SelectItem>
+                        <SelectItem value="until">До даты</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.repeatEndMode === "count" ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                        Сколько операций
+                      </p>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={36}
+                        className="h-9 border-[#e8edf2]"
+                        value={form.repeatCount}
+                        onChange={(e) => setForm((p) => ({ ...p, repeatCount: e.target.value }))}
+                      />
+                      <p className="text-xs text-slate-400">
+                        Включая первую. Для аренды обычно 12 месяцев.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
+                        Повторять до
+                      </p>
+                      <Input
+                        type="date"
+                        className="h-9 border-[#e8edf2]"
+                        value={form.repeatUntil}
+                        min={form.planned_date}
+                        onChange={(e) => setForm((p) => ({ ...p, repeatUntil: e.target.value }))}
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    Будет создано <span className="font-semibold text-slate-700">{seriesDates.length}</span>{" "}
+                    {seriesDates.length === 1 ? "операция" : "операций"}
+                    {seriesDates.length > 1
+                      ? ` · до ${seriesDates[seriesDates.length - 1]}`
+                      : ""}
+                  </p>
+                </div>
+              )}
+            </div>
           )}
 
           <Button
             type="button"
             className="mt-1 h-11 w-full bg-[#7c5cff] text-base hover:bg-[#6b4cf0]"
-            disabled={!form.planned_date || form.amount === "" || saveMutation.isPending}
+            disabled={
+              !form.planned_date ||
+              form.amount === "" ||
+              saveMutation.isPending ||
+              (!!form.repeat &&
+                !payment &&
+                form.repeatEndMode === "until" &&
+                !form.repeatUntil)
+            }
             onClick={() => saveMutation.mutate()}
           >
-            {payment ? "Сохранить" : "Добавить операцию"}
+            {payment
+              ? "Сохранить"
+              : form.repeat && seriesDates.length > 1
+                ? `Добавить ${seriesDates.length} операций`
+                : "Добавить операцию"}
           </Button>
 
           {payment && (
