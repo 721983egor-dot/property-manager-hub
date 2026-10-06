@@ -2202,5 +2202,160 @@ export function createReadTools(ctx: AssistantToolContext) {
         };
       },
     }),
+
+    listCounterparties: tool({
+      description:
+        "Список контрагентов блока «Финансы»: арендатор, собственник, подрядчик, сотрудник, депозит, прочее. Фильтр по типу.",
+      inputSchema: z.object({
+        kind: z
+          .enum(["tenant", "owner", "contractor", "employee", "deposit", "other", "all"])
+          .optional(),
+        query: z.string().optional().describe("Имя контрагента"),
+      }),
+      execute: async ({ kind, query }) => {
+        let q = admin
+          .from("finance_counterparties")
+          .select("id, name, kind, client_id, comment, created_at")
+          .order("name")
+          .limit(200);
+        if (kind && kind !== "all") q = q.eq("kind", kind);
+        if (query?.trim()) q = q.ilike("name", `%${query.trim()}%`);
+        const { data, error } = await q;
+        if (error) return { error: error.message };
+        return { count: (data ?? []).length, counterparties: data ?? [] };
+      },
+    }),
+
+    getCounterparty: tool({
+      description:
+        "Карточка контрагента Финансов: тип, обзор (должен нам / перевёл нам / мы перевели / сальдо), обязательства и денежные операции.",
+      inputSchema: z.object({
+        counterpartyId: z.string().optional(),
+        name: z.string().optional().describe("Имя, если нет id"),
+      }),
+      execute: async ({ counterpartyId, name }) => {
+        let party: Record<string, unknown> | null = null;
+        if (counterpartyId) {
+          const { data, error } = await admin
+            .from("finance_counterparties")
+            .select("id, name, kind, client_id, comment")
+            .eq("id", counterpartyId)
+            .maybeSingle();
+          if (error) return { error: error.message };
+          party = (data as Record<string, unknown> | null) ?? null;
+        } else if (name?.trim()) {
+          const { data, error } = await admin
+            .from("finance_counterparties")
+            .select("id, name, kind, client_id, comment")
+            .ilike("name", `%${name.trim()}%`)
+            .limit(5);
+          if (error) return { error: error.message };
+          if (!data?.length) return { error: "Контрагент не найден" };
+          if (data.length > 1) return { matches: data, hint: "Уточните имя или передайте counterpartyId" };
+          party = data[0] as Record<string, unknown>;
+        } else {
+          return { error: "Укажите counterpartyId или имя" };
+        }
+        if (!party) return { error: "Контрагент не найден" };
+        const id = String(party["id"]);
+        const [{ data: obligations, error: oblError }, { data: payments, error: payError }] =
+          await Promise.all([
+            admin
+              .from("finance_obligations")
+              .select(
+                "id, planned_date, amount, direction, description, property_id, status",
+              )
+              .eq("counterparty_id", id)
+              .order("planned_date", { ascending: false }),
+            admin
+              .from("payments")
+              .select(
+                "id, planned_date, amount, direction, status, kind, paid_amount, comment, property_id, obligation_id",
+              )
+              .eq("counterparty_id", id)
+              .order("planned_date", { ascending: false })
+              .limit(200),
+          ]);
+        if (oblError) return { error: oblError.message };
+        if (payError) return { error: payError.message };
+        let theyOweUs = 0;
+        for (const item of obligations ?? []) {
+          if (item.status !== "open") continue;
+          theyOweUs += item.direction === "receivable" ? Number(item.amount) : -Number(item.amount);
+        }
+        let transferredToUs = 0;
+        let weTransferred = 0;
+        for (const payment of payments ?? []) {
+          if (payment.status === "paid" || payment.status === "partial") {
+            const fact = Number(payment.paid_amount ?? payment.amount);
+            if (payment.direction === "in") transferredToUs += fact;
+            else weTransferred += fact;
+          }
+        }
+        return {
+          counterparty: party,
+          overview: {
+            theyOweUs,
+            transferredToUs,
+            weTransferred,
+            cashSaldo: transferredToUs - weTransferred,
+          },
+          obligations: obligations ?? [],
+          payments: payments ?? [],
+        };
+      },
+    }),
+
+    listObligations: tool({
+      description:
+        "Обязательства контрагентов Финансов: receivable = должен нам (мы передали), payable = мы должны. Можно фильтровать по контрагенту.",
+      inputSchema: z.object({
+        counterpartyId: z.string().optional(),
+        counterpartyName: z.string().optional(),
+        status: z.enum(["open", "closed", "all"]).optional(),
+      }),
+      execute: async ({ counterpartyId, counterpartyName, status }) => {
+        let id = counterpartyId ?? "";
+        if (!id && counterpartyName?.trim()) {
+          const { data: found } = await admin
+            .from("finance_counterparties")
+            .select("id, name")
+            .ilike("name", `%${counterpartyName.trim()}%`)
+            .limit(5);
+          if (!found?.length) return { error: "Контрагент не найден" };
+          if (found.length > 1) return { matches: found, hint: "Уточните имя или передайте counterpartyId" };
+          id = found[0]!.id;
+        }
+        let q = admin
+          .from("finance_obligations")
+          .select(
+            "id, counterparty_id, planned_date, amount, direction, description, property_id, status, created_at",
+          )
+          .order("planned_date", { ascending: false })
+          .limit(200);
+        if (id) q = q.eq("counterparty_id", id);
+        if (status && status !== "all") q = q.eq("status", status);
+        const { data, error } = await q;
+        if (error) return { error: error.message };
+        const partyIds = Array.from(
+          new Set((data ?? []).map((row) => row.counterparty_id).filter(Boolean)),
+        );
+        const names = new Map<string, string>();
+        if (partyIds.length) {
+          const { data: parties } = await admin
+            .from("finance_counterparties")
+            .select("id, name, kind")
+            .in("id", partyIds);
+          for (const row of parties ?? []) names.set(row.id, `${row.name} (${row.kind})`);
+        }
+        return {
+          count: (data ?? []).length,
+          obligations: (data ?? []).map((row) => ({
+            ...row,
+            counterparty: names.get(row.counterparty_id) ?? row.counterparty_id,
+          })),
+        };
+      },
+    }),
   };
 }

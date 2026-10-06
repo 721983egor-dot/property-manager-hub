@@ -1314,6 +1314,48 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (error) throw new Error(error.message);
     return "Платёж отмечен оплаченным";
   },
+
+  createCounterparty: async (input) => {
+    const name = String(input["name"] ?? "").trim();
+    if (!name) throw new Error("Не указано имя контрагента");
+    const kind = String(input["kind"] ?? "other");
+    const { error } = await supabaseAdmin.from("finance_counterparties").insert({
+      name,
+      kind,
+      comment: String(input["comment"] ?? ""),
+    } as never);
+    if (error) throw new Error(error.message);
+    return "Контрагент создан";
+  },
+
+  updateCounterpartyKind: async (input) => {
+    const counterpartyId = must(input["counterpartyId"] as string, "Не указан контрагент");
+    const kind = must(input["kind"] as string, "Не указан тип");
+    const { error } = await supabaseAdmin
+      .from("finance_counterparties")
+      .update({ kind } as never)
+      .eq("id", counterpartyId);
+    if (error) throw new Error(error.message);
+    return "Тип контрагента обновлён";
+  },
+
+  createObligation: async (input) => {
+    const counterpartyId = must(input["counterpartyId"] as string, "Не указан контрагент");
+    const plannedDate = must(input["plannedDate"] as string, "Не указана дата");
+    const amount = Number(input["amount"]);
+    if (!Number.isFinite(amount) || amount < 0) throw new Error("Некорректная сумма");
+    const { error } = await supabaseAdmin.from("finance_obligations").insert({
+      counterparty_id: counterpartyId,
+      planned_date: plannedDate,
+      amount,
+      direction: String(input["direction"] ?? "receivable"),
+      description: String(input["description"] ?? ""),
+      property_id: (input["propertyId"] as string | null) || null,
+      status: "open",
+    } as never);
+    if (error) throw new Error(error.message);
+    return "Обязательство создано";
+  },
 };
 
 /** Выполняет подтверждённое действие и пишет его в журнал. */

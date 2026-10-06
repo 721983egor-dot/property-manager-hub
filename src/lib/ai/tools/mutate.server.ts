@@ -1321,5 +1321,128 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+
+    proposeCreateCounterparty: tool({
+      description:
+        "Предложить создание контрагента Финансов (арендатор, собственник, подрядчик, сотрудник, депозит, прочее). Требует подтверждения.",
+      inputSchema: z.object({
+        name: z.string(),
+        kind: z
+          .enum(["tenant", "owner", "contractor", "employee", "deposit", "other"])
+          .optional(),
+        comment: z.string().optional(),
+      }),
+      execute: async ({ name, kind, comment }) => {
+        const trimmed = name.trim();
+        if (!trimmed) return { error: "Укажите имя контрагента" };
+        const type = kind ?? "other";
+        const summary = `Создать контрагента «${trimmed}» (${type})`;
+        ctx.propose({
+          tool: "createCounterparty",
+          summary,
+          input: { name: trimmed, kind: type, comment: comment ?? "" },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeUpdateCounterpartyKind: tool({
+      description:
+        "Предложить сменить тип контрагента Финансов: tenant/owner/contractor/employee/deposit/other. Требует подтверждения.",
+      inputSchema: z.object({
+        counterpartyId: z.string().optional(),
+        name: z.string().optional(),
+        kind: z.enum(["tenant", "owner", "contractor", "employee", "deposit", "other"]),
+      }),
+      execute: async ({ counterpartyId, name, kind }) => {
+        let party: { id: string; name: string; kind: string } | null = null;
+        if (counterpartyId) {
+          const { data } = await ctx.admin
+            .from("finance_counterparties")
+            .select("id, name, kind")
+            .eq("id", counterpartyId)
+            .maybeSingle();
+          party = data;
+        } else if (name?.trim()) {
+          const { data } = await ctx.admin
+            .from("finance_counterparties")
+            .select("id, name, kind")
+            .ilike("name", `%${name.trim()}%`)
+            .limit(5);
+          if (!data?.length) return { error: "Контрагент не найден" };
+          if (data.length > 1) return { matches: data, hint: "Уточните имя или передайте counterpartyId" };
+          party = data[0]!;
+        } else {
+          return { error: "Укажите counterpartyId или имя" };
+        }
+        if (!party) return { error: "Контрагент не найден" };
+        const summary = `Сменить тип «${party.name}»: ${party.kind} → ${kind}`;
+        ctx.propose({
+          tool: "updateCounterpartyKind",
+          summary,
+          input: { counterpartyId: party.id, kind },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeCreateObligation: tool({
+      description:
+        "Предложить обязательство контрагента: receivable = должен нам (мы передали), payable = мы должны. Требует подтверждения.",
+      inputSchema: z.object({
+        counterpartyId: z.string().optional(),
+        counterpartyName: z.string().optional(),
+        plannedDate: z.string().describe("ГГГГ-ММ-ДД"),
+        amount: z.number(),
+        direction: z.enum(["receivable", "payable"]).optional(),
+        description: z.string().optional(),
+        propertyRef: z.string().optional(),
+      }),
+      execute: async (input) => {
+        if (!input.plannedDate) return { error: "Укажите дату" };
+        if (!Number.isFinite(input.amount) || input.amount < 0) return { error: "Укажите сумму" };
+        let party: { id: string; name: string } | null = null;
+        if (input.counterpartyId) {
+          const { data } = await ctx.admin
+            .from("finance_counterparties")
+            .select("id, name")
+            .eq("id", input.counterpartyId)
+            .maybeSingle();
+          party = data;
+        } else if (input.counterpartyName?.trim()) {
+          const { data: found } = await ctx.admin
+            .from("finance_counterparties")
+            .select("id, name")
+            .ilike("name", `%${input.counterpartyName.trim()}%`)
+            .limit(5);
+          if (!found?.length) return { error: "Контрагент не найден. Сначала proposeCreateCounterparty." };
+          if (found.length > 1) return { matches: found, hint: "Уточните имя или передайте counterpartyId" };
+          party = found[0]!;
+        } else {
+          return { error: "Укажите контрагента" };
+        }
+        if (!party) return { error: "Контрагент не найден" };
+        const property = input.propertyRef ? await label(input.propertyRef) : null;
+        if (input.propertyRef && !property) return { error: "Объект не найден" };
+        const direction = input.direction ?? "receivable";
+        const dirLabel = direction === "receivable" ? "должен нам" : "мы должны";
+        const parts = [`«${party.name}»`, dirLabel, money(input.amount), input.plannedDate];
+        if (property) parts.push(`проект ${property.text}`);
+        const summary = `Добавить обязательство: ${parts.join(", ")}`;
+        ctx.propose({
+          tool: "createObligation",
+          summary,
+          input: {
+            counterpartyId: party.id,
+            plannedDate: input.plannedDate,
+            amount: input.amount,
+            direction,
+            description: input.description ?? "",
+            propertyId: property?.id ?? null,
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
   };
 }

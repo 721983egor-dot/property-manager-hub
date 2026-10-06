@@ -32,6 +32,7 @@ import {
   saveMonthOpeningBalance,
   statusLabel,
   type Payment,
+  type PaymentDirection,
   type PaymentStatus,
 } from "@/lib/finance";
 import { fetchProperties, formatMoney, internalTitle } from "@/lib/properties";
@@ -79,6 +80,7 @@ function FinanceCalendarPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Payment | null>(null);
   const [defaultDate, setDefaultDate] = useState<string>("");
+  const [defaultDirection, setDefaultDirection] = useState<PaymentDirection>("out");
   const [openingDraft, setOpeningDraft] = useState("0");
   const [showOpening, setShowOpening] = useState(false);
 
@@ -148,9 +150,10 @@ function FinanceCalendarPage() {
     setMonthIndex(next.getMonth());
   };
 
-  const openCreate = (date?: string) => {
+  const openCreate = (date?: string, direction: PaymentDirection = "out") => {
     setEditing(null);
     setDefaultDate(date || bounds.from);
+    setDefaultDirection(direction);
     setDialogOpen(true);
   };
 
@@ -439,6 +442,7 @@ function FinanceCalendarPage() {
         payment={editing}
         defaultPropertyId={propertyId === "all" ? undefined : propertyId}
         defaultDate={defaultDate}
+        defaultDirection={defaultDirection}
       />
     </div>
   );
