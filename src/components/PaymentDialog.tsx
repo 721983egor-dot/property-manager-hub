@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -32,6 +31,8 @@ import {
   PAYMENT_KINDS,
   defaultDirectionForKind,
   deletePayment,
+  fetchFinancePropertyOptions,
+  financePropertyLabel,
   savePayment,
   savePaymentSeries,
   type Payment,
@@ -39,7 +40,6 @@ import {
   type PaymentKind,
   type PaymentStatus,
 } from "@/lib/finance";
-import { fetchProperties, internalTitle } from "@/lib/properties";
 import { toISODate } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
 
@@ -144,14 +144,16 @@ export function PaymentDialog({
   );
 
   const { data: properties = [] } = useQuery({
-    queryKey: ["properties"],
-    queryFn: fetchProperties,
+    queryKey: ["finance-property-options"],
+    queryFn: fetchFinancePropertyOptions,
     enabled: open,
+    staleTime: 5 * 60 * 1000,
   });
   const { data: counterparties = [] } = useQuery({
     queryKey: ["finance-counterparties"],
     queryFn: () => fetchCounterparties(),
     enabled: open,
+    staleTime: 60 * 1000,
   });
 
   useEffect(() => {
@@ -178,13 +180,7 @@ export function PaymentDialog({
   ]);
 
   const propertyOptions = useMemo(
-    () =>
-      properties
-        .filter((p) => p.status !== "archived")
-        .map((p) => ({
-          id: p.id,
-          label: `${internalTitle(p)}${p.ref_id != null ? ` · №${p.ref_id}` : ""}`,
-        })),
+    () => properties.map((p) => ({ id: p.id, label: financePropertyLabel(p) })),
     [properties],
   );
 
@@ -269,23 +265,28 @@ export function PaymentDialog({
     }));
   };
 
-  const title = payment
-    ? "Изменить операцию"
-    : form.direction === "out"
-      ? "Добавить операцию расхода"
-      : "Добавить операцию прихода";
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col overflow-y-auto p-0 sm:max-w-[480px]"
+        className="flex w-full flex-col overflow-y-auto border-l border-[#e8edf2] bg-[#f7f8fa] p-0 sm:max-w-[480px]"
       >
-        <SheetHeader className="border-b border-border px-6 py-4 text-left">
-          <SheetTitle className="text-xl font-semibold">{title}</SheetTitle>
+        <SheetHeader className="border-b border-[#e8edf2] bg-white px-6 py-4 text-left">
+          <SheetTitle className="text-[22px] font-semibold tracking-tight text-slate-900">
+            {payment ? (
+              "Изменить операцию"
+            ) : (
+              <>
+                Добавить операцию{" "}
+                <span className="underline decoration-slate-900 decoration-2 underline-offset-4">
+                  {form.direction === "out" ? "расхода" : "прихода"}
+                </span>
+              </>
+            )}
+          </SheetTitle>
         </SheetHeader>
 
-        <div className="grid grid-cols-2 gap-px bg-border">
+        <div className="grid grid-cols-2 gap-px border-b border-[#e8edf2] bg-[#e8edf2]">
           <Field label="Сумма" required>
             <Input
               type="number"
@@ -294,7 +295,7 @@ export function PaymentDialog({
               value={form.amount}
               onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
               placeholder="0,00"
-              className="border-0 shadow-none focus-visible:ring-0"
+              className="h-9 border-0 px-0 text-base shadow-none focus-visible:ring-0"
             />
           </Field>
           <Field label="Счёт" required>
@@ -302,7 +303,7 @@ export function PaymentDialog({
               value={form.account}
               onValueChange={(v) => setForm((p) => ({ ...p, account: v }))}
             >
-              <SelectTrigger className="border-0 shadow-none focus:ring-0">
+              <SelectTrigger className="h-9 border-0 px-0 shadow-none focus:ring-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -316,7 +317,7 @@ export function PaymentDialog({
           </Field>
           <Field label="Статья">
             <Select value={form.kind} onValueChange={(v) => setKind(v as PaymentKind)}>
-              <SelectTrigger className="border-0 shadow-none focus:ring-0">
+              <SelectTrigger className="h-9 border-0 px-0 shadow-none focus:ring-0">
                 <SelectValue placeholder="Выберите статью…" />
               </SelectTrigger>
               <SelectContent>
@@ -333,7 +334,7 @@ export function PaymentDialog({
               type="date"
               value={form.planned_date}
               onChange={(e) => setForm((p) => ({ ...p, planned_date: e.target.value }))}
-              className="border-0 shadow-none focus-visible:ring-0"
+              className="h-9 border-0 px-0 shadow-none focus-visible:ring-0"
             />
           </Field>
           <Field label="Проект или направление">
@@ -343,7 +344,7 @@ export function PaymentDialog({
                 setForm((p) => ({ ...p, property_id: v === "__none__" ? "" : v }))
               }
             >
-              <SelectTrigger className="border-0 shadow-none focus:ring-0">
+              <SelectTrigger className="h-9 border-0 px-0 shadow-none focus:ring-0">
                 <SelectValue placeholder="Выберите проект…" />
               </SelectTrigger>
               <SelectContent>
@@ -372,7 +373,7 @@ export function PaymentDialog({
                 }));
               }}
             >
-              <SelectTrigger className="border-0 shadow-none focus:ring-0">
+              <SelectTrigger className="h-9 border-0 px-0 shadow-none focus:ring-0">
                 <SelectValue placeholder="Выберите контрагента…" />
               </SelectTrigger>
               <SelectContent>
@@ -386,19 +387,19 @@ export function PaymentDialog({
             </Select>
           </Field>
           <div className="col-span-2 bg-white px-4 py-3">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
               Описание
             </p>
             <Textarea
               value={form.comment}
               onChange={(e) => setForm((p) => ({ ...p, comment: e.target.value }))}
               rows={3}
-              className="border-0 px-0 shadow-none focus-visible:ring-0"
+              className="min-h-[72px] resize-none border-0 px-0 shadow-none focus-visible:ring-0"
               placeholder=""
             />
             {!form.counterparty_id && (
               <Input
-                className="mt-2"
+                className="mt-2 border-[#e8edf2]"
                 placeholder="Имя контрагента, если нет в списке"
                 value={form.counterparty_name}
                 onChange={(e) => setForm((p) => ({ ...p, counterparty_name: e.target.value }))}
@@ -407,8 +408,8 @@ export function PaymentDialog({
           </div>
         </div>
 
-        <div className="space-y-3 px-6 py-4">
-          <label className="flex items-start gap-2 text-sm">
+        <div className="space-y-3.5 bg-[#f7f8fa] px-6 py-5">
+          <label className="flex items-start gap-2.5 text-sm text-slate-700">
             <Checkbox
               checked={form.countInObligations}
               onCheckedChange={(v) =>
@@ -417,7 +418,7 @@ export function PaymentDialog({
             />
             <span>Учитывать в обязательствах</span>
           </label>
-          <label className="flex items-start gap-2 text-sm">
+          <label className="flex items-start gap-2.5 text-sm text-slate-700">
             <Checkbox
               checked={form.otherAccrual}
               onCheckedChange={(v) => setForm((p) => ({ ...p, otherAccrual: v === true }))}
@@ -427,23 +428,24 @@ export function PaymentDialog({
           {form.otherAccrual && (
             <Input
               type="date"
+              className="border-[#e8edf2] bg-white"
               value={form.accrual_date}
               onChange={(e) => setForm((p) => ({ ...p, accrual_date: e.target.value }))}
             />
           )}
           {!payment && (
-            <label className="flex items-start gap-2 text-sm">
+            <label className="flex items-start gap-2.5 text-sm text-slate-700">
               <Checkbox
                 checked={form.repeat}
                 onCheckedChange={(v) => setForm((p) => ({ ...p, repeat: v === true }))}
               />
-              <span>Повторять операцию каждый месяц (12 мес.)</span>
+              <span>Повторять операцию</span>
             </label>
           )}
 
           <Button
             type="button"
-            className="mt-2 bg-violet-600 hover:bg-violet-700"
+            className="mt-1 h-11 w-full bg-[#7c5cff] text-base hover:bg-[#6b4cf0]"
             disabled={!form.planned_date || form.amount === "" || saveMutation.isPending}
             onClick={() => saveMutation.mutate()}
           >
@@ -466,10 +468,13 @@ export function PaymentDialog({
 
           <div
             className={cn(
-              "rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground",
+              "rounded-lg border border-dashed border-[#cfd8e3] bg-white px-4 py-10 text-center text-sm text-slate-400",
             )}
           >
-            Файлы к операциям пока не храним — без банка и без загрузки документов.
+            Перетащите сюда документы или выберите файлы
+            <span className="mt-1 block text-xs">
+              (файлы пока не храним — без банка)
+            </span>
           </div>
         </div>
       </SheetContent>
@@ -488,9 +493,9 @@ function Field({
 }) {
   return (
     <div className="bg-white px-4 py-3">
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
         {label}
-        {required ? <span className="text-destructive"> *</span> : null}
+        {required ? <span className="text-red-500"> *</span> : null}
       </p>
       {children}
     </div>

@@ -207,6 +207,39 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
   return ((data ?? []) as Record<string, unknown>[]).map(mapPayment);
 }
 
+/** Лёгкий список объектов для фильтров Финансов — без select(*) и без server fn. */
+export type FinancePropertyOption = {
+  id: string;
+  title: string;
+  internal_name: string | null;
+  ref_id: number | null;
+  status: string;
+};
+
+export async function fetchFinancePropertyOptions(): Promise<FinancePropertyOption[]> {
+  const { data, error } = await supabase
+    .from("properties")
+    .select("id, title, internal_name, ref_id, status")
+    .neq("status", "archived")
+    .order("title", { ascending: true });
+  if (error) throw error;
+  const rows = ((data ?? []) as FinancePropertyOption[]).map((row) => ({
+    id: String(row.id),
+    title: String(row.title ?? ""),
+    internal_name: row.internal_name ?? null,
+    ref_id: row.ref_id == null ? null : Number(row.ref_id),
+    status: String(row.status ?? ""),
+  }));
+  return rows.sort((a, b) =>
+    financePropertyLabel(a).localeCompare(financePropertyLabel(b), "ru"),
+  );
+}
+
+export function financePropertyLabel(p: FinancePropertyOption) {
+  const name = p.internal_name?.trim() ? p.internal_name : p.title;
+  return p.ref_id != null ? `${name} · №${p.ref_id}` : name;
+}
+
 export async function fetchPayment(id: string): Promise<Payment | null> {
   const { data, error } = await supabase
     .from("payments")
@@ -518,11 +551,13 @@ export function formatFinanceDate(iso: string) {
   return `${d}.${m}.${y}`;
 }
 
+const ADESK_MONEY = new Intl.NumberFormat("ru-RU", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function formatAdeskMoney(value: number, withSign = false) {
-  const formatted = new Intl.NumberFormat("ru-RU", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Math.abs(value));
+  const formatted = ADESK_MONEY.format(Math.abs(value));
   const body = `${formatted} ₽`;
   if (!withSign) return value < 0 ? `−${body}` : body;
   if (value > 0) return `+${body}`;

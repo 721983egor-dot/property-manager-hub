@@ -40,13 +40,14 @@ import {
 } from "@/lib/finance-counterparties";
 import {
   effectivePaymentStatus,
+  fetchFinancePropertyOptions,
   fetchPayments,
+  financePropertyLabel,
   formatAdeskMoney,
   formatFinanceDate,
   kindLabel,
   statusLabel,
 } from "@/lib/finance";
-import { fetchProperties, internalTitle } from "@/lib/properties";
 import { toISODate } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
 
@@ -93,8 +94,9 @@ function CounterpartyCardPage() {
     enabled: Boolean(id),
   });
   const { data: properties = [] } = useQuery({
-    queryKey: ["properties"],
-    queryFn: fetchProperties,
+    queryKey: ["finance-property-options"],
+    queryFn: fetchFinancePropertyOptions,
+    staleTime: 5 * 60 * 1000,
   });
 
   const overview = useMemo(
@@ -105,7 +107,7 @@ function CounterpartyCardPage() {
   const propertyLabel = (propertyId: string | null) => {
     if (!propertyId) return "—";
     const found = properties.find((p) => p.id === propertyId);
-    return found ? internalTitle(found) : "—";
+    return found ? financePropertyLabel(found) : "—";
   };
 
   const visibleObligations = useMemo(
@@ -291,7 +293,11 @@ function CounterpartyCardPage() {
               Операция
             </Button>
           ) : (
-            <Button type="button" onClick={() => setOblOpen(true)}>
+            <Button
+              type="button"
+              className="bg-[#3b82f6] hover:bg-[#2563eb]"
+              onClick={() => setOblOpen(true)}
+            >
               <Plus className="size-4" />
               Добавить обязательство
             </Button>
@@ -506,13 +512,11 @@ function CounterpartyCardPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Без проекта</SelectItem>
-                  {properties
-                    .filter((p) => p.status !== "archived")
-                    .map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {internalTitle(p)}
-                      </SelectItem>
-                    ))}
+                  {properties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {financePropertyLabel(p)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

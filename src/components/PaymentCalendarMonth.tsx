@@ -1,16 +1,5 @@
+import { lazy, memo, Suspense, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
-import { useState } from "react";
-import {
-  Area,
-  ComposedChart,
-  CartesianGrid,
-  Line,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 import {
   counterpartyLabel,
@@ -27,7 +16,15 @@ import { cn } from "@/lib/utils";
 
 export type CellMode = "sums" | "ops";
 
-const WEEKDAYS = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+const WEEKDAYS = [
+  "Понедельник",
+  "Вторник",
+  "Среда",
+  "Четверг",
+  "Пятница",
+  "Суббота",
+  "Воскресенье",
+];
 
 const STATUS_DOT: Record<PaymentStatus, string> = {
   expected: "bg-sky-500",
@@ -35,6 +32,8 @@ const STATUS_DOT: Record<PaymentStatus, string> = {
   paid: "bg-emerald-500",
   overdue: "bg-red-500",
 };
+
+const PaymentAccountsChart = lazy(() => import("@/components/PaymentAccountsChart"));
 
 type Props = {
   year: number;
@@ -66,93 +65,24 @@ export function PaymentCalendarMonth({
   for (const row of ledger) cells.push(row);
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const chartData = ledger.map((row) => ({
-    day: row.date.slice(8),
-    date: row.date,
-    balance: row.closing,
-    negative: row.closing < 0 ? row.closing : null,
-    positive: row.closing >= 0 ? row.closing : null,
-  }));
-  const todayRow = ledger.find((row) => row.date === today);
-  const endBalance = ledger.length > 0 ? ledger[ledger.length - 1]!.closing : 0;
-
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-border bg-white p-4">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Деньги на счетах
-        </p>
-        <div className="h-48 sm:h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="financeGapFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f87171" stopOpacity={0.22} />
-                  <stop offset="100%" stopColor="#f87171" stopOpacity={0.04} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
-                tickLine={false}
-                axisLine={false}
-                minTickGap={28}
-                tickFormatter={(value: string) => {
-                  const [y, m, d] = String(value).split("-");
-                  if (!d) return String(value);
-                  return `${d}.${m}.${y?.slice(2) ?? ""}`;
-                }}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "#94a3b8" }}
-                tickLine={false}
-                axisLine={false}
-                width={48}
-                tickFormatter={(v: number) =>
-                  Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}K` : String(Math.round(v))
-                }
-              />
-              <Tooltip
-                formatter={(value: number) => [formatAdeskMoney(value), "Остаток"]}
-                labelFormatter={(label) => String(label)}
-              />
-              <ReferenceLine y={0} stroke="#e2e8f0" />
-              {todayRow && (
-                <ReferenceLine
-                  x={today}
-                  stroke="#cbd5e1"
-                  strokeDasharray="3 3"
-                  label={{ value: "Сегодня", position: "top", fontSize: 11, fill: "#94a3b8" }}
-                />
-              )}
-              <Area
-                type="monotone"
-                dataKey="negative"
-                stroke="none"
-                fill="url(#financeGapFill)"
-                connectNulls={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="balance"
-                name="Остаток"
-                stroke={endBalance < 0 ? "#ef4444" : "#0f766e"}
-                strokeWidth={2}
-                strokeDasharray={endBalance < 0 ? "4 4" : undefined}
-                dot={false}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+    <div className="space-y-0 overflow-hidden rounded-xl border border-[#e8edf2] bg-white">
+      <Suspense
+        fallback={
+          <div className="flex h-[200px] items-center px-4 text-sm text-muted-foreground sm:h-[220px]">
+            График…
+          </div>
+        }
+      >
+        <PaymentAccountsChart ledger={ledger} today={today} />
+      </Suspense>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-white">
-        <div className="grid min-w-[860px] grid-cols-7">
+      <div className="overflow-x-auto border-t border-[#e8edf2]">
+        <div className="grid min-w-[920px] grid-cols-7">
           {WEEKDAYS.map((d) => (
             <div
               key={d}
-              className="border-b border-border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+              className="border-b border-[#e8edf2] px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-400"
             >
               {d}
             </div>
@@ -160,7 +90,10 @@ export function PaymentCalendarMonth({
           {cells.map((cell, idx) => {
             if (!cell) {
               return (
-                <div key={`empty-${idx}`} className="min-h-[148px] border-b border-r border-border bg-muted/10" />
+                <div
+                  key={`empty-${idx}`}
+                  className="min-h-[156px] border-b border-r border-[#e8edf2] bg-[#fafbfc]"
+                />
               );
             }
             return (
@@ -181,7 +114,7 @@ export function PaymentCalendarMonth({
   );
 }
 
-function DayCell({
+const DayCell = memo(function DayCell({
   cell,
   isToday,
   today,
@@ -197,31 +130,45 @@ function DayCell({
   onEdit: (payment: Payment) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const net = cell.saldo;
+  const hasActivity = cell.income > 0 || cell.expense > 0 || cell.payments.length > 0;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen]);
 
   return (
     <div
       className={cn(
-        "group relative flex min-h-[148px] flex-col border-b border-r border-border bg-white p-2",
-        cell.hasGap && "bg-red-50",
-        isToday && !cell.hasGap && "bg-slate-50/80",
+        "group relative flex min-h-[156px] flex-col border-b border-r border-[#e8edf2] bg-white p-2",
+        cell.hasGap && "bg-[#fff1f1]",
+        isToday && !cell.hasGap && "bg-[#f8fafc]",
       )}
     >
       <div className="flex items-start justify-between gap-1">
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             type="button"
-            className="inline-flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground group-hover:opacity-100"
+            className={cn(
+              "inline-flex size-6 items-center justify-center rounded text-slate-400 transition hover:bg-slate-100 hover:text-slate-700",
+              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100",
+            )}
             title="Добавить операцию"
             onClick={() => setMenuOpen((v) => !v)}
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-3.5" strokeWidth={2.5} />
           </button>
           {menuOpen && (
-            <div className="absolute left-0 top-7 z-20 w-36 overflow-hidden rounded-md border border-border bg-white py-1 shadow-md">
+            <div className="absolute left-0 top-7 z-30 w-36 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg">
               <button
                 type="button"
-                className="block w-full px-3 py-1.5 text-left text-sm text-emerald-700 hover:bg-emerald-50"
+                className="block w-full px-3 py-1.5 text-left text-sm text-[#16a34a] hover:bg-emerald-50"
                 onClick={() => {
                   setMenuOpen(false);
                   onAdd(cell.date, "in");
@@ -231,7 +178,7 @@ function DayCell({
               </button>
               <button
                 type="button"
-                className="block w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                className="block w-full px-3 py-1.5 text-left text-sm text-[#dc2626] hover:bg-red-50"
                 onClick={() => {
                   setMenuOpen(false);
                   onAdd(cell.date, "out");
@@ -244,8 +191,8 @@ function DayCell({
         </div>
         <span
           className={cn(
-            "text-sm tabular-nums",
-            isToday ? "font-semibold text-foreground" : "text-muted-foreground",
+            "text-[13px] tabular-nums",
+            isToday ? "font-semibold text-slate-900" : "text-slate-500",
           )}
         >
           {cell.day}
@@ -253,8 +200,10 @@ function DayCell({
       </div>
 
       {cell.hasGap ? (
-        <div className="mt-3 flex flex-1 items-center justify-center rounded-md border border-dashed border-red-400 bg-red-50 px-2 py-4 text-center text-sm font-medium text-red-600">
-          {formatGapLabel(cell.closing)}
+        <div className="mt-2 flex flex-1 items-center justify-center rounded-md border border-dashed border-[#f87171] bg-[#fff1f1] px-2 py-5 text-center">
+          <p className="text-[15px] font-semibold leading-snug text-[#ef4444]">
+            {formatGapLabel(cell.closing)}
+          </p>
         </div>
       ) : cellMode === "ops" ? (
         <div className="mt-1 space-y-0.5">
@@ -264,7 +213,7 @@ function DayCell({
               <button
                 key={payment.id}
                 type="button"
-                className="flex w-full items-center gap-1 rounded px-0.5 py-0.5 text-left text-[11px] hover:bg-muted/70"
+                className="flex w-full items-center gap-1 rounded px-0.5 py-0.5 text-left text-[11px] hover:bg-slate-50"
                 onClick={() => onEdit(payment)}
                 title={`${kindLabel(payment.kind)} · ${counterpartyLabel(payment)}`}
               >
@@ -272,7 +221,7 @@ function DayCell({
                 <span
                   className={cn(
                     "truncate tabular-nums",
-                    payment.direction === "in" ? "text-emerald-600" : "text-red-500",
+                    payment.direction === "in" ? "text-[#16a34a]" : "text-[#dc2626]",
                   )}
                 >
                   {formatAdeskMoney(
@@ -284,34 +233,49 @@ function DayCell({
             );
           })}
           {cell.payments.length > 4 && (
-            <p className="px-0.5 text-[10px] text-muted-foreground">+{cell.payments.length - 4}</p>
+            <p className="px-0.5 text-[10px] text-slate-400">+{cell.payments.length - 4}</p>
           )}
         </div>
       ) : (
-        <div className="mt-1 flex flex-1 flex-col gap-0.5 text-[12px] leading-tight tabular-nums">
-          <p className="text-muted-foreground">{formatAdeskMoney(cell.opening)}</p>
-          <p className="text-emerald-600">{formatAdeskMoney(cell.income, true)}</p>
-          <button
-            type="button"
-            className={cn(
-              "mt-0.5 rounded px-1.5 py-1 text-left text-[13px] font-semibold",
-              net > 0
-                ? "bg-teal-200/80 text-teal-900"
-                : net < 0
-                  ? "bg-red-300/80 text-red-900"
-                  : "bg-muted text-muted-foreground",
-            )}
-            onClick={() => {
-              if (cell.payments[0]) onEdit(cell.payments[0]!);
-            }}
-          >
-            {formatAdeskMoney(net, true)}
-          </button>
-          <p className="mt-auto pt-1 text-muted-foreground">{formatAdeskMoney(cell.closing)}</p>
+        <div className="mt-0.5 flex flex-1 flex-col gap-0.5 text-[12px] leading-tight tabular-nums">
+          {hasActivity ? (
+            <>
+              <p className="text-slate-400">{formatAdeskMoney(cell.opening)}</p>
+              {cell.income > 0 && (
+                <p className="font-medium text-[#16a34a]">{formatAdeskMoney(cell.income, true)}</p>
+              )}
+              {cell.expense > 0 && (
+                <p className="font-medium text-[#b91c1c]">
+                  {formatAdeskMoney(-cell.expense, true)}
+                </p>
+              )}
+              {(cell.income > 0 || cell.expense > 0) && (
+                <button
+                  type="button"
+                  className={cn(
+                    "mt-0.5 rounded px-1.5 py-1 text-left text-[13px] font-semibold",
+                    net > 0
+                      ? "bg-[#9fd0d0] text-[#0f4f4f]"
+                      : net < 0
+                        ? "bg-[#e8a0a0] text-[#7f1d1d]"
+                        : "bg-slate-100 text-slate-500",
+                  )}
+                  onClick={() => {
+                    if (cell.payments[0]) onEdit(cell.payments[0]!);
+                  }}
+                >
+                  {formatAdeskMoney(net, true)}
+                </button>
+              )}
+              <p className="mt-auto pt-1 text-slate-400">{formatAdeskMoney(cell.closing)}</p>
+            </>
+          ) : (
+            <div className="flex-1" />
+          )}
         </div>
       )}
     </div>
   );
-}
+});
 
 export type { Props as PaymentCalendarMonthProps };
