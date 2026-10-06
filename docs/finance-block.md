@@ -2,7 +2,7 @@
 
 Нативный блок учёта. **Адеск не подключаем** — свой UI в той же логике (календарь по дням, карточка контрагента, обязательства).
 
-Тест: [preview-rm-os.residence-more.ru](https://preview-rm-os.residence-more.ru) → меню **Финансы** (ветка PR [#18](https://github.com/721983egor-dot/property-manager-hub/pull/18)).
+Тест: [preview-rm-os.residence-more.ru](https://preview-rm-os.residence-more.ru) → меню **Финансы**. Код: SHA `805bd94`, PR [#20](https://github.com/721983egor-dot/property-manager-hub/pull/20) (продолжение [#18](https://github.com/721983egor-dot/property-manager-hub/pull/18)).
 
 **Доступ:** только Администратор. Менеджерам не показывать, пока Егор явно не откроет.
 
