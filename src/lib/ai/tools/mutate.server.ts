@@ -1142,11 +1142,37 @@ export function createMutateTools(ctx: AssistantToolContext) {
         comment: z.string().optional(),
         paidAt: z.string().optional(),
         paidAmount: z.number().optional(),
+        articleId: z.string().optional().describe("id статьи из listFinanceCatalog"),
+        articleName: z.string().optional().describe("Название статьи прихода/расхода"),
       }),
       execute: async (input) => {
         if (!input.plannedDate) return { error: "Укажите дату" };
         if (!Number.isFinite(input.amount) || input.amount < 0) return { error: "Укажите сумму" };
-        const kind = input.kind ?? "other";
+        let articleId = input.articleId ?? null;
+        let articleName = "";
+        let articleCode: string | null = null;
+        if (articleId) {
+          const { data } = await ctx.admin
+            .from("finance_articles")
+            .select("id, name, direction, code")
+            .eq("id", articleId)
+            .maybeSingle();
+          if (!data) return { error: "Статья не найдена" };
+          articleName = data.name;
+          articleCode = data.code;
+        } else if (input.articleName?.trim()) {
+          const { data } = await ctx.admin
+            .from("finance_articles")
+            .select("id, name, direction, code")
+            .ilike("name", `%${input.articleName.trim()}%`)
+            .limit(5);
+          if (!data?.length) return { error: "Статья не найдена. Смотри listFinanceCatalog." };
+          if (data.length > 1) return { matches: data, hint: "Уточните имя или передайте articleId" };
+          articleId = data[0]!.id;
+          articleName = data[0]!.name;
+          articleCode = data[0]!.code;
+        }
+        const kind = input.kind ?? (articleCode && ["rent_in","deposit_in","deposit_out","owner_payout","contractor","agency_cost","other"].includes(articleCode) ? articleCode : "other");
         const direction =
           input.direction ??
           (kind === "deposit_out" ||
@@ -1175,7 +1201,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         const parts = [
           `${direction === "in" ? "приход" : "расход"} ${money(input.amount)}`,
           input.plannedDate,
-          kind,
+          articleName || kind,
         ];
         if (property) parts.push(`объект ${property.text}`);
         if (clientName) parts.push(clientName);
@@ -1189,6 +1215,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
             amount: input.amount,
             direction,
             kind,
+            articleId,
             status: input.status ?? "expected",
             propertyId: property?.id ?? null,
             clientId,
@@ -1440,6 +1467,142 @@ export function createMutateTools(ctx: AssistantToolContext) {
             description: input.description ?? "",
             propertyId: property?.id ?? null,
           },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeSaveFinanceArticleCategory: tool({
+      description:
+        "Предложить создать или переименовать категорию статей Финансов (группа для отчётов). Требует подтверждения.",
+      inputSchema: z.object({
+        categoryId: z.string().optional(),
+        name: z.string(),
+        direction: z.enum(["in", "out"]).optional(),
+      }),
+      execute: async ({ categoryId, name, direction }) => {
+        const trimmed = name.trim();
+        if (!trimmed) return { error: "Укажите название категории" };
+        const dir = direction ?? "out";
+        const summary = categoryId
+          ? `Переименовать категорию статей в «${trimmed}»`
+          : `Создать категорию статей «${trimmed}» (${dir === "in" ? "приход" : "расход"})`;
+        ctx.propose({
+          tool: "saveFinanceArticleCategory",
+          summary,
+          input: { categoryId: categoryId ?? null, name: trimmed, direction: dir },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeDeleteFinanceArticleCategory: tool({
+      description: "Предложить удалить категорию статей Финансов. Статьи останутся без группы. Требует подтверждения.",
+      inputSchema: z.object({ categoryId: z.string() }),
+      execute: async ({ categoryId }) => {
+        const { data } = await ctx.admin
+          .from("finance_article_categories")
+          .select("id, name")
+          .eq("id", categoryId)
+          .maybeSingle();
+        if (!data) return { error: "Категория не найдена" };
+        const summary = `Удалить категорию статей «${data.name}»`;
+        ctx.propose({ tool: "deleteFinanceArticleCategory", summary, input: { categoryId } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeReorderFinanceArticleCategories: tool({
+      description: "Предложить порядок категорий статей Финансов (список id сверху вниз). Требует подтверждения.",
+      inputSchema: z.object({
+        categoryIds: z.array(z.string()).min(1),
+      }),
+      execute: async ({ categoryIds }) => {
+        const summary = `Поменять порядок категорий статей (${categoryIds.length})`;
+        ctx.propose({
+          tool: "reorderFinanceArticleCategories",
+          summary,
+          input: { categoryIds },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeSaveFinanceArticle: tool({
+      description:
+        "Предложить создать или переименовать статью прихода/расхода Финансов. Требует подтверждения.",
+      inputSchema: z.object({
+        articleId: z.string().optional(),
+        name: z.string(),
+        direction: z.enum(["in", "out"]).optional(),
+        categoryId: z.string().optional(),
+        categoryName: z.string().optional(),
+      }),
+      execute: async ({ articleId, name, direction, categoryId, categoryName }) => {
+        const trimmed = name.trim();
+        if (!trimmed) return { error: "Укажите название статьи" };
+        let resolvedCategory = categoryId ?? null;
+        if (!resolvedCategory && categoryName?.trim()) {
+          const { data } = await ctx.admin
+            .from("finance_article_categories")
+            .select("id, name, direction")
+            .ilike("name", `%${categoryName.trim()}%`)
+            .limit(5);
+          if (!data?.length) return { error: "Категория не найдена" };
+          if (data.length > 1) return { matches: data, hint: "Уточните категорию или передайте categoryId" };
+          resolvedCategory = data[0]!.id;
+        }
+        const dir = direction ?? "out";
+        const summary = articleId
+          ? `Обновить статью «${trimmed}»`
+          : `Создать статью «${trimmed}» (${dir === "in" ? "приход" : "расход"})`;
+        ctx.propose({
+          tool: "saveFinanceArticle",
+          summary,
+          input: {
+            articleId: articleId ?? null,
+            name: trimmed,
+            direction: dir,
+            categoryId: resolvedCategory,
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeDeleteFinanceArticle: tool({
+      description: "Предложить удалить статью Финансов. В операциях поле статьи станет пустым. Требует подтверждения.",
+      inputSchema: z.object({ articleId: z.string() }),
+      execute: async ({ articleId }) => {
+        const { data } = await ctx.admin
+          .from("finance_articles")
+          .select("id, name")
+          .eq("id", articleId)
+          .maybeSingle();
+        if (!data) return { error: "Статья не найдена" };
+        const summary = `Удалить статью «${data.name}»`;
+        ctx.propose({ tool: "deleteFinanceArticle", summary, input: { articleId } });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeReorderFinanceArticles: tool({
+      description: "Предложить порядок статей Финансов (список id сверху вниз). Требует подтверждения.",
+      inputSchema: z.object({
+        items: z.array(
+          z.object({
+            articleId: z.string(),
+            categoryId: z.string().nullable().optional(),
+          }),
+        ),
+      }),
+      execute: async ({ items }) => {
+        if (!items.length) return { error: "Пустой список" };
+        const summary = `Поменять порядок статей (${items.length})`;
+        ctx.propose({
+          tool: "reorderFinanceArticles",
+          summary,
+          input: { items },
         });
         return { proposed: true, summary };
       },

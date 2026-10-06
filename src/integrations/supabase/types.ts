@@ -743,6 +743,74 @@ export type Database = {
           },
         ]
       }
+      finance_article_categories: {
+        Row: {
+          id: string
+          name: string
+          direction: Database["public"]["Enums"]["payment_direction"]
+          position: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          direction: Database["public"]["Enums"]["payment_direction"]
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          direction?: Database["public"]["Enums"]["payment_direction"]
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      finance_articles: {
+        Row: {
+          id: string
+          name: string
+          direction: Database["public"]["Enums"]["payment_direction"]
+          category_id: string | null
+          position: number
+          code: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          direction: Database["public"]["Enums"]["payment_direction"]
+          category_id?: string | null
+          position?: number
+          code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          direction?: Database["public"]["Enums"]["payment_direction"]
+          category_id?: string | null
+          position?: number
+          code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_articles_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "finance_article_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_counterparties: {
         Row: {
           id: string
@@ -991,6 +1059,7 @@ export type Database = {
           account: string
           obligation_id: string | null
           accrual_date: string | null
+          article_id: string | null
           created_at: string
           updated_at: string
         }
@@ -1013,6 +1082,7 @@ export type Database = {
           account?: string
           obligation_id?: string | null
           accrual_date?: string | null
+          article_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1035,6 +1105,7 @@ export type Database = {
           account?: string
           obligation_id?: string | null
           accrual_date?: string | null
+          article_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1079,6 +1150,13 @@ export type Database = {
             columns: ["obligation_id"]
             isOneToOne: false
             referencedRelation: "finance_obligations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "finance_articles"
             referencedColumns: ["id"]
           },
         ]

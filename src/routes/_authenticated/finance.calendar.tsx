@@ -402,7 +402,7 @@ function FinanceCalendarPage() {
                 </button>
                 <button type="button" className="min-w-0 text-left" onClick={() => openEdit(payment)}>
                   <p className="truncate text-sm">
-                    <span className="font-medium">{kindLabel(payment.kind)}</span>
+                    <span className="font-medium">{payment.article?.name ?? kindLabel(payment.kind)}</span>
                     <span className="text-slate-500"> · {counterpartyLabel(payment)}</span>
                   </p>
                   <p className="truncate text-xs text-slate-400">{propertyTitle}</p>

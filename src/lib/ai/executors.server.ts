@@ -1252,6 +1252,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       amount,
       direction: String(input["direction"] ?? "in"),
       kind: String(input["kind"] ?? "other"),
+      article_id: (input["articleId"] as string | null) || null,
       status,
       property_id: (input["propertyId"] as string | null) || null,
       client_id: (input["clientId"] as string | null) || null,
@@ -1266,6 +1267,12 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
             : Number(input["paidAmount"]),
     };
     const { error } = await supabaseAdmin.from("payments").insert(row as never);
+    if (error && /article_id|schema cache|could not find/i.test(error.message)) {
+      delete row["article_id"];
+      const retry = await supabaseAdmin.from("payments").insert(row as never);
+      if (retry.error) throw new Error(retry.error.message);
+      return "Платёж создан";
+    }
     if (error) throw new Error(error.message);
     return "Платёж создан";
   },
@@ -1277,6 +1284,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (input["amount"] != null) patch["amount"] = Number(input["amount"]);
     if (input["direction"] != null) patch["direction"] = input["direction"];
     if (input["kind"] != null) patch["kind"] = input["kind"];
+    if (input["articleId"] !== undefined) patch["article_id"] = (input["articleId"] as string | null) || null;
     if (input["status"] != null) patch["status"] = input["status"];
     if (input["setProperty"]) patch["property_id"] = (input["propertyId"] as string | null) || null;
     if (input["setClient"]) patch["client_id"] = (input["clientId"] as string | null) || null;
@@ -1355,6 +1363,111 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     } as never);
     if (error) throw new Error(error.message);
     return "Обязательство создано";
+  },
+
+  saveFinanceArticleCategory: async (input) => {
+    const name = String(input["name"] ?? "").trim();
+    if (!name) throw new Error("Не указано название категории");
+    const direction = String(input["direction"] ?? "out");
+    const categoryId = (input["categoryId"] as string | null) || null;
+    if (categoryId) {
+      const { error } = await supabaseAdmin
+        .from("finance_article_categories")
+        .update({ name, direction } as never)
+        .eq("id", categoryId);
+      if (error) throw new Error(error.message);
+      return "Категория статей обновлена";
+    }
+    const { data: last } = await supabaseAdmin
+      .from("finance_article_categories")
+      .select("position")
+      .eq("direction", direction)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const position = Number((last as { position?: number } | null)?.position ?? -1) + 1;
+    const { error } = await supabaseAdmin.from("finance_article_categories").insert({
+      name,
+      direction,
+      position,
+    } as never);
+    if (error) throw new Error(error.message);
+    return "Категория статей создана";
+  },
+
+  deleteFinanceArticleCategory: async (input) => {
+    const categoryId = must(input["categoryId"] as string, "Не указана категория");
+    const { error } = await supabaseAdmin.from("finance_article_categories").delete().eq("id", categoryId);
+    if (error) throw new Error(error.message);
+    return "Категория статей удалена";
+  },
+
+  reorderFinanceArticleCategories: async (input) => {
+    const ids = (input["categoryIds"] as string[]) ?? [];
+    if (!ids.length) throw new Error("Пустой список категорий");
+    for (let i = 0; i < ids.length; i += 1) {
+      const { error } = await supabaseAdmin
+        .from("finance_article_categories")
+        .update({ position: i } as never)
+        .eq("id", ids[i]!);
+      if (error) throw new Error(error.message);
+    }
+    return "Порядок категорий обновлён";
+  },
+
+  saveFinanceArticle: async (input) => {
+    const name = String(input["name"] ?? "").trim();
+    if (!name) throw new Error("Не указано название статьи");
+    const direction = String(input["direction"] ?? "out");
+    const articleId = (input["articleId"] as string | null) || null;
+    const categoryId = (input["categoryId"] as string | null) || null;
+    if (articleId) {
+      const { error } = await supabaseAdmin
+        .from("finance_articles")
+        .update({ name, direction, category_id: categoryId } as never)
+        .eq("id", articleId);
+      if (error) throw new Error(error.message);
+      return "Статья обновлена";
+    }
+    const { data: last } = await supabaseAdmin
+      .from("finance_articles")
+      .select("position")
+      .eq("direction", direction)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const position = Number((last as { position?: number } | null)?.position ?? -1) + 1;
+    const { error } = await supabaseAdmin.from("finance_articles").insert({
+      name,
+      direction,
+      category_id: categoryId,
+      position,
+    } as never);
+    if (error) throw new Error(error.message);
+    return "Статья создана";
+  },
+
+  deleteFinanceArticle: async (input) => {
+    const articleId = must(input["articleId"] as string, "Не указана статья");
+    const { error } = await supabaseAdmin.from("finance_articles").delete().eq("id", articleId);
+    if (error) throw new Error(error.message);
+    return "Статья удалена";
+  },
+
+  reorderFinanceArticles: async (input) => {
+    const items = (input["items"] as { articleId: string; categoryId?: string | null }[]) ?? [];
+    if (!items.length) throw new Error("Пустой список статей");
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i]!;
+      const patch: Record<string, unknown> = { position: i };
+      if (item.categoryId !== undefined) patch["category_id"] = item.categoryId;
+      const { error } = await supabaseAdmin
+        .from("finance_articles")
+        .update(patch as never)
+        .eq("id", item.articleId);
+      if (error) throw new Error(error.message);
+    }
+    return "Порядок статей обновлён";
   },
 };
 

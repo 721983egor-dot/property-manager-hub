@@ -55,6 +55,7 @@ export type Payment = {
   paid_amount: number | null;
   accrual_date: string | null;
   obligation_id: string | null;
+  article_id: string | null;
   created_at: string;
   updated_at: string;
   property: {
@@ -64,6 +65,13 @@ export type Payment = {
     ref_id: number | null;
   } | null;
   client: { id: string; full_name: string; phone: string } | null;
+  article: {
+    id: string;
+    name: string;
+    category_id: string | null;
+    category_name: string | null;
+    code: string | null;
+  } | null;
 };
 
 export type PaymentInput = {
@@ -84,9 +92,12 @@ export type PaymentInput = {
   paid_amount?: number | null;
   accrual_date?: string | null;
   obligation_id?: string | null;
+  article_id?: string | null;
 };
 
 const PAYMENT_SELECT =
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, finance_article_categories(id, name))";
+const PAYMENT_SELECT_LEGACY =
   "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
@@ -108,11 +119,27 @@ function firstJoin<T>(raw: T | T[] | null | undefined): T | null {
   return raw ?? null;
 }
 
+function mapArticleJoin(row: Record<string, unknown>): Payment["article"] {
+  const raw = firstJoin(row["finance_articles"] as Record<string, unknown> | Record<string, unknown>[] | null);
+  if (!raw) return null;
+  const cat = firstJoin(
+    raw["finance_article_categories"] as Record<string, unknown> | Record<string, unknown>[] | null,
+  );
+  return {
+    id: String(raw["id"]),
+    name: String(raw["name"] ?? ""),
+    category_id: (raw["category_id"] as string | null) ?? null,
+    category_name: cat ? String(cat["name"] ?? "") : null,
+    code: (raw["code"] as string | null) ?? null,
+  };
+}
+
 function mapPayment(row: Record<string, unknown>): Payment {
   const property =
     firstJoin(row["properties"] as Payment["property"] | Payment["property"][] | null) ?? null;
   const client =
     firstJoin(row["clients"] as Payment["client"] | Payment["client"][] | null) ?? null;
+  const article = mapArticleJoin(row);
   return {
     id: String(row["id"]),
     planned_date: String(row["planned_date"]),
@@ -132,10 +159,12 @@ function mapPayment(row: Record<string, unknown>): Payment {
     paid_amount: row["paid_amount"] == null ? null : Number(row["paid_amount"]),
     accrual_date: (row["accrual_date"] as string | null) ?? null,
     obligation_id: (row["obligation_id"] as string | null) ?? null,
+    article_id: (row["article_id"] as string | null) ?? article?.id ?? null,
     created_at: String(row["created_at"] ?? ""),
     updated_at: String(row["updated_at"] ?? ""),
     property,
     client,
+    article,
   };
 }
 
@@ -183,28 +212,37 @@ export type FetchPaymentsOpts = {
   direction?: PaymentDirection | "all";
 };
 
+function missingArticleColumn(message: string) {
+  return /article_id|finance_articles|schema cache|could not find/i.test(message);
+}
+
 export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payment[]> {
-  let query = supabase
-    .from("payments")
-    .select(PAYMENT_SELECT)
-    .order("planned_date", { ascending: true })
-    .order("created_at", { ascending: true });
+  const run = async (columns: string) => {
+    let query = supabase
+      .from("payments")
+      .select(columns)
+      .order("planned_date", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (opts.from) query = query.gte("planned_date", opts.from);
+    if (opts.to) query = query.lte("planned_date", opts.to);
+    if (opts.propertyId) query = query.eq("property_id", opts.propertyId);
+    if (opts.counterpartyId) query = query.eq("counterparty_id", opts.counterpartyId);
+    if (opts.direction && opts.direction !== "all") query = query.eq("direction", opts.direction);
+    if (opts.status && opts.status !== "all" && opts.status !== "open") {
+      query = query.eq("status", opts.status);
+    }
+    if (opts.status === "open") {
+      query = query.in("status", ["expected", "partial", "overdue"]);
+    }
+    return query;
+  };
 
-  if (opts.from) query = query.gte("planned_date", opts.from);
-  if (opts.to) query = query.lte("planned_date", opts.to);
-  if (opts.propertyId) query = query.eq("property_id", opts.propertyId);
-  if (opts.counterpartyId) query = query.eq("counterparty_id", opts.counterpartyId);
-  if (opts.direction && opts.direction !== "all") query = query.eq("direction", opts.direction);
-  if (opts.status && opts.status !== "all" && opts.status !== "open") {
-    query = query.eq("status", opts.status);
+  let result = await run(PAYMENT_SELECT);
+  if (result.error && missingArticleColumn(result.error.message)) {
+    result = await run(PAYMENT_SELECT_LEGACY);
   }
-  if (opts.status === "open") {
-    query = query.in("status", ["expected", "partial", "overdue"]);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return ((data ?? []) as Record<string, unknown>[]).map(mapPayment);
+  if (result.error) throw result.error;
+  return ((result.data ?? []) as Record<string, unknown>[]).map(mapPayment);
 }
 
 /** Лёгкий список объектов для фильтров Финансов — без select(*) и без server fn. */
@@ -241,14 +279,13 @@ export function financePropertyLabel(p: FinancePropertyOption) {
 }
 
 export async function fetchPayment(id: string): Promise<Payment | null> {
-  const { data, error } = await supabase
-    .from("payments")
-    .select(PAYMENT_SELECT)
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  return mapPayment(data as Record<string, unknown>);
+  let result = await supabase.from("payments").select(PAYMENT_SELECT).eq("id", id).maybeSingle();
+  if (result.error && missingArticleColumn(result.error.message)) {
+    result = await supabase.from("payments").select(PAYMENT_SELECT_LEGACY).eq("id", id).maybeSingle();
+  }
+  if (result.error) throw result.error;
+  if (!result.data) return null;
+  return mapPayment(result.data as Record<string, unknown>);
 }
 
 function normalizeInput(input: PaymentInput) {
@@ -281,26 +318,30 @@ function normalizeInput(input: PaymentInput) {
     paid_amount: paidAmount,
     accrual_date: input.accrual_date || null,
     obligation_id: input.obligation_id || null,
+    article_id: input.article_id || null,
   };
 }
 
 export async function savePayment(id: string | null, input: PaymentInput): Promise<string> {
   const row = normalizeInput(input);
-  if (id) {
-    const { error } = await supabase
-      .from("payments")
-      .update(row as never)
-      .eq("id", id);
+  const write = async (payload: Record<string, unknown>) => {
+    if (id) {
+      const { error } = await supabase.from("payments").update(payload as never).eq("id", id);
+      if (error) throw error;
+      return id;
+    }
+    const { data, error } = await supabase.from("payments").insert(payload as never).select("id").single();
     if (error) throw error;
-    return id;
+    return (data as { id: string }).id;
+  };
+  try {
+    return await write(row);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!missingArticleColumn(message) || !("article_id" in row)) throw error;
+    const { article_id: _drop, ...stripped } = row;
+    return await write(stripped);
   }
-  const { data, error } = await supabase
-    .from("payments")
-    .insert(row as never)
-    .select("id")
-    .single();
-  if (error) throw error;
-  return (data as { id: string }).id;
 }
 
 function addMonthsIso(iso: string, months: number) {
