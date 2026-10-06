@@ -36,7 +36,6 @@ import { Route as AuthenticatedComplexesIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedComplexesNewRouteImport } from './routes/_authenticated/complexes.new'
 import { Route as AuthenticatedFinanceIndexRouteImport } from './routes/_authenticated/finance.index'
 import { Route as AuthenticatedFinanceCalendarRouteImport } from './routes/_authenticated/finance.calendar'
-import { Route as AuthenticatedFinanceCounterpartiesRouteImport } from './routes/_authenticated/finance.counterparties'
 import { Route as AuthenticatedFinanceReportsRouteImport } from './routes/_authenticated/finance.reports'
 import { Route as AuthenticatedHotelIndexRouteImport } from './routes/_authenticated/hotel.index'
 import { Route as AuthenticatedHotelOwnersRouteImport } from './routes/_authenticated/hotel.owners'
@@ -71,6 +70,8 @@ import { Route as AuthenticatedCrmClientsIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedCrmDealsIndexRouteImport } from './routes/_authenticated/crm.deals.index'
 import { Route as AuthenticatedCrmLeadsIndexRouteImport } from './routes/_authenticated/crm.leads.index'
 import { Route as AuthenticatedCrmTasksIndexRouteImport } from './routes/_authenticated/crm.tasks.index'
+import { Route as AuthenticatedFinanceCounterpartiesIndexRouteImport } from './routes/_authenticated/finance.counterparties.index'
+import { Route as AuthenticatedFinanceCounterpartiesIdRouteImport } from './routes/_authenticated/finance.counterparties.$id'
 import { Route as AuthenticatedMaintenanceObjectsIndexRouteImport } from './routes/_authenticated/maintenance.objects.index'
 import { Route as AuthenticatedMaintenanceObjectsNewRouteImport } from './routes/_authenticated/maintenance.objects.new'
 import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authenticated/objects.$id.index'
@@ -229,12 +230,6 @@ const AuthenticatedFinanceCalendarRoute =
   AuthenticatedFinanceCalendarRouteImport.update({
     id: '/finance/calendar',
     path: '/finance/calendar',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFinanceCounterpartiesRoute =
-  AuthenticatedFinanceCounterpartiesRouteImport.update({
-    id: '/finance/counterparties',
-    path: '/finance/counterparties',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedFinanceReportsRoute =
@@ -428,6 +423,18 @@ const AuthenticatedCrmTasksIndexRoute =
     path: '/crm/tasks/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFinanceCounterpartiesIndexRoute =
+  AuthenticatedFinanceCounterpartiesIndexRouteImport.update({
+    id: '/finance/counterparties/',
+    path: '/finance/counterparties/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceCounterpartiesIdRoute =
+  AuthenticatedFinanceCounterpartiesIdRouteImport.update({
+    id: '/finance/counterparties/$id',
+    path: '/finance/counterparties/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMaintenanceObjectsIndexRoute =
   AuthenticatedMaintenanceObjectsIndexRouteImport.update({
     id: '/maintenance/objects/',
@@ -568,7 +575,6 @@ export interface FileRoutesByFullPath {
   '/rent/': typeof RentIndexRoute
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
-  '/finance/counterparties': typeof AuthenticatedFinanceCounterpartiesRoute
   '/finance/reports': typeof AuthenticatedFinanceReportsRoute
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
@@ -603,6 +609,7 @@ export interface FileRoutesByFullPath {
   '/social/': typeof AuthenticatedSocialIndexRoute
   '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/finance/counterparties/$id': typeof AuthenticatedFinanceCounterpartiesIdRoute
   '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
@@ -623,6 +630,7 @@ export interface FileRoutesByFullPath {
   '/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
   '/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/crm/tasks/': typeof AuthenticatedCrmTasksIndexRoute
+  '/finance/counterparties/': typeof AuthenticatedFinanceCounterpartiesIndexRoute
   '/maintenance/objects/': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
   '/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
@@ -649,7 +657,6 @@ export interface FileRoutesByTo {
   '/rent': typeof RentIndexRoute
   '/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
-  '/finance/counterparties': typeof AuthenticatedFinanceCounterpartiesRoute
   '/finance/reports': typeof AuthenticatedFinanceReportsRoute
   '/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
@@ -684,6 +691,7 @@ export interface FileRoutesByTo {
   '/social': typeof AuthenticatedSocialIndexRoute
   '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/finance/counterparties/$id': typeof AuthenticatedFinanceCounterpartiesIdRoute
   '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
@@ -704,6 +712,7 @@ export interface FileRoutesByTo {
   '/crm/deals': typeof AuthenticatedCrmDealsIndexRoute
   '/crm/leads': typeof AuthenticatedCrmLeadsIndexRoute
   '/crm/tasks': typeof AuthenticatedCrmTasksIndexRoute
+  '/finance/counterparties': typeof AuthenticatedFinanceCounterpartiesIndexRoute
   '/maintenance/objects': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/objects/$id': typeof AuthenticatedObjectsIdIndexRoute
   '/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
@@ -734,7 +743,6 @@ export interface FileRoutesById {
   '/rent/': typeof RentIndexRoute
   '/_authenticated/complexes/new': typeof AuthenticatedComplexesNewRoute
   '/_authenticated/finance/calendar': typeof AuthenticatedFinanceCalendarRoute
-  '/_authenticated/finance/counterparties': typeof AuthenticatedFinanceCounterpartiesRoute
   '/_authenticated/finance/reports': typeof AuthenticatedFinanceReportsRoute
   '/_authenticated/hotel/owners': typeof AuthenticatedHotelOwnersRoute
   '/_authenticated/hotel/rooms': typeof AuthenticatedHotelRoomsRoute
@@ -769,6 +777,7 @@ export interface FileRoutesById {
   '/_authenticated/social/': typeof AuthenticatedSocialIndexRoute
   '/_authenticated/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/_authenticated/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
+  '/_authenticated/finance/counterparties/$id': typeof AuthenticatedFinanceCounterpartiesIdRoute
   '/_authenticated/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
@@ -789,6 +798,7 @@ export interface FileRoutesById {
   '/_authenticated/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
   '/_authenticated/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/_authenticated/crm/tasks/': typeof AuthenticatedCrmTasksIndexRoute
+  '/_authenticated/finance/counterparties/': typeof AuthenticatedFinanceCounterpartiesIndexRoute
   '/_authenticated/maintenance/objects/': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/_authenticated/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
   '/_authenticated/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
@@ -819,7 +829,6 @@ export interface FileRouteTypes {
     | '/rent/'
     | '/complexes/new'
     | '/finance/calendar'
-    | '/finance/counterparties'
     | '/finance/reports'
     | '/hotel/owners'
     | '/hotel/rooms'
@@ -854,6 +863,7 @@ export interface FileRouteTypes {
     | '/social/'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
+    | '/finance/counterparties/$id'
     | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
@@ -874,6 +884,7 @@ export interface FileRouteTypes {
     | '/crm/deals/'
     | '/crm/leads/'
     | '/crm/tasks/'
+    | '/finance/counterparties/'
     | '/maintenance/objects/'
     | '/objects/$id/'
     | '/maintenance/objects/$id/edit'
@@ -900,7 +911,6 @@ export interface FileRouteTypes {
     | '/rent'
     | '/complexes/new'
     | '/finance/calendar'
-    | '/finance/counterparties'
     | '/finance/reports'
     | '/hotel/owners'
     | '/hotel/rooms'
@@ -935,6 +945,7 @@ export interface FileRouteTypes {
     | '/social'
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
+    | '/finance/counterparties/$id'
     | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
@@ -955,6 +966,7 @@ export interface FileRouteTypes {
     | '/crm/deals'
     | '/crm/leads'
     | '/crm/tasks'
+    | '/finance/counterparties'
     | '/maintenance/objects'
     | '/objects/$id'
     | '/maintenance/objects/$id/edit'
@@ -984,7 +996,6 @@ export interface FileRouteTypes {
     | '/rent/'
     | '/_authenticated/complexes/new'
     | '/_authenticated/finance/calendar'
-    | '/_authenticated/finance/counterparties'
     | '/_authenticated/finance/reports'
     | '/_authenticated/hotel/owners'
     | '/_authenticated/hotel/rooms'
@@ -1019,6 +1030,7 @@ export interface FileRouteTypes {
     | '/_authenticated/social/'
     | '/_authenticated/complexes/$id/edit'
     | '/_authenticated/crm/clients/$id'
+    | '/_authenticated/finance/counterparties/$id'
     | '/_authenticated/maintenance/objects/new'
     | '/_authenticated/objects/$id/edit'
     | '/_authenticated/objects/$id/preview'
@@ -1039,6 +1051,7 @@ export interface FileRouteTypes {
     | '/_authenticated/crm/deals/'
     | '/_authenticated/crm/leads/'
     | '/_authenticated/crm/tasks/'
+    | '/_authenticated/finance/counterparties/'
     | '/_authenticated/maintenance/objects/'
     | '/_authenticated/objects/$id/'
     | '/_authenticated/maintenance/objects/$id/edit'
@@ -1269,13 +1282,6 @@ declare module '@tanstack/react-router' {
       path: '/finance/calendar'
       fullPath: '/finance/calendar'
       preLoaderRoute: typeof AuthenticatedFinanceCalendarRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/finance/counterparties': {
-      id: '/_authenticated/finance/counterparties'
-      path: '/finance/counterparties'
-      fullPath: '/finance/counterparties'
-      preLoaderRoute: typeof AuthenticatedFinanceCounterpartiesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/finance/reports': {
@@ -1516,6 +1522,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCrmTasksIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/finance/counterparties/': {
+      id: '/_authenticated/finance/counterparties/'
+      path: '/finance/counterparties'
+      fullPath: '/finance/counterparties/'
+      preLoaderRoute: typeof AuthenticatedFinanceCounterpartiesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance/counterparties/$id': {
+      id: '/_authenticated/finance/counterparties/$id'
+      path: '/finance/counterparties/$id'
+      fullPath: '/finance/counterparties/$id'
+      preLoaderRoute: typeof AuthenticatedFinanceCounterpartiesIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/maintenance/objects/': {
       id: '/_authenticated/maintenance/objects/'
       path: '/maintenance/objects'
@@ -1663,7 +1683,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedComplexesNewRoute: typeof AuthenticatedComplexesNewRoute
   AuthenticatedFinanceCalendarRoute: typeof AuthenticatedFinanceCalendarRoute
-  AuthenticatedFinanceCounterpartiesRoute: typeof AuthenticatedFinanceCounterpartiesRoute
   AuthenticatedFinanceReportsRoute: typeof AuthenticatedFinanceReportsRoute
   AuthenticatedHotelOwnersRoute: typeof AuthenticatedHotelOwnersRoute
   AuthenticatedHotelRoomsRoute: typeof AuthenticatedHotelRoomsRoute
@@ -1693,6 +1712,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSocialIndexRoute: typeof AuthenticatedSocialIndexRoute
   AuthenticatedComplexesIdEditRoute: typeof AuthenticatedComplexesIdEditRoute
   AuthenticatedCrmClientsIdRoute: typeof AuthenticatedCrmClientsIdRoute
+  AuthenticatedFinanceCounterpartiesIdRoute: typeof AuthenticatedFinanceCounterpartiesIdRoute
   AuthenticatedMaintenanceObjectsNewRoute: typeof AuthenticatedMaintenanceObjectsNewRoute
   AuthenticatedObjectsIdEditRoute: typeof AuthenticatedObjectsIdEditRoute
   AuthenticatedObjectsIdPreviewRoute: typeof AuthenticatedObjectsIdPreviewRoute
@@ -1700,6 +1720,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCrmDealsIndexRoute: typeof AuthenticatedCrmDealsIndexRoute
   AuthenticatedCrmLeadsIndexRoute: typeof AuthenticatedCrmLeadsIndexRoute
   AuthenticatedCrmTasksIndexRoute: typeof AuthenticatedCrmTasksIndexRoute
+  AuthenticatedFinanceCounterpartiesIndexRoute: typeof AuthenticatedFinanceCounterpartiesIndexRoute
   AuthenticatedMaintenanceObjectsIndexRoute: typeof AuthenticatedMaintenanceObjectsIndexRoute
   AuthenticatedObjectsIdIndexRoute: typeof AuthenticatedObjectsIdIndexRoute
   AuthenticatedMaintenanceObjectsIdEditRoute: typeof AuthenticatedMaintenanceObjectsIdEditRoute
@@ -1710,8 +1731,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedComplexesNewRoute: AuthenticatedComplexesNewRoute,
   AuthenticatedFinanceCalendarRoute: AuthenticatedFinanceCalendarRoute,
-  AuthenticatedFinanceCounterpartiesRoute:
-    AuthenticatedFinanceCounterpartiesRoute,
   AuthenticatedFinanceReportsRoute: AuthenticatedFinanceReportsRoute,
   AuthenticatedHotelOwnersRoute: AuthenticatedHotelOwnersRoute,
   AuthenticatedHotelRoomsRoute: AuthenticatedHotelRoomsRoute,
@@ -1741,6 +1760,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSocialIndexRoute: AuthenticatedSocialIndexRoute,
   AuthenticatedComplexesIdEditRoute: AuthenticatedComplexesIdEditRoute,
   AuthenticatedCrmClientsIdRoute: AuthenticatedCrmClientsIdRoute,
+  AuthenticatedFinanceCounterpartiesIdRoute:
+    AuthenticatedFinanceCounterpartiesIdRoute,
   AuthenticatedMaintenanceObjectsNewRoute:
     AuthenticatedMaintenanceObjectsNewRoute,
   AuthenticatedObjectsIdEditRoute: AuthenticatedObjectsIdEditRoute,
@@ -1749,6 +1770,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCrmDealsIndexRoute: AuthenticatedCrmDealsIndexRoute,
   AuthenticatedCrmLeadsIndexRoute: AuthenticatedCrmLeadsIndexRoute,
   AuthenticatedCrmTasksIndexRoute: AuthenticatedCrmTasksIndexRoute,
+  AuthenticatedFinanceCounterpartiesIndexRoute:
+    AuthenticatedFinanceCounterpartiesIndexRoute,
   AuthenticatedMaintenanceObjectsIndexRoute:
     AuthenticatedMaintenanceObjectsIndexRoute,
   AuthenticatedObjectsIdIndexRoute: AuthenticatedObjectsIdIndexRoute,
@@ -1828,3 +1851,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

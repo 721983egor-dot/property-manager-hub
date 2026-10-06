@@ -34,6 +34,8 @@ export const PAYMENT_KINDS: { value: PaymentKind; label: string; direction: Paym
   { value: "other", label: "Прочее", direction: "in" },
 ];
 
+export const PAYMENT_ACCOUNTS = ["Основной", "Касса"] as const;
+
 export type Payment = {
   id: string;
   planned_date: string;
@@ -45,10 +47,14 @@ export type Payment = {
   client_id: string | null;
   booking_id: string | null;
   deal_id: string | null;
+  counterparty_id: string | null;
   counterparty_name: string;
+  account: string;
   comment: string;
   paid_at: string | null;
   paid_amount: number | null;
+  accrual_date: string | null;
+  obligation_id: string | null;
   created_at: string;
   updated_at: string;
   property: {
@@ -70,14 +76,18 @@ export type PaymentInput = {
   client_id: string | null;
   booking_id?: string | null;
   deal_id?: string | null;
+  counterparty_id?: string | null;
   counterparty_name?: string;
+  account?: string;
   comment?: string;
   paid_at?: string | null;
   paid_amount?: number | null;
+  accrual_date?: string | null;
+  obligation_id?: string | null;
 };
 
 const PAYMENT_SELECT =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, deal_id, counterparty_name, comment, paid_at, paid_amount, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -114,10 +124,14 @@ function mapPayment(row: Record<string, unknown>): Payment {
     client_id: (row["client_id"] as string | null) ?? null,
     booking_id: (row["booking_id"] as string | null) ?? null,
     deal_id: (row["deal_id"] as string | null) ?? null,
+    counterparty_id: (row["counterparty_id"] as string | null) ?? null,
     counterparty_name: String(row["counterparty_name"] ?? ""),
+    account: String(row["account"] ?? "Основной") || "Основной",
     comment: String(row["comment"] ?? ""),
     paid_at: (row["paid_at"] as string | null) ?? null,
     paid_amount: row["paid_amount"] == null ? null : Number(row["paid_amount"]),
+    accrual_date: (row["accrual_date"] as string | null) ?? null,
+    obligation_id: (row["obligation_id"] as string | null) ?? null,
     created_at: String(row["created_at"] ?? ""),
     updated_at: String(row["updated_at"] ?? ""),
     property,
@@ -164,6 +178,7 @@ export type FetchPaymentsOpts = {
   from?: string;
   to?: string;
   propertyId?: string | null;
+  counterpartyId?: string | null;
   status?: PaymentStatus | "all" | "open";
   direction?: PaymentDirection | "all";
 };
@@ -178,6 +193,7 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
   if (opts.from) query = query.gte("planned_date", opts.from);
   if (opts.to) query = query.lte("planned_date", opts.to);
   if (opts.propertyId) query = query.eq("property_id", opts.propertyId);
+  if (opts.counterpartyId) query = query.eq("counterparty_id", opts.counterpartyId);
   if (opts.direction && opts.direction !== "all") query = query.eq("direction", opts.direction);
   if (opts.status && opts.status !== "all" && opts.status !== "open") {
     query = query.eq("status", opts.status);
@@ -189,6 +205,39 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
   const { data, error } = await query;
   if (error) throw error;
   return ((data ?? []) as Record<string, unknown>[]).map(mapPayment);
+}
+
+/** Лёгкий список объектов для фильтров Финансов — без select(*) и без server fn. */
+export type FinancePropertyOption = {
+  id: string;
+  title: string;
+  internal_name: string | null;
+  ref_id: number | null;
+  status: string;
+};
+
+export async function fetchFinancePropertyOptions(): Promise<FinancePropertyOption[]> {
+  const { data, error } = await supabase
+    .from("properties")
+    .select("id, title, internal_name, ref_id, status")
+    .neq("status", "archived")
+    .order("title", { ascending: true });
+  if (error) throw error;
+  const rows = ((data ?? []) as FinancePropertyOption[]).map((row) => ({
+    id: String(row.id),
+    title: String(row.title ?? ""),
+    internal_name: row.internal_name ?? null,
+    ref_id: row.ref_id == null ? null : Number(row.ref_id),
+    status: String(row.status ?? ""),
+  }));
+  return rows.sort((a, b) =>
+    financePropertyLabel(a).localeCompare(financePropertyLabel(b), "ru"),
+  );
+}
+
+export function financePropertyLabel(p: FinancePropertyOption) {
+  const name = p.internal_name?.trim() ? p.internal_name : p.title;
+  return p.ref_id != null ? `${name} · №${p.ref_id}` : name;
 }
 
 export async function fetchPayment(id: string): Promise<Payment | null> {
@@ -224,10 +273,14 @@ function normalizeInput(input: PaymentInput) {
     client_id: input.client_id || null,
     booking_id: input.booking_id || null,
     deal_id: input.deal_id || null,
+    counterparty_id: input.counterparty_id || null,
     counterparty_name: (input.counterparty_name ?? "").trim(),
+    account: (input.account ?? "Основной").trim() || "Основной",
     comment: (input.comment ?? "").trim(),
     paid_at: paidAt,
     paid_amount: paidAmount,
+    accrual_date: input.accrual_date || null,
+    obligation_id: input.obligation_id || null,
   };
 }
 
@@ -248,6 +301,33 @@ export async function savePayment(id: string | null, input: PaymentInput): Promi
     .single();
   if (error) throw error;
   return (data as { id: string }).id;
+}
+
+function addMonthsIso(iso: string, months: number) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(y ?? 1970, (m ?? 1) - 1 + months, 1);
+  const last = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const day = Math.min(d ?? 1, last);
+  return toISODate(new Date(date.getFullYear(), date.getMonth(), day));
+}
+
+/** Сохранить операцию: опционально повтор по месяцам. */
+export async function savePaymentSeries(
+  id: string | null,
+  input: PaymentInput,
+  repeatMonths = 0,
+): Promise<string> {
+  const firstId = await savePayment(id, input);
+  if (id || repeatMonths <= 0) return firstId;
+  const extras = Math.min(11, Math.floor(repeatMonths));
+  for (let i = 1; i <= extras; i += 1) {
+    await savePayment(null, {
+      ...input,
+      planned_date: addMonthsIso(input.planned_date, i),
+      accrual_date: input.accrual_date ? addMonthsIso(input.accrual_date, i) : null,
+    });
+  }
+  return firstId;
 }
 
 export async function markPaymentPaid(
@@ -462,4 +542,31 @@ export function formatCompactMoney(value: number) {
   if (value > 0) return `+${formatted}`;
   if (value < 0) return `−${formatted}`;
   return "0";
+}
+
+/** Сумма как в платёжном календаре Адеска: 12 000,00 ₽ */
+export function formatFinanceDate(iso: string) {
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}.${m}.${y}`;
+}
+
+const ADESK_MONEY = new Intl.NumberFormat("ru-RU", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function formatAdeskMoney(value: number, withSign = false) {
+  const formatted = ADESK_MONEY.format(Math.abs(value));
+  const body = `${formatted} ₽`;
+  if (!withSign) return value < 0 ? `−${body}` : body;
+  if (value > 0) return `+${body}`;
+  if (value < 0) return `−${body}`;
+  return `+${body}`;
+}
+
+export function formatGapLabel(closing: number) {
+  const abs = Math.abs(closing);
+  if (abs >= 1000) return `Разрыв в ${Math.round(abs / 1000)}K ₽`;
+  return `Разрыв в ${Math.round(abs).toLocaleString("ru-RU")} ₽`;
 }

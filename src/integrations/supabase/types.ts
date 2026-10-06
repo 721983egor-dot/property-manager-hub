@@ -743,6 +743,98 @@ export type Database = {
           },
         ]
       }
+      finance_counterparties: {
+        Row: {
+          id: string
+          name: string
+          kind: Database["public"]["Enums"]["finance_counterparty_kind"]
+          client_id: string | null
+          comment: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          kind?: Database["public"]["Enums"]["finance_counterparty_kind"]
+          client_id?: string | null
+          comment?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          kind?: Database["public"]["Enums"]["finance_counterparty_kind"]
+          client_id?: string | null
+          comment?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_counterparties_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_obligations: {
+        Row: {
+          id: string
+          counterparty_id: string
+          planned_date: string
+          amount: number
+          direction: Database["public"]["Enums"]["finance_obligation_direction"]
+          description: string
+          property_id: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          counterparty_id: string
+          planned_date: string
+          amount: number
+          direction?: Database["public"]["Enums"]["finance_obligation_direction"]
+          description?: string
+          property_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          counterparty_id?: string
+          planned_date?: string
+          amount?: number
+          direction?: Database["public"]["Enums"]["finance_obligation_direction"]
+          description?: string
+          property_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_obligations_counterparty_id_fkey"
+            columns: ["counterparty_id"]
+            isOneToOne: false
+            referencedRelation: "finance_counterparties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_obligations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           created_at: string
@@ -895,6 +987,10 @@ export type Database = {
           comment: string
           paid_at: string | null
           paid_amount: number | null
+          counterparty_id: string | null
+          account: string
+          obligation_id: string | null
+          accrual_date: string | null
           created_at: string
           updated_at: string
         }
@@ -913,6 +1009,10 @@ export type Database = {
           comment?: string
           paid_at?: string | null
           paid_amount?: number | null
+          counterparty_id?: string | null
+          account?: string
+          obligation_id?: string | null
+          accrual_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -931,6 +1031,10 @@ export type Database = {
           comment?: string
           paid_at?: string | null
           paid_amount?: number | null
+          counterparty_id?: string | null
+          account?: string
+          obligation_id?: string | null
+          accrual_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -961,6 +1065,20 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_counterparty_id_fkey"
+            columns: ["counterparty_id"]
+            isOneToOne: false
+            referencedRelation: "finance_counterparties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_obligations"
             referencedColumns: ["id"]
           },
         ]
@@ -2287,6 +2405,14 @@ export type Database = {
         | "contractor"
         | "agency_cost"
         | "other"
+      finance_counterparty_kind:
+        | "tenant"
+        | "owner"
+        | "contractor"
+        | "employee"
+        | "deposit"
+        | "other"
+      finance_obligation_direction: "receivable" | "payable"
       property_event_type:
         | "page_view"
         | "contact_click"
@@ -2453,6 +2579,15 @@ export const Constants = {
         "agency_cost",
         "other",
       ],
+      finance_counterparty_kind: [
+        "tenant",
+        "owner",
+        "contractor",
+        "employee",
+        "deposit",
+        "other",
+      ],
+      finance_obligation_direction: ["receivable", "payable"],
       property_event_type: [
         "page_view",
         "contact_click",
