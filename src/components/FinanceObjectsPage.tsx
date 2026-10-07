@@ -22,8 +22,8 @@ export function FinanceObjectsPage() {
   const [month, setMonth] = useState(bounds.monthKey);
   const selected = monthBounds(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1);
   const properties = useQuery({
-    queryKey: ["finance-properties", "all"],
-    queryFn: () => fetchFinanceReportPropertyOptions(),
+    queryKey: ["finance-properties", "active"],
+    queryFn: () => fetchFinanceReportPropertyOptions(false),
   });
   const payments = useQuery({
     queryKey: ["payments", "analytics"],

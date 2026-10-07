@@ -2241,7 +2241,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const error=properties.error??payments.error??obligations.error??categories.error??articles.error??classes.error??assignments.error;if(error)return {error:error.message};
         const rows=payments.data as unknown as Payment[];const debts=obligations.data as unknown as FinanceObligation[];
         const catalog={categories:categories.data??[],articles:articles.data??[]};
-        const objects=filterFinanceObjects((properties.data??[]) as FinancePropertyOption[],assignments.data??[],classificationId,query).filter(p=>!propertyId||p.id===propertyId);
+        const objects=filterFinanceObjects((properties.data??[]) as FinancePropertyOption[],assignments.data??[],classificationId,query).filter(p=>propertyId?p.id===propertyId:p.status!=="archived");
         return {from,to,basis,classifications:classes.data??[],objects:objects.map(p=>{
           const {entries,...summary}=objectFinanceSummary(p.id,rows,debts,catalog,from,to,basis);
           return {id:p.id,name:p.internal_name||p.title,refId:p.ref_id,archived:p.status==="archived",classificationId:assignments.data?.find(a=>a.property_id===p.id)?.classification_id??null,...summary,paymentIds:entries.map(e=>e.payment.id)};

@@ -292,7 +292,7 @@ export async function fetchFinanceReportPropertyOptions(
 
 export function financePropertyLabel(p: FinancePropertyOption) {
   const name = p.internal_name?.trim() ? p.internal_name : p.title;
-  return p.ref_id != null ? `${name} · №${p.ref_id}` : name;
+  return name;
 }
 
 export async function fetchPayment(id: string): Promise<Payment | null> {
