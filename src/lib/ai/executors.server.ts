@@ -1257,6 +1257,8 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       property_id: (input["propertyId"] as string | null) || null,
       client_id: (input["clientId"] as string | null) || null,
       counterparty_name: String(input["counterpartyName"] ?? ""),
+      counterparty_id: (input["counterpartyId"] as string | null) || null,
+      obligation_id: (input["obligationId"] as string | null) || null,
       comment: String(input["comment"] ?? ""),
       paid_at: status === "paid" ? (input["paidAt"] as string | null) || plannedDate : (input["paidAt"] as string | null) || null,
       paid_amount:
@@ -1336,6 +1338,62 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Контрагент создан";
   },
 
+  saveFinanceObjectClassification: async (input) => {
+    const name=String(input["name"]??"").trim();if(!name)throw new Error("Укажите название классификации");
+    const table=supabaseAdmin.from("finance_object_classes");const {error}=input["id"]?await table.update({name}).eq("id",String(input["id"])):await table.insert({name});if(error)throw new Error(error.message);return "Классификация объектов сохранена";
+  },
+  deleteFinanceObjectClassification: async (input) => {
+    const id=must(input["id"] as string,"Не указана классификация");const {error}=await supabaseAdmin.from("finance_object_classes").delete().eq("id",id);if(error)throw new Error(error.message);return "Классификация удалена; объекты и финансовая история сохранены";
+  },
+  assignFinanceObjectClassification: async (input) => {
+    const propertyId=must(input["propertyId"] as string,"Не указан объект");const {error}=await supabaseAdmin.from("finance_object_settings").upsert({property_id:propertyId,classification_id:(input["classificationId"] as string|null)??null},{onConflict:"property_id"});if(error)throw new Error(error.message);return "Классификация объекта обновлена";
+  },
+  updateFinanceObligation: async (input) => {
+    const id=must(input["id"] as string,"Не указано обязательство");const patch:Record<string,unknown>={};
+    for(const [source,column] of [["amount","amount"],["date","planned_date"],["description","description"],["legalEntity","legal_entity"],["direction","direction"],["counterpartyId","counterparty_id"],["status","status"]])if(input[source!]!==undefined)patch[column!]=input[source!];
+    if(input["amount"]!==undefined&&(!Number.isFinite(Number(input["amount"]))||Number(input["amount"])<=0))throw new Error("Укажите положительную сумму");
+    if(!Object.keys(patch).length)throw new Error("Не указаны изменения");
+    const {error}=await supabaseAdmin.from("finance_obligations").update(patch as never).eq("id",id);if(error)throw new Error(error.message);return "Обязательство обновлено";
+  },
+
+  saveCounterpartyClassification: async (input) => {
+    const name = String(input["name"] ?? "").trim();
+    if (!name) throw new Error("Укажите название классификации");
+    const table = supabaseAdmin.from("finance_counterparty_classes");
+    const { error } = input["id"]
+      ? await table.update({ name } as never).eq("id", String(input["id"]))
+      : await table.insert({ name } as never);
+    if (error) throw new Error(error.message);
+    return "Классификация сохранена";
+  },
+  deleteCounterpartyClassification: async (input) => {
+    const id = must(input["id"] as string, "Не указана классификация");
+    const { error } = await supabaseAdmin
+      .from("finance_counterparty_classes")
+      .delete()
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return "Классификация удалена; история контрагентов сохранена";
+  },
+  updateCounterpartyCard: async (input) => {
+    const id = must(input["counterpartyId"] as string, "Не указан контрагент");
+    const patch: Record<string, unknown> = {};
+    if (input["name"] !== undefined) {
+      const name = String(input["name"]).trim();
+      if (!name) throw new Error("Укажите имя");
+      patch["name"] = name;
+    }
+    if (input["classificationId"] !== undefined)
+      patch["classification_id"] = input["classificationId"];
+    if (input["requisites"] !== undefined) patch["requisites"] = String(input["requisites"]).trim();
+    const { error } = await supabaseAdmin
+      .from("finance_counterparties")
+      .update(patch as never)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return "Карточка контрагента обновлена";
+  },
+
   updateCounterpartyKind: async (input) => {
     const counterpartyId = must(input["counterpartyId"] as string, "Не указан контрагент");
     const kind = must(input["kind"] as string, "Не указан тип");
@@ -1358,6 +1416,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       amount,
       direction: String(input["direction"] ?? "receivable"),
       description: String(input["description"] ?? ""),
+      legal_entity: String(input["legalEntity"] ?? "").trim(),
       property_id: (input["propertyId"] as string | null) || null,
       status: "open",
     } as never);
@@ -1421,10 +1480,19 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const direction = String(input["direction"] ?? "out");
     const articleId = (input["articleId"] as string | null) || null;
     const categoryId = (input["categoryId"] as string | null) || null;
+    const policy: Record<string,unknown> = {};
+    if (input["cashFlowType"] !== undefined) {
+      if (!["operating","investing","financing"].includes(String(input["cashFlowType"]))) throw new Error("Неизвестная деятельность");
+      policy["cash_flow_type"]=input["cashFlowType"];
+    }
+    if (input["affectsProfit"] !== undefined) {
+      if (typeof input["affectsProfit"] !== "boolean") throw new Error("Некорректный признак участия в прибыли");
+      policy["affects_profit"]=input["affectsProfit"];
+    }
     if (articleId) {
       const { error } = await supabaseAdmin
         .from("finance_articles")
-        .update({ name, direction, category_id: categoryId } as never)
+        .update({ name, direction, category_id: categoryId, ...policy } as never)
         .eq("id", articleId);
       if (error) throw new Error(error.message);
       return "Статья обновлена";
@@ -1442,6 +1510,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       direction,
       category_id: categoryId,
       position,
+      ...policy,
     } as never);
     if (error) throw new Error(error.message);
     return "Статья создана";

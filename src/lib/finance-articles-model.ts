@@ -10,6 +10,8 @@ export type FinanceArticleCategory = {
 };
 
 export type FinanceArticle = {
+  cash_flow_type?: "operating" | "investing" | "financing";
+  affects_profit?: boolean;
   id: string;
   name: string;
   direction: PaymentDirection;

@@ -512,8 +512,10 @@ export function createMutateTools(ctx: AssistantToolContext) {
         let stages: { id: string; name: string; pipeline?: string }[] | null = null;
         if (input.stage || isCreate) {
           const pipeFilter = pipeline ?? "rental";
-          let stagesQuery = ctx.admin.from("deal_stages").select("id, name, pipeline").order("position");
-          let { data, error: stagesError } = await stagesQuery.eq("pipeline", pipeFilter);
+          const stagesQuery = ctx.admin.from("deal_stages").select("id, name, pipeline").order("position");
+          const stageResult = await stagesQuery.eq("pipeline", pipeFilter);
+          let data = stageResult.data;
+          const stagesError = stageResult.error;
           if (stagesError && /pipeline|schema cache|could not find/i.test(stagesError.message)) {
             ({ data } = await ctx.admin.from("deal_stages").select("id, name").order("position"));
           }
@@ -1373,6 +1375,123 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeObligationPayment: tool({
+      description:
+        "Предложить оплату существующего обязательства контрагента. Связывает операцию с обязательством; оплаченная сумма уменьшит долг. Требует подтверждения.",
+      inputSchema: z.object({
+        obligationId: z.string().uuid(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        amount: z.number().positive(),
+        status: z.enum(["expected", "paid"]).default("expected"),
+      }),
+      execute: async (input) => {
+        const { data: obligation, error } = await ctx.admin
+          .from("finance_obligations")
+          .select("id, counterparty_id, direction, description, property_id, status")
+          .eq("id", input.obligationId)
+          .single();
+        if (error) return { error: error.message };
+        if (obligation.status !== "open") return { error: "Обязательство закрыто" };
+        const { data: party, error: partyError } = await ctx.admin
+          .from("finance_counterparties")
+          .select("name")
+          .eq("id", obligation.counterparty_id)
+          .single();
+        if (partyError) return { error: partyError.message };
+        const direction = obligation.direction === "payable" ? "out" : "in";
+        const summary = `${direction === "out" ? "Расход" : "Приход"} ${money(input.amount)} · ${party.name} · ${input.date} · ${input.status === "paid" ? "оплачено" : "ожидается"} · обязательство «${obligation.description}»`;
+        ctx.propose({
+          tool: "createPayment",
+          summary,
+          input: {
+            plannedDate: input.date,
+            amount: input.amount,
+            direction,
+            status: input.status,
+            counterpartyId: obligation.counterparty_id,
+            counterpartyName: party.name,
+            obligationId: obligation.id,
+            propertyId: obligation.property_id,
+            comment: obligation.description,
+          },
+        });
+        return { proposed: true, summary };
+      },
+    }),
+
+    proposeSaveFinanceObjectClassification: tool({
+      description:"Предложить создать или переименовать финансовую классификацию объектов РМ ОС. Требует подтверждения.",
+      inputSchema:z.object({id:z.string().uuid().optional(),name:z.string().trim().min(1)}),
+      execute:async input=>{const summary=`${input.id?"Переименовать":"Создать"} классификацию объектов «${input.name}»`;ctx.propose({tool:"saveFinanceObjectClassification",summary,input});return {proposed:true,summary};},
+    }),
+    proposeDeleteFinanceObjectClassification: tool({
+      description:"Предложить удалить финансовую классификацию объектов. Объекты, операции и обязательства сохраняются. Требует подтверждения.",
+      inputSchema:z.object({id:z.string().uuid()}),
+      execute:async input=>{const {data,error}=await ctx.admin.from("finance_object_classes").select("name").eq("id",input.id).maybeSingle();if(error||!data)return {error:error?.message??"Классификация не найдена"};const summary=`Удалить классификацию объектов «${data.name}», сохранив объекты и финансовую историю`;ctx.propose({tool:"deleteFinanceObjectClassification",summary,input});return {proposed:true,summary};},
+    }),
+    proposeAssignFinanceObjectClassification: tool({
+      description:"Предложить назначить или снять финансовую классификацию существующего объекта РМ ОС. Не меняет параметры недвижимости. Требует подтверждения.",
+      inputSchema:z.object({propertyId:z.string().uuid(),classificationId:z.string().uuid().nullable()}),
+      execute:async input=>{
+        const property=await ctx.admin.from("properties").select("title,internal_name").eq("id",input.propertyId).maybeSingle();if(property.error||!property.data)return {error:property.error?.message??"Объект не найден"};
+        const group=input.classificationId?await ctx.admin.from("finance_object_classes").select("name").eq("id",input.classificationId).maybeSingle():null;if(group?.error||(input.classificationId&&!group?.data))return {error:group?.error?.message??"Классификация не найдена"};
+        const summary=`Классификация объекта «${property.data.internal_name||property.data.title}»: ${group?.data?.name??"без классификации"}`;ctx.propose({tool:"assignFinanceObjectClassification",summary,input});return {proposed:true,summary};
+      },
+    }),
+    proposeUpdateFinanceObligation: tool({
+      description:"Предложить скорректировать финансовое обязательство: сумму, дату, описание, юридическое лицо, направление, контрагента, состояние. Требует подтверждения.",
+      inputSchema:z.object({id:z.string().uuid(),amount:z.number().positive().optional(),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),description:z.string().optional(),legalEntity:z.string().trim().min(1).optional(),direction:z.enum(["receivable","payable"]).optional(),counterpartyId:z.string().uuid().optional(),status:z.enum(["open","closed"]).optional()}),
+      execute:async input=>{const {data,error}=await ctx.admin.from("finance_obligations").select("id,description,amount").eq("id",input.id).maybeSingle();if(error||!data)return {error:error?.message??"Обязательство не найдено"};const summary=`Изменить обязательство «${data.description||data.id}»: ${JSON.stringify(input)}`;ctx.propose({tool:"updateFinanceObligation",summary,input});return {proposed:true,summary};},
+    }),
+
+    proposeSaveCounterpartyClassification: tool({
+      description:
+        "Предложить создать или переименовать пользовательскую классификацию контрагентов. Требует подтверждения.",
+      inputSchema: z.object({ id: z.string().uuid().optional(), name: z.string().trim().min(1) }),
+      execute: async (input) => {
+        const summary = `${input.id ? "Переименовать" : "Создать"} классификацию «${input.name}»`;
+        ctx.propose({ tool: "saveCounterpartyClassification", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+    proposeDeleteCounterpartyClassification: tool({
+      description:
+        "Предложить удалить классификацию. Контрагенты и их операции сохраняются, классификация снимается. Требует подтверждения.",
+      inputSchema: z.object({ id: z.string().uuid() }),
+      execute: async (input) => {
+        const { data, error } = await ctx.admin
+          .from("finance_counterparty_classes")
+          .select("id, name")
+          .eq("id", input.id)
+          .single();
+        if (error) return { error: error.message };
+        const summary = `Удалить классификацию «${(data as { name: string }).name}»; контрагенты останутся без классификации`;
+        ctx.propose({ tool: "deleteCounterpartyClassification", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+    proposeUpdateCounterpartyCard: tool({
+      description:
+        "Предложить изменить имя, классификацию или реквизиты контрагента. Требует подтверждения.",
+      inputSchema: z.object({
+        counterpartyId: z.string().uuid(),
+        name: z.string().trim().min(1).optional(),
+        classificationId: z.string().uuid().nullable().optional(),
+        requisites: z.string().optional(),
+      }),
+      execute: async (input) => {
+        const { data, error } = await ctx.admin
+          .from("finance_counterparties")
+          .select("name")
+          .eq("id", input.counterpartyId)
+          .single();
+        if (error) return { error: error.message };
+        const summary = `Изменить карточку «${data.name}»: ${input.name !== undefined ? `имя «${input.name}»; ` : ""}${input.classificationId !== undefined ? `классификация ${input.classificationId ?? "снята"}; ` : ""}${input.requisites !== undefined ? `реквизиты «${input.requisites}»` : ""}`;
+        ctx.propose({ tool: "updateCounterpartyCard", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+
     proposeUpdateCounterpartyKind: tool({
       description:
         "Предложить сменить тип контрагента Финансов: tenant/owner/contractor/employee/deposit/other. Требует подтверждения.",
@@ -1423,6 +1542,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         amount: z.number(),
         direction: z.enum(["receivable", "payable"]).optional(),
         description: z.string().optional(),
+        legalEntity: z.string().optional().describe("Юридическое лицо, от имени которого передали"),
         propertyRef: z.string().optional(),
       }),
       execute: async (input) => {
@@ -1456,19 +1576,21 @@ export function createMutateTools(ctx: AssistantToolContext) {
         const parts = [`«${party.name}»`, dirLabel, money(input.amount), input.plannedDate];
         if (property) parts.push(`проект ${property.text}`);
         const summary = `Добавить обязательство: ${parts.join(", ")}`;
+        const detailedSummary = input.legalEntity?.trim() ? `${summary} · юр. лицо ${input.legalEntity.trim()}` : summary;
         ctx.propose({
           tool: "createObligation",
-          summary,
+          summary: detailedSummary,
           input: {
             counterpartyId: party.id,
             plannedDate: input.plannedDate,
             amount: input.amount,
             direction,
             description: input.description ?? "",
+            legalEntity: input.legalEntity ?? "",
             propertyId: property?.id ?? null,
           },
         });
-        return { proposed: true, summary };
+        return { proposed: true, summary: detailedSummary };
       },
     }),
 
@@ -1537,11 +1659,16 @@ export function createMutateTools(ctx: AssistantToolContext) {
         direction: z.enum(["in", "out"]).optional(),
         categoryId: z.string().optional(),
         categoryName: z.string().optional(),
+        cashFlowType: z.enum(["operating", "investing", "financing"]).optional(),
+        affectsProfit: z.boolean().optional(),
       }),
-      execute: async ({ articleId, name, direction, categoryId, categoryName }) => {
+      execute: async ({ articleId, name, direction, categoryId, categoryName, cashFlowType, affectsProfit }) => {
         const trimmed = name.trim();
         if (!trimmed) return { error: "Укажите название статьи" };
-        let resolvedCategory = categoryId ?? null;
+        const existing = articleId ? await ctx.admin.from("finance_articles").select("direction, category_id").eq("id",articleId).maybeSingle() : null;
+        if (existing?.error) return {error:existing.error.message};
+        if (articleId && !existing?.data) return {error:"Статья не найдена"};
+        let resolvedCategory = categoryId ?? existing?.data?.category_id ?? null;
         if (!resolvedCategory && categoryName?.trim()) {
           const { data } = await ctx.admin
             .from("finance_article_categories")
@@ -1552,10 +1679,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
           if (data.length > 1) return { matches: data, hint: "Уточните категорию или передайте categoryId" };
           resolvedCategory = data[0]!.id;
         }
-        const dir = direction ?? "out";
-        const summary = articleId
+        const dir = direction ?? existing?.data?.direction ?? "out";
+        const baseSummary = articleId
           ? `Обновить статью «${trimmed}»`
           : `Создать статью «${trimmed}» (${dir === "in" ? "приход" : "расход"})`;
+        const summary = baseSummary + (cashFlowType ? `; деятельность: ${cashFlowType}` : "") + (affectsProfit === undefined ? "" : `; в прибыли: ${affectsProfit ? "да" : "нет"}`);
         ctx.propose({
           tool: "saveFinanceArticle",
           summary,
@@ -1564,6 +1692,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
             name: trimmed,
             direction: dir,
             categoryId: resolvedCategory,
+            ...(cashFlowType === undefined ? {} : {cashFlowType}),
+            ...(affectsProfit === undefined ? {} : {affectsProfit}),
           },
         });
         return { proposed: true, summary };

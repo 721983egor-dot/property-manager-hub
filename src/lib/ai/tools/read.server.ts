@@ -1,3 +1,9 @@
+import {objectFinanceSummary,filterFinanceObjects} from "@/lib/finance-object-model";
+import type {FinancePropertyOption} from "@/lib/finance";
+import { reportEntries, entryTotals, groupEntries, currentDebts, planFactCategories } from "@/lib/finance-analytics";
+import type { FinanceObligation } from "@/lib/finance-counterparties";
+
+import type { Payment } from "@/lib/finance";
 import { tool } from "ai";
 import { z } from "zod";
 
@@ -95,6 +101,21 @@ function mapBooking(row: BookingRow, propertyLabelText: string, today = dateOnly
 }
 
 /** Инструменты чтения: покрывают все данные RM OS. */
+async function allFinancePages<T>(
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+) {
+  const rows: T[] = [];
+  for (let from = 0; ; from += 500) {
+    const { data, error } = await page(from, from + 499);
+    if (error) return { data: null, error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < 500) return { data: rows, error: null };
+  }
+}
+
 export function createReadTools(ctx: AssistantToolContext) {
   const { admin, allProperties } = ctx;
 
@@ -469,7 +490,7 @@ export function createReadTools(ctx: AssistantToolContext) {
                 .limit(50),
             ]);
           if (bookingsError) return { error: bookingsError.message };
-          let rentals = rentalsById ?? [];
+          const rentals = rentalsById ?? [];
           if (clientName) {
             const { data: byName } = await admin
               .from("rentals")
@@ -2204,6 +2225,110 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getFinanceObjects: tool({
+      description: "Финансовые карточки существующих объектов РМ ОС: классификации, прибыль/денежный поток за период, текущие обязательства. Только финансовые данные; без характеристик и фотографий недвижимости. При propertyId возвращает также операции и обязательства для корректировки.",
+      inputSchema: z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),propertyId:z.string().uuid().optional(),classificationId:z.string().optional(),query:z.string().optional(),basis:z.enum(["cash","profit"]).default("profit")}),
+      execute: async ({from,to,propertyId,classificationId,query,basis}) => {
+        if(from>to)return {error:"Дата начала позже окончания"};
+        const [properties,payments,obligations,categories,articles,classes,assignments]=await Promise.all([
+          allFinancePages((start,end)=>admin.from("properties").select("id,title,internal_name,ref_id,status").order("id").range(start,end)),
+          allFinancePages((start,end)=>admin.from("payments").select("*").order("id").range(start,end)),
+          allFinancePages((start,end)=>admin.from("finance_obligations").select("*").order("id").range(start,end)),
+          admin.from("finance_article_categories").select("*"),admin.from("finance_articles").select("*"),
+          admin.from("finance_object_classes").select("id,name").order("name"),
+          allFinancePages((start,end)=>admin.from("finance_object_settings").select("property_id,classification_id").order("property_id").range(start,end)),
+        ]);
+        const error=properties.error??payments.error??obligations.error??categories.error??articles.error??classes.error??assignments.error;if(error)return {error:error.message};
+        const rows=payments.data as unknown as Payment[];const debts=obligations.data as unknown as FinanceObligation[];
+        const catalog={categories:categories.data??[],articles:articles.data??[]};
+        const objects=filterFinanceObjects((properties.data??[]) as FinancePropertyOption[],assignments.data??[],classificationId,query).filter(p=>!propertyId||p.id===propertyId);
+        return {from,to,basis,classifications:classes.data??[],objects:objects.map(p=>{
+          const {entries,...summary}=objectFinanceSummary(p.id,rows,debts,catalog,from,to,basis);
+          return {id:p.id,name:p.internal_name||p.title,refId:p.ref_id,archived:p.status==="archived",classificationId:assignments.data?.find(a=>a.property_id===p.id)?.classification_id??null,...summary,paymentIds:entries.map(e=>e.payment.id)};
+        }),...(propertyId?{payments:rows.filter(p=>p.property_id===propertyId&&p.planned_date>=from&&p.planned_date<=to),obligations:debts.filter(o=>o.property_id===propertyId)}:{})};
+      },
+    }),
+
+    getFinanceAnalytics: tool({
+      description: "Дашборд и отчёты Финансов: ДДС по оплатам, прибыль по начислениям (депозиты и исключённые статьи не входят), план/факт, категории, объекты РМ ОС, текущая задолженность. Долги не являются историческим срезом на дату. По датам оплаты без полной истории частичных взносов доступны агрегированные суммы операций.",
+      inputSchema: z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),propertyId:z.string().optional()}),
+      execute: async ({from,to,propertyId}) => {
+        if(from>to) return {error:"Дата начала позже окончания"};
+        const [payments,obligations,categories,articles,properties] = await Promise.all([
+          allFinancePages((start,end)=>admin.from("payments").select("*").order("id").range(start,end)),
+          allFinancePages((start,end)=>admin.from("finance_obligations").select("*").order("id").range(start,end)),
+          admin.from("finance_article_categories").select("*"),admin.from("finance_articles").select("*"),
+          allFinancePages((start,end)=>admin.from("properties").select("id,title,internal_name").order("id").range(start,end)),
+        ]);
+        const error=payments.error??obligations.error??categories.error??articles.error??properties.error;
+        if(error) return {error:error.message};
+        const rows=(payments.data??[]).map(p=>({...p,property:properties.data?.find(o=>o.id===p.property_id)??null})) as unknown as Payment[];
+        const catalog={categories:categories.data??[],articles:articles.data??[]};
+        const cash=reportEntries(rows,catalog,"cash",from,to,propertyId),profit=reportEntries(rows,catalog,"profit",from,to,propertyId),plan=reportEntries(rows,catalog,"plan",from,to,propertyId);
+        const compact=(entries: typeof cash, key:(e: typeof cash[number])=>string)=>groupEntries(entries,key).map(({items,...group})=>({...group,paymentIds:items.map(e=>e.payment.id)}));
+        return {from,to,cash:entryTotals(cash),profit:entryTotals(profit),plan:entryTotals(plan),cashByCategory:compact(cash,e=>e.category),cashByActivity:compact(cash,e=>e.activity),profitByObject:compact(profit,e=>e.object),currentDebts:currentDebts((obligations.data??[]) as unknown as FinanceObligation[],rows,propertyId)};
+      },
+    }),
+
+    getFinanceCategoryReport: tool({
+      description:
+        "Статистика Финансов по категориям и статьям прихода и расхода: план и факт за период, включая частичные оплаты.",
+      inputSchema: z.object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      }),
+      execute: async ({ from, to }) => {
+        if (from > to) return { error: "Дата начала позже окончания" };
+        const [payments, categories, articles] = await Promise.all([
+          allFinancePages((start, end) =>
+            admin
+              .from("payments")
+              .select("*")
+              .order("id")
+              .range(start, end),
+          ),
+          admin.from("finance_article_categories").select("*"),
+          admin.from("finance_articles").select("*"),
+        ]);
+        const error = payments.error ?? categories.error ?? articles.error;
+        if (error) return { error: error.message };
+        const catalog = { categories: categories.data ?? [], articles: articles.data ?? [] };
+        const rows = (payments.data ?? []) as unknown as Payment[];
+        const cash=reportEntries(rows,catalog,"cash",from,to);
+        const plan=reportEntries(rows,catalog,"plan",from,to);
+        const groups=planFactCategories(plan,cash).map(g=>({categoryName:g.name,direction:g.direction,plan:g.plan,fact:g.fact,articles:planFactCategories(g.planEntries.map(e=>({...e,category:e.article})),g.cashEntries.map(e=>({...e,category:e.article}))).map(a=>({name:a.name,plan:a.plan,fact:a.fact}))}));
+        return {from,to,income:groups.filter(g=>g.direction === "in"),expense:groups.filter(g=>g.direction === "out")};
+      },
+    }),
+
+    listCounterpartyClassifications: tool({
+      description: "Пользовательские классификации контрагентов Финансов.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { data, error } = await admin
+          .from("finance_counterparty_classes")
+          .select("id, name")
+          .order("name");
+        return error ? { error: error.message } : { classifications: data ?? [] };
+      },
+    }),
+    getFinanceDay: tool({
+      description: "Все приходы и расходы выбранного дня с идентификаторами для корректировки.",
+      inputSchema: z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+      execute: async ({ date }) => {
+        const { data, error } = await allFinancePages((from, to) =>
+          admin
+            .from("payments")
+            .select("*")
+            .eq("planned_date", date)
+            .order("created_at")
+            .order("id")
+            .range(from, to),
+        );
+        return error ? { error: error.message } : { date, payments: data ?? [] };
+      },
+    }),
+
     listCounterparties: tool({
       description:
         "Список контрагентов блока «Финансы»: арендатор, собственник, подрядчик, сотрудник, депозит, прочее. Фильтр по типу.",
@@ -2212,14 +2337,16 @@ export function createReadTools(ctx: AssistantToolContext) {
           .enum(["tenant", "owner", "contractor", "employee", "deposit", "other", "all"])
           .optional(),
         query: z.string().optional().describe("Имя контрагента"),
+        classificationId: z.string().uuid().optional(),
       }),
-      execute: async ({ kind, query }) => {
+      execute: async ({ kind, query, classificationId }) => {
         let q = admin
           .from("finance_counterparties")
-          .select("id, name, kind, client_id, comment, created_at")
+          .select("id, name, kind, classification_id, requisites, client_id, comment, created_at")
           .order("name")
           .limit(200);
         if (kind && kind !== "all") q = q.eq("kind", kind);
+        if (classificationId) q = q.eq("classification_id", classificationId);
         if (query?.trim()) q = q.ilike("name", `%${query.trim()}%`);
         const { data, error } = await q;
         if (error) return { error: error.message };
@@ -2239,7 +2366,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         if (counterpartyId) {
           const { data, error } = await admin
             .from("finance_counterparties")
-            .select("id, name, kind, client_id, comment")
+            .select("id, name, kind, classification_id, requisites, client_id, comment")
             .eq("id", counterpartyId)
             .maybeSingle();
           if (error) return { error: error.message };
@@ -2247,12 +2374,13 @@ export function createReadTools(ctx: AssistantToolContext) {
         } else if (name?.trim()) {
           const { data, error } = await admin
             .from("finance_counterparties")
-            .select("id, name, kind, client_id, comment")
+            .select("id, name, kind, classification_id, requisites, client_id, comment")
             .ilike("name", `%${name.trim()}%`)
             .limit(5);
           if (error) return { error: error.message };
           if (!data?.length) return { error: "Контрагент не найден" };
-          if (data.length > 1) return { matches: data, hint: "Уточните имя или передайте counterpartyId" };
+          if (data.length > 1)
+            return { matches: data, hint: "Уточните имя или передайте counterpartyId" };
           party = data[0] as Record<string, unknown>;
         } else {
           return { error: "Укажите counterpartyId или имя" };
@@ -2261,34 +2389,54 @@ export function createReadTools(ctx: AssistantToolContext) {
         const id = String(party["id"]);
         const [{ data: obligations, error: oblError }, { data: payments, error: payError }] =
           await Promise.all([
-            admin
-              .from("finance_obligations")
-              .select(
-                "id, planned_date, amount, direction, description, property_id, status",
-              )
-              .eq("counterparty_id", id)
-              .order("planned_date", { ascending: false }),
-            admin
-              .from("payments")
-              .select(
-                "id, planned_date, amount, direction, status, kind, paid_amount, comment, property_id, obligation_id",
-              )
-              .eq("counterparty_id", id)
-              .order("planned_date", { ascending: false })
-              .limit(200),
+            allFinancePages((from, to) =>
+              admin
+                .from("finance_obligations")
+                .select("id, planned_date, amount, direction, description, legal_entity, property_id, status")
+                .eq("counterparty_id", id)
+                .order("planned_date", { ascending: false })
+                .order("id")
+                .range(from, to),
+            ),
+            allFinancePages((from, to) =>
+              admin
+                .from("payments")
+                .select(
+                  "id, planned_date, amount, direction, status, kind, paid_amount, comment, property_id, obligation_id",
+                )
+                .eq("counterparty_id", id)
+                .order("planned_date", { ascending: false })
+                .order("id")
+                .range(from, to),
+            ),
           ]);
         if (oblError) return { error: oblError.message };
         if (payError) return { error: payError.message };
         let theyOweUs = 0;
         for (const item of obligations ?? []) {
           if (item.status !== "open") continue;
-          theyOweUs += item.direction === "receivable" ? Number(item.amount) : -Number(item.amount);
+          const direction = item.direction === "receivable" ? "in" : "out";
+          const settled = (payments ?? [])
+            .filter(
+              (p) => p.obligation_id === item.id && (p.status === "paid" || p.status === "partial"),
+            )
+            .reduce(
+              (sum, p) =>
+                sum +
+                (p.direction === direction ? 1 : 0) *
+                  Number(p.paid_amount ?? (p.status === "paid" ? p.amount : 0)),
+              0,
+            );
+          const remaining = Math.max(0, Number(item.amount) - settled);
+          theyOweUs += item.direction === "receivable" ? remaining : -remaining;
         }
         let transferredToUs = 0;
         let weTransferred = 0;
         for (const payment of payments ?? []) {
           if (payment.status === "paid" || payment.status === "partial") {
-            const fact = Number(payment.paid_amount ?? payment.amount);
+            const fact = Number(
+              payment.paid_amount ?? (payment.status === "paid" ? payment.amount : 0),
+            );
             if (payment.direction === "in") transferredToUs += fact;
             else weTransferred += fact;
           }
@@ -2330,7 +2478,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         let q = admin
           .from("finance_obligations")
           .select(
-            "id, counterparty_id, planned_date, amount, direction, description, property_id, status, created_at",
+            "id, counterparty_id, planned_date, amount, direction, description, legal_entity, property_id, status, created_at",
           )
           .order("planned_date", { ascending: false })
           .limit(200);
@@ -2373,7 +2521,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           .order("position");
         let artQuery = admin
           .from("finance_articles")
-          .select("id, name, direction, category_id, position, code")
+          .select("id, name, direction, category_id, position, code, cash_flow_type, affects_profit")
           .order("direction")
           .order("position");
         if (direction === "in" || direction === "out") {

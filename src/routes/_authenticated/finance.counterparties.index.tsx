@@ -24,13 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  COUNTERPARTY_KINDS,
-  counterpartyKindLabel,
   fetchCounterparties,
   saveCounterparty,
-  type CounterpartyKind,
   type FinanceCounterparty,
 } from "@/lib/finance-counterparties";
+import { fetchCounterpartyClassifications } from "@/lib/finance-classifications";
 import { fetchPayments, formatAdeskMoney } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 
@@ -52,16 +50,20 @@ export const Route = createFileRoute("/_authenticated/finance/counterparties/")(
   ),
 });
 
-type KindFilter = "all" | CounterpartyKind;
+type KindFilter = string;
 
-function FinanceCounterpartiesPage() {
+export function FinanceCounterpartiesPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [kind, setKind] = useState<KindFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
-  const [newKind, setNewKind] = useState<CounterpartyKind>("tenant");
+  const [newKind, setNewKind] = useState("__none__");
 
+  const { data: classifications = [], error: classificationError } = useQuery({
+    queryKey: ["finance-counterparty-classes"],
+    queryFn: fetchCounterpartyClassifications,
+  });
   const { data: counterparties = [], isLoading } = useQuery({
     queryKey: ["finance-counterparties"],
     queryFn: () => fetchCounterparties(),
@@ -72,7 +74,10 @@ function FinanceCounterpartiesPage() {
   });
 
   const filtered = useMemo(
-    () => counterparties.filter((item) => kind === "all" || item.kind === kind),
+    () =>
+      counterparties.filter(
+        (item) => kind === "all" || (item.classification_id ?? "__none__") === kind,
+      ),
     [counterparties, kind],
   );
 
@@ -91,7 +96,12 @@ function FinanceCounterpartiesPage() {
   }, [payments]);
 
   const createMutation = useMutation({
-    mutationFn: () => saveCounterparty(null, { name, kind: newKind }),
+    mutationFn: () =>
+      saveCounterparty(null, {
+        name,
+        kind: "other",
+        classification_id: newKind === "__none__" ? null : newKind,
+      }),
     onSuccess: (id) => {
       void queryClient.invalidateQueries({ queryKey: ["finance-counterparties"] });
       setCreateOpen(false);
@@ -103,12 +113,12 @@ function FinanceCounterpartiesPage() {
   });
 
   return (
-    <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+    <div className="finance-ui">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Контрагенты</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Карточки с обзором денег и обязательствами. Банк не подключаем.
+            Движение денег, обязательства и ваши классификации.
           </p>
         </div>
         <Button type="button" onClick={() => setCreateOpen(true)}>
@@ -123,21 +133,24 @@ function FinanceCounterpartiesPage() {
         <FilterChip active={kind === "all"} onClick={() => setKind("all")}>
           Все
         </FilterChip>
-        {COUNTERPARTY_KINDS.map((item) => (
-          <FilterChip
-            key={item.value}
-            active={kind === item.value}
-            onClick={() => setKind(item.value)}
-          >
-            {item.label}
+        {classifications.map((item) => (
+          <FilterChip key={item.id} active={kind === item.id} onClick={() => setKind(item.id)}>
+            {item.name}
           </FilterChip>
         ))}
+        <FilterChip active={kind === "__none__"} onClick={() => setKind("__none__")}>
+          Без классификации
+        </FilterChip>
       </div>
 
+      {classificationError && <p role="alert">Не удалось загрузить классификации.</p>}
+      <Link to="/finance/settings" className="mt-3 inline-block text-sm text-blue-600">
+        Настроить классификации
+      </Link>
       <div className="mt-4 overflow-hidden rounded-xl border border-border bg-white">
         <div className="hidden grid-cols-[1fr_10rem_8rem] gap-3 border-b border-border bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
           <span>Контрагент</span>
-          <span>Тип</span>
+          <span>Классификация</span>
           <span className="text-right">Открыто</span>
         </div>
         {isLoading && <p className="px-4 py-8 text-sm text-muted-foreground">Загрузка…</p>}
@@ -150,13 +163,17 @@ function FinanceCounterpartiesPage() {
           <CounterpartyRow
             key={item.id}
             item={item}
+            classificationName={
+              classifications.find((c) => c.id === item.classification_id)?.name ??
+              "Без классификации"
+            }
             openAmount={openById.get(item.id) ?? 0}
           />
         ))}
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <DialogContent className="finance-dialog">
           <DialogHeader>
             <DialogTitle>Новый контрагент</DialogTitle>
           </DialogHeader>
@@ -166,15 +183,16 @@ function FinanceCounterpartiesPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Тип</Label>
-              <Select value={newKind} onValueChange={(v) => setNewKind(v as CounterpartyKind)}>
+              <Label>Классификация</Label>
+              <Select value={newKind} onValueChange={(v) => setNewKind(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {COUNTERPARTY_KINDS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
+                  <SelectItem value="__none__">Без классификации</SelectItem>
+                  {classifications.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -227,8 +245,10 @@ function FilterChip({
 function CounterpartyRow({
   item,
   openAmount,
+  classificationName,
 }: {
   item: FinanceCounterparty;
+  classificationName: string;
   openAmount: number;
 }) {
   return (
@@ -240,7 +260,7 @@ function CounterpartyRow({
       <p className="font-medium">{item.name}</p>
       <p className="text-sm">
         <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-          {counterpartyKindLabel(item.kind)}
+          {classificationName}
         </span>
       </p>
       <p

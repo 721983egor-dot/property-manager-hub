@@ -21,9 +21,7 @@ import {
 import type { PaymentDirection } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 
-type DragPayload =
-  | { kind: "category"; id: string }
-  | { kind: "article"; id: string };
+type DragPayload = { kind: "category"; id: string } | { kind: "article"; id: string };
 
 function parseDrag(event: DragEvent): DragPayload | null {
   try {
@@ -68,21 +66,19 @@ export function FinanceArticlesSettings() {
   };
 
   const saveCat = useMutation({
-    mutationFn: ({
-      id,
-      name,
-      position,
-    }: {
-      id: string | null;
-      name: string;
-      position?: number;
-    }) => saveFinanceArticleCategory(id, { name, direction, position }),
+    mutationFn: ({ id, name, position }: { id: string | null; name: string; position?: number }) =>
+      saveFinanceArticleCategory(id, {
+        name,
+        direction,
+        ...(position === undefined ? {} : { position }),
+      }),
     onSuccess: () => {
       setNewCategory("");
       refresh();
       toast.success("Категория сохранена");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Не удалось сохранить"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Не удалось сохранить"),
   });
 
   const saveArt = useMutation({
@@ -90,20 +86,25 @@ export function FinanceArticlesSettings() {
       id: string | null;
       name: string;
       category_id: string | null;
+      cash_flow_type?: FinanceArticle["cash_flow_type"];
+      affects_profit?: boolean;
       position?: number;
     }) =>
       saveFinanceArticle(input.id, {
         name: input.name,
         direction,
+        ...(input.cash_flow_type === undefined ? {} : { cash_flow_type: input.cash_flow_type }),
+        ...(input.affects_profit === undefined ? {} : { affects_profit: input.affects_profit }),
         category_id: input.category_id,
-        position: input.position,
+        ...(input.position === undefined ? {} : { position: input.position }),
       }),
     onSuccess: () => {
       setNewArticle({});
       refresh();
       toast.success("Статья сохранена");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Не удалось сохранить"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Не удалось сохранить"),
   });
 
   const deleteCat = useMutation({
@@ -158,10 +159,7 @@ export function FinanceArticlesSettings() {
     const to = list.findIndex((c) => c.id === toId);
     if (from < 0 || to < 0) return;
     const ordered = moveIndex(list, from, to);
-    persistCategoryOrder([
-      ...categories.filter((c) => c.direction !== direction),
-      ...ordered,
-    ]);
+    persistCategoryOrder([...categories.filter((c) => c.direction !== direction), ...ordered]);
   };
 
   const moveArticle = (fromId: string, toId: string, categoryId: string | null) => {
@@ -171,17 +169,9 @@ export function FinanceArticlesSettings() {
     if (from < 0) return;
     const moved = list[from];
     if (!moved) return;
-    const withCategory = list.map((a) =>
-      a.id === fromId ? { ...a, category_id: categoryId } : a,
-    );
-    const nextList =
-      to < 0
-        ? withCategory
-        : moveIndex(withCategory, from, to);
-    persistArticleOrder([
-      ...articles.filter((a) => a.direction !== direction),
-      ...nextList,
-    ]);
+    const withCategory = list.map((a) => (a.id === fromId ? { ...a, category_id: categoryId } : a));
+    const nextList = to < 0 ? withCategory : moveIndex(withCategory, from, to);
+    persistArticleOrder([...articles.filter((a) => a.direction !== direction), ...nextList]);
   };
 
   const dropOnCategory = (categoryId: string | null, event: DragEvent) => {
@@ -212,21 +202,27 @@ export function FinanceArticlesSettings() {
   return (
     <div className="mt-6 space-y-4">
       <p className="text-sm text-muted-foreground">
-        Перетащите строку за иконку, чтобы поменять порядок. Категории — группы для отчётов,
-        статья выбирается в форме операции.
+        Перетащите строку за иконку, чтобы поменять порядок. Категории — группы для отчётов, статья
+        выбирается в форме операции. Деятельность задаёт раздел ДДС. Снимите «В прибыли» для
+        депозитов, займов, капитальных вложений и вывода денег — они останутся в движении денег, но
+        не попадут в прибыль.
       </p>
 
       <div className="flex rounded-lg border border-[#e8edf2] bg-white p-0.5 w-fit">
-        {([
-          ["out", "Расход"],
-          ["in", "Приход"],
-        ] as const).map(([value, label]) => (
+        {(
+          [
+            ["out", "Расход"],
+            ["in", "Приход"],
+          ] as const
+        ).map(([value, label]) => (
           <button
             key={value}
             type="button"
             className={cn(
               "rounded-md px-3 py-1.5 text-sm",
-              direction === value ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-800",
+              direction === value
+                ? "bg-slate-900 text-white"
+                : "text-slate-500 hover:text-slate-800",
             )}
             onClick={() => setDirection(value)}
           >
@@ -280,11 +276,12 @@ export function FinanceArticlesSettings() {
                   {group.category ? (
                     <Input
                       className="h-9 border-[#e8edf2] font-medium"
+                      aria-label={`Название категории ${group.category.name}`}
                       defaultValue={group.category.name}
                       key={`${group.category.id}:${group.category.name}`}
                       onBlur={(event) => {
                         const next = event.target.value.trim();
-                        if (!next || next === group.category?.name) return;
+                        if (!next || !group.category || next === group.category.name) return;
                         saveCat.mutate({ id: group.category.id, name: next });
                       }}
                     />
@@ -331,15 +328,18 @@ export function FinanceArticlesSettings() {
                       }}
                       onDrop={(event) => dropOnArticle(article, event)}
                       className={cn(
-                        "flex items-center gap-2 rounded-md border border-transparent px-1 py-1",
-                        dragOver === `art:${article.id}` ? "ring-2 ring-teal-600" : "hover:border-[#e8edf2]",
+                        "flex flex-wrap items-center gap-2 rounded-md border border-transparent px-1 py-1",
+                        dragOver === `art:${article.id}`
+                          ? "ring-2 ring-teal-600"
+                          : "hover:border-[#e8edf2]",
                       )}
                     >
                       <span className="grid size-8 shrink-0 cursor-grab place-items-center text-muted-foreground active:cursor-grabbing">
                         <GripVertical className="size-4" />
                       </span>
                       <Input
-                        className="h-9 border-[#e8edf2]"
+                        className="h-9 min-w-40 flex-1 border-[#e8edf2]"
+                        aria-label={`Название статьи ${article.name}`}
                         defaultValue={article.name}
                         key={`${article.id}:${article.name}`}
                         onBlur={(event) => {
@@ -352,7 +352,69 @@ export function FinanceArticlesSettings() {
                           });
                         }}
                       />
+                      <select
+                        aria-label={`Категория статьи ${article.name}`}
+                        value={article.category_id ?? ""}
+                        disabled={saveArt.isPending}
+                        className="h-9 max-w-[180px] rounded-md border border-border bg-white px-2 text-sm"
+                        onChange={(event) =>
+                          saveArt.mutate({
+                            id: article.id,
+                            name: article.name,
+                            category_id: event.target.value || null,
+                          })
+                        }
+                      >
+                        <option value="">Без категории</option>
+                        {categories
+                          .filter((category) => category.direction === direction)
+                          .map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                      </select>
+                      <select
+                        aria-label={`Деятельность статьи ${article.name}`}
+                        className="h-9 rounded-md border bg-white px-2 text-sm"
+                        value={article.cash_flow_type ?? "operating"}
+                        disabled={saveArt.isPending}
+                        onChange={(event) =>
+                          saveArt.mutate({
+                            id: article.id,
+                            name: article.name,
+                            category_id: article.category_id,
+                            cash_flow_type: event.target.value as NonNullable<
+                              FinanceArticle["cash_flow_type"]
+                            >,
+                          })
+                        }
+                      >
+                        <option value="operating">Операционная</option>
+                        <option value="investing">Инвестиционная</option>
+                        <option value="financing">Финансовая</option>
+                      </select>
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={
+                            article.affects_profit ??
+                            !["deposit_in", "deposit_out"].includes(article.code ?? "")
+                          }
+                          disabled={saveArt.isPending}
+                          onChange={(event) =>
+                            saveArt.mutate({
+                              id: article.id,
+                              name: article.name,
+                              category_id: article.category_id,
+                              affects_profit: event.target.checked,
+                            })
+                          }
+                        />
+                        В прибыли
+                      </label>
                       <Button
+                        aria-label={`Удалить статью ${article.name}`}
                         type="button"
                         variant="ghost"
                         size="icon"
@@ -381,7 +443,7 @@ export function FinanceArticlesSettings() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={!((newArticle[catKey] ?? "").trim()) || saveArt.isPending}
+                      disabled={!(newArticle[catKey] ?? "").trim() || saveArt.isPending}
                       onClick={() =>
                         saveArt.mutate({
                           id: null,

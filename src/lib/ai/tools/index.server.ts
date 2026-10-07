@@ -1,3 +1,5 @@
+// Финансовые объекты: getFinanceObjects; save/delete/assignFinanceObjectClassification, updateFinanceObligation — только через подтверждение.
+// Финансовый дашборд, ДДС/ОПиУ/план-факт/объекты/долги: getFinanceAnalytics; политика статей: proposeSaveFinanceArticle.
 import { createReadTools } from "@/lib/ai/tools/read.server";
 import { createMutateTools } from "@/lib/ai/tools/mutate.server";
 import { createSkillTools } from "@/lib/ai/tools/skills.server";
@@ -15,6 +17,7 @@ import type { AssistantToolContext } from "@/lib/ai/context.server";
  */
 export function buildAssistantTools(ctx: AssistantToolContext) {
   return {
+    // Включает карточку дня, классификации и юридическое лицо обязательства.
     ...createReadTools(ctx),
     ...createMutateTools(ctx),
     ...createSkillTools(),

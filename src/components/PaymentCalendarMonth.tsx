@@ -12,10 +12,11 @@ import {
   type PaymentDirection,
   type PaymentStatus,
 } from "@/lib/finance";
+import { toISODate } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
+import "./finance-calendar.css";
 
 export type CellMode = "sums" | "ops";
-
 const WEEKDAYS = [
   "Понедельник",
   "Вторник",
@@ -25,14 +26,12 @@ const WEEKDAYS = [
   "Суббота",
   "Воскресенье",
 ];
-
 const STATUS_DOT: Record<PaymentStatus, string> = {
   expected: "bg-sky-500",
   partial: "bg-amber-500",
   paid: "bg-emerald-500",
   overdue: "bg-red-500",
 };
-
 const PaymentAccountsChart = lazy(() => import("@/components/PaymentAccountsChart"));
 
 type Props = {
@@ -40,15 +39,11 @@ type Props = {
   monthIndex: number;
   ledger: DayMoneyLedger[];
   today: string;
-  cellMode: "sums" | "ops";
+  cellMode: CellMode;
   onAdd: (date: string, direction: PaymentDirection) => void;
   onEdit: (payment: Payment) => void;
+  onDay: (date: string) => void;
 };
-
-function padMondayFirst(year: number, monthIndex: number) {
-  const first = new Date(year, monthIndex, 1);
-  return (first.getDay() + 6) % 7;
-}
 
 export function PaymentCalendarMonth({
   year,
@@ -58,56 +53,66 @@ export function PaymentCalendarMonth({
   cellMode,
   onAdd,
   onEdit,
+  onDay,
 }: Props) {
-  const startPad = padMondayFirst(year, monthIndex);
-  const cells: Array<DayMoneyLedger | null> = [];
-  for (let i = 0; i < startPad; i += 1) cells.push(null);
-  for (const row of ledger) cells.push(row);
-  while (cells.length % 7 !== 0) cells.push(null);
+  const startPad = (new Date(year, monthIndex, 1).getDay() + 6) % 7;
+  const cellCount = Math.ceil((startPad + ledger.length) / 7) * 7;
+  const byDate = new Map(ledger.map((row) => [row.date, row]));
+  const dates = Array.from(
+    { length: cellCount },
+    (_, i) => new Date(year, monthIndex, i - startPad + 1),
+  );
 
   return (
-    <div className="space-y-0 overflow-hidden rounded-xl border border-[#e8edf2] bg-white">
-      <Suspense
-        fallback={
-          <div className="flex h-[200px] items-center px-4 text-sm text-muted-foreground sm:h-[220px]">
-            График…
-          </div>
-        }
-      >
+    <div className="finance-month-layout">
+      <Suspense fallback={<div className="finance-chart-loading">Загрузка графика…</div>}>
         <PaymentAccountsChart ledger={ledger} today={today} />
       </Suspense>
-
-      <div className="overflow-x-auto border-t border-[#e8edf2]">
-        <div className="grid min-w-[920px] grid-cols-7">
-          {WEEKDAYS.map((d) => (
-            <div
-              key={d}
-              className="border-b border-[#e8edf2] px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-400"
-            >
-              {d}
-            </div>
-          ))}
-          {cells.map((cell, idx) => {
-            if (!cell) {
+      <div className="finance-calendar-card">
+        <div className="finance-calendar-scroll">
+          <div className="finance-week-grid">
+            {WEEKDAYS.map((day) => (
+              <div key={day} className="finance-weekday">
+                {day}
+              </div>
+            ))}
+            {dates.map((date) => {
+              const iso = toISODate(date);
+              const cell = byDate.get(iso);
+              if (!cell)
+                return (
+                  <div key={iso} className="finance-day finance-day-outside">
+                    <button
+                      type="button"
+                      className="finance-outside-add"
+                      aria-label={`Добавить операцию на ${iso}`}
+                      onClick={() => onAdd(iso, "out")}
+                    >
+                      <Plus size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="finance-day-number"
+                      aria-label={`Операции за ${iso}`}
+                      onClick={() => onDay(iso)}
+                    >
+                      {date.getDate()}
+                    </button>
+                  </div>
+                );
               return (
-                <div
-                  key={`empty-${idx}`}
-                  className="min-h-[156px] border-b border-r border-[#e8edf2] bg-[#fafbfc]"
+                <DayCell
+                  key={iso}
+                  cell={cell}
+                  today={today}
+                  cellMode={cellMode}
+                  onAdd={onAdd}
+                  onDay={onDay}
+                  onEdit={onEdit}
                 />
               );
-            }
-            return (
-              <DayCell
-                key={cell.date}
-                cell={cell}
-                isToday={cell.date === today}
-                today={today}
-                cellMode={cellMode}
-                onAdd={onAdd}
-                onEdit={onEdit}
-              />
-            );
-          })}
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -116,59 +121,68 @@ export function PaymentCalendarMonth({
 
 const DayCell = memo(function DayCell({
   cell,
-  isToday,
   today,
   cellMode,
   onAdd,
   onEdit,
+  onDay,
 }: {
   cell: DayMoneyLedger;
-  isToday: boolean;
   today: string;
-  cellMode: "sums" | "ops";
-  onAdd: (date: string, direction: PaymentDirection) => void;
-  onEdit: (payment: Payment) => void;
+  cellMode: CellMode;
+  onAdd: Props["onAdd"];
+  onEdit: Props["onEdit"];
+  onDay: Props["onDay"];
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const net = cell.saldo;
-  const hasActivity = cell.income > 0 || cell.expense > 0 || cell.payments.length > 0;
+  const isToday = cell.date === today;
+  const showGap = isToday && cell.closing < 0;
+  const hasActivity = cell.payments.length > 0;
 
   useEffect(() => {
     if (!menuOpen) return;
     const onDoc = (event: MouseEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
     };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [menuOpen]);
 
   return (
     <div
       className={cn(
-        "group relative flex min-h-[156px] flex-col border-b border-r border-[#e8edf2] bg-white p-2",
-        cell.hasGap && "bg-[#fff1f1]",
-        isToday && !cell.hasGap && "bg-[#f8fafc]",
+        "finance-day",
+        showGap && "finance-day-gap",
+        isToday && "finance-day-today",
+        cell.date > today && "finance-day-future",
       )}
     >
-      <div className="flex items-start justify-between gap-1">
-        <div className="relative" ref={menuRef}>
+      <div className="finance-day-top">
+        <div className="finance-day-menu-anchor" ref={menuRef}>
           <button
             type="button"
-            className={cn(
-              "inline-flex size-6 items-center justify-center rounded text-slate-400 transition hover:bg-slate-100 hover:text-slate-700",
-              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100",
-            )}
-            title="Добавить операцию"
+            className={cn("finance-day-add", menuOpen && "finance-day-add-open")}
+            aria-label={`Добавить операцию на ${cell.date}`}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
             onClick={() => setMenuOpen((v) => !v)}
           >
-            <Plus className="size-3.5" strokeWidth={2.5} />
+            <Plus size={16} />
           </button>
           {menuOpen && (
-            <div className="absolute left-0 top-7 z-30 w-36 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+            <div className="finance-day-menu" role="menu">
               <button
                 type="button"
-                className="block w-full px-3 py-1.5 text-left text-sm text-[#16a34a] hover:bg-emerald-50"
+                role="menuitem"
+                className="finance-income"
                 onClick={() => {
                   setMenuOpen(false);
                   onAdd(cell.date, "in");
@@ -178,7 +192,8 @@ const DayCell = memo(function DayCell({
               </button>
               <button
                 type="button"
-                className="block w-full px-3 py-1.5 text-left text-sm text-[#dc2626] hover:bg-red-50"
+                role="menuitem"
+                className="finance-expense"
                 onClick={() => {
                   setMenuOpen(false);
                   onAdd(cell.date, "out");
@@ -189,93 +204,68 @@ const DayCell = memo(function DayCell({
             </div>
           )}
         </div>
-        <span
-          className={cn(
-            "text-[13px] tabular-nums",
-            isToday ? "font-semibold text-slate-900" : "text-slate-500",
-          )}
+        {showGap && <span className="finance-gap-title">{formatGapLabel(cell.closing)}</span>}
+        <button
+          type="button"
+          className="finance-day-number"
+          aria-label={`Операции за ${cell.date}`}
+          onClick={() => onDay(cell.date)}
         >
           {cell.day}
-        </span>
+        </button>
       </div>
-
-      {cell.hasGap ? (
-        <div className="mt-2 flex flex-1 items-center justify-center rounded-md border border-dashed border-[#f87171] bg-[#fff1f1] px-2 py-5 text-center">
-          <p className="text-[15px] font-semibold leading-snug text-[#ef4444]">
-            {formatGapLabel(cell.closing)}
+      {cellMode === "ops" ? (
+        <div className="finance-day-operations">
+          {cell.payments.map((payment) => (
+            <button
+              key={payment.id}
+              type="button"
+              onClick={() => onEdit(payment)}
+              title={`${payment.article?.name ?? kindLabel(payment.kind)} · ${counterpartyLabel(payment)}`}
+            >
+              <span
+                className={cn(
+                  "size-1.5 shrink-0 rounded-full",
+                  STATUS_DOT[effectivePaymentStatus(payment, today)],
+                )}
+              />
+              <span className={payment.direction === "in" ? "finance-income" : "finance-expense"}>
+                {formatAdeskMoney(
+                  payment.direction === "in" ? payment.amount : -payment.amount,
+                  true,
+                )}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : hasActivity ? (
+        <div className="finance-day-amounts">
+          <p className="finance-day-balance">{formatAdeskMoney(cell.opening)}</p>
+          <p className={cell.income > 0 ? "finance-income" : ""}>
+            {formatAdeskMoney(cell.income, true)}
           </p>
+          <p className={cell.expense > 0 ? "finance-expense" : ""}>
+            {cell.expense === 0 ? "−0,00 ₽" : formatAdeskMoney(-cell.expense, true)}
+          </p>
+          <button
+            type="button"
+            className={cn(
+              "finance-day-net",
+              cell.saldo > 0
+                ? "finance-net-positive"
+                : cell.saldo < 0
+                  ? "finance-net-negative"
+                  : "finance-net-zero",
+            )}
+            aria-label={`Операции на ${cell.date}: ${cell.payments.length}. Открыть день`}
+            onClick={() => onDay(cell.date)}
+          >
+            {formatAdeskMoney(cell.saldo, true)}
+          </button>
+          <p className="finance-day-balance">{formatAdeskMoney(cell.closing)}</p>
         </div>
-      ) : cellMode === "ops" ? (
-        <div className="mt-1 space-y-0.5">
-          {cell.payments.slice(0, 4).map((payment) => {
-            const status = effectivePaymentStatus(payment, today);
-            return (
-              <button
-                key={payment.id}
-                type="button"
-                className="flex w-full items-center gap-1 rounded px-0.5 py-0.5 text-left text-[11px] hover:bg-slate-50"
-                onClick={() => onEdit(payment)}
-                title={`${payment.article?.name ?? kindLabel(payment.kind)} · ${counterpartyLabel(payment)}`}
-              >
-                <span className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[status])} />
-                <span
-                  className={cn(
-                    "truncate tabular-nums",
-                    payment.direction === "in" ? "text-[#16a34a]" : "text-[#dc2626]",
-                  )}
-                >
-                  {formatAdeskMoney(
-                    payment.direction === "in" ? payment.amount : -payment.amount,
-                    true,
-                  )}
-                </span>
-              </button>
-            );
-          })}
-          {cell.payments.length > 4 && (
-            <p className="px-0.5 text-[10px] text-slate-400">+{cell.payments.length - 4}</p>
-          )}
-        </div>
-      ) : (
-        <div className="mt-0.5 flex flex-1 flex-col gap-0.5 text-[12px] leading-tight tabular-nums">
-          {hasActivity ? (
-            <>
-              <p className="text-slate-400">{formatAdeskMoney(cell.opening)}</p>
-              {cell.income > 0 && (
-                <p className="font-medium text-[#16a34a]">{formatAdeskMoney(cell.income, true)}</p>
-              )}
-              {cell.expense > 0 && (
-                <p className="font-medium text-[#b91c1c]">
-                  {formatAdeskMoney(-cell.expense, true)}
-                </p>
-              )}
-              {(cell.income > 0 || cell.expense > 0) && (
-                <button
-                  type="button"
-                  className={cn(
-                    "mt-0.5 rounded px-1.5 py-1 text-left text-[13px] font-semibold",
-                    net > 0
-                      ? "bg-[#9fd0d0] text-[#0f4f4f]"
-                      : net < 0
-                        ? "bg-[#e8a0a0] text-[#7f1d1d]"
-                        : "bg-slate-100 text-slate-500",
-                  )}
-                  onClick={() => {
-                    if (cell.payments[0]) onEdit(cell.payments[0]!);
-                  }}
-                >
-                  {formatAdeskMoney(net, true)}
-                </button>
-              )}
-              <p className="mt-auto pt-1 text-slate-400">{formatAdeskMoney(cell.closing)}</p>
-            </>
-          ) : (
-            <div className="flex-1" />
-          )}
-        </div>
-      )}
+      ) : null}
     </div>
   );
 });
-
 export type { Props as PaymentCalendarMonthProps };

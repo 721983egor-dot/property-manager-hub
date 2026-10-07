@@ -770,8 +770,22 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_object_classes: {
+        Row: { id: string; name: string; created_at: string; updated_at: string }
+        Insert: { id?: string; name: string; created_at?: string; updated_at?: string }
+        Update: { name?: string; updated_at?: string }
+        Relationships: []
+      }
+      finance_object_settings: {
+        Row: { property_id: string; classification_id: string | null; created_at: string; updated_at: string }
+        Insert: { property_id: string; classification_id?: string | null; created_at?: string; updated_at?: string }
+        Update: { classification_id?: string | null; updated_at?: string }
+        Relationships: []
+      }
       finance_articles: {
         Row: {
+          cash_flow_type: "operating" | "investing" | "financing";
+          affects_profit: boolean;
           id: string
           name: string
           direction: Database["public"]["Enums"]["payment_direction"]
@@ -782,6 +796,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cash_flow_type?: "operating" | "investing" | "financing";
+          affects_profit?: boolean;
           id?: string
           name: string
           direction: Database["public"]["Enums"]["payment_direction"]
@@ -792,6 +808,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cash_flow_type?: "operating" | "investing" | "financing";
+          affects_profit?: boolean;
           id?: string
           name?: string
           direction?: Database["public"]["Enums"]["payment_direction"]
@@ -811,11 +829,19 @@ export type Database = {
           },
         ]
       }
+      finance_counterparty_classes: {
+        Row: { id: string; name: string; legacy_kind: Database["public"]["Enums"]["finance_counterparty_kind"] | null; created_at: string; updated_at: string }
+        Insert: { id?: string; name: string; legacy_kind?: Database["public"]["Enums"]["finance_counterparty_kind"] | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; name?: string; legacy_kind?: Database["public"]["Enums"]["finance_counterparty_kind"] | null; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
       finance_counterparties: {
         Row: {
           id: string
           name: string
           kind: Database["public"]["Enums"]["finance_counterparty_kind"]
+          classification_id: string | null
+          requisites: string
           client_id: string | null
           comment: string
           created_at: string
@@ -825,6 +851,8 @@ export type Database = {
           id?: string
           name: string
           kind?: Database["public"]["Enums"]["finance_counterparty_kind"]
+          classification_id?: string | null
+          requisites?: string
           client_id?: string | null
           comment?: string
           created_at?: string
@@ -834,12 +862,21 @@ export type Database = {
           id?: string
           name?: string
           kind?: Database["public"]["Enums"]["finance_counterparty_kind"]
+          classification_id?: string | null
+          requisites?: string
           client_id?: string | null
           comment?: string
           created_at?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "finance_counterparties_classification_id_fkey"
+            columns: ["classification_id"]
+            isOneToOne: false
+            referencedRelation: "finance_counterparty_classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "finance_counterparties_client_id_fkey"
             columns: ["client_id"]
@@ -856,6 +893,7 @@ export type Database = {
           planned_date: string
           amount: number
           direction: Database["public"]["Enums"]["finance_obligation_direction"]
+          legal_entity: string
           description: string
           property_id: string | null
           status: string
@@ -868,6 +906,7 @@ export type Database = {
           planned_date: string
           amount: number
           direction?: Database["public"]["Enums"]["finance_obligation_direction"]
+          legal_entity?: string
           description?: string
           property_id?: string | null
           status?: string
@@ -880,6 +919,7 @@ export type Database = {
           planned_date?: string
           amount?: number
           direction?: Database["public"]["Enums"]["finance_obligation_direction"]
+          legal_entity?: string
           description?: string
           property_id?: string | null
           status?: string

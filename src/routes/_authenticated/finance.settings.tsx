@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AdminOnly } from "@/components/AdminOnly";
+import { FinanceClassificationsSettings } from "@/components/FinanceClassificationsSettings";
 import { FinanceArticlesSettings } from "@/components/FinanceArticlesSettings";
 import { FinanceTabs } from "@/components/FinanceTabs";
 
@@ -22,9 +23,9 @@ export const Route = createFileRoute("/_authenticated/finance/settings")({
   ),
 });
 
-function FinanceSettingsPage() {
+export function FinanceSettingsPage() {
   return (
-    <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+    <div className="finance-ui finance-settings-page">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Настройки финансов</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -32,7 +33,12 @@ function FinanceSettingsPage() {
         </p>
       </header>
       <FinanceTabs active="settings" />
-      <FinanceArticlesSettings />
+      <section className="fa-panel mt-6">
+        <h2>Статьи и категории</h2>
+        <FinanceArticlesSettings />
+      </section>
+      <FinanceClassificationsSettings />
+      <FinanceClassificationsSettings objects />
     </div>
   );
 }

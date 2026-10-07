@@ -73,6 +73,8 @@ import { Route as AuthenticatedCrmLeadsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedCrmTasksIndexRouteImport } from './routes/_authenticated/crm.tasks.index'
 import { Route as AuthenticatedFinanceCounterpartiesIndexRouteImport } from './routes/_authenticated/finance.counterparties.index'
 import { Route as AuthenticatedFinanceCounterpartiesIdRouteImport } from './routes/_authenticated/finance.counterparties.$id'
+import { Route as AuthenticatedFinanceObjectsIndexRouteImport } from './routes/_authenticated/finance.objects.index'
+import { Route as AuthenticatedFinanceObjectsIdRouteImport } from './routes/_authenticated/finance.objects.$id'
 import { Route as AuthenticatedMaintenanceObjectsIndexRouteImport } from './routes/_authenticated/maintenance.objects.index'
 import { Route as AuthenticatedMaintenanceObjectsNewRouteImport } from './routes/_authenticated/maintenance.objects.new'
 import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authenticated/objects.$id.index'
@@ -442,6 +444,18 @@ const AuthenticatedFinanceCounterpartiesIdRoute =
     path: '/finance/counterparties/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFinanceObjectsIndexRoute =
+  AuthenticatedFinanceObjectsIndexRouteImport.update({
+    id: '/finance/objects/',
+    path: '/finance/objects/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceObjectsIdRoute =
+  AuthenticatedFinanceObjectsIdRouteImport.update({
+    id: '/finance/objects/$id',
+    path: '/finance/objects/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMaintenanceObjectsIndexRoute =
   AuthenticatedMaintenanceObjectsIndexRouteImport.update({
     id: '/maintenance/objects/',
@@ -618,6 +632,7 @@ export interface FileRoutesByFullPath {
   '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
   '/finance/counterparties/$id': typeof AuthenticatedFinanceCounterpartiesIdRoute
+  '/finance/objects/$id': typeof AuthenticatedFinanceObjectsIdRoute
   '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
@@ -639,6 +654,7 @@ export interface FileRoutesByFullPath {
   '/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/crm/tasks/': typeof AuthenticatedCrmTasksIndexRoute
   '/finance/counterparties/': typeof AuthenticatedFinanceCounterpartiesIndexRoute
+  '/finance/objects/': typeof AuthenticatedFinanceObjectsIndexRoute
   '/maintenance/objects/': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
   '/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
@@ -701,6 +717,7 @@ export interface FileRoutesByTo {
   '/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
   '/finance/counterparties/$id': typeof AuthenticatedFinanceCounterpartiesIdRoute
+  '/finance/objects/$id': typeof AuthenticatedFinanceObjectsIdRoute
   '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
@@ -722,6 +739,7 @@ export interface FileRoutesByTo {
   '/crm/leads': typeof AuthenticatedCrmLeadsIndexRoute
   '/crm/tasks': typeof AuthenticatedCrmTasksIndexRoute
   '/finance/counterparties': typeof AuthenticatedFinanceCounterpartiesIndexRoute
+  '/finance/objects': typeof AuthenticatedFinanceObjectsIndexRoute
   '/maintenance/objects': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/objects/$id': typeof AuthenticatedObjectsIdIndexRoute
   '/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
@@ -788,6 +806,7 @@ export interface FileRoutesById {
   '/_authenticated/complexes/$id/edit': typeof AuthenticatedComplexesIdEditRoute
   '/_authenticated/crm/clients/$id': typeof AuthenticatedCrmClientsIdRoute
   '/_authenticated/finance/counterparties/$id': typeof AuthenticatedFinanceCounterpartiesIdRoute
+  '/_authenticated/finance/objects/$id': typeof AuthenticatedFinanceObjectsIdRoute
   '/_authenticated/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
@@ -809,6 +828,7 @@ export interface FileRoutesById {
   '/_authenticated/crm/leads/': typeof AuthenticatedCrmLeadsIndexRoute
   '/_authenticated/crm/tasks/': typeof AuthenticatedCrmTasksIndexRoute
   '/_authenticated/finance/counterparties/': typeof AuthenticatedFinanceCounterpartiesIndexRoute
+  '/_authenticated/finance/objects/': typeof AuthenticatedFinanceObjectsIndexRoute
   '/_authenticated/maintenance/objects/': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/_authenticated/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
   '/_authenticated/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
@@ -875,6 +895,7 @@ export interface FileRouteTypes {
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/finance/counterparties/$id'
+    | '/finance/objects/$id'
     | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
@@ -896,6 +917,7 @@ export interface FileRouteTypes {
     | '/crm/leads/'
     | '/crm/tasks/'
     | '/finance/counterparties/'
+    | '/finance/objects/'
     | '/maintenance/objects/'
     | '/objects/$id/'
     | '/maintenance/objects/$id/edit'
@@ -958,6 +980,7 @@ export interface FileRouteTypes {
     | '/complexes/$id/edit'
     | '/crm/clients/$id'
     | '/finance/counterparties/$id'
+    | '/finance/objects/$id'
     | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
@@ -979,6 +1002,7 @@ export interface FileRouteTypes {
     | '/crm/leads'
     | '/crm/tasks'
     | '/finance/counterparties'
+    | '/finance/objects'
     | '/maintenance/objects'
     | '/objects/$id'
     | '/maintenance/objects/$id/edit'
@@ -1044,6 +1068,7 @@ export interface FileRouteTypes {
     | '/_authenticated/complexes/$id/edit'
     | '/_authenticated/crm/clients/$id'
     | '/_authenticated/finance/counterparties/$id'
+    | '/_authenticated/finance/objects/$id'
     | '/_authenticated/maintenance/objects/new'
     | '/_authenticated/objects/$id/edit'
     | '/_authenticated/objects/$id/preview'
@@ -1065,6 +1090,7 @@ export interface FileRouteTypes {
     | '/_authenticated/crm/leads/'
     | '/_authenticated/crm/tasks/'
     | '/_authenticated/finance/counterparties/'
+    | '/_authenticated/finance/objects/'
     | '/_authenticated/maintenance/objects/'
     | '/_authenticated/objects/$id/'
     | '/_authenticated/maintenance/objects/$id/edit'
@@ -1556,6 +1582,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinanceCounterpartiesIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/finance/objects/': {
+      id: '/_authenticated/finance/objects/'
+      path: '/finance/objects'
+      fullPath: '/finance/objects/'
+      preLoaderRoute: typeof AuthenticatedFinanceObjectsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance/objects/$id': {
+      id: '/_authenticated/finance/objects/$id'
+      path: '/finance/objects/$id'
+      fullPath: '/finance/objects/$id'
+      preLoaderRoute: typeof AuthenticatedFinanceObjectsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/maintenance/objects/': {
       id: '/_authenticated/maintenance/objects/'
       path: '/maintenance/objects'
@@ -1734,6 +1774,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedComplexesIdEditRoute: typeof AuthenticatedComplexesIdEditRoute
   AuthenticatedCrmClientsIdRoute: typeof AuthenticatedCrmClientsIdRoute
   AuthenticatedFinanceCounterpartiesIdRoute: typeof AuthenticatedFinanceCounterpartiesIdRoute
+  AuthenticatedFinanceObjectsIdRoute: typeof AuthenticatedFinanceObjectsIdRoute
   AuthenticatedMaintenanceObjectsNewRoute: typeof AuthenticatedMaintenanceObjectsNewRoute
   AuthenticatedObjectsIdEditRoute: typeof AuthenticatedObjectsIdEditRoute
   AuthenticatedObjectsIdPreviewRoute: typeof AuthenticatedObjectsIdPreviewRoute
@@ -1742,6 +1783,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCrmLeadsIndexRoute: typeof AuthenticatedCrmLeadsIndexRoute
   AuthenticatedCrmTasksIndexRoute: typeof AuthenticatedCrmTasksIndexRoute
   AuthenticatedFinanceCounterpartiesIndexRoute: typeof AuthenticatedFinanceCounterpartiesIndexRoute
+  AuthenticatedFinanceObjectsIndexRoute: typeof AuthenticatedFinanceObjectsIndexRoute
   AuthenticatedMaintenanceObjectsIndexRoute: typeof AuthenticatedMaintenanceObjectsIndexRoute
   AuthenticatedObjectsIdIndexRoute: typeof AuthenticatedObjectsIdIndexRoute
   AuthenticatedMaintenanceObjectsIdEditRoute: typeof AuthenticatedMaintenanceObjectsIdEditRoute
@@ -1784,6 +1826,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCrmClientsIdRoute: AuthenticatedCrmClientsIdRoute,
   AuthenticatedFinanceCounterpartiesIdRoute:
     AuthenticatedFinanceCounterpartiesIdRoute,
+  AuthenticatedFinanceObjectsIdRoute: AuthenticatedFinanceObjectsIdRoute,
   AuthenticatedMaintenanceObjectsNewRoute:
     AuthenticatedMaintenanceObjectsNewRoute,
   AuthenticatedObjectsIdEditRoute: AuthenticatedObjectsIdEditRoute,
@@ -1794,6 +1837,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCrmTasksIndexRoute: AuthenticatedCrmTasksIndexRoute,
   AuthenticatedFinanceCounterpartiesIndexRoute:
     AuthenticatedFinanceCounterpartiesIndexRoute,
+  AuthenticatedFinanceObjectsIndexRoute: AuthenticatedFinanceObjectsIndexRoute,
   AuthenticatedMaintenanceObjectsIndexRoute:
     AuthenticatedMaintenanceObjectsIndexRoute,
   AuthenticatedObjectsIdIndexRoute: AuthenticatedObjectsIdIndexRoute,

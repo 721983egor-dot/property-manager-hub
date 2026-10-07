@@ -1,8 +1,8 @@
+import { summarizeByArticleCategory as summarizeCategories } from "./finance-report-model";
 import { supabase } from "@/integrations/supabase/client";
 import type { Payment, PaymentDirection } from "@/lib/finance";
 import { kindLabel } from "@/lib/finance";
 import {
-  groupArticlesByCategory,
   type FinanceArticle,
   type FinanceArticleCategory,
   type FinanceCatalog,
@@ -25,7 +25,8 @@ export {
 } from "@/lib/finance-articles-model";
 
 const CATEGORY_SELECT = "id, name, direction, position, created_at, updated_at";
-const ARTICLE_SELECT = "id, name, direction, category_id, position, code, created_at, updated_at";
+const ARTICLE_SELECT =
+  "id, name, direction, category_id, position, code, cash_flow_type, affects_profit, created_at, updated_at";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -50,6 +51,14 @@ function mapArticle(row: Record<string, unknown>): FinanceArticle {
     category_id: (row["category_id"] as string | null) ?? null,
     position: Number(row["position"] ?? 0),
     code: (row["code"] as string | null) ?? null,
+    cash_flow_type:
+      row["cash_flow_type"] === "investing" || row["cash_flow_type"] === "financing"
+        ? row["cash_flow_type"]
+        : "operating",
+    affects_profit:
+      typeof row["affects_profit"] === "boolean"
+        ? row["affects_profit"]
+        : !["deposit_in", "deposit_out"].includes(String(row["code"])),
     created_at: String(row["created_at"] ?? ""),
     updated_at: String(row["updated_at"] ?? ""),
   };
@@ -113,6 +122,8 @@ export async function saveFinanceArticle(
     name: string;
     direction: PaymentDirection;
     category_id?: string | null;
+    cash_flow_type?: FinanceArticle["cash_flow_type"];
+    affects_profit?: boolean;
     position?: number;
   },
 ): Promise<string> {
@@ -125,6 +136,8 @@ export async function saveFinanceArticle(
         name,
         direction: input.direction,
         category_id: input.category_id ?? null,
+        ...(input.cash_flow_type === undefined ? {} : { cash_flow_type: input.cash_flow_type }),
+        ...(input.affects_profit === undefined ? {} : { affects_profit: input.affects_profit }),
       } as never)
       .eq("id", id);
     if (error) throw error;
@@ -137,6 +150,8 @@ export async function saveFinanceArticle(
       direction: input.direction,
       category_id: input.category_id ?? null,
       position: input.position ?? 0,
+      ...(input.cash_flow_type === undefined ? {} : { cash_flow_type: input.cash_flow_type }),
+      ...(input.affects_profit === undefined ? {} : { affects_profit: input.affects_profit }),
     } as never)
     .select("id")
     .single();
@@ -152,7 +167,10 @@ export async function deleteFinanceArticle(id: string): Promise<void> {
 export async function reorderFinanceArticleCategories(orderedIds: string[]): Promise<void> {
   const results = await Promise.all(
     orderedIds.map((id, position) =>
-      supabase.from("finance_article_categories").update({ position } as never).eq("id", id),
+      supabase
+        .from("finance_article_categories")
+        .update({ position } as never)
+        .eq("id", id),
     ),
   );
   const failed = results.find((result) => result.error);
@@ -166,7 +184,10 @@ export async function reorderFinanceArticles(
     items.map((item) => {
       const patch: Record<string, unknown> = { position: item.position };
       if (item.category_id !== undefined) patch.category_id = item.category_id;
-      return supabase.from("finance_articles").update(patch as never).eq("id", item.id);
+      return supabase
+        .from("finance_articles")
+        .update(patch as never)
+        .eq("id", item.id);
     }),
   );
   const failed = results.find((result) => result.error);
@@ -183,81 +204,13 @@ export function paymentArticleLabel(
   return kindLabel(payment.kind);
 }
 
-export type CategoryReportRow = {
-  key: string;
-  categoryName: string;
-  plan: number;
-  fact: number;
-  articles: { key: string; name: string; plan: number; fact: number }[];
-};
-
-function factAmount(payment: Payment) {
-  if (payment.status === "paid") return payment.paid_amount ?? payment.amount;
-  if (payment.status === "partial") return payment.paid_amount ?? 0;
-  return 0;
-}
-
-/** План/факт по категориям статей для отчёта. */
+export { type CategoryReportRow } from "./finance-report-model";
 export function summarizeByArticleCategory(
   payments: Payment[],
   catalog: FinanceCatalog,
   direction: PaymentDirection,
-): CategoryReportRow[] {
-  const groups = groupArticlesByCategory(catalog.categories, catalog.articles, direction);
-  const byArticle = new Map<string, { plan: number; fact: number }>();
-  const orphan: { plan: number; fact: number; name: string }[] = [];
-
-  for (const payment of payments) {
-    if (payment.direction !== direction) continue;
-    const articleId = payment.article_id ?? payment.article?.id ?? null;
-    const name = paymentArticleLabel(payment, catalog.articles);
-    if (!articleId) {
-      orphan.push({ plan: payment.amount, fact: factAmount(payment), name });
-      continue;
-    }
-    const cur = byArticle.get(articleId) ?? { plan: 0, fact: 0 };
-    cur.plan += payment.amount;
-    cur.fact += factAmount(payment);
-    byArticle.set(articleId, cur);
-  }
-
-  const rows: CategoryReportRow[] = [];
-  for (const group of groups) {
-    const articleRows = group.articles
-      .map((article) => {
-        const sums = byArticle.get(article.id);
-        if (!sums) return null;
-        byArticle.delete(article.id);
-        return { key: article.id, name: article.name, plan: sums.plan, fact: sums.fact };
-      })
-      .filter((row): row is NonNullable<typeof row> => row != null);
-    if (!articleRows.length) continue;
-    rows.push({
-      key: group.category?.id ?? "none",
-      categoryName: group.category?.name ?? "Без категории",
-      plan: articleRows.reduce((s, r) => s + r.plan, 0),
-      fact: articleRows.reduce((s, r) => s + r.fact, 0),
-      articles: articleRows,
-    });
-  }
-
-  for (const [articleId, sums] of byArticle) {
-    const article = catalog.articles.find((a) => a.id === articleId);
-    orphan.push({ ...sums, name: article?.name ?? "Статья" });
-  }
-  if (orphan.length) {
-    rows.push({
-      key: "orphan",
-      categoryName: "Без категории",
-      plan: orphan.reduce((s, r) => s + r.plan, 0),
-      fact: orphan.reduce((s, r) => s + r.fact, 0),
-      articles: orphan.map((item, i) => ({
-        key: `orphan-${i}`,
-        name: item.name,
-        plan: item.plan,
-        fact: item.fact,
-      })),
-    });
-  }
-  return rows;
+) {
+  return summarizeCategories(payments, catalog, direction, (payment) =>
+    paymentArticleLabel(payment, catalog.articles),
+  );
 }

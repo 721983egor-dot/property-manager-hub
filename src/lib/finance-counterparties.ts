@@ -1,19 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
-import {
-  effectivePaymentStatus,
-  fetchPayments,
-  type Payment,
-  type PaymentDirection,
-} from "@/lib/finance";
-import { toISODate } from "@/lib/rentals";
+import { fetchPayments, type Payment, type PaymentDirection } from "@/lib/finance";
+export { summarizeCounterparty, obligationCash } from "./finance-counterparty-model";
 
-export type CounterpartyKind =
-  | "tenant"
-  | "owner"
-  | "contractor"
-  | "employee"
-  | "deposit"
-  | "other";
+export type CounterpartyKind = "tenant" | "owner" | "contractor" | "employee" | "deposit" | "other";
 
 export const COUNTERPARTY_KINDS: { value: CounterpartyKind; label: string }[] = [
   { value: "tenant", label: "Арендатор" },
@@ -29,9 +18,7 @@ export function counterpartyKindLabel(kind: CounterpartyKind | string) {
 }
 
 export function asCounterpartyKind(value: unknown): CounterpartyKind {
-  return COUNTERPARTY_KINDS.some((k) => k.value === value)
-    ? (value as CounterpartyKind)
-    : "other";
+  return COUNTERPARTY_KINDS.some((k) => k.value === value) ? (value as CounterpartyKind) : "other";
 }
 
 export type ObligationDirection = "receivable" | "payable";
@@ -45,6 +32,8 @@ export type FinanceCounterparty = {
   id: string;
   name: string;
   kind: CounterpartyKind;
+  classification_id: string | null;
+  requisites: string;
   client_id: string | null;
   comment: string;
   created_at: string;
@@ -58,6 +47,7 @@ export type FinanceObligation = {
   amount: number;
   direction: ObligationDirection;
   description: string;
+  legal_entity: string;
   property_id: string | null;
   status: "open" | "closed";
   created_at: string;
@@ -79,6 +69,8 @@ function mapCounterparty(row: Record<string, unknown>): FinanceCounterparty {
     id: String(row["id"]),
     name: String(row["name"] ?? ""),
     kind: asCounterpartyKind(row["kind"]),
+    classification_id: (row["classification_id"] as string | null) ?? null,
+    requisites: String(row["requisites"] ?? ""),
     client_id: (row["client_id"] as string | null) ?? null,
     comment: String(row["comment"] ?? ""),
     created_at: String(row["created_at"] ?? ""),
@@ -98,6 +90,7 @@ function mapObligation(row: Record<string, unknown>): FinanceObligation {
     amount: Number(row["amount"] ?? 0),
     direction: row["direction"] === "payable" ? "payable" : "receivable",
     description: String(row["description"] ?? ""),
+    legal_entity: String(row["legal_entity"] ?? ""),
     property_id: (row["property_id"] as string | null) ?? null,
     status: row["status"] === "closed" ? "closed" : "open",
     created_at: String(row["created_at"] ?? ""),
@@ -108,7 +101,9 @@ function mapObligation(row: Record<string, unknown>): FinanceObligation {
 export async function fetchCounterparties(kind?: CounterpartyKind | "all") {
   let query = supabase
     .from("finance_counterparties")
-    .select("id, name, kind, client_id, comment, created_at, updated_at")
+    .select(
+      "id, name, kind, classification_id, requisites, client_id, comment, created_at, updated_at",
+    )
     .order("name", { ascending: true });
   if (kind && kind !== "all") query = query.eq("kind", kind);
   const { data, error } = await query;
@@ -119,7 +114,9 @@ export async function fetchCounterparties(kind?: CounterpartyKind | "all") {
 export async function fetchCounterparty(id: string) {
   const { data, error } = await supabase
     .from("finance_counterparties")
-    .select("id, name, kind, client_id, comment, created_at, updated_at")
+    .select(
+      "id, name, kind, classification_id, requisites, client_id, comment, created_at, updated_at",
+    )
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -129,15 +126,26 @@ export async function fetchCounterparty(id: string) {
 
 export async function saveCounterparty(
   id: string | null,
-  input: { name: string; kind: CounterpartyKind; client_id?: string | null; comment?: string },
+  input: {
+    name: string;
+    kind: CounterpartyKind;
+    client_id?: string | null;
+    comment?: string;
+    classification_id?: string | null;
+    requisites?: string;
+  },
 ) {
   const name = input.name.trim();
   if (!name) throw new Error("Укажите имя контрагента");
   const row = {
     name,
     kind: asCounterpartyKind(input.kind),
-    client_id: input.client_id || null,
-    comment: (input.comment ?? "").trim(),
+    ...(input.client_id !== undefined ? { client_id: input.client_id || null } : {}),
+    ...(input.comment !== undefined ? { comment: input.comment.trim() } : {}),
+    ...(input.classification_id !== undefined
+      ? { classification_id: input.classification_id }
+      : {}),
+    ...(input.requisites !== undefined ? { requisites: input.requisites.trim() } : {}),
   };
   if (id) {
     const { error } = await supabase
@@ -189,24 +197,31 @@ export async function ensureCounterparty(input: {
   return { id, name };
 }
 
-export async function fetchObligations(opts: {
-  counterpartyId?: string;
-  propertyId?: string;
-  status?: "open" | "closed" | "all";
-} = {}) {
+export async function fetchObligations(
+  opts: {
+    counterpartyId?: string;
+    propertyId?: string;
+    status?: "open" | "closed" | "all";
+  } = {},
+) {
   let query = supabase
     .from("finance_obligations")
     .select(
-      "id, counterparty_id, planned_date, amount, direction, description, property_id, status, created_at, properties(id, title, internal_name, ref_id)",
+      "id, counterparty_id, planned_date, amount, direction, description, legal_entity, property_id, status, created_at, properties(id, title, internal_name, ref_id)",
     )
     .order("planned_date", { ascending: false })
-    .limit(400);
+    .order("id", { ascending: true });
   if (opts.counterpartyId) query = query.eq("counterparty_id", opts.counterpartyId);
   if (opts.propertyId) query = query.eq("property_id", opts.propertyId);
   if (opts.status && opts.status !== "all") query = query.eq("status", opts.status);
-  const { data, error } = await query;
-  if (error) throw error;
-  return ((data ?? []) as Record<string, unknown>[]).map(mapObligation);
+  const rows: FinanceObligation[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await query.range(offset, offset + 499);
+    if (error) throw error;
+    const page = (data ?? []) as Record<string, unknown>[];
+    rows.push(...page.map(mapObligation));
+    if (page.length < 500) return rows;
+  }
 }
 
 export async function saveObligation(
@@ -217,6 +232,7 @@ export async function saveObligation(
     amount: number;
     direction: ObligationDirection;
     description?: string;
+    legal_entity?: string;
     property_id?: string | null;
     status?: "open" | "closed";
   },
@@ -230,6 +246,7 @@ export async function saveObligation(
     amount,
     direction: input.direction === "payable" ? "payable" : "receivable",
     description: (input.description ?? "").trim(),
+    ...(input.legal_entity !== undefined ? { legal_entity: input.legal_entity.trim() } : {}),
     property_id: input.property_id || null,
     status: input.status === "closed" ? "closed" : "open",
   };
@@ -255,53 +272,6 @@ export async function deleteObligation(id: string) {
   if (error) throw error;
 }
 
-export type CounterpartyOverview = {
-  theyOweUs: number;
-  transferredToUs: number;
-  weTransferred: number;
-  cashSaldo: number;
-  propertyIds: string[];
-};
-
-export function summarizeCounterparty(
-  payments: Payment[],
-  obligations: FinanceObligation[],
-  today = toISODate(new Date()),
-): CounterpartyOverview {
-  let theyOweUs = 0;
-  for (const item of obligations) {
-    if (item.status !== "open") continue;
-    if (item.direction === "receivable") theyOweUs += item.amount;
-    else theyOweUs -= item.amount;
-  }
-  let transferredToUs = 0;
-  let weTransferred = 0;
-  const propertyIds: string[] = [];
-  for (const payment of payments) {
-    const status = effectivePaymentStatus(payment, today);
-    const fact = payment.paid_amount ?? payment.amount;
-    if (status === "paid" || status === "partial") {
-      if (payment.direction === "in") transferredToUs += fact;
-      else weTransferred += fact;
-    }
-    if (payment.property_id && !propertyIds.includes(payment.property_id)) {
-      propertyIds.push(payment.property_id);
-    }
-  }
-  for (const item of obligations) {
-    if (item.property_id && !propertyIds.includes(item.property_id)) {
-      propertyIds.push(item.property_id);
-    }
-  }
-  return {
-    theyOweUs,
-    transferredToUs,
-    weTransferred,
-    cashSaldo: transferredToUs - weTransferred,
-    propertyIds,
-  };
-}
-
 export function kindFromPaymentDirection(
   direction: PaymentDirection,
   kind?: string,
@@ -315,16 +285,4 @@ export function kindFromPaymentDirection(
 
 export async function paymentsForCounterparty(counterpartyId: string) {
   return fetchPayments({ counterpartyId });
-}
-
-export function obligationCash(obligation: FinanceObligation, payments: Payment[]) {
-  const linked = payments.filter((payment) => payment.obligation_id === obligation.id);
-  let paid = 0;
-  for (const payment of linked) {
-    const status = effectivePaymentStatus(payment);
-    if (status === "paid" || status === "partial") {
-      paid += payment.paid_amount ?? payment.amount;
-    }
-  }
-  return { linked, paid, remaining: Math.max(0, obligation.amount - paid) };
 }

@@ -122,7 +122,7 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
             <Wrench className="size-4 shrink-0" />
             Обслуживание
           </Link>
-          <Link to="/finance/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
+          <Link to="/finance" onClick={onNavigate} className={NAV_LINK_CLASS}>
             <Wallet className="size-4 shrink-0" />
             Финансы
           </Link>
