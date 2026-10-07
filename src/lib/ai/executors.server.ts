@@ -1242,6 +1242,15 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Услуги объекта обновлены";
   },
 
+  createFinanceAccount: async input=>{
+    const name=String(input["name"]??"").trim();const type=String(input["type"]??"");
+    if(!name||!["bank","card","cash"].includes(type))throw new Error("Укажите название и тип счёта");
+    const {error}=await supabaseAdmin.from("finance_accounts").insert({name,type});if(error)throw new Error(error.message);return `Добавлен счёт «${name}»`;
+  },
+  archiveFinanceAccount:async input=>{
+    if(typeof input["archived"]!=="boolean")throw new Error("Укажите состояние счёта");
+    const {data,error}=await supabaseAdmin.from("finance_accounts").update({archived:input["archived"]}).eq("id",must(input["id"] as string,"Не указан счёт")).select("name").single();if(error)throw new Error(error.message);return `Счёт «${data.name}»: ${input["archived"]?"в архиве":"активен"}`;
+  },
   createPayment: async (input) => {
     const plannedDate = must(input["plannedDate"] as string, "Не указана дата");
     const amount = Number(input["amount"]);
@@ -1256,6 +1265,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       status,
       property_id: (input["propertyId"] as string | null) || null,
       client_id: (input["clientId"] as string | null) || null,
+      account: String(input["account"] ?? "Основной"),
       counterparty_name: String(input["counterpartyName"] ?? ""),
       counterparty_id: (input["counterpartyId"] as string | null) || null,
       obligation_id: (input["obligationId"] as string | null) || null,
@@ -1282,6 +1292,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   updatePayment: async (input) => {
     const paymentId = must(input["paymentId"] as string, "Не указан платёж");
     const patch: Record<string, unknown> = {};
+    if (input["account"] != null) patch["account"] = input["account"];
     if (input["plannedDate"] != null) patch["planned_date"] = input["plannedDate"];
     if (input["amount"] != null) patch["amount"] = Number(input["amount"]);
     if (input["direction"] != null) patch["direction"] = input["direction"];

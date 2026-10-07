@@ -2225,6 +2225,10 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    listFinanceAccounts: tool({
+      description: "Счета финансов: расчётные счета, карты и наличные. Активные и архивные; архивные не выбираются для новых операций.",
+      inputSchema:z.object({}),execute:async()=>{const {data,error}=await admin.from("finance_accounts").select("id,name,type,archived").order("name");return error?{error:error.message}:{accounts:data};},
+    }),
     getFinanceObjects: tool({
       description: "Финансовые карточки существующих объектов РМ ОС: классификации, прибыль/денежный поток за период, текущие обязательства. Только финансовые данные; без характеристик и фотографий недвижимости. При propertyId возвращает также операции и обязательства для корректировки.",
       inputSchema: z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),propertyId:z.string().uuid().optional(),classificationId:z.string().optional(),query:z.string().optional(),basis:z.enum(["cash","profit"]).default("profit")}),

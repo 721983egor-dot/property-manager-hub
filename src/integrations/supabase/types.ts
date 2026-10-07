@@ -770,6 +770,12 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_accounts: {
+        Row: { id: string; name: string; type: string; archived: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; name: string; type: string; archived?: boolean; created_at?: string; updated_at?: string };
+        Update: { name?: string; type?: string; archived?: boolean; updated_at?: string };
+        Relationships: [];
+      };
       finance_object_classes: {
         Row: { id: string; name: string; created_at: string; updated_at: string }
         Insert: { id?: string; name: string; created_at?: string; updated_at?: string }

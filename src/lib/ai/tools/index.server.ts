@@ -1,3 +1,4 @@
+// Finance accounts: listFinanceAccounts, proposeCreateFinanceAccount, proposeArchiveFinanceAccount.
 // Финансовые объекты: getFinanceObjects; save/delete/assignFinanceObjectClassification, updateFinanceObligation — только через подтверждение.
 // Финансовый дашборд, ДДС/ОПиУ/план-факт/объекты/долги: getFinanceAnalytics; политика статей: proposeSaveFinanceArticle.
 import { createReadTools } from "@/lib/ai/tools/read.server";

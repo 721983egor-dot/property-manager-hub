@@ -1119,6 +1119,16 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeCreateFinanceAccount: tool({
+      description:"Предложить добавить счёт финансов. Тип: bank — расчётный счёт, card — карта, cash — наличные. Требует подтверждения.",
+      inputSchema:z.object({name:z.string().trim().min(1),type:z.enum(["bank","card","cash"])}),
+      execute:async input=>{const names={bank:"расчётный счёт",card:"карта",cash:"наличные"};const summary=`Добавить счёт «${input.name}» (${names[input.type]})`;ctx.propose({tool:"createFinanceAccount",summary,input});return {proposed:true,summary};},
+    }),
+    proposeArchiveFinanceAccount: tool({
+      description:"Предложить архивировать или восстановить счёт. История операций сохраняется. Требует подтверждения.",
+      inputSchema:z.object({id:z.string().uuid(),archived:z.boolean()}),
+      execute:async input=>{const {data,error}=await ctx.admin.from("finance_accounts").select("name").eq("id",input.id).maybeSingle();if(error||!data)return {error:error?.message??"Счёт не найден"};const summary=`${input.archived?"В архив":"Восстановить"}: счёт «${data.name}»`;ctx.propose({tool:"archiveFinanceAccount",summary,input});return {proposed:true,summary};},
+    }),
     proposeCreatePayment: tool({
       description:
         "Предложить создание платежа в календаре Финансов: дата, сумма, приход/расход, статья, объект, контрагент, статус. Требует подтверждения менеджера.",
@@ -1140,6 +1150,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         status: z.enum(["expected", "partial", "paid"]).optional(),
         propertyRef: z.string().optional(),
         clientQuery: z.string().optional().describe("ФИО или телефон клиента CRM"),
+        account: z.string().trim().min(1).optional().describe("Название счёта из listFinanceAccounts"),
         counterpartyName: z.string().optional(),
         comment: z.string().optional(),
         paidAt: z.string().optional(),
@@ -1208,6 +1219,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (property) parts.push(`объект ${property.text}`);
         if (clientName) parts.push(clientName);
         else if (input.counterpartyName) parts.push(input.counterpartyName);
+        parts.push(`счёт: ${input.account ?? "Основной"}`);
         const summary = `Создать платёж: ${parts.join(", ")}`;
         ctx.propose({
           tool: "createPayment",
@@ -1221,6 +1233,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
             status: input.status ?? "expected",
             propertyId: property?.id ?? null,
             clientId,
+            account: input.account ?? "Основной",
             counterpartyName: input.counterpartyName ?? clientName ?? "",
             comment: input.comment ?? "",
             paidAt: input.paidAt ?? null,
@@ -1255,6 +1268,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         clearProperty: z.boolean().optional(),
         clientQuery: z.string().optional(),
         clearClient: z.boolean().optional(),
+        account: z.string().trim().min(1).optional().describe("Название счёта из listFinanceAccounts"),
         counterpartyName: z.string().optional(),
         comment: z.string().optional(),
         paidAt: z.string().optional(),
@@ -1298,6 +1312,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (input.status) parts.push(`статус → ${input.status}`);
         if (propertyText) parts.push(`объект → ${propertyText}`);
         if (clientName) parts.push(`клиент → ${clientName}`);
+        if(input.account)parts.push(`счёт → ${input.account}`);
         const summary = `Изменить платёж: ${parts.join(", ")}`;
         ctx.propose({
           tool: "updatePayment",
@@ -1313,6 +1328,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
             setProperty: propertyId !== undefined,
             clientId: clientId === undefined ? undefined : clientId,
             setClient: clientId !== undefined,
+            account: input.account ?? null,
             counterpartyName: input.counterpartyName ?? null,
             comment: input.comment ?? null,
             paidAt: input.paidAt ?? null,
@@ -1537,6 +1553,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         "Предложить обязательство контрагента: receivable = должен нам (мы передали), payable = мы должны. Требует подтверждения.",
       inputSchema: z.object({
         counterpartyId: z.string().optional(),
+        account: z.string().trim().min(1).optional().describe("Название счёта из listFinanceAccounts"),
         counterpartyName: z.string().optional(),
         plannedDate: z.string().describe("ГГГГ-ММ-ДД"),
         amount: z.number(),

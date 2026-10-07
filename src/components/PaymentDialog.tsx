@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { fetchFinanceAccounts, FINANCE_ACCOUNT_TYPES } from "@/lib/finance-accounts";
 import { Info } from "lucide-react";
 import "./finance-calendar.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,7 +33,6 @@ import {
   kindFromArticle,
 } from "@/lib/finance-articles";
 import {
-  PAYMENT_ACCOUNTS,
   buildPaymentSeriesDates,
   deletePayment,
   fetchFinancePropertyOptions,
@@ -182,6 +182,20 @@ export function PaymentDialog({
     enabled: open,
     staleTime: 60 * 1000,
   });
+  const accountsQuery = useQuery({
+    queryKey: ["finance-accounts"],
+    queryFn: fetchFinanceAccounts,
+    enabled: open,
+  });
+  const accountOptions = useMemo(
+    () =>
+      (accountsQuery.data ?? []).filter(
+        (a) => !a.archived || (!!payment && a.name === payment.account),
+      ),
+    [accountsQuery.data, payment],
+  );
+  const selectedAccountValid = accountOptions.some((a) => a.name === form.account);
+
   const articles = catalog?.articles;
   const categories = catalog?.categories;
   const articleList = useMemo(() => articles ?? [], [articles]);
@@ -221,6 +235,16 @@ export function PaymentDialog({
     defaultAmount,
     defaultObligationId,
   ]);
+
+  useEffect(() => {
+    if (
+      open &&
+      !payment &&
+      accountsQuery.data &&
+      !accountOptions.some((a) => a.name === form.account)
+    )
+      setForm((p) => ({ ...p, account: accountOptions[0]?.name ?? "" }));
+  }, [open, payment, accountsQuery.data, form.account, accountOptions]);
 
   const propertyOptions = useMemo(
     () => properties.map((p) => ({ id: p.id, label: financePropertyLabel(p) })),
@@ -265,6 +289,8 @@ export function PaymentDialog({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (accountsQuery.error || !selectedAccountValid)
+        throw new Error("Выберите действующий счёт в настройках финансов");
       const party = await ensureCounterparty({
         id: form.counterparty_id || null,
         name: form.counterparty_name,
@@ -416,13 +442,19 @@ export function PaymentDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PAYMENT_ACCOUNTS.map((account) => (
-                  <SelectItem key={account} value={account}>
-                    {account}
+                {accountOptions.map((account) => (
+                  <SelectItem key={account.id} value={account.name}>
+                    {account.name} · {FINANCE_ACCOUNT_TYPES[account.type]}
+                    {account.archived ? " · Архив" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {accountsQuery.isPending && <small>Загрузка счетов…</small>}
+            {accountsQuery.error && <small role="alert">Не удалось загрузить счета</small>}
+            {!accountsQuery.isPending && !accountsQuery.error && !accountOptions.length && (
+              <small>Добавьте счёт в настройках финансов</small>
+            )}
           </Field>
           <Field label="Статья">
             <Select
@@ -660,6 +692,9 @@ export function PaymentDialog({
             type="button"
             className="finance-save-button"
             disabled={
+              !selectedAccountValid ||
+              accountsQuery.isPending ||
+              !!accountsQuery.error ||
               !form.planned_date ||
               !Number.isFinite(Number(form.amount)) ||
               Number(form.amount) <= 0 ||
