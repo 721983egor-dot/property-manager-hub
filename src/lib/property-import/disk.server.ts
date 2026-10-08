@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { diskShareUrl, MAX_IMPORT_BYTES, MAX_IMPORT_PHOTOS, MAX_PHOTO_BYTES } from "./model.ts";
+import { diskShareUrl, MAX_IMPORT_BYTES, MAX_SOURCE_PHOTOS, MAX_PHOTO_BYTES } from "./model.ts";
 
 type Resource = {
   type: string;
@@ -53,7 +53,7 @@ export async function inspectDiskPhotos(value: string, request: Fetcher = fetch)
       const items = resource.type === "file" ? [resource] : resource._embedded?.items;
       if (!Array.isArray(items)) throw new Error("Яндекс Диск не вернул список файлов");
       for (const item of items) {
-        if (++visited > 300)
+        if (++visited > 1000)
           throw new Error("В папке слишком много файлов. Создайте отдельную папку с фото объекта.");
         if (item.type === "dir") {
           await walk(item.path, depth + 1);
@@ -69,7 +69,7 @@ export async function inspectDiskPhotos(value: string, request: Fetcher = fetch)
         if (!Number.isSafeInteger(item.size) || item.size! <= 0 || item.size! > MAX_PHOTO_BYTES)
           throw new Error(`Фото «${item.name}» должно быть не больше 10 МБ`);
         bytes += item.size!;
-        if (bytes > MAX_IMPORT_BYTES) throw new Error("Общий размер фотографий больше 150 МБ");
+        if (bytes > MAX_IMPORT_BYTES) throw new Error("Общий размер фотографий больше 2 ГБ");
         files.push({
           name: item.name,
           path: item.path,
@@ -77,9 +77,9 @@ export async function inspectDiskPhotos(value: string, request: Fetcher = fetch)
           md5: item.md5 ?? "",
           modified: item.modified ?? "",
         });
-        if (files.length > MAX_IMPORT_PHOTOS)
+        if (files.length > MAX_SOURCE_PHOTOS)
           throw new Error(
-            `За один раз можно добавить до ${MAX_IMPORT_PHOTOS} фото. Уменьшите папку.`,
+            `Для автоматического просмотра поддерживается до ${MAX_SOURCE_PHOTOS} фото в папке объекта.`,
           );
       }
       if (resource.type === "file" || offset + items.length >= (resource._embedded?.total ?? 0))

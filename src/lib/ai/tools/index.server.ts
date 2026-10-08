@@ -1,5 +1,5 @@
 // Rental copy: draftRentalDescription; import proposal includes copy; property update supports locationDescription.
-// Rental import: inspectYandexDiskPhotos, proposeImportRentalFromDisk; confirmed importRentalFromDisk.
+// Rental import: inspectYandexDiskPhotos, selectYandexDiskPhotos (all-source vision selection), proposeImportRentalFromDisk; confirmed importRentalFromDisk.
 // Owner settlements: getOwnerSettlements; proposeOwnerPayoutSettings, proposeCreateOwnerSettlement, proposePayOwnerSettlement (confirmed administrator actions).
 // Finance accounts: listFinanceAccounts, proposeCreateFinanceAccount, proposeArchiveFinanceAccount.
 // Финансовые объекты: getFinanceObjects; save/delete/assignFinanceObjectClassification, updateFinanceObligation — только через подтверждение.

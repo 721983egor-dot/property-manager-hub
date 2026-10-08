@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { overlayPhotoWatermark } from "@/lib/photo-watermark.server";
+import { approvedPhotos } from "./selection-model";
 import { z } from "zod";
 import { getRequest } from "@tanstack/react-start/server";
 import { inspectDiskPhotos, downloadDiskPhoto } from "./disk.server";
@@ -24,10 +25,13 @@ async function possibleDuplicates(input: z.infer<typeof rentalImportSchema>) {
 export async function prepareRentalImport(raw: unknown) {
   let input = rentalImportSchema.parse(raw);
   const inspection = await inspectDiskPhotos(input.diskUrl);
+  const { selectRentalPhotos } = await import("./selection.server");
+  const photoSelection = await selectRentalPhotos(inspection);
+  const selectedFiles = approvedPhotos(inspection.files, photoSelection.selectedPaths);
   let copyReview: Awaited<ReturnType<typeof import("./copy.server").draftRentalCopy>> | null = null;
   if (!input.description?.trim() || !input.locationDescription?.trim()) {
     const { draftRentalCopy } = await import("./copy.server");
-    copyReview = await draftRentalCopy(input, inspection);
+    copyReview = await draftRentalCopy(input, { ...inspection, files: selectedFiles });
     input = {
       ...input,
       description: input.description?.trim() || copyReview.description,
@@ -41,14 +45,20 @@ export async function prepareRentalImport(raw: unknown) {
       importId: crypto.randomUUID(),
       fingerprint: inspection.fingerprint,
       duplicateIds: duplicates.map((p) => p.id),
+      selectedPaths: photoSelection.selectedPaths,
+      photoSelection,
       ...(copyReview ? { copyReview } : {}),
     },
     summary:
       rentalImportSummary(
         input,
-        inspection.files,
+        selectedFiles,
         duplicates.map((p) => p.title),
       ) +
+      `
+Просмотрено ${photoSelection.photosAnalyzed} из ${photoSelection.totalPhotos} фото; выбрано ${selectedFiles.length}, исключено ${photoSelection.rejectedCount}. Первое фото — обложка.
+` +
+      photoSelection.selected.map((p) => `• ${p.name}: ${p.reason}`).join("\n") +
       (inspection.ignored ? `\nПропущено файлов других форматов: ${inspection.ignored}` : "") +
       (copyReview
         ? [
@@ -99,6 +109,7 @@ export async function executeRentalImport(raw: unknown): Promise<string> {
       importId: z.string().uuid(),
       fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
       duplicateIds: z.array(z.string().uuid()),
+      selectedPaths: z.array(z.string()).min(1).max(20).optional(),
     })
     .parse(raw);
   const resultText = (id: string) =>
@@ -118,10 +129,11 @@ export async function executeRentalImport(raw: unknown): Promise<string> {
     throw new Error(
       "За время проверки появился похожий объект. Отправьте данные повторно для проверки дублей.",
     );
+  const selectedFiles = approvedPhotos(inspection.files, confirmation.selectedPaths);
   const paths: string[] = [];
   let insertAttempted = false;
   try {
-    for (const file of inspection.files) {
+    for (const file of selectedFiles) {
       const source = await downloadDiskPhoto(input.diskUrl, file);
       const marked = await overlayPhotoWatermark(source);
       const path = `uploads/${crypto.randomUUID()}-logo.jpg`;

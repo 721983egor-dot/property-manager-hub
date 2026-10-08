@@ -95,7 +95,7 @@ mock.module(uri + "src/lib/property-import/disk.server.ts", {
     inspectDiskPhotos: async () => {
       inspected++;
       return {
-        files: [{ name: "1.jpg" }, { name: "2.jpg" }],
+        files: [{ name: "1.jpg", path: "/1.jpg", md5: "one" }, { name: "2.jpg", path: "/2.jpg", md5: "two" }],
         fingerprint: mode === "changed" ? "b".repeat(64) : "a".repeat(64),
         ignored: 0,
       };
@@ -295,6 +295,14 @@ mock.module(import.meta.resolve("ai"), {
     Output: { object: (value) => value },
     generateText: async (options) => {
       generationCalls++;
+      if (options.system.startsWith("Оцени КАЖДОЕ")) {
+        if (copyMode === "selection-fail") throw Error("selection vision unavailable");
+        const ids = options.messages[0].content.filter(p => p.type === "text").map(p => Number(p.text.match(/ID (\d+)/)[1]));
+        return { output: { photos: (copyMode === "selection-incomplete" ? ids.slice(1) : ids).map(id => ({ id, suitable: copyMode !== "selection-unsuitable", score: 95-id, scene: `room ${id}`, reason: "Хороший свет" })) } };
+      }
+      if (options.system.startsWith("Собери фотогалерею")) {
+        return { output: { ids: JSON.parse(options.prompt).slice(-20).reverse().map(p => p.id) } };
+      }
       if (options.messages) {
         imageParts = options.messages[0].content.filter((part) => part.type === "image").length;
         if (copyMode === "vision-fail") throw Error("vision unavailable");
@@ -392,3 +400,28 @@ else process.env.OPENAI_API_KEY = originalKey;
 console.log(
   "PASS: image parts sent, six-photo sampling, provider-grounded location, vision/search fallback, existing copy preservation, proposal review and confirmed text persistence",
 );
+
+// More than 20: actual selection orchestrator must evaluate every image, then preserve cover order.
+process.env.OPENAI_API_KEY = "test-only";
+copyMode = "";
+const { selectRentalPhotos } = await import(uri + "src/lib/property-import/selection.server.ts");
+const gallery = { ...inspection, files: Array.from({ length: 41 }, (_, id) => ({ name: `${id}.jpg`, path: `/${id}.jpg`, md5: `${id}` })) };
+const selection = await selectRentalPhotos(gallery);
+assert.equal(selection.photosAnalyzed, 41);
+assert.equal(selection.selectedPaths.length, 20);
+assert.equal(selection.selectedPaths[0], "/40.jpg");
+assert.equal(selection.rejectedCount, 21);
+for (const failed of ["selection-fail", "selection-incomplete", "selection-unsuitable"]) {
+  copyMode = failed;
+  await assert.rejects(selectRentalPhotos(gallery), /Не удалось|не найдено/);
+}
+copyMode = "";
+reset();
+await executeRentalImport({ ...input, selectedPaths: ["/2.jpg"] });
+assert.equal(rows[0].photos.length, 1);
+assert.equal(uploaded.length, 1);
+reset();
+await assert.rejects(executeRentalImport({ ...input, selectedPaths: ["/missing.jpg"] }), /отсутствует/);
+assert.equal(uploaded.length, 0);
+if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
+console.log("PASS: all 41 source images evaluated; 20 selected, cover order preserved; only confirmed paths uploaded; missing path rejected before storage");

@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const MAX_IMPORT_PHOTOS = 20;
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
-export const MAX_IMPORT_BYTES = 150 * 1024 * 1024;
+export const MAX_IMPORT_BYTES = 2 * 1024 * 1024 * 1024;
+export const MAX_SOURCE_PHOTOS = 300;
 
 export function diskShareUrl(value: string): string {
   const url = new URL(value);

@@ -122,7 +122,7 @@ test("empty, private, oversized and too many photos fail before mutation", async
   for (const items of [
     [],
     [{ ...file, size: 11 * 1024 * 1024 }],
-    Array.from({ length: 21 }, () => file),
+    Array.from({ length: 301 }, () => file),
   ]) {
     await assert.rejects(
       inspectDiskPhotos(link, async () =>
@@ -167,4 +167,12 @@ test("download validates bytes against approved metadata", async () => {
     downloadDiskPhoto(link, { ...file, md5: "invalid", modified: "" }, fake),
     /изменились/,
   );
+});
+
+test("source folder may contain more than 20 photos for automatic selection", async () => {
+  const items = Array.from({ length: 40 }, (_, i) => ({ ...file, path: `/${i}.jpg` }));
+  const result = await inspectDiskPhotos(link, async () =>
+    json({ type: "dir", _embedded: { total: items.length, items } }),
+  );
+  assert.equal(result.files.length, 40);
 });

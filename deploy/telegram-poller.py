@@ -154,7 +154,7 @@ def main() -> None:
                         WEBHOOK_URL,
                         upd,
                         headers={"X-Telegram-Bot-Api-Secret-Token": secret},
-                        timeout=180,
+                        timeout=1800,
                     )
                     print(f"forwarded update_id={uid}", flush=True)
                 except Exception as e:
