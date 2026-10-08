@@ -1,3 +1,4 @@
+// Rental finance: getFinanceRentalTerms; proposeManagementFee, proposeManagementFeePayment (admin confirmation).
 // Import review: compact parameters + description; Telegram suppresses duplicate model preamble.
 // Rental copy: draftRentalDescription; import proposal includes copy; property update supports locationDescription.
 // Rental import: inspectYandexDiskPhotos, selectYandexDiskPhotos (all-source vision selection), proposeImportRentalFromDisk; confirmed importRentalFromDisk.

@@ -25,6 +25,7 @@ const today = () =>
   }).format(new Date());
 export function OwnerSettlementsPanel({
   propertyId,
+  suggestedAmount,
   month,
   settings,
   parties,
@@ -32,6 +33,7 @@ export function OwnerSettlementsPanel({
   payments,
 }: {
   propertyId: string;
+  suggestedAmount?: number | null;
   month: string;
   settings?: FinanceObjectAssignment | undefined;
   parties: FinanceCounterparty[];
@@ -179,6 +181,15 @@ export function OwnerSettlementsPanel({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
+          {suggestedAmount != null && suggestedAmount > 0 && (
+            <button
+              type="button"
+              className="fa-debt-link text-sm"
+              onClick={() => setAmount(String(suggestedAmount))}
+            >
+              Из аренды: {formatAdeskMoney(suggestedAmount)} до расходов
+            </button>
+          )}
         </label>
         <label className="flex flex-col gap-1">
           Юридическое лицо

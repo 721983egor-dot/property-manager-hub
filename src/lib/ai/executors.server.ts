@@ -1246,6 +1246,14 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Услуги объекта обновлены";
   },
 
+  saveManagementFee:async input=>{
+    const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const percent=Number(input["value"]),type=input["type"];
+    if(!Number.isFinite(percent)||percent<0||(type==="percent"&&percent>100)||!["percent","amount"].includes(String(type)))throw new Error("Комиссия от 0 до 100%");
+    const {error}=await client.from("properties").update({management_fee_value:percent,management_fee_type:type as "percent"|"amount"}).eq("id",String(input["propertyId"])).eq("portfolio","rm").select("id").single();if(error)throw new Error(error.message);return "Комиссия за управление сохранена";
+  },
+  createManagementFeePayment:async input=>{
+    const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const {error}=await client.rpc("create_management_fee_payment",{p_booking_id:String(input["bookingId"]),p_period:String(input["month"])+"-01",p_expected_amount:Number(input["amount"])});if(error)throw new Error(error.message);return "Плановый доход компании добавлен в финансы";
+  },
   saveOwnerPayoutSettings:async input=>{
     const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const day=Number(input["day"]);if(!Number.isInteger(day)||day<1||day>31)throw new Error("День от 1 до 31");const {error}=await client.from("finance_object_settings").upsert({property_id:String(input["propertyId"]),owner_counterparty_id:String(input["ownerId"]),payout_day:day},{onConflict:"property_id"});if(error)throw new Error(error.message);return "Условия выплаты сохранены";
   },

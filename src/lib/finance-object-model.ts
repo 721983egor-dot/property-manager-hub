@@ -9,8 +9,8 @@ import {
   paidAmount,
   type ReportBasis,
 } from "./finance-analytics.ts";
-export function filterFinanceObjects(
-  properties: FinancePropertyOption[],
+export function filterFinanceObjects<T extends FinancePropertyOption>(
+  properties: T[],
   assignments: FinanceObjectAssignment[],
   classificationId = "all",
   query = "",

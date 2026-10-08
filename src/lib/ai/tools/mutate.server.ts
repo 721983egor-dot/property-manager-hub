@@ -1131,6 +1131,25 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeManagementFee: tool({
+      description:"Предложить отдельную ежемесячную комиссию за управление объектом, процент от аренды до расходов. Не комиссия из объявления. Требует подтверждения администратора в РМ ОС.",
+      inputSchema:z.object({propertyId:z.string().uuid(),value:z.number().nonnegative().max(100000000),type:z.enum(["percent","amount"])}),execute:async input=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
+        const p=await ctx.admin.from("properties").select("title,internal_name").eq("id",input.propertyId).eq("portfolio","rm").maybeSingle();if(!p.data)return {error:"Объект РМ ОС не найден"};
+        const summary=`Комиссия за управление «${p.data.internal_name||p.data.title}»: ${input.value} (${input.type}) от договорной аренды до расходов`;ctx.propose({tool:"saveManagementFee",summary,input});return {proposed:true,summary};
+      },
+    }),
+    proposeManagementFeePayment: tool({
+      description:"Предложить ожидаемый доход компании за месяц по договору аренды и комиссии за управление. Не отмечает деньги полученными, не начисляет всю аренду в доход компании. Повтор не создаёт дубль. Требует подтверждения администратора в РМ ОС.",
+      inputSchema:z.object({bookingId:z.string().uuid(),month:z.string().regex(/^\d{4}-\d{2}$/)}),execute:async input=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
+        const b=await ctx.admin.from("bookings").select("id,property_id,start_date,end_date,price_type,price_month,payment_day,status,stay_kind,booking_price_periods(start_date,end_date,price_month)").eq("id",input.bookingId).maybeSingle();if(!b.data)return {error:"Договор не найден"};
+        const settings=await ctx.admin.from("properties").select("management_fee_type,management_fee_value").eq("id",b.data.property_id).eq("portfolio","rm").maybeSingle();
+        const {rentalMonthPlan}=await import("@/lib/finance-rental-model");const plan=rentalMonthPlan(b.data,input.month,settings.data?.management_fee_value??null,settings.data?.management_fee_type);
+        if(!plan.scheduled||plan.fee==null||plan.fee<=0)return {error:"Нет планового платежа или не задана комиссия"};
+        const summary=`Доход компании за ${input.month}: ${money(plan.fee)}, ожидается ${plan.due}. Фактическая оплата не отмечается.`;ctx.propose({tool:"createManagementFeePayment",summary,input:{...input,amount:plan.fee}});return {proposed:true,summary};
+      },
+    }),
     proposeOwnerPayoutSettings: tool({
       description:"Предложить установить собственника и ежемесячный день выплаты для объекта. Только администратору в РМ ОС, с подтверждением.",
       inputSchema:z.object({propertyId:z.string().uuid(),ownerId:z.string().uuid(),day:z.number().int().min(1).max(31)}),execute:async input=>{

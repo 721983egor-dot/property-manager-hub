@@ -186,6 +186,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          stay_kind: "long_term" | "short_stay"
           client_id: string
           comment: string
           created_at: string
@@ -202,6 +203,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          stay_kind?: "long_term" | "short_stay"
           client_id: string
           comment?: string
           created_at?: string
@@ -218,6 +220,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          stay_kind?: "long_term" | "short_stay"
           client_id?: string
           comment?: string
           created_at?: string
@@ -1101,6 +1104,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["payment_kind"]
           property_id: string | null
           client_id: string | null
+          management_period: string | null
           booking_id: string | null
           deal_id: string | null
           counterparty_name: string
@@ -1124,6 +1128,7 @@ export type Database = {
           kind?: Database["public"]["Enums"]["payment_kind"]
           property_id?: string | null
           client_id?: string | null
+          management_period?: string | null
           booking_id?: string | null
           deal_id?: string | null
           counterparty_name?: string
@@ -1147,6 +1152,7 @@ export type Database = {
           kind?: Database["public"]["Enums"]["payment_kind"]
           property_id?: string | null
           client_id?: string | null
+          management_period?: string | null
           booking_id?: string | null
           deal_id?: string | null
           counterparty_name?: string
@@ -1305,6 +1311,7 @@ export type Database = {
       }
       properties: {
         Row: {
+          portfolio: "rm" | "h11"
           address: string
           appliances: string[]
           area: number | null
@@ -1355,6 +1362,7 @@ export type Database = {
           wc_location_type: string
         }
         Insert: {
+          portfolio?: "rm" | "h11"
           address?: string
           appliances?: string[]
           area?: number | null
@@ -1405,6 +1413,7 @@ export type Database = {
           wc_location_type?: string
         }
         Update: {
+          portfolio?: "rm" | "h11"
           address?: string
           appliances?: string[]
           area?: number | null
@@ -2498,6 +2507,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_management_fee_payment: { Args: {p_booking_id: string; p_period: string; p_expected_amount: number}; Returns: string }
+
       create_owner_settlement: { Args: { p_property_id:string; p_period:string; p_amount:number; p_legal_entity:string }; Returns:string };
       pay_owner_settlement: { Args: { p_obligation_id:string; p_amount:number; p_account:string; p_paid_date:string; p_request_id:string }; Returns:string };
 

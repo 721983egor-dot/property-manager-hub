@@ -37,6 +37,7 @@ export const PAYMENT_KINDS: { value: PaymentKind; label: string; direction: Paym
 export const PAYMENT_ACCOUNTS = ["Основной", "Касса"] as const;
 
 export type Payment = {
+  management_period?: string | null;
   id: string;
   planned_date: string;
   amount: number;
@@ -96,9 +97,9 @@ export type PaymentInput = {
 };
 
 const PAYMENT_SELECT =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, finance_article_categories(id, name))";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, finance_article_categories(id, name))";
 const PAYMENT_SELECT_LEGACY =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -152,6 +153,7 @@ function mapPayment(row: Record<string, unknown>): Payment {
     property_id: (row["property_id"] as string | null) ?? null,
     client_id: (row["client_id"] as string | null) ?? null,
     booking_id: (row["booking_id"] as string | null) ?? null,
+    management_period: (row["management_period"] as string | null) ?? null,
     deal_id: (row["deal_id"] as string | null) ?? null,
     counterparty_id: (row["counterparty_id"] as string | null) ?? null,
     counterparty_name: String(row["counterparty_name"] ?? ""),

@@ -1,3 +1,6 @@
+import { RentalFinancePanel } from "./RentalFinancePanel";
+import { fetchFinanceObjectProperties, fetchFinanceRentals } from "@/lib/finance-rentals";
+import { financeToday, rentalForProperty, rentalMonthPlan } from "@/lib/finance-rental-model";
 import { OwnerSettlementsPanel } from "./OwnerSettlementsPanel";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -18,7 +21,6 @@ import { FinanceTabs } from "./FinanceTabs";
 import { PaymentDialog } from "./PaymentDialog";
 import { FinanceObjectObligationDialog } from "./FinanceObjectObligationDialog";
 import {
-  fetchFinanceReportPropertyOptions,
   fetchPayments,
   financePropertyLabel,
   formatAdeskMoney,
@@ -60,9 +62,11 @@ export function FinanceObjectCard({ id }: { id: string }) {
     );
   const bounds = monthBounds(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1);
   const properties = useQuery({
-    queryKey: ["finance-properties", "all"],
-    queryFn: () => fetchFinanceReportPropertyOptions(),
+    queryKey: ["finance-object-properties", "all"],
+    queryFn: () => fetchFinanceObjectProperties(true),
   });
+  const rentals = useQuery({ queryKey: ["finance-rentals"], queryFn: fetchFinanceRentals });
+  const rental = rentalForProperty(rentals.data ?? [], id, financeToday());
   const payments = useQuery({
     queryKey: ["payments", "analytics"],
     queryFn: () => fetchPayments(),
@@ -80,6 +84,11 @@ export function FinanceObjectCard({ id }: { id: string }) {
     queryKey: ["finance-object-settings"],
     queryFn: fetchFinanceObjectAssignments,
   });
+  const rentalProperty = properties.data?.find((p) => p.id === id);
+  const managementRate = rentalProperty?.management_fee_value ?? null;
+  const rentalPlan = rental.booking
+    ? rentalMonthPlan(rental.booking, month, managementRate, rentalProperty?.management_fee_type)
+    : null;
   const parties = useQuery({
     queryKey: ["finance-counterparties"],
     queryFn: () => fetchCounterparties(),
@@ -96,12 +105,26 @@ export function FinanceObjectCard({ id }: { id: string }) {
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось сохранить"),
   });
-  const error = [properties, payments, catalog, obligations, groups, assignments, parties].find(
-    (q) => q.error,
-  )?.error;
-  const loading = [properties, payments, catalog, obligations, groups, assignments, parties].some(
-    (q) => q.isPending,
-  );
+  const error = [
+    properties,
+    payments,
+    catalog,
+    obligations,
+    groups,
+    assignments,
+    parties,
+    rentals,
+  ].find((q) => q.error)?.error;
+  const loading = [
+    properties,
+    payments,
+    catalog,
+    obligations,
+    groups,
+    assignments,
+    parties,
+    rentals,
+  ].some((q) => q.isPending);
   const summary = useMemo(
     () =>
       objectFinanceSummary(
@@ -211,6 +234,15 @@ export function FinanceObjectCard({ id }: { id: string }) {
           <div className="finance-object-overview">
             <span>Обзор</span>
           </div>
+          <RentalFinancePanel
+            propertyId={id}
+            booking={rental.booking}
+            conflict={rental.conflict}
+            month={month}
+            percent={managementRate}
+            feeType={rentalProperty?.management_fee_type ?? "percent"}
+            payments={payments.data ?? []}
+          />
           <div className="fa-toolbar">
             <div className="finance-segments">
               <button aria-pressed={basis === "profit"} onClick={() => setBasis("profit")}>
@@ -311,6 +343,9 @@ export function FinanceObjectCard({ id }: { id: string }) {
 
           <OwnerSettlementsPanel
             propertyId={id}
+            suggestedAmount={
+              rentalPlan?.scheduled && !rental.conflict ? rentalPlan.ownerBeforeExpenses : null
+            }
             month={month}
             settings={assignments.data?.find((a) => a.property_id === id)}
             parties={parties.data ?? []}

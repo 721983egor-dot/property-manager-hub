@@ -2269,6 +2269,23 @@ export function createReadTools(ctx: AssistantToolContext) {
       description: "Счета финансов: расчётные счета, карты и наличные. Активные и архивные; архивные не выбираются для новых операций.",
       inputSchema:z.object({}),execute:async()=>{const {data,error}=await admin.from("finance_accounts").select("id,name,type,archived").order("name");return error?{error:error.message}:{accounts:data};},
     }),
+    getFinanceRentalTerms: tool({
+      description: "Договорная аренда объектов РМ ОС для финансов: сроки, день оплаты, цена из договора/периодов, отдельная комиссия за управление, доход компании и собственнику до расходов. Это план, не полученные деньги. Только администратор. Не использовать комиссию из объявления.",
+      inputSchema: z.object({month:z.string().regex(/^\d{4}-\d{2}$/),propertyId:z.string().uuid().optional()}),
+      execute:async ({month,propertyId})=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
+        const {rentalForProperty,rentalMonthPlan,financeToday}=await import("@/lib/finance-rental-model");
+        const [properties,bookings]=await Promise.all([
+          allFinancePages((start,end)=>admin.from("properties").select("id,title,internal_name,status,management_fee_type,management_fee_value").eq("portfolio","rm").neq("status","archived").order("id").range(start,end)),
+          allFinancePages((start,end)=>admin.from("bookings").select("id,property_id,start_date,end_date,price_type,price_month,payment_day,status,stay_kind,booking_price_periods(start_date,end_date,price_month)").eq("status","active").eq("stay_kind","long_term").order("id").range(start,end))]);
+        const error=properties.error??bookings.error;if(error)return {error:error.message};
+        return {month,objects:(properties.data??[]).filter(p=>!propertyId||p.id===propertyId).map(p=>{
+          const rental=rentalForProperty(bookings.data as unknown as import("@/lib/finance-rental-model").FinanceRental[],p.id,financeToday());
+          const percent=p.management_fee_value??null;
+          return {id:p.id,name:p.internal_name||p.title,booking:rental.booking,conflict:rental.conflict,managementFeeValue:percent,managementFeeType:p.management_fee_type,plan:rental.booking?rentalMonthPlan(rental.booking,month,percent,p.management_fee_type):null};
+        })};
+      },
+    }),
     getFinanceObjects: tool({
       description: "Финансовые карточки существующих объектов РМ ОС: классификации, прибыль/денежный поток за период, текущие обязательства. Только финансовые данные; без характеристик и фотографий недвижимости. При propertyId возвращает также операции и обязательства для корректировки.",
       inputSchema: z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),propertyId:z.string().uuid().optional(),classificationId:z.string().optional(),query:z.string().optional(),basis:z.enum(["cash","profit"]).default("profit")}),
