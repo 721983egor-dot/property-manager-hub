@@ -62,35 +62,47 @@ export function matchingRentalObjects<
   );
 }
 
-export function rentalImportSummary(
+/** Compact review: parameters first, description separately. Detailed analysis stays in proposal input. */
+export function rentalImportPresentation(
   input: RentalImport,
-  files: { name: string }[],
+  photoCount: number,
   duplicates: string[],
-): string {
-  return [
-    `Создать в РМ ОС: ${input.title}`,
-    "Долгосрочная аренда · цена за месяц",
+) {
+  const parameters = [
+    "Создать объект в РМ ОС?",
     `Адрес: ${input.address}`,
     `${input.rooms === 0 ? "Студия" : input.rooms + " комн."} · ${input.area} м²` +
       (input.floor !== undefined
         ? ` · этаж ${input.floor}${input.totalFloors ? "/" + input.totalFloors : ""}`
         : ""),
-    `Аренда: ${input.priceMonth.toLocaleString("ru-RU")} ₽/мес`,
-    input.internalName ? `Внутреннее название: ${input.internalName}` : "",
+    `Долгосрочная аренда: ${input.priceMonth.toLocaleString("ru-RU")} ₽/мес`,
+    input.internalName ? `Название: ${input.internalName}` : "",
     input.complexName ? `ЖК: ${input.complexName}` : "",
     input.bathrooms !== undefined ? `Санузлы: ${input.bathrooms}` : "",
     input.deposit !== undefined ? `Залог: ${input.deposit.toLocaleString("ru-RU")} ₽` : "",
     input.commission !== undefined ? `Комиссия: ${input.commission.toLocaleString("ru-RU")} ₽` : "",
-    input.description ? `Описание: ${input.description}` : "",
-    input.locationDescription ? `Локация: ${input.locationDescription}` : "",
-    `Фото: ${files.length}, с водяным знаком Резиденция Море`,
-    ...files.map((f) => `• ${f.name}`),
-    `Источник фото: ${input.diskUrl}`,
+    `Фото: ${photoCount}`,
     duplicates.length
       ? `Возможные дубли: ${duplicates.join(", ")}. Проверьте перед подтверждением.`
-      : "Совпадений по адресу, комнатам и площади не найдено.",
-    "Объект появится в РМ ОС. Публикация на сайте и площадках — отдельное действие.",
+      : "",
   ]
     .filter(Boolean)
     .join("\n");
+  const description = [
+    "Описание",
+    input.description || "Описание пока не заполнено.",
+    input.locationDescription ? `\nЛокация\n${input.locationDescription}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return { parameters, description };
+}
+
+export function rentalImportSummary(
+  input: RentalImport,
+  files: { name: string }[],
+  duplicates: string[],
+): string {
+  const view = rentalImportPresentation(input, files.length, duplicates);
+  return `${view.parameters}\n\n${view.description}`;
 }

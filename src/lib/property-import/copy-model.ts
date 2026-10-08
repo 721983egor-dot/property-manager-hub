@@ -20,14 +20,14 @@ export const rentalCopyInputSchema = z.object({
 });
 export type RentalCopyInput = z.infer<typeof rentalCopyInputSchema>;
 export const visionCopySchema = z.object({
-  description: z.string().min(1).max(5000),
+  description: z.string().min(1).max(1200),
   visibleFeatures: z.array(z.string().max(300)).max(15),
   questions: z.array(z.string().max(300)).max(10),
 });
 export const locationResearchSchema = z.object({
   addressMatched: z.boolean(),
   // URI format is unsupported by the configured strict-output API; URLs are checked against real search sources below.
-  facts: z.array(z.object({ text: z.string().max(500), sourceUrl: z.string().max(1000) })).max(5),
+  facts: z.array(z.object({ text: z.string().max(180), sourceUrl: z.string().max(1000) })).max(3),
   questions: z.array(z.string().max(300)).max(5),
 });
 

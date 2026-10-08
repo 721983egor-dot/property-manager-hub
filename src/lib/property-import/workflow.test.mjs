@@ -165,6 +165,8 @@ console.log(
 );
 
 // Exercise the real Telegram callback handler with an isolated database and API.
+let assistantReply = {text:"",actions:[],error:""};
+mock.module(uri + "src/lib/ai/run.server.ts", {namedExports:{askAssistantCore: async () => assistantReply}});
 let actionCalls = 0;
 const sent = [];
 mock.module(uri + "src/lib/telegram/api.server.ts", {
@@ -250,7 +252,7 @@ admin.from = (table) => {
   };
   return q;
 };
-const { handleTelegramUpdate } = await import(uri + "src/lib/telegram/assistant.server.ts");
+const { handleTelegramUpdate, sendAssistantReply } = await import(uri + "src/lib/telegram/assistant.server.ts");
 const callback = (kind = "do", user = 12, chat = 12) => ({
   update_id: 1,
   callback_query: {
@@ -284,6 +286,23 @@ assert.equal(actionCalls, 0);
 console.log(
   "PASS: Telegram simultaneous confirmation executes once, author/chat binding, edit invalidates old confirmation, cancellation prevents creation",
 );
+
+// Import review sends exactly two messages, without the model's repeated draft.
+pending();
+assistantReply = {text:"ОГРОМНЫЙ ПОВТОРНЫЙ ЧЕРНОВИК",error:"",actions:[{
+  id:input.importId,tool:"importRentalFromDisk",summary:"old verbose summary 1.jpg",
+  input:JSON.stringify({...input,description:"Квартира со светлой кухней.",locationDescription:"Центр Сочи.",selectedPaths:["/1.jpg","/2.jpg"],duplicateTitles:[]})
+}]};
+await sendAssistantReply(12,[],12);
+assert.equal(sent.length,2);
+assert.match(sent[0],/Создать объект в РМ ОС/);
+assert.match(sent[1],/Описание\nКвартира/);
+assert.doesNotMatch(sent.join("\n"),/ОГРОМНЫЙ|1\.jpg|old verbose/);
+sent.length=0;
+assistantReply={text:"Уточните цену за месяц и число комнат.",error:"",actions:[]};
+await sendAssistantReply(12,[],12);
+assert.deepEqual(sent,[assistantReply.text]);
+console.log("PASS: Telegram import sends parameters and description once; missing facts produce one question message");
 
 // Test the actual vision/location orchestrator without network or live model calls.
 let copyMode = "",
@@ -390,7 +409,8 @@ copyMode = "";
 const copyProposal = await prepareRentalImport(input);
 assert.match(copyProposal.input.description, /диваном/);
 assert.match(copyProposal.input.locationDescription, /Проверенная/);
-assert.match(copyProposal.summary, /Источник локации/);
+assert.doesNotMatch(copyProposal.summary, /Источник локации|Хороший свет|1\.jpg/);
+assert.ok(copyProposal.input.copyReview.locationSources.length > 0);
 assert.equal(rows.length, 0);
 await executeRentalImport(copyProposal.input);
 assert.equal(rows[0].description, copyProposal.input.description);

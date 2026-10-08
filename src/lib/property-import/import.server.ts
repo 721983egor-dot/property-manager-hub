@@ -45,34 +45,16 @@ export async function prepareRentalImport(raw: unknown) {
       importId: crypto.randomUUID(),
       fingerprint: inspection.fingerprint,
       duplicateIds: duplicates.map((p) => p.id),
+      duplicateTitles: duplicates.map((p) => p.title),
       selectedPaths: photoSelection.selectedPaths,
       photoSelection,
       ...(copyReview ? { copyReview } : {}),
     },
-    summary:
-      rentalImportSummary(
-        input,
-        selectedFiles,
-        duplicates.map((p) => p.title),
-      ) +
-      `
-Просмотрено ${photoSelection.photosAnalyzed} из ${photoSelection.totalPhotos} фото; выбрано ${selectedFiles.length}, исключено ${photoSelection.rejectedCount}. Первое фото — обложка.
-` +
-      photoSelection.selected.map((p) => `• ${p.name}: ${p.reason}`).join("\n") +
-      (inspection.ignored ? `\nПропущено файлов других форматов: ${inspection.ignored}` : "") +
-      (copyReview
-        ? [
-            `\nДля описания проанализировано фото: ${copyReview.photosAnalyzed} из ${copyReview.totalPhotos}.`,
-            copyReview.visibleFeatures.length
-              ? `Видно на фото: ${copyReview.visibleFeatures.join("; ")}`
-              : "",
-            ...copyReview.questions.map((q) => `Уточнить: ${q}`),
-            ...copyReview.locationSources.map((url) => `Источник локации: ${url}`),
-            "Проверьте оба текста перед созданием. Для изменений нажмите «Исправить».",
-          ]
-            .filter(Boolean)
-            .join("\n")
-        : ""),
+    summary: rentalImportSummary(
+      input,
+      selectedFiles,
+      duplicates.map((p) => p.title),
+    ),
   };
 }
 

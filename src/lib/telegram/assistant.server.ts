@@ -240,7 +240,7 @@ async function storeProposal(action: AssistantAction, chatId: number, telegramUs
   return (data as { id: string }).id;
 }
 
-async function sendAssistantReply(
+export async function sendAssistantReply(
   chatId: number,
   messages: AssistantChatMessage[],
   telegramUserId: number,
@@ -250,17 +250,17 @@ async function sendAssistantReply(
     await sendMessage(chatId, `Не удалось получить ответ: ${reply.error}`);
     return;
   }
-  const text = absolutizeLinks(reply.text || "Готово.");
-  await saveMessage(chatId, "assistant", text);
-  const selectionUrl = firstSelectionUrl(text);
-  for (let offset = 0; offset < text.length; offset += 3500) {
-    await sendMessage(
-      chatId,
-      text.slice(offset, offset + 3500),
-      offset + 3500 >= text.length && selectionUrl
-        ? [[{ text: "Открыть подборку", url: selectionUrl }]]
-        : undefined,
-    );
+  // Import has a deterministic review below. Do not send the model's duplicate draft/preamble.
+  const hasRentalImport = reply.actions.some(action => action.tool === "importRentalFromDisk");
+  if (!hasRentalImport) {
+    const text = absolutizeLinks(reply.text || "Готово.");
+    await saveMessage(chatId, "assistant", text);
+    const selectionUrl = firstSelectionUrl(text);
+    for (let offset = 0; offset < text.length; offset += 3500) {
+      await sendMessage(chatId, text.slice(offset, offset + 3500),
+        offset + 3500 >= text.length && selectionUrl
+          ? [[{ text: "Открыть подборку", url: selectionUrl }]] : undefined);
+    }
   }
 
   for (const action of reply.actions) {
@@ -282,6 +282,21 @@ async function sendAssistantReply(
             url: diskShareUrl(JSON.parse(action.input)["diskUrl"]),
           },
         ]);
+      }
+      if (importing) {
+        const { rentalImportPresentation, rentalImportSchema } = await import("@/lib/property-import/model");
+        const raw = JSON.parse(action.input);
+        const view = rentalImportPresentation(rentalImportSchema.parse(raw),
+          raw.selectedPaths?.length ?? raw.photoSelection?.selected?.length ?? 0,
+          Array.isArray(raw.duplicateTitles) ? raw.duplicateTitles : []);
+        await saveMessage(chatId, "assistant", `${view.parameters}\n\n${view.description}`);
+        // Full supplied texts remain visible; generated copy is short enough for a single part.
+        for (let offset = 0; offset < view.parameters.length; offset += 3500)
+          await sendMessage(chatId, view.parameters.slice(offset, offset + 3500));
+        for (let offset = 0; offset < view.description.length; offset += 3500)
+          await sendMessage(chatId, view.description.slice(offset, offset + 3500),
+            offset + 3500 >= view.description.length ? keyboard : undefined);
+        continue;
       }
       const proposalText = `Подтвердить действие?\n${action.summary}`;
       // Telegram limits message text to 4096 characters. Keep buttons on the final part.
