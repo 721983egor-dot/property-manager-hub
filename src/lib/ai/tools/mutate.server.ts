@@ -1119,6 +1119,28 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeOwnerPayoutSettings: tool({
+      description:"Предложить установить собственника и ежемесячный день выплаты для объекта. Только администратору в РМ ОС, с подтверждением.",
+      inputSchema:z.object({propertyId:z.string().uuid(),ownerId:z.string().uuid(),day:z.number().int().min(1).max(31)}),execute:async input=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
+        const p=await ctx.admin.from("properties").select("title,internal_name").eq("id",input.propertyId).maybeSingle();const owner=await ctx.admin.from("finance_counterparties").select("name").eq("id",input.ownerId).maybeSingle();if(!p.data||!owner.data)return {error:"Объект или собственник не найден"};
+        const summary=`Объект «${p.data.internal_name||p.data.title}»: собственник ${owner.data.name}, день выплаты ${input.day}`;ctx.propose({tool:"saveOwnerPayoutSettings",summary,input});return {proposed:true,summary};
+      },
+    }),
+    proposeCreateOwnerSettlement: tool({
+      description:"Предложить создать месячный расчёт с собственником: подтверждённая сумма после комиссии и расходов. Создаёт долг, деньги не списывает. Требует подтверждения администратора.",
+      inputSchema:z.object({propertyId:z.string().uuid(),month:z.string().regex(/^\d{4}-\d{2}$/),amount:z.number().positive(),legalEntity:z.string().trim().min(1)}),execute:async input=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();const p=await ctx.admin.from("properties").select("title,internal_name").eq("id",input.propertyId).maybeSingle();if(!p.data)return {error:"Объект не найден"};
+        const summary=`Начислить собственнику ${money(input.amount)} за ${input.month}, объект «${p.data.internal_name||p.data.title}», от ${input.legalEntity}`;ctx.propose({tool:"createOwnerSettlement",summary,input});return {proposed:true,summary};
+      },
+    }),
+    proposePayOwnerSettlement: tool({
+      description:"Предложить записать фактическую полную/частичную выплату собственнику со счёта и уменьшить долг. Требует подтверждения администратора в РМ ОС.",
+      inputSchema:z.object({obligationId:z.string().uuid(),amount:z.number().positive(),account:z.string().trim().min(1),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)}),execute:async input=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();const o=await ctx.admin.from("finance_obligations").select("description,counterparty_id").eq("id",input.obligationId).maybeSingle();if(!o.data)return {error:"Расчёт не найден"};const owner=await ctx.admin.from("finance_counterparties").select("name").eq("id",o.data.counterparty_id).maybeSingle();
+        const summary=`Выплатить ${owner.data?.name??"собственнику"} ${money(input.amount)} со счёта «${input.account}», дата ${input.date}, ${o.data.description}`;ctx.propose({tool:"payOwnerSettlement",summary,input:{...input,requestId:crypto.randomUUID()}});return {proposed:true,summary};
+      },
+    }),
     proposeCreateFinanceAccount: tool({
       description:"Предложить добавить счёт финансов. Тип: bank — расчётный счёт, card — карта, cash — наличные. Требует подтверждения.",
       inputSchema:z.object({name:z.string().trim().min(1),type:z.enum(["bank","card","cash"])}),

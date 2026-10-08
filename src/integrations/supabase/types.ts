@@ -770,6 +770,12 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_owner_settlements: {
+        Row: { id:string; property_id:string; period:string; obligation_id:string; created_at:string };
+        Insert: { property_id:string; period:string; obligation_id:string };
+        Update: { property_id?:string; period?:string; obligation_id?:string };
+        Relationships: [];
+      };
       finance_accounts: {
         Row: { id: string; name: string; type: string; archived: boolean; created_at: string; updated_at: string };
         Insert: { id?: string; name: string; type: string; archived?: boolean; created_at?: string; updated_at?: string };
@@ -783,9 +789,9 @@ export type Database = {
         Relationships: []
       }
       finance_object_settings: {
-        Row: { property_id: string; classification_id: string | null; created_at: string; updated_at: string }
-        Insert: { property_id: string; classification_id?: string | null; created_at?: string; updated_at?: string }
-        Update: { classification_id?: string | null; updated_at?: string }
+        Row: { property_id: string; classification_id: string | null; owner_counterparty_id: string | null; payout_day: number | null; created_at: string; updated_at: string }
+        Insert: { property_id: string; classification_id?: string | null; owner_counterparty_id?: string | null; payout_day?: number | null; created_at?: string; updated_at?: string }
+        Update: { classification_id?: string | null; owner_counterparty_id?: string | null; payout_day?: number | null; updated_at?: string }
         Relationships: []
       }
       finance_articles: {
@@ -2492,6 +2498,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_owner_settlement: { Args: { p_property_id:string; p_period:string; p_amount:number; p_legal_entity:string }; Returns:string };
+      pay_owner_settlement: { Args: { p_obligation_id:string; p_amount:number; p_account:string; p_paid_date:string; p_request_id:string }; Returns:string };
+
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

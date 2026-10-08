@@ -1,6 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 export type FinanceObjectClass = { id: string; name: string };
-export type FinanceObjectAssignment = { property_id: string; classification_id: string | null };
+export type FinanceObjectAssignment = {
+  property_id: string;
+  classification_id: string | null;
+  owner_counterparty_id?: string | null;
+  payout_day?: number | null;
+};
 export async function fetchFinanceObjectClasses(): Promise<FinanceObjectClass[]> {
   const { data, error } = await supabase
     .from("finance_object_classes")
@@ -14,7 +19,7 @@ export async function fetchFinanceObjectAssignments(): Promise<FinanceObjectAssi
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await supabase
       .from("finance_object_settings")
-      .select("property_id,classification_id")
+      .select("property_id,classification_id,owner_counterparty_id,payout_day")
       .order("property_id")
       .range(offset, offset + 499);
     if (error) throw error;

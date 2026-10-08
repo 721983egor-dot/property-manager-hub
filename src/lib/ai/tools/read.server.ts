@@ -2225,6 +2225,19 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getOwnerSettlements: tool({
+      description:"Расчёты с собственниками: дата выплаты, выплачено, остаток долга, просрочка. Только администратору в РМ ОС.",
+      inputSchema:z.object({propertyId:z.string().uuid().optional()}),execute:async({propertyId})=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();
+        let query=client.from("finance_owner_settlements").select("id,property_id,period,obligation_id").order("period",{ascending:false});if(propertyId)query=query.eq("property_id",propertyId);
+        const settlements=await allFinancePages((start,end)=>query.range(start,end));if(settlements.error)return {error:settlements.error.message};
+        const obligations=await allFinancePages((start,end)=>client.from("finance_obligations").select("*").order("id").range(start,end));
+        const payments=await allFinancePages((start,end)=>client.from("payments").select("*").order("id").range(start,end));
+        if(obligations.error||payments.error)return {error:obligations.error?.message??payments.error?.message};
+        const {ownerSettlementState}=await import("@/lib/finance-owner-model");const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Moscow"}).format(new Date());
+        return {settlements:settlements.data.map(s=>{const o=obligations.data.find(o=>o.id===s.obligation_id);return {...s,obligation:o,state:o?ownerSettlementState(o as unknown as FinanceObligation,payments.data as unknown as Payment[],today):null};})};
+      },
+    }),
     listFinanceAccounts: tool({
       description: "Счета финансов: расчётные счета, карты и наличные. Активные и архивные; архивные не выбираются для новых операций.",
       inputSchema:z.object({}),execute:async()=>{const {data,error}=await admin.from("finance_accounts").select("id,name,type,archived").order("name");return error?{error:error.message}:{accounts:data};},

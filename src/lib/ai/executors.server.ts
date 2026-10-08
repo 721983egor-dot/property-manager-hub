@@ -1242,6 +1242,15 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Услуги объекта обновлены";
   },
 
+  saveOwnerPayoutSettings:async input=>{
+    const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const day=Number(input["day"]);if(!Number.isInteger(day)||day<1||day>31)throw new Error("День от 1 до 31");const {error}=await client.from("finance_object_settings").upsert({property_id:String(input["propertyId"]),owner_counterparty_id:String(input["ownerId"]),payout_day:day},{onConflict:"property_id"});if(error)throw new Error(error.message);return "Условия выплаты сохранены";
+  },
+  createOwnerSettlement:async input=>{
+    const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const {error}=await client.rpc("create_owner_settlement",{p_property_id:String(input["propertyId"]),p_period:String(input["month"])+"-01",p_amount:Number(input["amount"]),p_legal_entity:String(input["legalEntity"])});if(error)throw new Error(error.message);return "Расчёт создан, долг собственнику учтён";
+  },
+  payOwnerSettlement:async input=>{
+    const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const {error}=await client.rpc("pay_owner_settlement",{p_obligation_id:String(input["obligationId"]),p_amount:Number(input["amount"]),p_account:String(input["account"]),p_paid_date:String(input["date"]),p_request_id:String(input["requestId"])});if(error)throw new Error(error.message);return "Выплата записана, долг уменьшен";
+  },
   createFinanceAccount: async input=>{
     const name=String(input["name"]??"").trim();const type=String(input["type"]??"");
     if(!name||!["bank","card","cash"].includes(type))throw new Error("Укажите название и тип счёта");

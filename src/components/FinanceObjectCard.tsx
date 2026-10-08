@@ -1,3 +1,4 @@
+import { OwnerSettlementsPanel } from "./OwnerSettlementsPanel";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -307,6 +308,15 @@ export function FinanceObjectCard({ id }: { id: string }) {
               должны {formatAdeskMoney(summary.payable)}.
             </p>
           </section>
+
+          <OwnerSettlementsPanel
+            propertyId={id}
+            month={month}
+            settings={assignments.data?.find((a) => a.property_id === id)}
+            parties={parties.data ?? []}
+            obligations={obligations.data ?? []}
+            payments={payments.data ?? []}
+          />
           <section className="fa-panel" style={{ marginTop: 16 }}>
             <div className="fa-tabs" role="tablist" aria-label="Финансы объекта">
               <button role="tab" aria-selected={tab === "money"} onClick={() => setTab("money")}>
