@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { rentalImportSchema } from "@/lib/property-import/model";
 
 import { propertyLabel } from "@/lib/ai/context.server";
 import {
@@ -31,6 +32,16 @@ export function createMutateTools(ctx: AssistantToolContext) {
   };
 
   return {
+    proposeImportRentalFromDisk: tool({
+      description: "Подготовить карточку долгосрочной аренды с фото из общедоступной папки Яндекс Диска. Сначала спроси недостающие адрес, тип, комнаты (0=студия), площадь и цену ЗА МЕСЯЦ. Проверяет фото и дубли; создаёт объект только после подтверждения. Сайт и площадки не публикует.",
+      inputSchema: rentalImportSchema,
+      execute: async (input) => {
+        const { prepareRentalImport } = await import("@/lib/property-import/import.server");
+        const proposal = await prepareRentalImport(input);
+        ctx.propose({ tool: "importRentalFromDisk", ...proposal });
+        return { proposed: true, summary: proposal.summary };
+      },
+    }),
     proposePublish: tool({
       description:
         "Предложить публикацию или снятие объекта с площадки (site, cian, yandex, avito). Требует подтверждения менеджера.",

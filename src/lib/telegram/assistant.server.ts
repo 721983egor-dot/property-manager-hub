@@ -62,15 +62,32 @@ function openAiBase(): string {
 
 /* ---------------------------------- доступ --------------------------------- */
 
-type Account = { id: string; telegram_user_id: number; chat_id: number; active: boolean };
+type Account = {
+  id: string;
+  telegram_user_id: number;
+  chat_id: number;
+  active: boolean;
+  user_id: string | null;
+};
 
 async function findAccount(telegramUserId: number): Promise<Account | null> {
   const { data } = await supabaseAdmin
     .from("telegram_accounts")
-    .select("id, telegram_user_id, chat_id, active")
+    .select("id, telegram_user_id, chat_id, active, user_id")
     .eq("telegram_user_id", telegramUserId)
     .maybeSingle();
   return (data as Account | null) ?? null;
+}
+
+async function canImportRental(telegramUserId: number): Promise<boolean> {
+  const account = await findAccount(telegramUserId);
+  if (!account?.active || !account.user_id) return false;
+  const { data, error } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", account.user_id)
+    .in("role", ["admin", "manager"]);
+  return !error && !!data?.length;
 }
 
 async function tryLinkByCode(code: string, from: TgUser, chatId: number): Promise<boolean> {
@@ -201,13 +218,20 @@ async function runAssistant(messages: AssistantChatMessage[]) {
   return askAssistantCore(messages);
 }
 
-async function storeProposal(action: AssistantAction) {
+async function storeProposal(action: AssistantAction, chatId: number, telegramUserId: number) {
+  const input = JSON.parse(action.input || "{}");
+  if (action.tool === "importRentalFromDisk") {
+    if (!(await canImportRental(telegramUserId)))
+      throw new Error("Нужна действующая учётная запись администратора или менеджера РМ ОС");
+    input._telegramChatId = chatId;
+    input._telegramUserId = telegramUserId;
+  }
   const { data, error } = await supabaseAdmin
     .from("ai_action_proposals")
     .insert({
       tool_name: action.tool,
       summary: action.summary,
-      input: JSON.parse(action.input || "{}") as never,
+      input: input as never,
       status: "pending",
     })
     .select("id")
@@ -216,7 +240,11 @@ async function storeProposal(action: AssistantAction) {
   return (data as { id: string }).id;
 }
 
-async function sendAssistantReply(chatId: number, messages: AssistantChatMessage[]) {
+async function sendAssistantReply(
+  chatId: number,
+  messages: AssistantChatMessage[],
+  telegramUserId: number,
+) {
   const reply = await runAssistant(messages);
   if (reply.error) {
     await sendMessage(chatId, `Не удалось получить ответ: ${reply.error}`);
@@ -225,27 +253,50 @@ async function sendAssistantReply(chatId: number, messages: AssistantChatMessage
   const text = absolutizeLinks(reply.text || "Готово.");
   await saveMessage(chatId, "assistant", text);
   const selectionUrl = firstSelectionUrl(text);
-  await sendMessage(
-    chatId,
-    text,
-    selectionUrl ? [[{ text: "Открыть подборку", url: selectionUrl }]] : undefined,
-  );
+  for (let offset = 0; offset < text.length; offset += 3500) {
+    await sendMessage(
+      chatId,
+      text.slice(offset, offset + 3500),
+      offset + 3500 >= text.length && selectionUrl
+        ? [[{ text: "Открыть подборку", url: selectionUrl }]]
+        : undefined,
+    );
+  }
 
   for (const action of reply.actions) {
     try {
-      const id = await storeProposal(action);
+      const id = await storeProposal(action, chatId, telegramUserId);
+      const importing = action.tool === "importRentalFromDisk";
       const keyboard: InlineKeyboard = [
         [
-          { text: "✅ Подтвердить", callback_data: `do:${id}` },
+          { text: importing ? "✅ Создать в РМ ОС" : "✅ Подтвердить", callback_data: `do:${id}` },
           { text: "✖️ Отмена", callback_data: `no:${id}` },
         ],
       ];
-      await sendMessage(chatId, `Подтвердить действие?\n${action.summary}`, keyboard);
+      if (importing) keyboard.push([{ text: "✏️ Исправить", callback_data: `fix:${id}` }]);
+      if (importing) {
+        const { diskShareUrl } = await import("@/lib/property-import/model");
+        keyboard.push([
+          {
+            text: "Посмотреть фото на Яндекс Диске",
+            url: diskShareUrl(JSON.parse(action.input)["diskUrl"]),
+          },
+        ]);
+      }
+      const proposalText = `Подтвердить действие?\n${action.summary}`;
+      // Telegram limits message text to 4096 characters. Keep buttons on the final part.
+      for (let offset = 0; offset < proposalText.length; offset += 3500) {
+        await sendMessage(
+          chatId,
+          proposalText.slice(offset, offset + 3500),
+          offset + 3500 >= proposalText.length ? keyboard : undefined,
+        );
+      }
     } catch (e) {
       console.error("storeProposal failed", e);
       await sendMessage(
         chatId,
-        `Не удалось сохранить предложение «${action.summary}»: ${e instanceof Error ? e.message : "ошибка"}`,
+        `Не удалось сохранить предложение «${action.summary.slice(0, 300)}»: ${e instanceof Error ? e.message : "ошибка"}`,
       );
     }
   }
@@ -256,7 +307,8 @@ async function sendAssistantReply(chatId: number, messages: AssistantChatMessage
 const HELP =
   "Я Ассистент RM OS. Напишите вопрос текстом или отправьте голосовое — отвечу по данным системы.\n" +
   "Любое изменение я только предлагаю: подтвердите кнопкой.\n" +
-  "Команда /reset — начать диалог заново.";
+  "Команда /reset — начать диалог заново.\n" +
+  "Добавить объект: отправьте общую ссылку Яндекс Диска с фото, адрес, тип, комнаты, площадь и цену за месяц. Только долгосрочная аренда. До 20 JPG/PNG/WebP, до 10 МБ на фото. Сначала покажу карточку для подтверждения.";
 
 async function handleMessage(message: TgMessage, preloaded?: RmOsMedia) {
   const chatId = message.chat.id;
@@ -342,10 +394,13 @@ async function handleMessage(message: TgMessage, preloaded?: RmOsMedia) {
   await saveMessage(chatId, "user", userText);
   const history = await loadHistory(chatId);
   try {
-    await sendAssistantReply(chatId, history);
+    await sendAssistantReply(chatId, history, from.id);
   } catch (e) {
     console.error("assistant reply failed", e);
-    await sendMessage(chatId, `Ошибка Ассистента: ${e instanceof Error ? e.message : "неизвестно"}`);
+    await sendMessage(
+      chatId,
+      `Ошибка Ассистента: ${e instanceof Error ? e.message : "неизвестно"}`,
+    );
   }
 }
 
@@ -376,6 +431,59 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
     return;
   }
 
+  // Import confirmations belong to the linked Telegram user and chat that requested them.
+  if (["do", "no", "fix"].includes(kind ?? "") && id) {
+    const { data: target, error } = await supabaseAdmin
+      .from("ai_action_proposals")
+      .select("tool_name,input,summary,status")
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !target) {
+      await answerCallbackQuery(query.id, "Предложение не найдено");
+      return;
+    }
+    if (target.tool_name === "importRentalFromDisk") {
+      if (!(await canImportRental(query.from.id))) {
+        await answerCallbackQuery(query.id, "Нет доступа к созданию объектов");
+        return;
+      }
+      const owner = target.input as Record<string, unknown>;
+      if (owner["_telegramUserId"] !== query.from.id || owner["_telegramChatId"] !== chatId) {
+        await answerCallbackQuery(query.id, "Подтвердить может только автор запроса в своём чате");
+        return;
+      }
+      if (target.status !== "pending") {
+        await answerCallbackQuery(query.id, "Уже выполняется или обработано");
+        return;
+      }
+      if (kind === "fix") {
+        const { data: cancelled } = await supabaseAdmin
+          .from("ai_action_proposals")
+          .update({ status: "cancelled" })
+          .eq("id", id)
+          .eq("status", "pending")
+          .select("id")
+          .maybeSingle();
+        if (!cancelled) {
+          await answerCallbackQuery(query.id, "Уже обработано");
+          return;
+        }
+        await answerCallbackQuery(query.id);
+        const prompt =
+          "Карточка отменена для исправления. Напишите, что изменить (например: цена 80 000 в месяц). Я подготовлю новую карточку для подтверждения.";
+        await saveMessage(chatId, "assistant", target.summary + "\n" + prompt);
+        if (query.message)
+          await editMessageText(
+            chatId,
+            query.message.message_id,
+            "✏️ Ожидаю исправления. Старое подтверждение отменено.",
+          );
+        await sendMessage(chatId, prompt);
+        return;
+      }
+    }
+  }
+
   if (kind === "no" && id) {
     await supabaseAdmin
       .from("ai_action_proposals")
@@ -383,7 +491,8 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       .eq("id", id)
       .eq("status", "pending");
     await answerCallbackQuery(query.id, "Отменено");
-    if (query.message) await editMessageText(chatId, query.message.message_id, "✖️ Действие отменено");
+    if (query.message)
+      await editMessageText(chatId, query.message.message_id, "✖️ Действие отменено");
     return;
   }
 
@@ -393,9 +502,12 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       .select("id, tool_name, summary, input, status")
       .eq("id", id)
       .maybeSingle();
-    const proposal = row as
-      | { tool_name: string; summary: string; input: unknown; status: string }
-      | null;
+    const proposal = row as {
+      tool_name: string;
+      summary: string;
+      input: unknown;
+      status: string;
+    } | null;
     if (!proposal) {
       await answerCallbackQuery(query.id, "Предложение не найдено");
       return;
@@ -403,6 +515,19 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
     if (proposal.status !== "pending") {
       await answerCallbackQuery(query.id, "Уже обработано");
       return;
+    }
+    if (proposal.tool_name === "importRentalFromDisk") {
+      const { data: claimed, error } = await supabaseAdmin
+        .from("ai_action_proposals")
+        .update({ status: "executing", confirmed_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
+      if (error || !claimed) {
+        await answerCallbackQuery(query.id, "Уже выполняется или обработано");
+        return;
+      }
     }
     await answerCallbackQuery(query.id, "Выполняю…");
     try {
@@ -431,7 +556,10 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
         .from("ai_action_proposals")
         .update({ status: "failed", result: message })
         .eq("id", id);
-      await sendMessage(chatId, `Не удалось выполнить: ${message}`);
+      await sendMessage(
+        chatId,
+        `Не удалось выполнить: ${message}${proposal.tool_name === "importRentalFromDisk" ? "\nОтправьте параметры и ссылку повторно — подготовлю новую карточку." : ""}`,
+      );
     }
   }
 }

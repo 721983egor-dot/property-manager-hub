@@ -24,6 +24,10 @@ async function logAction(summary: string, tool: string, input: Input) {
 
 /** Исполнители подтверждённых действий Ассистента. Ключ = поле `tool` предложения. */
 export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
+  importRentalFromDisk: async (input) => {
+    const { executeRentalImport } = await import("@/lib/property-import/import.server");
+    return executeRentalImport(input);
+  },
   sendCianMessage: async (input) => {
     const threadId = must(input["threadId"] as string, "Не указан чат");
     const body = must(input["body"] as string, "Пустое сообщение");

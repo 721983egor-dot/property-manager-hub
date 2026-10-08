@@ -1,3 +1,4 @@
+// Rental import: inspectYandexDiskPhotos, proposeImportRentalFromDisk; confirmed importRentalFromDisk.
 // Owner settlements: getOwnerSettlements; proposeOwnerPayoutSettings, proposeCreateOwnerSettlement, proposePayOwnerSettlement (confirmed administrator actions).
 // Finance accounts: listFinanceAccounts, proposeCreateFinanceAccount, proposeArchiveFinanceAccount.
 // Финансовые объекты: getFinanceObjects; save/delete/assignFinanceObjectClassification, updateFinanceObligation — только через подтверждение.
