@@ -206,6 +206,7 @@ function pending() {
     status: "pending",
   };
 }
+const propertyFrom = admin.from;
 admin.from = (table) => {
   let patch, expectedStatus;
   const response = () => {
@@ -282,4 +283,112 @@ assert.equal(proposal.status, "cancelled");
 assert.equal(actionCalls, 0);
 console.log(
   "PASS: Telegram simultaneous confirmation executes once, author/chat binding, edit invalidates old confirmation, cancellation prevents creation",
+);
+
+// Test the actual vision/location orchestrator without network or live model calls.
+let copyMode = "",
+  generationCalls = 0,
+  imageParts = 0;
+const cited = "https://example.org/verified-place";
+mock.module(import.meta.resolve("ai"), {
+  namedExports: {
+    Output: { object: (value) => value },
+    generateText: async (options) => {
+      generationCalls++;
+      if (options.messages) {
+        imageParts = options.messages[0].content.filter((part) => part.type === "image").length;
+        if (copyMode === "vision-fail") throw Error("vision unavailable");
+        return {
+          output: {
+            description: "Квартира с видимой кухонной зоной и диваном.",
+            visibleFeatures: ["Кухонная зона", "Диван"],
+            questions: ["Уточните, остаётся ли мебель."],
+          },
+        };
+      }
+      if (copyMode === "search-fail") throw Error("search unavailable");
+      if (!options.tools) assert.ok(JSON.parse(options.prompt).allowedSourceUrls.includes(cited));
+      return {
+        text: "Адрес подтверждён. Проверенная особенность района.",
+        output: {
+          addressMatched: true,
+          facts: [{ text: "Проверенная особенность района.", sourceUrl: cited }],
+          questions: [],
+        },
+        sources: [],
+        toolResults: [
+          {
+            toolName: "web_search",
+            output: { sources: copyMode === "uncited" ? [] : [{ type: "url", url: cited }] },
+          },
+        ],
+      };
+    },
+  },
+});
+const provider = Object.assign(() => ({ modelId: "test" }), { tools: { webSearch: () => ({}) } });
+mock.module(uri + "src/lib/ai-gateway.server.ts", {
+  namedExports: { createDirectOpenAiProvider: () => provider, OPENAI_DEFAULT_MODEL: "test" },
+});
+mock.module(uri + "src/lib/property-import/vision-image.server.ts", {
+  namedExports: { visionJpeg: async (bytes) => bytes },
+});
+const { draftRentalCopy } = await import(uri + "src/lib/property-import/copy.server.ts");
+const originalKey = process.env.OPENAI_API_KEY;
+process.env.OPENAI_API_KEY = "test-only";
+const inspection = {
+  diskUrl: input.diskUrl,
+  files: Array.from({ length: 20 }, (_, i) => ({ name: i + ".jpg" })),
+  fingerprint: input.fingerprint,
+  ignored: 0,
+};
+copyMode = "";
+let copy = await draftRentalCopy(input, inspection);
+assert.equal(copy.photosAnalyzed, 6);
+assert.equal(imageParts, 6);
+assert.match(copy.description, /диваном/);
+assert.match(copy.locationDescription, /Проверенная/);
+assert.deepEqual(copy.locationSources, [cited]);
+copyMode = "uncited";
+copy = await draftRentalCopy(input, inspection);
+assert.doesNotMatch(copy.locationDescription, /Проверенная/);
+assert.equal(copy.locationVerified, false);
+copyMode = "vision-fail";
+copy = await draftRentalCopy(input, inspection);
+assert.equal(copy.photosAnalyzed, 0);
+assert.doesNotMatch(copy.description, /диваном/);
+assert.ok(copy.questions.some((q) => q.includes("Не удалось")));
+copyMode = "search-fail";
+copy = await draftRentalCopy(input, inspection);
+assert.equal(copy.photosAnalyzed, 6);
+assert.equal(copy.locationVerified, false);
+assert.doesNotMatch(copy.locationDescription, /Проверенная/);
+generationCalls = 0;
+copy = await draftRentalCopy(
+  {
+    ...input,
+    description: "Мой согласованный текст",
+    locationDescription: "Моя согласованная локация",
+  },
+  inspection,
+);
+assert.equal(copy.description, "Мой согласованный текст");
+assert.equal(copy.locationDescription, "Моя согласованная локация");
+assert.equal(generationCalls, 0);
+admin.from = propertyFrom;
+const { prepareRentalImport } = await import(uri + "src/lib/property-import/import.server.ts");
+reset();
+copyMode = "";
+const copyProposal = await prepareRentalImport(input);
+assert.match(copyProposal.input.description, /диваном/);
+assert.match(copyProposal.input.locationDescription, /Проверенная/);
+assert.match(copyProposal.summary, /Источник локации/);
+assert.equal(rows.length, 0);
+await executeRentalImport(copyProposal.input);
+assert.equal(rows[0].description, copyProposal.input.description);
+assert.equal(rows[0].location_description, copyProposal.input.locationDescription);
+if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+else process.env.OPENAI_API_KEY = originalKey;
+console.log(
+  "PASS: image parts sent, six-photo sampling, provider-grounded location, vision/search fallback, existing copy preservation, proposal review and confirmed text persistence",
 );

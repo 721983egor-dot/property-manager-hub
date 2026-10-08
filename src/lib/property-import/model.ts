@@ -35,6 +35,8 @@ export const rentalImportSchema = z
     deposit: z.number().nonnegative().max(100000000).optional(),
     commission: z.number().nonnegative().max(100000000).optional(),
     description: z.string().max(10000).optional(),
+    locationDescription: z.string().max(5000).optional(),
+    locationNotes: z.string().max(3000).optional(),
   })
   .refine((v) => v.floor === undefined || v.totalFloors === undefined || v.floor <= v.totalFloors, {
     message: "Этаж не может быть выше этажности дома",
@@ -79,6 +81,7 @@ export function rentalImportSummary(
     input.deposit !== undefined ? `Залог: ${input.deposit.toLocaleString("ru-RU")} ₽` : "",
     input.commission !== undefined ? `Комиссия: ${input.commission.toLocaleString("ru-RU")} ₽` : "",
     input.description ? `Описание: ${input.description}` : "",
+    input.locationDescription ? `Локация: ${input.locationDescription}` : "",
     `Фото: ${files.length}, с водяным знаком Резиденция Море`,
     ...files.map((f) => `• ${f.name}`),
     `Источник фото: ${input.diskUrl}`,

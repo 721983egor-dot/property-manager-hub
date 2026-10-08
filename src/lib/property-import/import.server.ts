@@ -22,8 +22,18 @@ async function possibleDuplicates(input: z.infer<typeof rentalImportSchema>) {
 }
 
 export async function prepareRentalImport(raw: unknown) {
-  const input = rentalImportSchema.parse(raw);
+  let input = rentalImportSchema.parse(raw);
   const inspection = await inspectDiskPhotos(input.diskUrl);
+  let copyReview: Awaited<ReturnType<typeof import("./copy.server").draftRentalCopy>> | null = null;
+  if (!input.description?.trim() || !input.locationDescription?.trim()) {
+    const { draftRentalCopy } = await import("./copy.server");
+    copyReview = await draftRentalCopy(input, inspection);
+    input = {
+      ...input,
+      description: input.description?.trim() || copyReview.description,
+      locationDescription: input.locationDescription?.trim() || copyReview.locationDescription,
+    };
+  }
   const duplicates = await possibleDuplicates(input);
   return {
     input: {
@@ -31,13 +41,28 @@ export async function prepareRentalImport(raw: unknown) {
       importId: crypto.randomUUID(),
       fingerprint: inspection.fingerprint,
       duplicateIds: duplicates.map((p) => p.id),
+      ...(copyReview ? { copyReview } : {}),
     },
     summary:
       rentalImportSummary(
         input,
         inspection.files,
         duplicates.map((p) => p.title),
-      ) + (inspection.ignored ? `\nПропущено файлов других форматов: ${inspection.ignored}` : ""),
+      ) +
+      (inspection.ignored ? `\nПропущено файлов других форматов: ${inspection.ignored}` : "") +
+      (copyReview
+        ? [
+            `\nДля описания проанализировано фото: ${copyReview.photosAnalyzed} из ${copyReview.totalPhotos}.`,
+            copyReview.visibleFeatures.length
+              ? `Видно на фото: ${copyReview.visibleFeatures.join("; ")}`
+              : "",
+            ...copyReview.questions.map((q) => `Уточнить: ${q}`),
+            ...copyReview.locationSources.map((url) => `Источник локации: ${url}`),
+            "Проверьте оба текста перед созданием. Для изменений нажмите «Исправить».",
+          ]
+            .filter(Boolean)
+            .join("\n")
+        : ""),
   };
 }
 
@@ -135,6 +160,7 @@ export async function executeRentalImport(raw: unknown): Promise<string> {
         deposit: input.deposit ?? null,
         commission: input.commission ?? null,
         description: input.description ?? "",
+        location_description: input.locationDescription ?? "",
         photos: paths.map((path) => ({ path })),
         status: "free",
         published: false,

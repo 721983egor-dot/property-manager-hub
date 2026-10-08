@@ -65,7 +65,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposePropertyUpdate: tool({
       description:
-        "Частичное изменение объекта: передай ТОЛЬКО поля, которые менеджер явно попросил изменить (часто одно: priceMonth). Остальные ключи не указывай. Не заполняй схему пустыми строками или нулями — сервер их отбросит. Чтобы очистить поле, используй clearFields (например clearFields:[\"videoUrl\"]). Поля: title, internalName, address, complexName, type, rooms, bathrooms, area, floor, totalFloors, priceMonth, status, deposit, commission, utilitiesMonth, description, rentTerms, availabilityNote, forRent, videoUrl.",
+        "Частичное изменение объекта: передай ТОЛЬКО поля, которые менеджер явно попросил изменить (часто одно: priceMonth). Остальные ключи не указывай. Не заполняй схему пустыми строками или нулями — сервер их отбросит. Чтобы очистить поле, используй clearFields (например clearFields:[\"videoUrl\"]). Поля: title, internalName, address, complexName, type, rooms, bathrooms, area, floor, totalFloors, priceMonth, status, deposit, commission, utilitiesMonth, description, locationDescription, rentTerms, availabilityNote, forRent, videoUrl.",
       inputSchema: z.object({
         ref: z.string().describe("Внутреннее имя, номер ref_id или UUID объекта"),
         title: z.string().optional().describe("Только если меняем публичное название"),
@@ -84,6 +84,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         commission: z.number().optional(),
         utilitiesMonth: z.number().optional(),
         description: z.string().optional(),
+        locationDescription: z.string().max(5000).optional(),
         rentTerms: z.string().optional(),
         availabilityNote: z.string().optional(),
         forRent: z

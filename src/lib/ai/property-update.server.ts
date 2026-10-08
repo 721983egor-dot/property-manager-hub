@@ -22,6 +22,7 @@ export type PropertyUpdateFields = {
   commission?: number;
   utilitiesMonth?: number;
   description?: string;
+  locationDescription?: string;
   rentTerms?: string;
   availabilityNote?: string;
   forRent?: boolean;
@@ -35,6 +36,7 @@ export const PROPERTY_CLEARABLE_FIELDS = [
   "address",
   "complexName",
   "description",
+  "locationDescription",
   "rentTerms",
   "availabilityNote",
   "videoUrl",
@@ -51,6 +53,7 @@ const TEXT_FIELDS = new Set<string>([
   "address",
   "complexName",
   "description",
+  "locationDescription",
   "rentTerms",
   "availabilityNote",
   "videoUrl",
@@ -99,6 +102,7 @@ function currentOf(
     commission: "commission",
     utilitiesMonth: "utilities_month",
     description: "description",
+    locationDescription: "location_description",
     rentTerms: "rent_terms",
     availabilityNote: "availability_note",
     forRent: "for_rent",
@@ -114,7 +118,12 @@ export function countWipeNoise(raw: Record<string, unknown>): number {
     if (key === "clearFields" || value === undefined || value === null) continue;
     if (typeof value === "string" && value.trim() === "") n += 1;
     else if (typeof value === "number" && value === 0 && STRUCTURAL_NUMBERS.has(key)) n += 1;
-    else if (typeof value === "number" && value === 0 && MONEY_FIELDS.has(key) && key !== "priceMonth")
+    else if (
+      typeof value === "number" &&
+      value === 0 &&
+      MONEY_FIELDS.has(key) &&
+      key !== "priceMonth"
+    )
       n += 1;
   }
   return n;
@@ -144,8 +153,7 @@ export function sanitizePropertyUpdateFields(
 ): PropertyUpdateFields {
   const clearFields = normalizeClearFields(raw["clearFields"]);
   const wipeNoise = countWipeNoise(raw);
-  const hasPriceIntent =
-    typeof raw["priceMonth"] === "number" && Number(raw["priceMonth"]) > 0;
+  const hasPriceIntent = typeof raw["priceMonth"] === "number" && Number(raw["priceMonth"]) > 0;
   // Полный dump схемы: много пустых/нулей. С ценой — достаточно ≥3 шума (типичный «поставь цену»).
   const massWipe = wipeNoise >= 5 || (hasPriceIntent && wipeNoise >= 3);
   const out: PropertyUpdateFields = {};
@@ -226,6 +234,7 @@ export function sanitizePropertyUpdateFields(
       "address",
       "complexName",
       "description",
+      "locationDescription",
       "rentTerms",
       "availabilityNote",
       "videoUrl",
@@ -259,6 +268,8 @@ export function propertyUpdateFieldsToDbPatch(
   if (fields.commission != null) patch["commission"] = fields.commission;
   if (fields.utilitiesMonth != null) patch["utilities_month"] = fields.utilitiesMonth;
   if (fields.description != null) patch["description"] = fields.description;
+  if (fields.locationDescription != null)
+    patch["location_description"] = fields.locationDescription;
   if (fields.rentTerms != null) patch["rent_terms"] = fields.rentTerms;
   if (fields.availabilityNote != null) patch["availability_note"] = fields.availabilityNote;
   if (fields.forRent != null) patch["for_rent"] = Boolean(fields.forRent);
@@ -332,6 +343,13 @@ export function summarizePropertyUpdateFields(fields: PropertyUpdateFields): str
   }
   if (Object.prototype.hasOwnProperty.call(fields, "description")) {
     parts.push(fields.description ? "новое описание" : "очистить описание");
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "locationDescription")) {
+    parts.push(
+      fields.locationDescription
+        ? `описание локации: ${fields.locationDescription}`
+        : "очистить описание локации",
+    );
   }
   if (Object.prototype.hasOwnProperty.call(fields, "rentTerms")) {
     parts.push(fields.rentTerms ? "новые условия аренды" : "очистить условия аренды");

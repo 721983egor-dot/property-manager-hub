@@ -30,6 +30,7 @@ export type ListingDescriptionComplex = {
 
 export type ListingDescriptionProperty = {
   description: string;
+  location_description?: string;
   complex_id: string | null;
   rent_terms: string;
   deposit: number | null;
@@ -172,6 +173,7 @@ function assembleParts(
   const hasComplex = Boolean(property.complex_id && complex);
 
   let location = "";
+  if (!hasComplex) location = section("Локация", normalizeParagraph(property.location_description ?? ""));
   let complexInfo = "";
   if (hasComplex && complex) {
     const locationText = normalizeParagraph(complex.location_description ?? "");
@@ -305,7 +307,7 @@ function fitToLimit(parts: AssembledParts, maxLength: number, platform: ListingD
 
 /**
  * Полный текст Description для фида.
- * Без complex_id / complex — блоки «Локация» и «Инфо по ЖК» пропускаются.
+ * Без complex_id / complex — локация берётся из объекта, блок «Инфо по ЖК» пропускается.
  * Футер компании — всегда; условия — если есть rent_terms / депозит / КУ.
  */
 export function buildListingDescription(
