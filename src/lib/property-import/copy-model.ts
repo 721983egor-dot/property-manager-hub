@@ -26,7 +26,8 @@ export const visionCopySchema = z.object({
 });
 export const locationResearchSchema = z.object({
   addressMatched: z.boolean(),
-  facts: z.array(z.object({ text: z.string().max(500), sourceUrl: z.string().url() })).max(5),
+  // URI format is unsupported by the configured strict-output API; URLs are checked against real search sources below.
+  facts: z.array(z.object({ text: z.string().max(500), sourceUrl: z.string().max(1000) })).max(5),
   questions: z.array(z.string().max(300)).max(5),
 });
 

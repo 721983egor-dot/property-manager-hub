@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { asSchema } from "ai";
 import {
   fallbackRentalDescription,
   groundedLocationCopy,
   locationSearchAddress,
   samplePhotoIndexes,
+  locationResearchSchema,
 } from "./copy-model.ts";
 import { buildListingDescription } from "../listing-description.server.ts";
 import {
@@ -19,6 +21,10 @@ const input = {
   area: 54,
   priceMonth: 80000,
 };
+test("location output schema avoids the URI format rejected by the live strict-output API", async () => {
+  const schema = await asSchema(locationResearchSchema).jsonSchema;
+  assert.doesNotMatch(JSON.stringify(schema), /"format":"uri"/);
+});
 test("vision sample spans the folder and never exceeds six photos", () => {
   assert.deepEqual(samplePhotoIndexes(0), []);
   assert.deepEqual(samplePhotoIndexes(1), [0]);
