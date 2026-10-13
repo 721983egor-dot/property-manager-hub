@@ -1,3 +1,4 @@
+import { reminderSchema, validReminder, moscowTime, REPEAT_LABEL } from "@/lib/reminders/model";
 import { tool } from "ai";
 import { z } from "zod";
 import { rentalImportSchema } from "@/lib/property-import/model";
@@ -32,6 +33,31 @@ export function createMutateTools(ctx: AssistantToolContext) {
   };
 
   return {
+    proposeReminder: tool({
+      description: "Создать личное Telegram-напоминание администратора после подтверждения. Сначала уточни недостающие дату/время; время московское. dueAt = YYYY-MM-DDTHH:mm:00+03:00, строго в будущем. repeat once/daily/weekly/monthly; на 31 число короткого месяца — последний день. Никаких отправок другим людям.",
+      inputSchema: reminderSchema,
+      execute: async (input) => {
+        const { reminderAccount } = await import("@/lib/reminders/actor.server");
+        await reminderAccount();
+        const value = validReminder(input);
+        const summary = `Напомнить: ${value.title}\n${moscowTime(value.dueAt)} (Москва), ${REPEAT_LABEL[value.repeat]}`;
+        ctx.propose({ tool: "createReminder", summary, input: { ...value, reminderId: crypto.randomUUID() } });
+        return { proposed: true, summary };
+      },
+    }),
+    proposeManageReminder: tool({
+      description: "Отметить своё Telegram-напоминание выполненным, отложить на час или отменить все его повторы. Сначала listReminders, возьми id и occurrence. Только после подтверждения.",
+      inputSchema: z.object({ reminderId: z.string().uuid(), occurrence: z.number().int().positive(), action: z.enum(["done", "snooze", "cancel"]) }),
+      execute: async (input) => {
+        const { listReminders } = await import("@/lib/reminders/service.server");
+        const list = await listReminders();
+        const row = list.reminders?.find(r => r.id === input.reminderId && r.occurrence === input.occurrence);
+        if (!row) return { error: "Напоминание не найдено или изменилось" };
+        const summary = `${{ done: "Сделано", snooze: "Отложить на час", cancel: "Отменить напоминание и повторы" }[input.action]}: ${row.title}`;
+        ctx.propose({ tool: "manageReminder", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
     proposeImportRentalFromDisk: tool({
       description: "Подготовить карточку долгосрочной аренды с фото из общедоступной папки Яндекс Диска. Сначала спроси недостающие адрес, тип, комнаты (0=студия), площадь и цену ЗА МЕСЯЦ. Просматривает все фото в папке (до 300), автоматически выбирает до 20 лучших по качеству и разнообразию; проверяет дубли; создаёт объект только после подтверждения. Сайт и площадки не публикует.",
       inputSchema: rentalImportSchema,

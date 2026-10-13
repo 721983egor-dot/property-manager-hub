@@ -92,6 +92,7 @@ import { Route as ApiPublicFeedsYandexDotxmlRouteImport } from './routes/api/pub
 import { Route as ApiPublicSystemPlatformKeysRouteImport } from './routes/api/public/system/platform-keys'
 import { Route as ApiPublicSystemTelegramBootstrapRouteImport } from './routes/api/public/system/telegram-bootstrap'
 import { Route as ApiPublicSystemTelegramCredentialsRouteImport } from './routes/api/public/system/telegram-credentials'
+import { Route as ApiPublicTelegramRemindersRouteImport } from './routes/api/public/telegram/reminders'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as AuthenticatedMaintenanceObjectsIdIndexRouteImport } from './routes/_authenticated/maintenance.objects.$id.index'
 import { Route as AuthenticatedMaintenanceObjectsIdEditRouteImport } from './routes/_authenticated/maintenance.objects.$id.edit'
@@ -554,6 +555,12 @@ const ApiPublicSystemTelegramCredentialsRoute =
     path: '/api/public/system/telegram-credentials',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTelegramRemindersRoute =
+  ApiPublicTelegramRemindersRouteImport.update({
+    id: '/api/public/telegram/reminders',
+    path: '/api/public/telegram/reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -648,6 +655,7 @@ export interface FileRoutesByFullPath {
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/system/telegram-credentials': typeof ApiPublicSystemTelegramCredentialsRoute
+  '/api/public/telegram/reminders': typeof ApiPublicTelegramRemindersRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
@@ -733,6 +741,7 @@ export interface FileRoutesByTo {
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/system/telegram-credentials': typeof ApiPublicSystemTelegramCredentialsRoute
+  '/api/public/telegram/reminders': typeof ApiPublicTelegramRemindersRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/crm/clients': typeof AuthenticatedCrmClientsIndexRoute
   '/crm/deals': typeof AuthenticatedCrmDealsIndexRoute
@@ -822,6 +831,7 @@ export interface FileRoutesById {
   '/api/public/system/platform-keys': typeof ApiPublicSystemPlatformKeysRoute
   '/api/public/system/telegram-bootstrap': typeof ApiPublicSystemTelegramBootstrapRoute
   '/api/public/system/telegram-credentials': typeof ApiPublicSystemTelegramCredentialsRoute
+  '/api/public/telegram/reminders': typeof ApiPublicTelegramRemindersRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/_authenticated/crm/clients/': typeof AuthenticatedCrmClientsIndexRoute
   '/_authenticated/crm/deals/': typeof AuthenticatedCrmDealsIndexRoute
@@ -911,6 +921,7 @@ export interface FileRouteTypes {
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
     | '/api/public/system/telegram-credentials'
+    | '/api/public/telegram/reminders'
     | '/api/public/telegram/webhook'
     | '/crm/clients/'
     | '/crm/deals/'
@@ -996,6 +1007,7 @@ export interface FileRouteTypes {
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
     | '/api/public/system/telegram-credentials'
+    | '/api/public/telegram/reminders'
     | '/api/public/telegram/webhook'
     | '/crm/clients'
     | '/crm/deals'
@@ -1084,6 +1096,7 @@ export interface FileRouteTypes {
     | '/api/public/system/platform-keys'
     | '/api/public/system/telegram-bootstrap'
     | '/api/public/system/telegram-credentials'
+    | '/api/public/telegram/reminders'
     | '/api/public/telegram/webhook'
     | '/_authenticated/crm/clients/'
     | '/_authenticated/crm/deals/'
@@ -1129,6 +1142,7 @@ export interface RootRouteChildren {
   ApiPublicSystemPlatformKeysRoute: typeof ApiPublicSystemPlatformKeysRoute
   ApiPublicSystemTelegramBootstrapRoute: typeof ApiPublicSystemTelegramBootstrapRoute
   ApiPublicSystemTelegramCredentialsRoute: typeof ApiPublicSystemTelegramCredentialsRoute
+  ApiPublicTelegramRemindersRoute: typeof ApiPublicTelegramRemindersRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -1715,6 +1729,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSystemTelegramCredentialsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/reminders': {
+      id: '/api/public/telegram/reminders'
+      path: '/api/public/telegram/reminders'
+      fullPath: '/api/public/telegram/reminders'
+      preLoaderRoute: typeof ApiPublicTelegramRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
       path: '/api/public/telegram/webhook'
@@ -1912,6 +1933,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSystemTelegramBootstrapRoute: ApiPublicSystemTelegramBootstrapRoute,
   ApiPublicSystemTelegramCredentialsRoute:
     ApiPublicSystemTelegramCredentialsRoute,
+  ApiPublicTelegramRemindersRoute: ApiPublicTelegramRemindersRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport

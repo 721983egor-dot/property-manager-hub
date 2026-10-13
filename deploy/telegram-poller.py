@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import time
+import threading
 import urllib.error
 import urllib.request
 
@@ -113,12 +114,38 @@ def attach_media(upd: dict) -> None:
         print(f"attach media failed: {e}", flush=True)
 
 
+def reminder_worker(secret: str) -> None:
+    """Independent of long imports/voice analysis; database-backed delivery leases."""
+    endpoint = WEBHOOK_URL.rsplit("/", 1)[0] + "/reminders"
+    headers = {"X-Telegram-Bot-Api-Secret-Token": secret}
+    while True:
+        try:
+            batch = http_json(endpoint, {"action": "claim"}, headers=headers, timeout=30, retries=1)
+            for item in batch.get("deliveries", []):
+                success = False
+                try:
+                    # Never automatically retry sendMessage: a lost response can mean it was delivered.
+                    sent = http_json(f"{API}/sendMessage", {
+                        "chat_id": item["chatId"], "text": item["text"],
+                        "reply_markup": {"inline_keyboard": item["keyboard"]},
+                    }, timeout=45, retries=1)
+                    success = bool(sent.get("ok"))
+                except Exception:
+                    # Do not log the request/token/private reminder text.
+                    print("reminder send failed; retry scheduled", flush=True)
+                http_json(endpoint, {"action": "ack", "id": item["id"], "token": item["token"], "success": success}, headers=headers, timeout=30)
+        except Exception:
+            print("reminder worker unavailable; will retry", flush=True)
+        time.sleep(30)
+
+
 def main() -> None:
     if not TOKEN or ":" not in TOKEN:
         die("TELEGRAM_BOT_TOKEN missing")
 
     secret = secret_for(TOKEN)
     print(f"poller start forward={WEBHOOK_URL}", flush=True)
+    threading.Thread(target=reminder_worker, args=(secret,), daemon=True).start()
 
     # Ensure webhook is cleared so getUpdates works.
     try:

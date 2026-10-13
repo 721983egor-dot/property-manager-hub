@@ -132,6 +132,11 @@ export function createReadTools(ctx: AssistantToolContext) {
   };
 
   return {
+    listReminders: tool({
+      description: "Список моих активных Telegram-напоминаний администратора. Возвращает точное текущее время, due_at, repeat, state и occurrence для изменения; только личный Telegram-чат.",
+      inputSchema: z.object({}),
+      execute: async () => { const { listReminders } = await import("@/lib/reminders/service.server"); return listReminders(); },
+    }),
     draftRentalDescription: tool({
       description: "Помочь написать описание долгосрочной аренды по реальным фотографиям Яндекс Диска и отдельное описание локации по адресу с веб-проверкой. Ничего не сохраняет. Возвращает тексты, видимые особенности, вопросы и источники. Для нового текста не передавай description/locationDescription; переданные готовые тексты сохраняются. locationNotes — факты менеджера о районе. Не называй фото проанализированными, если photosAnalyzed=0. Затем предложи создание или частичное изменение только после проверки пользователем.",
       inputSchema: rentalCopyInputSchema,

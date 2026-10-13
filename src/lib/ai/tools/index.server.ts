@@ -1,3 +1,4 @@
+// Personal Telegram reminders: listReminders, proposeReminder/proposeManageReminder; confirmed create/manage, administrator only.
 // Rental finance: getFinanceRentalTerms; proposeManagementFee, proposeManagementFeePayment (admin confirmation).
 // Import review: compact parameters + description; Telegram suppresses duplicate model preamble.
 // Rental copy: draftRentalDescription; import proposal includes copy; property update supports locationDescription.

@@ -24,6 +24,8 @@ async function logAction(summary: string, tool: string, input: Input) {
 
 /** Исполнители подтверждённых действий Ассистента. Ключ = поле `tool` предложения. */
 export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
+  createReminder: async (input) => { const { createReminder } = await import("@/lib/reminders/service.server"); return createReminder(input); },
+  manageReminder: async (input) => { const { manageReminderProposal } = await import("@/lib/reminders/service.server"); return manageReminderProposal(input); },
   importRentalFromDisk: async (input) => {
     const { executeRentalImport } = await import("@/lib/property-import/import.server");
     return executeRentalImport(input);

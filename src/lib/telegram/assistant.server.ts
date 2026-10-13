@@ -1,3 +1,4 @@
+import { reminderActor, reminderAccount } from "@/lib/reminders/actor.server";
 /** Обработка сообщений Telegram Ассистентом RM OS. Только сервер. */
 
 import { Buffer } from "node:buffer";
@@ -220,6 +221,11 @@ async function runAssistant(messages: AssistantChatMessage[]) {
 
 async function storeProposal(action: AssistantAction, chatId: number, telegramUserId: number) {
   const input = JSON.parse(action.input || "{}");
+  if (["createReminder", "manageReminder"].includes(action.tool)) {
+    await reminderAccount(telegramUserId, chatId);
+    input._telegramChatId = chatId;
+    input._telegramUserId = telegramUserId;
+  }
   if (action.tool === "importRentalFromDisk") {
     if (!(await canImportRental(telegramUserId)))
       throw new Error("Нужна действующая учётная запись администратора или менеджера РМ ОС");
@@ -245,7 +251,7 @@ export async function sendAssistantReply(
   messages: AssistantChatMessage[],
   telegramUserId: number,
 ) {
-  const reply = await runAssistant(messages);
+  const reply = await reminderActor.run({ telegramUserId, chatId }, () => runAssistant(messages));
   if (reply.error) {
     await sendMessage(chatId, `Не удалось получить ответ: ${reply.error}`);
     return;
@@ -323,6 +329,7 @@ const HELP =
   "Я Ассистент RM OS. Напишите вопрос текстом или отправьте голосовое — отвечу по данным системы.\n" +
   "Любое изменение я только предлагаю: подтвердите кнопкой.\n" +
   "Команда /reset — начать диалог заново.\n" +
+  "Напоминания (администратор): «Напомни завтра в 11 позвонить собственнику», «Каждого 7 числа в 10 проверить аренду», «Покажи мои напоминания». Время московское. После подтверждения напомню, даже если Мак выключен.\n" +
   "Добавить объект: отправьте общую ссылку Яндекс Диска с фото, адрес, тип, комнаты, площадь и цену за месяц. Только долгосрочная аренда. До 300 JPG/PNG/WebP в папке, до 10 МБ на фото. Просмотрю все и выберу до 20 лучших. Сначала покажу карточку для подтверждения.";
 
 async function handleMessage(message: TgMessage, preloaded?: RmOsMedia) {
@@ -432,7 +439,18 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
     return;
   }
 
-  const [kind, id] = data.split(":");
+  const [kind, id, occurrence] = data.split(":");
+  if (["rd", "rs", "rc"].includes(kind ?? "") && id) {
+    try {
+      if (!/^[0-9a-f-]{36}$/i.test(id) || !/^\d+$/.test(occurrence ?? "")) throw new Error("Некорректная кнопка");
+      const owner = await reminderAccount(query.from.id, chatId);
+      const { manageReminder } = await import("@/lib/reminders/service.server");
+      const result = await manageReminder(owner.id, id, Number(occurrence), kind === "rd" ? "done" : kind === "rs" ? "snooze" : "cancel");
+      await answerCallbackQuery(query.id, result.slice(0, 180));
+      await sendMessage(chatId, result);
+    } catch (error) { await answerCallbackQuery(query.id, error instanceof Error ? error.message : "Ошибка"); }
+    return;
+  }
 
   if (kind === "tx" && id) {
     const { data: row } = await supabaseAdmin
@@ -456,6 +474,13 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
     if (error || !target) {
       await answerCallbackQuery(query.id, "Предложение не найдено");
       return;
+    }
+    if (["createReminder", "manageReminder"].includes(target.tool_name)) {
+      const owner = target.input as Record<string, unknown>;
+      try { await reminderAccount(query.from.id, chatId); } catch { await answerCallbackQuery(query.id, "Нет доступа"); return; }
+      if (owner["_telegramUserId"] !== query.from.id || owner["_telegramChatId"] !== chatId) {
+        await answerCallbackQuery(query.id, "Подтвердить может только автор в своём личном чате"); return;
+      }
     }
     if (target.tool_name === "importRentalFromDisk") {
       if (!(await canImportRental(query.from.id))) {
@@ -531,7 +556,7 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       await answerCallbackQuery(query.id, "Уже обработано");
       return;
     }
-    if (proposal.tool_name === "importRentalFromDisk") {
+    if (["importRentalFromDisk", "createReminder", "manageReminder"].includes(proposal.tool_name)) {
       const { data: claimed, error } = await supabaseAdmin
         .from("ai_action_proposals")
         .update({ status: "executing", confirmed_at: new Date().toISOString() })
