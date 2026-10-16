@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -20,173 +20,269 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { closeDealAsWon, type Deal } from "@/lib/deals";
+import { closeDealAsWon, DEAL_SOURCES, type Deal } from "@/lib/deals";
+import { companyIncome } from "@/lib/crm-results-model";
 import { internalTitle, type Property } from "@/lib/properties";
-
 type Props = {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (v: boolean) => void;
   deal: Deal;
   stageId: string;
   properties: Property[];
   onClosed?: () => void;
 };
-
-/** Окно закрытия успешной сделки: объект, даты и финансовые условия аренды. */
 export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, onClosed }: Props) {
   const qc = useQueryClient();
   const [propertyId, setPropertyId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [priceMonth, setPriceMonth] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [rent, setRent] = useState("");
   const [deposit, setDeposit] = useState("");
-  const [commission, setCommission] = useState("");
-  const [paymentDay, setPaymentDay] = useState("1");
-
-  const property = useMemo(
-    () => properties.find((p) => p.id === propertyId) ?? null,
-    [properties, propertyId],
-  );
-  const hasCommission = property?.commission != null && Number(property.commission) > 0;
-
+  const [day, setDay] = useState("1");
+  const [source, setSource] = useState("");
+  const [incomeType, setIncomeType] = useState<"percent" | "amount">("percent");
+  const [income, setIncome] = useState("");
+  const [booking, setBooking] = useState(true);
+  const property = properties.find((p) => p.id === propertyId);
+  const active = properties.filter((p) => p.status !== "archived" && p.portfolio === "rm");
   useEffect(() => {
     if (!open) return;
     setPropertyId(deal.closed_property_id ?? deal.property_id ?? "");
-    setStartDate(deal.start_date ?? "");
-    setEndDate(deal.end_date ?? "");
-    setPriceMonth(deal.price_month != null ? String(deal.price_month) : "");
-    setDeposit(deal.deposit != null ? String(deal.deposit) : "");
-    setCommission(deal.commission != null ? String(deal.commission) : "");
-    setPaymentDay(deal.payment_day != null ? String(deal.payment_day) : "1");
-  }, [open, deal]);
-
+    setStart(deal.start_date ?? "");
+    setEnd(deal.end_date ?? "");
+    setRent(deal.price_month == null ? "" : String(deal.price_month));
+    setDeposit(deal.deposit == null ? "" : String(deal.deposit));
+    setDay(String(deal.payment_day ?? 1));
+    setSource(deal.closing_source || deal.source || "");
+    setIncomeType(deal.income_type ?? "percent");
+    setIncome(deal.income_value == null ? "" : String(deal.income_value));
+    setBooking(true);
+  }, [
+    open,
+    deal.id,
+    deal.closed_property_id,
+    deal.property_id,
+    deal.start_date,
+    deal.end_date,
+    deal.price_month,
+    deal.deposit,
+    deal.payment_day,
+    deal.closing_source,
+    deal.source,
+    deal.income_type,
+    deal.income_value,
+  ]);
+  const selectProperty = (id: string) => {
+    setPropertyId(id);
+    const p = properties.find((x) => x.id === id);
+    setRent(p?.price_month == null ? "" : String(p.price_month));
+    setDeposit(p?.deposit == null ? "" : String(p.deposit));
+    setIncomeType(p?.management_fee_type ?? "percent");
+    setIncome(p?.management_fee_value == null ? "" : String(p.management_fee_value));
+  };
   useEffect(() => {
-    if (!property) return;
-    setPriceMonth((prev) => (prev ? prev : property.price_month != null ? String(property.price_month) : ""));
-    setDeposit((prev) => (prev ? prev : property.deposit != null ? String(property.deposit) : ""));
-    setCommission((prev) => (prev ? prev : property.commission != null ? String(property.commission) : ""));
-  }, [property]);
-
+    if (open && property) {
+      setRent((v) => v || String(property.price_month ?? ""));
+      setDeposit((v) => v || String(property.deposit ?? ""));
+      setIncome((v) => v || String(property.management_fee_value ?? ""));
+      if (deal.income_type == null) setIncomeType(property.management_fee_type ?? "percent");
+    }
+  }, [open, propertyId, property, deal.income_type]);
+  const fee = useMemo(() => {
+    try {
+      return income.trim() === "" ? null : companyIncome(Number(rent), incomeType, Number(income));
+    } catch {
+      return null;
+    }
+  }, [rent, incomeType, income]);
   const save = useMutation({
     mutationFn: async () => {
-      if (!propertyId) throw new Error("Выберите объект аренды");
-      if (!startDate || !endDate) throw new Error("Укажите даты заезда и выезда");
-      if (endDate <= startDate) throw new Error("Дата выезда должна быть позже заезда");
-      if (!priceMonth.trim()) throw new Error("Укажите цену в месяц");
-      if (!deposit.trim()) throw new Error("Укажите депозит");
-      if (hasCommission && !commission.trim()) throw new Error("Укажите комиссию");
-      const day = Number(paymentDay);
-      if (!day || day < 1 || day > 31) throw new Error("Укажите день ежемесячной оплаты (1–31)");
-      if (!deal.client_id) throw new Error("Сначала выберите клиента в сделке");
-
+      if (
+        !property ||
+        !deal.client_id ||
+        !start ||
+        !end ||
+        end <= start ||
+        !rent.trim() ||
+        !deposit.trim() ||
+        !source ||
+        !income.trim() ||
+        fee == null
+      )
+        throw new Error(
+          "Заполните объект, клиента, сроки, стоимость, депозит, площадку и доход компании",
+        );
       return closeDealAsWon(
         deal.id,
         stageId,
         {
           property_id: propertyId,
-          start_date: startDate,
-          end_date: endDate,
-          price_month: Number(priceMonth),
+          start_date: start,
+          end_date: end,
+          price_month: Number(rent),
           deposit: Number(deposit),
-          commission: hasCommission ? Number(commission) : null,
-          payment_day: day,
+          commission: deal.commission,
+          payment_day: Number(day),
+          closing_source: source,
+          income_type: incomeType,
+          income_value: Number(income),
+          create_booking: booking,
         },
         {
           client_id: deal.client_id,
-          service_type: property?.service_type ?? "management",
+          service_type: property.service_type ?? "management",
           source: deal.source,
         },
       );
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["deals"] });
-      qc.invalidateQueries({ queryKey: ["deal-history", deal.id] });
-      qc.invalidateQueries({ queryKey: ["properties"] });
-      qc.invalidateQueries({ queryKey: ["bookings"] });
-      toast.success("Сделка закрыта успешно");
+      for (const key of [
+        "deals",
+        "deal-history",
+        "properties",
+        "bookings",
+        "finance-rentals",
+        "finance-object-properties",
+      ])
+        qc.invalidateQueries({ queryKey: [key] });
+      toast.success(booking ? "Сделка закрыта, бронь создана" : "Сделка закрыта успешно");
       onClosed?.();
       onOpenChange(false);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось закрыть сделку"),
+    onError: (e) => toast.error(e.message),
   });
-
+  const field = (label: string, value: string, set: (s: string) => void, type = "text") => (
+    <div className="grid gap-1.5">
+      <Label>{label}</Label>
+      <Input
+        type={type}
+        value={value}
+        onChange={(e) => set(e.target.value)}
+        min={type === "number" ? 0 : undefined}
+      />
+    </div>
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Успешное закрытие сделки</DialogTitle>
+          <DialogTitle>Оформить аренду и бронь</DialogTitle>
           <DialogDescription>
-            {property?.service_type === "commission_only"
-              ? "Объект получит статус «Сдан», бронирование в календарь не добавляется."
-              : "Даты закроются в календаре, объект получит статус «Сдан»."}
+            Условия сохранятся в сделке и карточке объекта. Деньги не отмечаются полученными.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label>Арендованный объект</Label>
-            <Select value={propertyId} onValueChange={setPropertyId}>
-              <SelectTrigger><SelectValue placeholder="Выберите объект" /></SelectTrigger>
-              <SelectContent>
-                {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {internalTitle(p)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
+        <section className="crm-section">
+          <h3>01 · Объект и клиент</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label>Дата заезда</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <Label>Объект</Label>
+              <Select value={propertyId} onValueChange={selectProperty}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите объект" />
+                </SelectTrigger>
+                <SelectContent>
+                  {active.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {internalTitle(p)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="grid gap-1.5">
-              <Label>Дата выезда</Label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Цена в месяц, ₽</Label>
-              <Input
-                inputMode="numeric"
-                value={priceMonth}
-                onChange={(e) => setPriceMonth(e.target.value.replace(/[^\d]/g, ""))}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Депозит, ₽</Label>
-              <Input
-                inputMode="numeric"
-                value={deposit}
-                onChange={(e) => setDeposit(e.target.value.replace(/[^\d]/g, ""))}
-              />
-            </div>
-            {hasCommission && (
-              <div className="grid gap-1.5">
-                <Label>Комиссия, %</Label>
-                <Input
-                  inputMode="numeric"
-                  value={commission}
-                  onChange={(e) => setCommission(e.target.value.replace(/[^\d]/g, ""))}
-                />
-              </div>
-            )}
-            <div className="grid gap-1.5">
-              <Label>Число ежемесячной оплаты</Label>
-              <Input
-                inputMode="numeric"
-                value={paymentDay}
-                onChange={(e) => setPaymentDay(e.target.value.replace(/[^\d]/g, ""))}
-              />
+            <div>
+              <Label>Клиент</Label>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {deal.client_id ? "Клиент из карточки сделки" : "Сначала выберите клиента в сделке"}
+              </p>
             </div>
           </div>
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
-            {save.isPending ? "Сохранение…" : "Закрыть сделку"}
+        </section>
+        <section className="crm-section">
+          <h3>02 · Сроки и условия аренды</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field("Начало аренды", start, setStart, "date")}
+            {field("Окончание аренды", end, setEnd, "date")}
+            {field("Аренда в месяц, ₽", rent, setRent, "number")}
+            {field("Обеспечительный платёж, ₽", deposit, setDeposit, "number")}
+            {field("День ежемесячной оплаты (1–31)", day, setDay, "number")}
+            <div className="grid gap-1.5">
+              <Label>Площадка успешной сделки</Label>
+              <Select value={source} onValueChange={setSource}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите площадку" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...new Set([...DEAL_SOURCES, ...(source ? [source] : [])])].map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </section>
+        <section className="crm-section">
+          <h3>03 · Доход компании</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label>Вознаграждение в месяц</Label>
+              <Select
+                value={incomeType}
+                onValueChange={(v) => setIncomeType(v as "percent" | "amount")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percent">Процент от аренды</SelectItem>
+                  <SelectItem value="amount">Фиксированная сумма</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {field(
+              incomeType === "percent" ? "Процент, %" : "Сумма в месяц, ₽",
+              income,
+              setIncome,
+              "number",
+            )}
+          </div>
+          <div className="crm-income mt-4">
+            <div>
+              <small>Доход компании / месяц</small>
+              <strong>{fee == null ? "—" : fee.toLocaleString("ru-RU") + " ₽"}</strong>
+            </div>
+            <div>
+              <small>Собственнику до расходов / месяц</small>
+              <strong>
+                {fee == null ? "—" : (Number(rent) - fee).toLocaleString("ru-RU") + " ₽"}
+              </strong>
+            </div>
+          </div>
+        </section>
+        <label className="flex items-start gap-3 text-sm">
+          <Checkbox checked={booking} onCheckedChange={(v) => setBooking(v === true)} />
+          <span>
+            Создать бронь в календаре объекта
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Долгосрочная аренда. При занятых датах сделка не будет закрыта.
+            </span>
+          </span>
+        </label>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Отмена
+          </Button>
+          <Button
+            disabled={save.isPending}
+            onClick={() => save.mutate()}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            {save.isPending
+              ? "Сохранение…"
+              : booking
+                ? "Закрыть успешно и создать бронь"
+                : "Закрыть успешно"}
           </Button>
         </DialogFooter>
       </DialogContent>

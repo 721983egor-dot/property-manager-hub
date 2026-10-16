@@ -1,3 +1,4 @@
+import { DealLossReasons } from "@/components/DealLossReasons";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
@@ -7,12 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -50,7 +46,13 @@ type Props = {
 };
 
 /** Настройка канбана: стадии и дополнительные поля (только администратор). */
-export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipeline = "rental" }: Props) {
+export function DealSettingsDialog({
+  open,
+  onOpenChange,
+  stages,
+  fields,
+  pipeline = "rental",
+}: Props) {
   const queryClient = useQueryClient();
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["deal-stages"] });
@@ -59,8 +61,13 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
   };
 
   const stageMutation = useMutation({
-    mutationFn: ({ id, patch }: { id: string | null; patch: Parameters<typeof saveDealStage>[1] }) =>
-      saveDealStage(id, patch),
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string | null;
+      patch: Parameters<typeof saveDealStage>[1];
+    }) => saveDealStage(id, patch),
     onSuccess: refresh,
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось сохранить"),
   });
@@ -70,8 +77,13 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось удалить"),
   });
   const fieldMutation = useMutation({
-    mutationFn: ({ id, patch }: { id: string | null; patch: Parameters<typeof saveDealField>[1] }) =>
-      saveDealField(id, patch),
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string | null;
+      patch: Parameters<typeof saveDealField>[1];
+    }) => saveDealField(id, patch),
     onSuccess: refresh,
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось сохранить"),
   });
@@ -88,7 +100,7 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] sm:max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -97,11 +109,15 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
           <TabsList>
             <TabsTrigger value="stages">Стадии</TabsTrigger>
             <TabsTrigger value="fields">Поля</TabsTrigger>
+            <TabsTrigger value="reasons">Причины провала</TabsTrigger>
           </TabsList>
 
           <TabsContent value="stages" className="mt-4 grid gap-3">
             {stages.map((s, index) => (
-              <div key={s.id} className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_130px_140px_auto]">
+              <div
+                key={s.id}
+                className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_130px_140px_auto]"
+              >
                 <Input
                   defaultValue={s.name}
                   onBlur={(e) =>
@@ -151,10 +167,14 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
                     })
                   }
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {STAGE_KINDS.map((k) => (
-                      <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>
+                      <SelectItem key={k.value} value={k.value}>
+                        {k.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -267,13 +287,20 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
                   <Select
                     value={f.field_type}
                     onValueChange={(v) =>
-                      fieldMutation.mutate({ id: f.id, patch: { ...f, field_type: v as DealFieldType } })
+                      fieldMutation.mutate({
+                        id: f.id,
+                        patch: { ...f, field_type: v as DealFieldType },
+                      })
                     }
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {FIELD_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -290,7 +317,10 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
                         id: f.id,
                         patch: {
                           ...f,
-                          options: e.target.value.split(",").map((o) => o.trim()).filter(Boolean),
+                          options: e.target.value
+                            .split(",")
+                            .map((o) => o.trim())
+                            .filter(Boolean),
                         },
                       })
                     }
@@ -300,14 +330,18 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
                   <label className="flex items-center gap-2">
                     <Switch
                       checked={f.show_in_card}
-                      onCheckedChange={(v) => fieldMutation.mutate({ id: f.id, patch: { ...f, show_in_card: v } })}
+                      onCheckedChange={(v) =>
+                        fieldMutation.mutate({ id: f.id, patch: { ...f, show_in_card: v } })
+                      }
                     />
                     Показывать на канбане
                   </label>
                   <label className="flex items-center gap-2">
                     <Switch
                       checked={f.archived}
-                      onCheckedChange={(v) => fieldMutation.mutate({ id: f.id, patch: { ...f, archived: v } })}
+                      onCheckedChange={(v) =>
+                        fieldMutation.mutate({ id: f.id, patch: { ...f, archived: v } })
+                      }
                     />
                     Скрыто
                   </label>
@@ -325,11 +359,18 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
                   onChange={(e) => setNewField(e.target.value)}
                 />
               </div>
-              <Select value={newFieldType} onValueChange={(v) => setNewFieldType(v as DealFieldType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={newFieldType}
+                onValueChange={(v) => setNewFieldType(v as DealFieldType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {FIELD_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -355,6 +396,9 @@ export function DealSettingsDialog({ open, onOpenChange, stages, fields, pipelin
                 <Plus className="mr-1 size-4" /> Добавить
               </Button>
             </div>
+          </TabsContent>
+          <TabsContent value="reasons" className="mt-4">
+            <DealLossReasons pipeline={pipeline} />
           </TabsContent>
         </Tabs>
       </DialogContent>

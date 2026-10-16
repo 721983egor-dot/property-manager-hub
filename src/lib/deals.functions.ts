@@ -13,12 +13,13 @@ const RENTAL_STAGES = [
 ];
 
 const INTAKE_STAGES = [
-  { name: "Заявка", color: "#0ea5e9", position: 0, kind: "open", pipeline: "intake" },
-  { name: "Осмотр", color: "#6366f1", position: 1, kind: "open", pipeline: "intake" },
-  { name: "Документы", color: "#f59e0b", position: 2, kind: "open", pipeline: "intake" },
-  { name: "На площадках", color: "#8b5cf6", position: 3, kind: "open", pipeline: "intake" },
-  { name: "В работе", color: "#10b981", position: 4, kind: "won", pipeline: "intake" },
-  { name: "Отказ", color: "#ef4444", position: 5, kind: "lost", pipeline: "intake" },
+  { name: "Новая заявка", color: "#0ea5e9", position: 0, kind: "open", pipeline: "intake" },
+  { name: "Связались", color: "#6366f1", position: 1, kind: "open", pipeline: "intake" },
+  { name: "Осмотр объекта", color: "#f59e0b", position: 2, kind: "open", pipeline: "intake" },
+  { name: "Согласование условий", color: "#8b5cf6", position: 3, kind: "open", pipeline: "intake" },
+  { name: "Подготовка объекта", color: "#64748b", position: 4, kind: "open", pipeline: "intake" },
+  { name: "Принят в работу", color: "#10b981", position: 5, kind: "won", pipeline: "intake" },
+  { name: "Отказ", color: "#ef4444", position: 6, kind: "lost", pipeline: "intake" },
 ];
 
 /** Восстанавливает стадии воронки после проверки роли администратора. */

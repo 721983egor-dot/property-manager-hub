@@ -33,6 +33,9 @@ export function createMutateTools(ctx: AssistantToolContext) {
   };
 
   return {
+    proposeDealLossReason:tool({description:"Добавить, переименовать или убрать причину провала (archived=true). Сначала listDealLossReasons. История сохраняется; подтверждение администратора.",inputSchema:z.object({id:z.string().uuid().optional(),pipeline:z.enum(["rental","intake"]),name:z.string().min(1).max(160),position:z.number().int(),archived:z.boolean().optional()}),execute:async(input)=>{const {crmAccess}=await import("@/lib/crm-results.server");await crmAccess();const summary=`${input.archived?"Убрать из выбора":"Сохранить причину провала"}: ${input.name}`;ctx.propose({tool:"saveDealLossReason",summary,input:{...input,newId:crypto.randomUUID()}});return {proposed:summary};}}),
+    proposeCloseDealLost:tool({description:"Закрыть сделку с причиной провала. Причину взять из listDealLossReasons. closedOn YYYY-MM-DD по Москве. Только после подтверждения.",inputSchema:z.object({dealId:z.string().uuid(),reasonId:z.string().uuid(),comment:z.string().max(3000),closedOn:z.string()}),execute:async(input)=>{const {crmAccess}=await import("@/lib/crm-results.server");const {db}=await crmAccess();const d=await db.from("deals").select("title,pipeline").eq("id",input.dealId).single();const r=await db.from("deal_loss_reasons").select("name,pipeline,archived").eq("id",input.reasonId).single();if(!d.data||!r.data||r.data.archived||r.data.pipeline!==d.data.pipeline)throw new Error("Проверьте сделку и причину");const summary=`Закрыть «${d.data.title}» с отказом: ${r.data.name}, ${input.closedOn}. ${input.comment}`;ctx.propose({tool:"closeDealLost",summary,input});return {proposed:summary};}}),
+    proposeAcceptIntake:tool({description:"Принять новый объект в работу. propertyId = существующий объект; без него создаётся объект из заполненных параметров карточки. Без публикации, подтверждение администратора.",inputSchema:z.object({dealId:z.string().uuid(),propertyId:z.string().uuid().optional()}),execute:async(input)=>{const {crmAccess}=await import("@/lib/crm-results.server");const {db}=await crmAccess();const d=await db.from("deals").select("title").eq("id",input.dealId).eq("pipeline","intake").single();if(!d.data)throw new Error("Карточка не найдена");const summary=`Принять «${d.data.title}» в работу; ${input.propertyId?"привязать выбранный объект":"создать объект из параметров карточки"}. Без публикации`;ctx.propose({tool:"acceptIntake",summary,input});return {proposed:summary};}}),
     proposeReminder: tool({
       description: "Создать личное Telegram-напоминание администратора после подтверждения. Сначала уточни недостающие дату/время; время московское. dueAt = YYYY-MM-DDTHH:mm:00+03:00, строго в будущем. repeat once/daily/weekly/monthly; на 31 число короткого месяца — последний день. Никаких отправок другим людям.",
       inputSchema: reminderSchema,
@@ -439,66 +442,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
-    proposeDealWon: tool({
-      description:
-        "Предложить успешное закрытие сделки: объект, даты заезда и выезда, цена в месяц, депозит, комиссия, день ежемесячной оплаты. Требует подтверждения менеджера.",
-      inputSchema: z.object({
-        dealId: z.string(),
-        propertyRef: z.string(),
-        startDate: z.string(),
-        endDate: z.string(),
-        priceMonth: z.number(),
-        deposit: z.number(),
-        commission: z.number().optional(),
-        paymentDay: z.number(),
-      }),
-      execute: async ({
-        dealId,
-        propertyRef,
-        startDate,
-        endDate,
-        priceMonth,
-        deposit,
-        commission,
-        paymentDay,
-      }) => {
-        const { data: deal } = await ctx.admin
-          .from("deals")
-          .select("title, client_id")
-          .eq("id", dealId)
-          .maybeSingle();
-        if (!deal) return { error: "Сделка не найдена" };
-        const numeric = Number(propertyRef);
-        const { data: property } = await ctx.admin
-          .from("properties")
-          .select("id, ref_id, internal_name, title, service_type")
-          .or(
-            Number.isFinite(numeric) && propertyRef.trim() !== ""
-              ? `id.eq.${propertyRef},ref_id.eq.${numeric}`
-              : `id.eq.${propertyRef}`,
-          )
-          .maybeSingle();
-        if (!property) return { error: "Объект не найден" };
-        const summary = `Закрыть сделку «${deal.title}» успешно: объект №${property.ref_id}, ${startDate} — ${endDate}, ${priceMonth} ₽/мес, депозит ${deposit} ₽, оплата ${paymentDay} числа`;
-        ctx.propose({
-          tool: "closeDealWon",
-          summary,
-          input: {
-            dealId,
-            propertyId: property.id,
-            clientId: deal.client_id,
-            serviceType: property.service_type,
-            startDate,
-            endDate,
-            priceMonth,
-            deposit,
-            commission: commission ?? null,
-            paymentDay,
-          },
-        });
-        return { proposed: summary };
-      },
-    }),
+    proposeDealWon:tool({description:"Успешное закрытие и бронь: выбранный объект, сроки, аренда, депозит, день оплаты, площадка сделки и месячный доход компании percent/amount. Уточни все условия; деньги не считаются полученными. Подтверждение администратора.",inputSchema:z.object({dealId:z.string().uuid(),propertyRef:z.string(),startDate:z.string(),endDate:z.string(),priceMonth:z.number().positive(),deposit:z.number().nonnegative(),paymentDay:z.number().int().min(1).max(31),closingSource:z.string().min(1),incomeType:z.enum(["percent","amount"]),incomeValue:z.number().nonnegative(),createBooking:z.boolean()}),execute:async({propertyRef,...input})=>{const {crmAccess}=await import("@/lib/crm-results.server");const {db}=await crmAccess();const p=await label(propertyRef);if(!p)throw new Error("Объект не найден");const d=await db.from("deals").select("title").eq("id",input.dealId).single();if(!d.data)throw new Error("Сделка не найдена");const summary=`Закрыть «${d.data.title}» успешно: ${p.text}, ${input.startDate} — ${input.endDate}, ${input.priceMonth} ₽/мес., депозит ${input.deposit} ₽, оплата ${input.paymentDay} числа; доход компании ${input.incomeValue}${input.incomeType==="percent"?"%":" ₽/мес."}, площадка ${input.closingSource}; ${input.createBooking?"создать бронь":"без брони"}`;ctx.propose({tool:"closeDealWon",summary,input:{...input,propertyId:p.id}});return {proposed:summary};}}),
 
     proposeDeal: tool({
       description:

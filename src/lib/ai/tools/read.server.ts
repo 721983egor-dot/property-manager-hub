@@ -133,6 +133,16 @@ export function createReadTools(ctx: AssistantToolContext) {
   };
 
   return {
+    getCrmResults: tool({
+      description: "CRM: обращения по дате создания и исходному источнику, успешные по дате закрытия и площадке сделки, проваленные по причинам. Даты YYYY-MM-DD по Москве; пустые даты = всё время. Только администратор.",
+      inputSchema: z.object({pipeline:z.enum(["rental","intake"]),mode:z.enum(["inquiries","won","lost"]),from:z.string(),to:z.string()}),
+      execute: async({pipeline,mode,from,to})=>{const {readCrmResults}=await import("@/lib/crm-results.server");return readCrmResults(pipeline,mode,from,to);},
+    }),
+    listDealLossReasons: tool({
+      description:"Причины провала воронки, включая архивные. Только администратор.",
+      inputSchema:z.object({pipeline:z.enum(["rental","intake"])}),
+      execute:async({pipeline})=>{const {crmAccess}=await import("@/lib/crm-results.server");const {db}=await crmAccess();const r=await db.from("deal_loss_reasons").select("*").eq("pipeline",pipeline).order("position");if(r.error)throw r.error;return r.data;},
+    }),
     listReminders: tool({
       description: "Список моих активных Telegram-напоминаний администратора. Возвращает точное текущее время, due_at, repeat, state и occurrence для изменения; только личный Telegram-чат.",
       inputSchema: z.object({}),

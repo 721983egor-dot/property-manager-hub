@@ -1,3 +1,5 @@
+import { IntakeWonDialog } from "@/components/IntakeWonDialog";
+import { DealLostDialog } from "@/components/DealLostDialog";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -57,7 +59,14 @@ type Props = {
 };
 
 /** Карточка «Новый объект»: собственник + черновик полей объекта (CRM, не сайт). */
-export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, defaultStageId }: Props) {
+export function IntakeDealDialog({
+  open,
+  onOpenChange,
+  deal,
+  stages,
+  fields,
+  defaultStageId,
+}: Props) {
   const queryClient = useQueryClient();
   const { isAdmin, profile } = useAccess();
   const loadStaff = useServerFn(listStaff);
@@ -72,6 +81,8 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
 
   const activeFields = useMemo(() => fields.filter((f) => !f.archived), [fields]);
 
+  const [acceptedDeal, setAcceptedDeal] = useState<Deal | null>(null);
+  const [lostDeal, setLostDeal] = useState<Deal | null>(null);
   const [title, setTitle] = useState("");
   const [stageId, setStageId] = useState("");
   const [clientId, setClientId] = useState<string>(NONE);
@@ -127,7 +138,10 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
     mutationFn: () =>
       saveDeal(deal?.id ?? null, {
         title: title.trim() || draft.address.trim() || "Новый объект",
-        stage_id: stageId,
+        stage_id:
+          stages.find((s) => s.id === stageId)?.kind !== "open"
+            ? (deal?.stage_id ?? stages.find((s) => s.kind === "open")!.id)
+            : stageId,
         pipeline: "intake",
         client_id: clientId === NONE ? null : clientId,
         property_id: deal?.property_id ?? null,
@@ -141,7 +155,17 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
         preferred_messenger: messenger,
         custom: withIntakeDraft(custom, draft),
       }),
-    onSuccess: () => {
+    onSuccess: (id: string) => {
+      if (stages.find((s) => s.id === stageId)?.kind === "won")
+        setAcceptedDeal({
+          ...deal,
+          id,
+          title,
+          pipeline: "intake",
+          property_id: deal?.property_id ?? null,
+        } as Deal);
+      if (stages.find((s) => s.id === stageId)?.kind === "lost")
+        setLostDeal({ ...deal, id, title, pipeline: "intake" } as Deal);
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       toast.success(deal ? "Карточка обновлена" : "Новый объект создан");
       onOpenChange(false);
@@ -161,8 +185,20 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
 
   return (
     <>
+      {acceptedDeal && (
+        <IntakeWonDialog deal={acceptedDeal} onClose={() => setAcceptedDeal(null)} />
+      )}
+      {lostDeal && (
+        <DealLostDialog
+          open={!!lostDeal}
+          onOpenChange={(v) => {
+            if (!v) setLostDeal(null);
+          }}
+          deal={lostDeal}
+        />
+      )}
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] sm:max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{deal ? "Новый объект" : "Приём объекта"}</DialogTitle>
           </DialogHeader>
@@ -198,7 +234,12 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
               <div className="grid gap-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <Label>Собственник</Label>
-                  <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setNewClientOpen(true)}>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => setNewClientOpen(true)}
+                  >
                     + Новый
                   </Button>
                 </div>
@@ -216,9 +257,7 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedClient ? (
-                  <ClientContactButtons phone={selectedClient.phone} />
-                ) : null}
+                {selectedClient ? <ClientContactButtons phone={selectedClient.phone} /> : null}
               </div>
               <div className="grid gap-1.5">
                 <Label>Ответственный</Label>
@@ -251,7 +290,9 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROPERTY_TYPES.filter((t) => t.value !== "aparts" && t.value !== "villa").map((t) => (
+                      {PROPERTY_TYPES.filter(
+                        (t) => t.value !== "aparts" && t.value !== "villa",
+                      ).map((t) => (
                         <SelectItem key={t.value} value={t.value}>
                           {t.label}
                         </SelectItem>
@@ -288,7 +329,10 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Комнат</Label>
-                  <Input value={draft.rooms} onChange={(e) => patchDraft({ rooms: e.target.value })} />
+                  <Input
+                    value={draft.rooms}
+                    onChange={(e) => patchDraft({ rooms: e.target.value })}
+                  />
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Санузлов</Label>
@@ -299,7 +343,10 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Этаж</Label>
-                  <Input value={draft.floor} onChange={(e) => patchDraft({ floor: e.target.value })} />
+                  <Input
+                    value={draft.floor}
+                    onChange={(e) => patchDraft({ floor: e.target.value })}
+                  />
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Этажей в доме</Label>
@@ -310,7 +357,10 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Площадь, м²</Label>
-                  <Input value={draft.area} onChange={(e) => patchDraft({ area: e.target.value })} />
+                  <Input
+                    value={draft.area}
+                    onChange={(e) => patchDraft({ area: e.target.value })}
+                  />
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Услуга</Label>
@@ -368,7 +418,10 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label>Источник</Label>
-                <Select value={source || NONE} onValueChange={(v) => setSource(v === NONE ? "" : v)}>
+                <Select
+                  value={source || NONE}
+                  onValueChange={(v) => setSource(v === NONE ? "" : v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Источник" />
                   </SelectTrigger>
@@ -403,7 +456,11 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
               </div>
               <div className="grid gap-1.5">
                 <Label>Telegram</Label>
-                <Input value={telegram} onChange={(e) => setTelegram(e.target.value)} placeholder="@owner" />
+                <Input
+                  value={telegram}
+                  onChange={(e) => setTelegram(e.target.value)}
+                  placeholder="@owner"
+                />
               </div>
             </div>
 
@@ -434,12 +491,19 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
                         </Select>
                       ) : f.field_type === "checkbox" ? (
                         <div className="flex h-10 items-center">
-                          <Checkbox checked={Boolean(value)} onCheckedChange={(v) => set(Boolean(v))} />
+                          <Checkbox
+                            checked={Boolean(value)}
+                            onCheckedChange={(v) => set(Boolean(v))}
+                          />
                         </div>
                       ) : (
                         <Input
                           type={
-                            f.field_type === "date" ? "date" : f.field_type === "number" ? "number" : "text"
+                            f.field_type === "date"
+                              ? "date"
+                              : f.field_type === "number"
+                                ? "number"
+                                : "text"
                           }
                           value={value == null ? "" : String(value)}
                           onChange={(e) => set(e.target.value)}
@@ -456,7 +520,9 @@ export function IntakeDealDialog({ open, onOpenChange, deal, stages, fields, def
               <Textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
             </div>
 
-            {deal ? <DealTimeline dealId={deal.id} resolve={resolveValue} propertyLabel={() => "—"} /> : null}
+            {deal ? (
+              <DealTimeline dealId={deal.id} resolve={resolveValue} propertyLabel={() => "—"} />
+            ) : null}
           </div>
 
           <DialogFooter className="flex-wrap gap-2">

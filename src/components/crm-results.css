@@ -1,0 +1,99 @@
+.crm-page {
+  background: var(--color-background);
+}
+.crm-analytics {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+.crm-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.crm-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 21px;
+  background: var(--color-background);
+  box-shadow: 0 1px 2px #13234204;
+}
+.crm-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.crm-source {
+  display: grid;
+  grid-template-columns: 140px 1fr 28px 40px;
+  gap: 16px;
+  align-items: center;
+  margin-top: 21px;
+  font-size: 13px;
+}
+.crm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.crm-table th {
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: left;
+  padding: 11px 15px 13px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.crm-table td {
+  padding: 15px 15px 15px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.crm-section {
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  padding: 18px;
+}
+.crm-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.crm-income {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  border-radius: 8px;
+  background: #edf7f2;
+  padding: 18px;
+  color: #286e55;
+}
+.crm-income small {
+  font-size: 11px;
+}
+.crm-income strong {
+  display: block;
+  font-size: 24px;
+  margin-top: 7px;
+}
+@media (max-width: 900px) {
+  .crm-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .crm-source {
+    grid-template-columns: 100px 1fr 24px 35px;
+    gap: 8px;
+  }
+}
+@media (max-width: 480px) {
+  .crm-metrics {
+    grid-template-columns: 1fr;
+  }
+  .crm-panel {
+    padding: 15px;
+  }
+  .crm-income {
+    grid-template-columns: 1fr;
+  }
+}

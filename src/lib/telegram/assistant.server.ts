@@ -221,7 +221,7 @@ async function runAssistant(messages: AssistantChatMessage[]) {
 
 async function storeProposal(action: AssistantAction, chatId: number, telegramUserId: number) {
   const input = JSON.parse(action.input || "{}");
-  if (["createReminder", "manageReminder"].includes(action.tool)) {
+  if (["createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(action.tool)) {
     await reminderAccount(telegramUserId, chatId);
     input._telegramChatId = chatId;
     input._telegramUserId = telegramUserId;
@@ -475,7 +475,7 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       await answerCallbackQuery(query.id, "Предложение не найдено");
       return;
     }
-    if (["createReminder", "manageReminder"].includes(target.tool_name)) {
+    if (["createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(target.tool_name)) {
       const owner = target.input as Record<string, unknown>;
       try { await reminderAccount(query.from.id, chatId); } catch { await answerCallbackQuery(query.id, "Нет доступа"); return; }
       if (owner["_telegramUserId"] !== query.from.id || owner["_telegramChatId"] !== chatId) {
@@ -556,7 +556,7 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       await answerCallbackQuery(query.id, "Уже обработано");
       return;
     }
-    if (["importRentalFromDisk", "createReminder", "manageReminder"].includes(proposal.tool_name)) {
+    if (["importRentalFromDisk", "createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(proposal.tool_name)) {
       const { data: claimed, error } = await supabaseAdmin
         .from("ai_action_proposals")
         .update({ status: "executing", confirmed_at: new Date().toISOString() })

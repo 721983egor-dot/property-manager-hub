@@ -1,3 +1,4 @@
+import { DealLostDialog } from "@/components/DealLostDialog";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -34,11 +35,17 @@ import { TaskDialog } from "@/components/TaskDialog";
 import { ListTodo } from "lucide-react";
 
 import { fetchProperties, internalTitle } from "@/lib/properties";
-import { DEAL_SOURCES, deleteDeal, saveDeal, type Deal, type DealField, type DealStage } from "@/lib/deals";
+import {
+  DEAL_SOURCES,
+  deleteDeal,
+  saveDeal,
+  type Deal,
+  type DealField,
+  type DealStage,
+} from "@/lib/deals";
 import { formatTelegramHandle, PREFERRED_MESSENGERS, telegramHref } from "@/lib/chat-contact";
 
 const NONE = "__none__";
-
 
 type Props = {
   open: boolean;
@@ -56,7 +63,10 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   const loadStaff = useServerFn(listStaff);
 
   const { data: clients = [] } = useQuery({ queryKey: ["crm-clients"], queryFn: fetchCrmClients });
-  const { data: properties = [] } = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
+  const { data: properties = [] } = useQuery({
+    queryKey: ["properties"],
+    queryFn: fetchProperties,
+  });
   const { data: staffData } = useQuery({
     queryKey: ["staff"],
     queryFn: () => loadStaff(undefined as never),
@@ -79,12 +89,11 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   const [messenger, setMessenger] = useState("");
   const [custom, setCustom] = useState<Record<string, unknown>>({});
   const [newClientOpen, setNewClientOpen] = useState(false);
+  const [lostOpen, setLostOpen] = useState(false);
   const [wonOpen, setWonOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [savedDealId, setSavedDealId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
-
-
 
   useEffect(() => {
     if (!open) return;
@@ -137,7 +146,6 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
     [properties],
   );
 
-  const openStages = useMemo(() => stages.filter((s) => s.kind === "open"), [stages]);
   const wonStage = stages.find((s) => s.kind === "won") ?? null;
   const lostStage = stages.find((s) => s.kind === "lost") ?? null;
   const [pendingClose, setPendingClose] = useState<"won" | "lost" | null>(null);
@@ -171,7 +179,8 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
       }
       if (pendingClose === "lost") {
         setPendingClose(null);
-        toast.success("Сделка помечена как отказ");
+        setSavedDealId(id);
+        setLostOpen(true);
         onOpenChange(false);
         return;
       }
@@ -182,7 +191,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
   });
 
   const wonDeal: Deal | null = savedDealId
-    ? {
+    ? ({
         ...(deal ?? {
           id: savedDealId,
           title,
@@ -215,335 +224,395 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
         client_id: clientId === NONE ? null : clientId,
         property_id: propertyId === NONE ? null : propertyId,
         source,
-      } as Deal
+      } as Deal)
     : null;
-
-
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
-        <DialogHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
-            <DialogTitle>{deal ? "Сделка" : "Новая сделка"}</DialogTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                className="bg-emerald-600 text-white hover:bg-emerald-700"
-                disabled={!wonStage || mutation.isPending}
-                onClick={() => {
-                  setPendingClose("won");
-                  mutation.mutate(stageId);
-                }}
-              >
-                Успешно
-              </Button>
-              {lostStage ? (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90vh] sm:max-w-5xl overflow-y-auto">
+          <DialogHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
+              <DialogTitle>{deal ? "Сделка" : "Новая сделка"}</DialogTitle>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
-                  disabled={mutation.isPending}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                  disabled={!wonStage || mutation.isPending}
                   onClick={() => {
-                    setPendingClose("lost");
-                    mutation.mutate(lostStage.id);
+                    setPendingClose("won");
+                    mutation.mutate(stageId);
                   }}
                 >
-                  Отказ
+                  Успешно
                 </Button>
-              ) : null}
-              {deal ? (
-                <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
-                  <ListTodo className="mr-1.5 size-4" />
-                  Задача
+                {lostStage ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                    disabled={mutation.isPending}
+                    onClick={() => {
+                      setPendingClose("lost");
+                      mutation.mutate(stageId);
+                    }}
+                  >
+                    Отказ
+                  </Button>
+                ) : null}
+                {deal ? (
+                  <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
+                    <ListTodo className="mr-1.5 size-4" />
+                    Задача
+                  </Button>
+                ) : null}
+                <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
+                <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
+                  Отмена
                 </Button>
-              ) : null}
-              <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
-              <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
-                Отмена
-              </Button>
-              {deal && isAdmin ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive"
-                  disabled={removing}
-                  onClick={() => {
-                    if (!window.confirm("Удалить сделку?")) return;
-                    setRemoving(true);
-                    deleteDeal(deal.id)
-                      .then(() => {
-                        queryClient.invalidateQueries({ queryKey: ["deals"] });
-                        toast.success("Сделка удалена");
-                        onOpenChange(false);
-                      })
-                      .catch((e) =>
-                        toast.error(e instanceof Error ? e.message : "Не удалось удалить"),
-                      )
-                      .finally(() => setRemoving(false));
-                  }}
-                >
-                  Удалить
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
-          <div className="grid content-start gap-4">
-
-          <div className="grid gap-1.5">
-            <Label>Название</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Аренда, семья на сезон" />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label>Стадия</Label>
-              <Select value={stageId} onValueChange={setStageId}>
-                <SelectTrigger><SelectValue placeholder="Стадия" /></SelectTrigger>
-                <SelectContent>
-                  {(openStages.some((s) => s.id === stageId)
-                    ? openStages
-                    : stages.filter((s) => s.kind === "open" || s.id === stageId)
-                  ).map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label>Клиент</Label>
-              <div className="flex gap-2">
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Клиент" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Не выбран</SelectItem>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.full_name} {c.phone ? `· ${c.phone}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button type="button" variant="outline" onClick={() => setNewClientOpen(true)}>
-                  + Новый
-                </Button>
+                {deal && isAdmin ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={removing}
+                    onClick={() => {
+                      if (!window.confirm("Удалить сделку?")) return;
+                      setRemoving(true);
+                      deleteDeal(deal.id)
+                        .then(() => {
+                          queryClient.invalidateQueries({ queryKey: ["deals"] });
+                          toast.success("Сделка удалена");
+                          onOpenChange(false);
+                        })
+                        .catch((e) =>
+                          toast.error(e instanceof Error ? e.message : "Не удалось удалить"),
+                        )
+                        .finally(() => setRemoving(false));
+                    }}
+                  >
+                    Удалить
+                  </Button>
+                ) : null}
               </div>
-              {selectedClient?.phone ? (
-                <ClientContactButtons phone={selectedClient.phone} variant="row" className="mt-1" />
-              ) : null}
-              {telegramHref(telegram) ? (
-                <a
-                  href={telegramHref(telegram)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-1 text-xs text-primary hover:underline"
-                >
-                  {formatTelegramHandle(telegram)}
-                </a>
-              ) : null}
             </div>
+          </DialogHeader>
 
-
-            <div className="grid gap-1.5">
-              <Label>Объект</Label>
-              <Select value={propertyId} onValueChange={setPropertyId}>
-                <SelectTrigger><SelectValue placeholder="Объект" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Не выбран</SelectItem>
-                  {properties.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {internalTitle(p)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label>Источник</Label>
-              <Select value={source || NONE} onValueChange={(v) => setSource(v === NONE ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Источник" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Не указан</SelectItem>
-                  {DEAL_SOURCES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label>Бюджет клиента, ₽/мес</Label>
-              <Input
-                inputMode="numeric"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value.replace(/[^\d]/g, ""))}
-              />
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label>Аккаунт в Telegram</Label>
-              <Input
-                value={telegram}
-                onChange={(e) => setTelegram(e.target.value)}
-                placeholder="@username"
-              />
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label>Удобный мессенджер</Label>
-              <Select value={messenger || NONE} onValueChange={(v) => setMessenger(v === NONE ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Как удобнее писать клиенту" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Не указан</SelectItem>
-                  {PREFERRED_MESSENGERS.map((item) => (
-                    <SelectItem key={item} value={item}>{item}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {isAdmin && (
-              <div className="grid gap-1.5">
-                <Label>Ответственный</Label>
-                <Select value={responsibleId} onValueChange={setResponsibleId}>
-                  <SelectTrigger><SelectValue placeholder="Ответственный" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Не назначен</SelectItem>
-                    {(staffData?.staff ?? []).map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.full_name || s.email}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="grid gap-1.5">
-              <Label>Взрослых</Label>
-              <Input
-                inputMode="numeric"
-                value={adults}
-                onChange={(e) => setAdults(e.target.value.replace(/[^\d]/g, ""))}
-              />
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label>Детей</Label>
-              <Input
-                inputMode="numeric"
-                value={children}
-                onChange={(e) => setChildren(e.target.value.replace(/[^\d]/g, ""))}
-              />
-            </div>
-          </div>
-
-          {activeFields.length > 0 && (
-            <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
-              {activeFields.map((f) => {
-                const value = custom[f.key];
-                const set = (v: unknown) => setCustom((prev) => ({ ...prev, [f.key]: v }));
-                return (
-                  <div key={f.id} className="grid gap-1.5">
-                    <Label>{f.label}</Label>
-                    {f.field_type === "select" ? (
-                      <Select
-                        value={(value as string) || NONE}
-                        onValueChange={(v) => set(v === NONE ? "" : v)}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Не выбрано" /></SelectTrigger>
+          <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
+            <div className="grid content-start gap-4">
+              <section className="crm-section">
+                <h3>01 · Клиент и контакты</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label>Клиент</Label>
+                    <div className="flex gap-2">
+                      <Select value={clientId} onValueChange={setClientId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Клиент" />
+                        </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={NONE}>Не выбрано</SelectItem>
-                          {f.options.map((o) => (
-                            <SelectItem key={o} value={o}>{o}</SelectItem>
+                          <SelectItem value={NONE}>Не выбран</SelectItem>
+                          {clients.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.full_name} {c.phone}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    ) : f.field_type === "checkbox" ? (
-                      <div className="flex h-10 items-center">
-                        <Checkbox
-                          checked={Boolean(value)}
-                          onCheckedChange={(v) => set(Boolean(v))}
-                        />
-                      </div>
-                    ) : (
-                      <Input
-                        type={f.field_type === "date" ? "date" : f.field_type === "number" ? "number" : "text"}
-                        value={value == null ? "" : String(value)}
-                        onChange={(e) => set(e.target.value)}
+                      <Button variant="outline" onClick={() => setNewClientOpen(true)}>
+                        + Новый
+                      </Button>
+                    </div>
+                    {selectedClient?.phone && (
+                      <ClientContactButtons
+                        phone={selectedClient.phone}
+                        variant="row"
+                        className="mt-1"
                       />
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  <div className="grid gap-1.5">
+                    <Label>Telegram</Label>
+                    <Input
+                      value={telegram}
+                      onChange={(e) => setTelegram(e.target.value)}
+                      placeholder="@username"
+                    />
+                    {telegramHref(telegram) && (
+                      <a
+                        href={telegramHref(telegram)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-primary"
+                      >
+                        {formatTelegramHandle(telegram)}
+                      </a>
+                    )}
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Предпочтительный мессенджер</Label>
+                    <Select
+                      value={messenger || NONE}
+                      onValueChange={(v) => setMessenger(v === NONE ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Не указан</SelectItem>
+                        {PREFERRED_MESSENGERS.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </section>
+              <section className="crm-section">
+                <h3>02 · Запрос и подбор</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label>Название сделки</Label>
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Бюджет в месяц, ₽</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Выбранный объект</Label>
+                    <Select value={propertyId} onValueChange={setPropertyId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Объект" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Не выбран</SelectItem>
+                        {properties
+                          .filter((p) => p.status !== "archived")
+                          .map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {internalTitle(p)}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-1.5">
+                      <Label>Взрослых</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={adults}
+                        onChange={(e) => setAdults(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label>Детей</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={children}
+                        onChange={(e) => setChildren(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section className="crm-section">
+                <h3>03 · Работа со сделкой</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label>Стадия</Label>
+                    <Select value={stageId} onValueChange={setStageId}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stages
+                          .filter((s) => s.kind === "open" || s.id === stageId)
+                          .map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {isAdmin && (
+                    <div className="grid gap-1.5">
+                      <Label>Ответственный</Label>
+                      <Select value={responsibleId} onValueChange={setResponsibleId}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Не назначен</SelectItem>
+                          {(staffData?.staff ?? []).map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.full_name || s.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <div className="grid gap-1.5">
+                    <Label>Источник обращения</Label>
+                    <Select
+                      value={source || NONE}
+                      onValueChange={(v) => setSource(v === NONE ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Не указан</SelectItem>
+                        {[...new Set([...DEAL_SOURCES, ...(source ? [source] : [])])].map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Площадка успешной сделки</Label>
+                    <p className="rounded-md border border-border p-2.5 text-sm text-muted-foreground">
+                      {deal?.closing_source || "Уточняется при успешном закрытии"}
+                    </p>
+                  </div>
+                </div>
+              </section>
 
-          <div className="grid gap-1.5">
-            <Label>Описание</Label>
-            <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
+              {activeFields.length > 0 && (
+                <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
+                  {activeFields.map((f) => {
+                    const value = custom[f.key];
+                    const set = (v: unknown) => setCustom((prev) => ({ ...prev, [f.key]: v }));
+                    return (
+                      <div key={f.id} className="grid gap-1.5">
+                        <Label>{f.label}</Label>
+                        {f.field_type === "select" ? (
+                          <Select
+                            value={(value as string) || NONE}
+                            onValueChange={(v) => set(v === NONE ? "" : v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Не выбрано" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NONE}>Не выбрано</SelectItem>
+                              {f.options.map((o) => (
+                                <SelectItem key={o} value={o}>
+                                  {o}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : f.field_type === "checkbox" ? (
+                          <div className="flex h-10 items-center">
+                            <Checkbox
+                              checked={Boolean(value)}
+                              onCheckedChange={(v) => set(Boolean(v))}
+                            />
+                          </div>
+                        ) : (
+                          <Input
+                            type={
+                              f.field_type === "date"
+                                ? "date"
+                                : f.field_type === "number"
+                                  ? "number"
+                                  : "text"
+                            }
+                            value={value == null ? "" : String(value)}
+                            onChange={(e) => set(e.target.value)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="grid gap-1.5">
+                <Label>04 · Заметки</Label>
+                <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
+              </div>
+
+              {deal ? <DealShowings dealId={deal.id} properties={properties} /> : null}
+            </div>
+
+            {deal ? (
+              <DealTimeline dealId={deal.id} resolve={resolveValue} propertyLabel={propertyLabel} />
+            ) : (
+              <div className="hidden rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground lg:block">
+                Комментарии и история изменений появятся после сохранения сделки.
+              </div>
+            )}
           </div>
 
-          {deal ? <DealShowings dealId={deal.id} properties={properties} /> : null}
-          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setPendingClose(null);
+                mutation.mutate(undefined);
+              }}
+              disabled={!stageId || mutation.isPending}
+            >
+              Сохранить
+            </Button>
+          </DialogFooter>
 
-          {deal ? (
-            <DealTimeline dealId={deal.id} resolve={resolveValue} propertyLabel={propertyLabel} />
-          ) : (
-            <div className="hidden rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground lg:block">
-              Комментарии и история изменений появятся после сохранения сделки.
-            </div>
-          )}
-        </div>
+          <ClientDialog
+            open={newClientOpen}
+            onOpenChange={setNewClientOpen}
+            onSaved={(id) => setClientId(id)}
+          />
+        </DialogContent>
+      </Dialog>
 
-        <DialogFooter>
-          <Button
-            onClick={() => {
-              setPendingClose(null);
-              mutation.mutate(undefined);
-            }}
-            disabled={!stageId || mutation.isPending}
-          >
-            Сохранить
-          </Button>
-        </DialogFooter>
-
-        <ClientDialog
-          open={newClientOpen}
-          onOpenChange={setNewClientOpen}
-          onSaved={(id) => setClientId(id)}
+      {wonDeal && (
+        <DealLostDialog
+          open={lostOpen}
+          onOpenChange={(v) => {
+            setLostOpen(v);
+            if (!v) setSavedDealId(null);
+          }}
+          deal={wonDeal}
         />
-      </DialogContent>
-    </Dialog>
+      )}
+      {wonDeal && wonStage ? (
+        <DealWonDialog
+          open={wonOpen}
+          onOpenChange={(v) => {
+            setWonOpen(v);
+            if (!v) setSavedDealId(null);
+          }}
+          deal={wonDeal}
+          stageId={wonStage.id}
+          properties={properties}
+          onClosed={() => setSavedDealId(null)}
+        />
+      ) : null}
 
-    {wonDeal && wonStage ? (
-      <DealWonDialog
-        open={wonOpen}
-        onOpenChange={(v) => {
-          setWonOpen(v);
-          if (!v) setSavedDealId(null);
-        }}
-        deal={wonDeal}
-        stageId={wonStage.id}
-        properties={properties}
-        onClosed={() => setSavedDealId(null)}
-      />
-    ) : null}
-
-    {deal ? (
-      <TaskDialog
-        open={taskOpen}
-        onOpenChange={setTaskOpen}
-        task={null}
-        defaultDealId={deal.id}
-        defaultPropertyId={deal.property_id}
-      />
-    ) : null}
+      {deal ? (
+        <TaskDialog
+          open={taskOpen}
+          onOpenChange={setTaskOpen}
+          task={null}
+          defaultDealId={deal.id}
+          defaultPropertyId={deal.property_id}
+        />
+      ) : null}
     </>
   );
 }
-

@@ -1,315 +1,378 @@
 import { useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
-import { DEAL_SOURCES, formatBudget, type Deal, type DealStage } from "@/lib/deals";
-import { toISODate } from "@/lib/rentals";
-
-type Period = "all" | "7" | "30" | "90" | "365";
-type StatusFilter = "all" | "open" | "closed";
-
-const PERIODS: { key: Period; label: string; days: number | null }[] = [
-  { key: "all", label: "Всё время", days: null },
-  { key: "7", label: "7 дней", days: 7 },
-  { key: "30", label: "30 дней", days: 30 },
-  { key: "90", label: "90 дней", days: 90 },
-  { key: "365", label: "Год", days: 365 },
-];
-
-const NONE = "__all__";
-
-type Props = {
+import { formatBudget, type Deal, type DealStage } from "@/lib/deals";
+import {
+  crmSources,
+  filterCrmResults,
+  moscowDay,
+  resultKind,
+  type ResultMode,
+} from "@/lib/crm-results-model";
+const ALL = "__all__";
+export function DealAnalytics({
+  deals,
+  stages,
+  staffName,
+  onOpen,
+}: {
   deals: Deal[];
   stages: DealStage[];
   staffName: Map<string, string>;
-};
-
-function kindOf(deal: Deal, stages: Map<string, DealStage["kind"]>): "open" | "won" | "lost" {
-  return stages.get(deal.stage_id) ?? "open";
-}
-
-function inRange(iso: string, from: string | null) {
-  if (!from) return true;
-  return iso.slice(0, 10) >= from;
-}
-
-function weekKey(iso: string) {
-  const date = new Date(`${iso.slice(0, 10)}T00:00:00`);
-  const weekday = date.getDay();
-  date.setDate(date.getDate() + (weekday === 0 ? -6 : 1 - weekday));
-  return toISODate(date);
-}
-
-function formatWeek(iso: string) {
-  const from = new Date(`${iso}T00:00:00`);
-  const to = new Date(from);
-  to.setDate(to.getDate() + 6);
-  return `${from.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}–${to.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}`;
-}
-
-function sourceOf(deal: Deal) {
-  return deal.source.trim() || "Не указан";
-}
-
-function dealAmount(deal: Deal, kind: "open" | "won" | "lost") {
-  if (kind === "won") return deal.price_month ?? deal.budget ?? 0;
-  return deal.budget ?? 0;
-}
-
-/** Сводка по открытым и закрытым сделкам: график, фильтры и источники. */
-export function DealAnalytics({ deals, stages, staffName }: Props) {
-  const [period, setPeriod] = useState<Period>("90");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const [source, setSource] = useState(NONE);
-  const [responsible, setResponsible] = useState(NONE);
-
-  const kindByStage = useMemo(
-    () => new Map(stages.map((stage) => [stage.id, stage.kind])),
-    [stages],
+  onOpen?: (deal: Deal) => void;
+}) {
+  const today = moscowDay(new Date().toISOString());
+  const [from, setFrom] = useState(today.slice(0, 7) + "-01");
+  const [to, setTo] = useState(today);
+  const [mode, setMode] = useState<ResultMode>("inquiries");
+  const [source, setSource] = useState(ALL);
+  const [staff, setStaff] = useState(ALL);
+  const scoped = useMemo(
+    () => deals.filter((d) => staff === ALL || d.responsible_id === staff),
+    [deals, staff],
   );
-
-  const fromDate = useMemo(() => {
-    const days = PERIODS.find((item) => item.key === period)?.days;
-    if (!days) return null;
-    return toISODate(new Date(Date.now() - (days - 1) * 86_400_000));
-  }, [period]);
-
-  const filtered = useMemo(() => {
-    return deals.filter((deal) => {
-      const kind = kindOf(deal, kindByStage);
-      if (status === "open" && kind !== "open") return false;
-      if (status === "closed" && kind === "open") return false;
-      if (source !== NONE && sourceOf(deal) !== source) return false;
-      if (responsible !== NONE && (deal.responsible_id ?? "") !== responsible) return false;
-      const stamp = kind === "open" ? deal.created_at : deal.updated_at || deal.created_at;
-      return inRange(stamp, fromDate);
-    });
-  }, [deals, kindByStage, status, source, responsible, fromDate]);
-
-  const open = filtered.filter((deal) => kindOf(deal, kindByStage) === "open");
-  const won = filtered.filter((deal) => kindOf(deal, kindByStage) === "won");
-  const lost = filtered.filter((deal) => kindOf(deal, kindByStage) === "lost");
-  const closedDeals = [...won, ...lost];
-  const closed = closedDeals.length;
-  const conversion = closed > 0 ? Math.round((won.length / closed) * 100) : 0;
-  const openSum = open.reduce((sum, deal) => sum + dealAmount(deal, "open"), 0);
-  const closedSum = closedDeals.reduce(
-    (sum, deal) => sum + dealAmount(deal, kindOf(deal, kindByStage)),
-    0,
+  const period = useMemo(
+    () => filterCrmResults(scoped, stages, mode, from, to),
+    [scoped, stages, mode, from, to],
   );
-
-  const chart = useMemo(() => {
-    const weeks = new Map<string, { week: string; open: number; won: number; lost: number }>();
-    for (const deal of filtered) {
-      const key = weekKey(deal.created_at);
-      const row = weeks.get(key) ?? { week: key, open: 0, won: 0, lost: 0 };
-      row[kindOf(deal, kindByStage)] += 1;
-      weeks.set(key, row);
-    }
-    return [...weeks.values()]
-      .sort((a, b) => a.week.localeCompare(b.week))
-      .map((row) => ({ ...row, label: formatWeek(row.week) }));
-  }, [filtered, kindByStage]);
-
-  const sourcesClosed = useMemo(() => countSources(closedDeals), [closedDeals]);
-
-  const staffOptions = useMemo(() => {
-    const ids = [...new Set(deals.map((deal) => deal.responsible_id).filter(Boolean))] as string[];
-    return ids.map((id) => ({ id, name: staffName.get(id) || "Сотрудник" }));
-  }, [deals, staffName]);
-
-  const sourceOptions = useMemo(() => {
-    const extra = deals.map(sourceOf).filter((name) => !DEAL_SOURCES.includes(name) && name !== "Не указан");
-    return ["Не указан", ...DEAL_SOURCES, ...[...new Set(extra)]];
-  }, [deals]);
-
+  const sources = crmSources(period, stages, mode);
+  const rows = period
+    .filter(
+      (d) =>
+        source === ALL ||
+        (mode === "won" ? d.closing_source : d.source)?.trim() === source ||
+        (source === "Не указан" && !(mode === "won" ? d.closing_source : d.source)?.trim()),
+    )
+    .sort((a, b) =>
+      (mode === "inquiries" ? b.created_at : (b.closed_at ?? "")).localeCompare(
+        mode === "inquiries" ? a.created_at : (a.closed_at ?? ""),
+      ),
+    );
+  const grouped = crmSources(rows, stages, mode);
+  const won = rows.filter((d) => resultKind(d, stages) === "won");
+  const lost = rows.filter((d) => resultKind(d, stages) === "lost");
+  const unknown = scoped.filter((d) => resultKind(d, stages) === mode && !d.closed_at).length;
+  const reasons = Object.entries(
+    lost.reduce<Record<string, number>>((acc, d) => {
+      const name = d.loss_reason_name || "Причина не указана";
+      acc[name] = (acc[name] ?? 0) + 1;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1] - a[1]);
+  const metrics =
+    mode === "inquiries"
+      ? [
+          ["Создано сделок из обращений", rows.length],
+          ["Из них успешные", won.length],
+          ["Из них проваленные", lost.length],
+          ["Ещё в работе", rows.length - won.length - lost.length],
+        ]
+      : mode === "won"
+        ? [
+            ["Успешные сделки", rows.length],
+            [
+              "Аренда по договорам / мес.",
+              formatBudget(rows.reduce((s, d) => s + (d.price_month ?? 0), 0)),
+            ],
+            [
+              "Доход компании / мес.",
+              rows.some((d) => d.income_month != null)
+                ? formatBudget(rows.reduce((s, d) => s + (d.income_month ?? 0), 0))
+                : "Не указан",
+            ],
+            [
+              "Средний срок до сделки",
+              rows.some((d) => d.closed_at)
+                ? Math.round(
+                    rows
+                      .filter((d) => d.closed_at)
+                      .reduce(
+                        (s, d) =>
+                          s +
+                          Math.max(
+                            0,
+                            (Date.parse(d.closed_at!) - Date.parse(d.created_at)) / 86400000,
+                          ),
+                        0,
+                      ) / rows.filter((d) => d.closed_at).length,
+                  ) + " дн."
+                : "—",
+            ],
+          ]
+        : [
+            ["Проваленные сделки", rows.length],
+            ["Причин провала", reasons.length],
+            ["С указанием причины", lost.filter((d) => d.loss_reason_name).length],
+            ["Без причины (старые)", lost.filter((d) => !d.loss_reason_name).length],
+          ];
   return (
-    <div className="mt-5 grid gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {PERIODS.map((item) => (
-          <Button
-            key={item.key}
-            size="sm"
-            variant={period === item.key ? "default" : "outline"}
-            onClick={() => setPeriod(item.key)}
-          >
-            {item.label}
-          </Button>
-        ))}
-        <div className="flex rounded-md border border-border p-0.5">
+    <div className="crm-analytics">
+      <div className="crm-filter">
+        <span className="text-xs text-muted-foreground">
+          {mode === "inquiries" ? "Период создания" : "Период закрытия"}
+        </span>
+        <Input
+          aria-label="Начало периода"
+          type="date"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className="w-auto"
+        />
+        <span>—</span>
+        <Input
+          aria-label="Конец периода"
+          type="date"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="w-auto"
+        />
+        <Button
+          variant="outline"
+          onClick={() => {
+            setFrom(today.slice(0, 7) + "-01");
+            setTo(today);
+          }}
+        >
+          Этот месяц
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setFrom("");
+            setTo("");
+          }}
+        >
+          Всё время
+        </Button>
+        <div className="flex flex-wrap gap-1 rounded-md bg-muted p-1">
           {(
             [
-              ["all", "Все"],
-              ["open", "Открытые"],
-              ["closed", "Закрытые"],
+              ["inquiries", "Обращения"],
+              ["won", "Успешные"],
+              ["lost", "Проваленные"],
             ] as const
-          ).map(([key, label]) => (
+          ).map(([v, label]) => (
             <Button
-              key={key}
+              key={v}
               size="sm"
-              variant={status === key ? "default" : "ghost"}
-              className="h-8 px-3"
-              onClick={() => setStatus(key)}
+              variant={mode === v ? "secondary" : "ghost"}
+              onClick={() => {
+                setMode(v);
+                setSource(ALL);
+              }}
             >
               {label}
             </Button>
           ))}
         </div>
+      </div>
+      {from && to && from > to ? (
+        <p className="text-destructive">Начало периода позже окончания.</p>
+      ) : null}
+      <div className="crm-filter">
         <Select value={source} onValueChange={setSource}>
-          <SelectTrigger className="h-9 w-[180px]">
-            <SelectValue placeholder="Источник" />
+          <SelectTrigger className="w-[210px]">
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE}>Все источники</SelectItem>
-            {sourceOptions.map((item) => (
-              <SelectItem key={item} value={item}>
-                {item}
+            <SelectItem value={ALL}>Все источники</SelectItem>
+            {sources.map((s) => (
+              <SelectItem key={s.name} value={s.name}>
+                {s.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={responsible} onValueChange={setResponsible}>
-          <SelectTrigger className="h-9 w-[200px]">
-            <SelectValue placeholder="Ответственный" />
+        <Select value={staff} onValueChange={setStaff}>
+          <SelectTrigger className="w-[210px]">
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE}>Все менеджеры</SelectItem>
-            {staffOptions.map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.name}
+            <SelectItem value={ALL}>Все менеджеры</SelectItem>
+            {[...staffName].map(([id, name]) => (
+              <SelectItem key={id} value={id}>
+                {name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="Открытые" value={open.length} hint="сейчас в работе" />
-        <StatCard label="Сумма открытых" value={formatBudget(openSum)} hint="бюджет клиентов в работе" />
-        <StatCard label="Успешные" value={won.length} hint="закрыты с договором" />
-        <StatCard label="Отказы" value={lost.length} hint="закрыты без сделки" />
-        <StatCard label="Сумма закрытых" value={formatBudget(closedSum)} hint="успешные — цена в месяц, отказы — бюджет" />
-        <StatCard label="Конверсия" value={`${conversion}%`} hint="успешные среди закрытых" />
-      </div>
-
-      <div className="rounded-lg border border-border bg-background p-4">
-        <h2 className="text-sm font-semibold">Сделки по неделям создания</h2>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Сколько сделок завели на неделе и в каком статусе они сейчас.
+      {mode !== "inquiries" && unknown > 0 && (
+        <p className="text-xs text-muted-foreground">
+          У {unknown} старых сделок нет подтверждённой даты закрытия. Они доступны за «Всё время» и
+          не включаются в произвольный период.
         </p>
-        {chart.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Нет данных за выбранный период.</p>
-        ) : (
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="open" name="Открытые" stroke="#2563eb" strokeWidth={2} />
-                <Line type="monotone" dataKey="won" name="Успешные" stroke="#059669" strokeWidth={2} />
-                <Line type="monotone" dataKey="lost" name="Отказы" stroke="#dc2626" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <SourceTable title="Источники закрытых сделок" rows={sourcesClosed} />
-        <div className="rounded-lg border border-border bg-background p-4">
-          <h2 className="text-sm font-semibold">График по источникам</h2>
-          {sourcesClosed.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">Источников пока нет.</p>
-          ) : (
-            <div className="mt-3 h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sourcesClosed}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" name="Закрытые" fill="#0f766e" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function countSources(deals: Deal[]) {
-  const counts = new Map<string, number>();
-  for (const deal of deals) {
-    const name = sourceOf(deal);
-    counts.set(name, (counts.get(name) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
-function StatCard({ label, value, hint }: { label: string; value: number | string; hint: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-    </div>
-  );
-}
-
-function SourceTable({ title, rows }: { title: string; rows: { name: string; count: number }[] }) {
-  const total = rows.reduce((sum, row) => sum + row.count, 0);
-  return (
-    <div className="rounded-lg border border-border bg-background p-4">
-      <h2 className="text-sm font-semibold">{title}</h2>
-      {rows.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">Пока пусто.</p>
-      ) : (
-        <ul className="mt-3 space-y-2">
-          {rows.map((row) => (
-            <li key={row.name} className="grid grid-cols-[1fr_auto] items-center gap-3 text-sm">
-              <div>
-                <div className="flex justify-between gap-2">
-                  <span>{row.name}</span>
-                  <span className="text-muted-foreground">
-                    {row.count} · {total ? Math.round((row.count / total) * 100) : 0}%
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${total ? (row.count / total) * 100 : 0}%` }}
-                  />
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
       )}
+      <div className="crm-metrics">
+        {metrics.map(([label, value]) => (
+          <div key={label} className="crm-panel">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-3 text-2xl font-semibold tracking-tight">{value}</p>
+          </div>
+        ))}
+      </div>
+      {mode === "won" && (
+        <p className="text-xs text-muted-foreground">
+          Доход указан у {rows.filter((d) => d.income_month != null).length} из {rows.length}{" "}
+          сделок. Это условия договоров, получение денег отмечается отдельно.{" "}
+          {deals[0]?.pipeline === "intake"
+            ? "Для новых объектов финансовые показатели не заполняются автоматически."
+            : ""}
+        </p>
+      )}
+      <section className="crm-panel">
+        <h2 className="text-sm font-semibold">
+          {mode === "inquiries"
+            ? "Откуда создавались сделки"
+            : mode === "won"
+              ? "Площадки успешных сделок"
+              : "Источники проваленных сделок"}
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {mode === "inquiries"
+            ? "Источник обращения при создании, включая сделки в работе и отказы"
+            : "За выбранный период"}
+        </p>
+        {!grouped.length ? (
+          <p className="mt-5 text-sm text-muted-foreground">Нет данных.</p>
+        ) : (
+          grouped.map((s) => (
+            <div key={s.name} className="crm-source">
+              <span>{s.name}</span>
+              <div className="h-2 overflow-hidden rounded bg-muted">
+                <div
+                  className="h-full rounded bg-primary/80"
+                  style={{
+                    width: `${(s.total / Math.max(...grouped.map((x) => x.total))) * 100}%`,
+                  }}
+                />
+              </div>
+              <b>{s.total}</b>
+              <span className="text-muted-foreground">
+                {Math.round((s.total / rows.length) * 100)}%
+              </span>
+            </div>
+          ))
+        )}
+      </section>
+      {mode === "inquiries" && (
+        <section className="crm-panel overflow-x-auto">
+          <h2 className="mb-4 text-sm font-semibold">Обращения и результат по источникам</h2>
+          <table className="crm-table">
+            <thead>
+              <tr>
+                {[
+                  "Источник",
+                  "Создано",
+                  "Успешные",
+                  "Проваленные",
+                  "В работе",
+                  "Доля успешных",
+                ].map((x) => (
+                  <th key={x}>{x}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {grouped.map((s) => (
+                <tr key={s.name}>
+                  <td>{s.name}</td>
+                  <td>{s.total}</td>
+                  <td>{s.won}</td>
+                  <td>{s.lost}</td>
+                  <td>{s.open}</td>
+                  <td>{Math.round((s.won / s.total) * 100)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Доля успешных среди всех созданных сделок этого источника. Часть ещё в работе.
+          </p>
+        </section>
+      )}
+      {mode === "lost" && (
+        <section className="crm-panel">
+          <h2 className="mb-3 text-sm font-semibold">Причины провала</h2>
+          {reasons.map(([name, n]) => (
+            <div key={name} className="flex justify-between border-b border-border py-3 text-sm">
+              <span>{name}</span>
+              <b>{n}</b>
+            </div>
+          ))}
+        </section>
+      )}
+      <section className="crm-panel overflow-x-auto">
+        <h2 className="mb-4 text-sm font-semibold">
+          {mode === "inquiries"
+            ? "Обращения"
+            : mode === "won"
+              ? "Успешные сделки"
+              : "Проваленные сделки"}{" "}
+          <span className="ml-2 font-normal text-muted-foreground">{rows.length}</span>
+        </h2>
+        <table className="crm-table">
+          <thead>
+            <tr>
+              {[
+                "Сделка",
+                mode === "inquiries" ? "Создана" : "Закрыта",
+                "Источник обращения",
+                mode === "won" ? "Площадка сделки" : "Результат",
+                "Ответственный",
+                mode === "lost" ? "Причина" : "Аренда / мес.",
+              ].map((x) => (
+                <th key={x}>{x}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((d) => (
+              <tr key={d.id}>
+                <td>
+                  <button
+                    className="text-left font-medium hover:text-primary"
+                    onClick={() => onOpen?.(d)}
+                  >
+                    {d.title || "Без названия"}
+                  </button>
+                </td>
+                <td>
+                  {mode === "inquiries"
+                    ? moscowDay(d.created_at)
+                    : d.closed_at
+                      ? moscowDay(d.closed_at)
+                      : "Дата неизвестна"}
+                </td>
+                <td>{d.source || "Не указан"}</td>
+                <td>
+                  {mode === "won"
+                    ? d.closing_source || "Не указана"
+                    : { open: "В работе", won: "Успешно", lost: "Провалена" }[
+                        resultKind(d, stages)
+                      ]}
+                </td>
+                <td>{staffName.get(d.responsible_id ?? "") || "Не назначен"}</td>
+                <td>
+                  {mode === "lost"
+                    ? d.loss_reason_name || "Не указана"
+                    : formatBudget(d.price_month)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!rows.length && (
+          <p className="py-5 text-sm text-muted-foreground">За выбранный период сделок нет.</p>
+        )}
+      </section>
     </div>
   );
 }

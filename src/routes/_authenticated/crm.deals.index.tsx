@@ -1,3 +1,4 @@
+import "@/components/crm-results.css";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -123,11 +124,9 @@ function DealsPage() {
   const [defaultStage, setDefaultStage] = useState<string | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [closedView, setClosedView] = useState<"won" | "lost" | null>(null);
   const [pageView, setPageView] = useState<"board" | "analytics">("board");
 
   const setFunnel = (next: "deals" | "intake") => {
-    setClosedView(null);
     setPageView("board");
     setDialogOpen(false);
     setEditing(null);
@@ -140,15 +139,6 @@ function DealsPage() {
   };
 
   const boardStages = useMemo(() => stages.filter((s) => s.kind === "open"), [stages]);
-  const wonStageIds = useMemo(
-    () => new Set(stages.filter((s) => s.kind === "won").map((s) => s.id)),
-    [stages],
-  );
-  const lostStageIds = useMemo(
-    () => new Set(stages.filter((s) => s.kind === "lost").map((s) => s.id)),
-    [stages],
-  );
-
   const clientName = useMemo(
     () => new Map(clients.map((c) => [c.id, c.full_name])),
     [clients],
@@ -169,9 +159,6 @@ function DealsPage() {
     }
     return deals;
   }, [deals, isAdmin, scope, profile?.id]);
-
-  const wonDeals = useMemo(() => scopedDeals.filter((d) => wonStageIds.has(d.stage_id)), [scopedDeals, wonStageIds]);
-  const lostDeals = useMemo(() => scopedDeals.filter((d) => lostStageIds.has(d.stage_id)), [scopedDeals, lostStageIds]);
 
   const cardFields = useMemo(
     () => fields.filter((f) => !f.archived && f.show_in_card),
@@ -255,7 +242,7 @@ function DealsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">
+    <div className="crm-page mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold tracking-tight">
           {isIntake ? "Новые объекты" : "Сделки"}
@@ -267,7 +254,7 @@ function DealsPage() {
             className="h-8 px-3"
             onClick={() => setFunnel("deals")}
           >
-            Сделки
+            Арендаторы
           </Button>
           <Button
             size="sm"
@@ -318,8 +305,7 @@ function DealsPage() {
             className="h-8 px-3"
             onClick={() => {
               setPageView("analytics");
-              setClosedView(null);
-            }}
+                      }}
           >
             <BarChart3 className="mr-1.5 size-3.5" />
             Аналитика
@@ -346,68 +332,9 @@ function DealsPage() {
       </div>
 
       {pageView === "analytics" ? (
-        <DealAnalytics deals={visible} stages={stages} staffName={staffName} />
+        <DealAnalytics deals={visible} stages={stages} staffName={staffName} onOpen={openDeal} />
       ) : (
         <>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          className={
-            closedView === "won"
-              ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-600/90 hover:text-white"
-              : "border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
-          }
-          onClick={() => setClosedView(closedView === "won" ? null : "won")}
-        >
-          Успешные {isIntake ? "объекты" : "сделки"} ({wonDeals.length})
-        </Button>
-        <Button
-          variant="outline"
-          className={
-            closedView === "lost"
-              ? "border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
-              : "border-destructive/40 text-destructive hover:bg-destructive/10"
-          }
-          onClick={() => setClosedView(closedView === "lost" ? null : "lost")}
-        >
-          Отказы ({lostDeals.length})
-        </Button>
-      </div>
-
-      {closedView ? (
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {(closedView === "won" ? wonDeals : lostDeals).map((deal) => (
-            <button
-              key={deal.id}
-              type="button"
-              onClick={() => openDeal(deal)}
-              className="rounded-md border border-border bg-background p-3 text-left shadow-sm hover:shadow-md"
-            >
-              <p className="text-sm font-medium">{deal.title || "Без названия"}</p>
-              {deal.client_id && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {clientName.get(deal.client_id) ?? "Клиент"}
-                </p>
-              )}
-              {deal.closed_property_id && (
-                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                  {propertyName.get(deal.closed_property_id)}
-                </p>
-              )}
-              {deal.start_date && deal.end_date && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {new Date(deal.start_date).toLocaleDateString("ru-RU")} —{" "}
-                  {new Date(deal.end_date).toLocaleDateString("ru-RU")}
-                </p>
-              )}
-            </button>
-          ))}
-          {(closedView === "won" ? wonDeals : lostDeals).length === 0 && (
-            <p className="text-sm text-muted-foreground">Пока пусто.</p>
-          )}
-        </div>
-      ) : null}
-
       {stagesLoading || isLoading ? (
         <p className="mt-10 text-center text-muted-foreground">
           {isIntake ? "Загружаем новые объекты…" : "Загружаем сделки…"}

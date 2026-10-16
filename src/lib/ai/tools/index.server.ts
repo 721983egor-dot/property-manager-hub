@@ -1,3 +1,4 @@
+// CRM: getCrmResults, listDealLossReasons; confirmed reason catalog, loss/win and intake acceptance.
 // Personal Telegram reminders: listReminders, proposeReminder/proposeManageReminder; confirmed create/manage, administrator only.
 // Rental finance: getFinanceRentalTerms; proposeManagementFee, proposeManagementFeePayment (admin confirmation).
 // Import review: compact parameters + description; Telegram suppresses duplicate model preamble.

@@ -160,30 +160,9 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         </>
       )}
 
-      <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        CRM
-      </p>
-      <Link to="/crm/tasks" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <ListTodo className="size-4 shrink-0" />
-        Задачи
+      <Link to={isAdmin ? "/crm/deals" : "/crm/clients"} onClick={onNavigate} className={NAV_LINK_CLASS}>
+        <Handshake className="size-4 shrink-0" /> CRM
       </Link>
-      {isAdmin && (
-        <Link to="/crm/deals" onClick={onNavigate} className={NAV_LINK_CLASS}>
-          <Handshake className="size-4 shrink-0" />
-          Сделки
-        </Link>
-      )}
-
-      <Link to="/crm/clients" onClick={onNavigate} className={NAV_LINK_CLASS}>
-        <Users className="size-4 shrink-0" />
-        Клиенты
-      </Link>
-      {isAdmin && (
-        <Link to="/crm/leads" onClick={onNavigate} className={NAV_LINK_CLASS}>
-          <Inbox className="size-4 shrink-0" />
-          Заявки
-        </Link>
-      )}
 
       <button
         type="button"
@@ -379,10 +358,6 @@ function CrmShell({ children }: { children: ReactNode }) {
   if (!loading && isOwner && !pathname.startsWith("/owner")) {
     return <Navigate to="/owner" />;
   }
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
