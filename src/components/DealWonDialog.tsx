@@ -1,5 +1,6 @@
+import { fetchCrmClients } from "@/lib/clients";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,11 @@ type Props = {
 };
 export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, onClosed }: Props) {
   const qc = useQueryClient();
+  const { data: clients = [] } = useQuery({
+    queryKey: ["crm-clients"],
+    queryFn: fetchCrmClients,
+    enabled: open,
+  });
   const [propertyId, setPropertyId] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -192,7 +198,10 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
             <div>
               <Label>Клиент</Label>
               <p className="mt-2 text-sm text-muted-foreground">
-                {deal.client_id ? "Клиент из карточки сделки" : "Сначала выберите клиента в сделке"}
+                {deal.client_id
+                  ? clients.find((c) => c.id === deal.client_id)?.full_name ||
+                    "Клиент из карточки сделки"
+                  : "Сначала выберите клиента в сделке"}
               </p>
             </div>
           </div>
