@@ -80,6 +80,7 @@ export function FinanceCalendarPage() {
   const [defaultDirection, setDefaultDirection] = useState<PaymentDirection>("out");
   const [openingDraft, setOpeningDraft] = useState<string | null>(null);
   const [openingAnchor, setOpeningAnchor] = useState<OpeningAnchor | null>(null);
+  const [actualOpeningAnchor, setActualOpeningAnchor] = useState<OpeningAnchor | null>(null);
   const [showOpening, setShowOpening] = useState(false);
   const [account, setAccount] = useState("all");
   const [articleId, setArticleId] = useState("all");
@@ -109,10 +110,18 @@ export function FinanceCalendarPage() {
     }
   }, []);
 
-  const { data: accounts = [] } = useQuery({
+  const { data: accounts = [], isSuccess: accountsReady } = useQuery({
     queryKey: ["finance-accounts"],
     queryFn: fetchFinanceAccounts,
   });
+  useEffect(() => {
+    if (
+      accountsReady &&
+      account !== "all" &&
+      !accounts.some((a) => a.name === account && !a.archived)
+    )
+      setAccount("all");
+  }, [accountsReady, accounts, account]);
   const accountScope = accounts.find((a) => a.name === account)?.id ?? account;
   const scope =
     propertyId === "all" && account === "all" && articleId === "all"
@@ -122,10 +131,18 @@ export function FinanceCalendarPage() {
     setOpeningDraft(null);
     try {
       setOpeningAnchor(findOpeningAnchor(localStorage, bounds.monthKey, scope));
+      setActualOpeningAnchor(
+        findOpeningAnchor(
+          localStorage,
+          bounds.monthKey < today.slice(0, 7) ? bounds.monthKey : today.slice(0, 7),
+          scope,
+        ),
+      );
     } catch {
       setOpeningAnchor(null);
+      setActualOpeningAnchor(null);
     }
-  }, [bounds.monthKey, scope]);
+  }, [bounds.monthKey, scope, today]);
 
   // Лёгкий список объектов (не select(*) через server fn) — не блокирует календарь.
   const { data: propertyOptions = [] } = useQuery({
@@ -162,8 +179,8 @@ export function FinanceCalendarPage() {
     [payments, propertyId, account, articleId],
   );
   const calendar = useMemo(
-    () => buildFinanceCalendar(scoped, year, monthIndex, today, openingAnchor),
-    [scoped, year, monthIndex, today, openingAnchor],
+    () => buildFinanceCalendar(scoped, year, monthIndex, today, openingAnchor, actualOpeningAnchor),
+    [scoped, year, monthIndex, today, openingAnchor, actualOpeningAnchor],
   );
   const openingBalance = calendar.opening;
   const filtered = useMemo(
@@ -235,6 +252,7 @@ export function FinanceCalendarPage() {
       return;
     }
     setOpeningAnchor({ date: bounds.from, amount: value });
+    if (bounds.from <= today) setActualOpeningAnchor({ date: bounds.from, amount: value });
     setOpeningDraft(null);
     toast.success("Начальный остаток сохранён и будет перенесён в следующие месяцы");
   };
@@ -375,9 +393,7 @@ export function FinanceCalendarPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все счета</SelectItem>
-              {Array.from(
-                new Set([...accounts.map((a) => a.name), ...payments.map((p) => p.account)]),
-              )
+              {Array.from(new Set([...accounts.filter((a) => !a.archived).map((a) => a.name)]))
                 .filter(Boolean)
                 .map((name) => (
                   <SelectItem key={name} value={name}>
@@ -424,6 +440,13 @@ export function FinanceCalendarPage() {
                 try {
                   localStorage.removeItem(openingAnchorKey(bounds.monthKey, scope));
                   setOpeningAnchor(findOpeningAnchor(localStorage, bounds.monthKey, scope));
+                  setActualOpeningAnchor(
+                    findOpeningAnchor(
+                      localStorage,
+                      bounds.monthKey < today.slice(0, 7) ? bounds.monthKey : today.slice(0, 7),
+                      scope,
+                    ),
+                  );
                   setOpeningDraft(null);
                   toast.success("Остаток рассчитывается по истории операций");
                 } catch {

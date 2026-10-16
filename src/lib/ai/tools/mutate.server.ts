@@ -1160,6 +1160,30 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+    proposeDeleteFinanceAccount: tool({
+      description: "Предложить окончательно удалить счёт. Сначала getFinanceAccountUsage и listFinanceAccounts. Если есть операции или связанные сделки, обязателен transferTo — другой действующий счёт для их переноса. История сохраняется. Только после подтверждения администратора.",
+      inputSchema: z.object({ id: z.string().uuid(), transferTo: z.string().uuid().optional() }),
+      execute: async input => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const client = await ownerFinanceAdminClient();
+        const source = await client.from("finance_accounts").select("name").eq("id", input.id).single();
+        if (source.error || !source.data) return { error: "Счёт не найден" };
+        const usage = await client.rpc("finance_account_usage", { p_id: input.id });
+        if (usage.error || !usage.data) return { error: usage.error?.message ?? "Не удалось проверить счёт" };
+        const used = usage.data.payments > 0 || usage.data.deals > 0;
+        if (used && !input.transferTo) return { error: "Выберите другой счёт для переноса истории операций и связанных сделок" };
+        let targetName = "";
+        if (input.transferTo) {
+          if (input.transferTo === input.id) return { error: "Выберите другой счёт" };
+          const target = await client.from("finance_accounts").select("name").eq("id", input.transferTo).eq("archived", false).single();
+          if (!target.data) return { error: "Для переноса выберите действующий счёт" };
+          targetName = target.data.name;
+        }
+        const summary = `Удалить счёт «${source.data.name}» без восстановления${used ? `; перенести ${usage.data.payments} операций и ${usage.data.deals} связанных сделок на «${targetName}», сохранив суммы и даты` : "; связанных операций и сделок нет"}`;
+        ctx.propose({ tool: "deleteFinanceAccount", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
     proposeArchiveFinanceAccount: tool({
       description:"Предложить архивировать или восстановить счёт. История операций сохраняется. Требует подтверждения.",
       inputSchema:z.object({id:z.string().uuid(),archived:z.boolean()}),

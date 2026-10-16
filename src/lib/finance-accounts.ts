@@ -53,3 +53,19 @@ export async function updateFinanceAccount(id: string, name: string, type: Finan
   }
   if (!data) throw new Error("Счёт не найден или недоступен");
 }
+
+export async function fetchFinanceAccountUsage(
+  id: string,
+): Promise<{ payments: number; deals: number }> {
+  const { data, error } = await supabase.rpc("finance_account_usage", { p_id: id });
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось проверить счёт");
+  return data;
+}
+export async function deleteFinanceAccount(id: string, transferTo: string | null = null) {
+  const { error } = await supabase.rpc("delete_finance_account", {
+    p_id: id,
+    p_transfer_to: transferTo,
+  });
+  if (error) throw error;
+}

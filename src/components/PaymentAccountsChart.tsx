@@ -54,6 +54,19 @@ export default function PaymentAccountsChart({
       aria-label="Деньги на счетах — прогноз остатка по дням"
     >
       <h2>Деньги на счетах</h2>
+      <div
+        className="mb-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500"
+        aria-label="Обозначения линий"
+      >
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-block w-7 border-t-[3px] border-blue-600" />
+          Фактический остаток
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-block w-7 border-t-2 border-dashed border-slate-500" />
+          План с учётом доходов и расходов
+        </span>
+      </div>
       <div className="finance-accounts-plot">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 26, right: 12, left: 0, bottom: 0 }}>
@@ -99,13 +112,13 @@ export default function PaymentAccountsChart({
             <Tooltip
               formatter={(value: number, name: string) => [
                 formatAdeskMoney(value),
-                name === "actual" ? "Проведённые операции" : "Прогноз остатка",
+                name === "actual" ? "Фактический остаток" : "Плановый остаток",
               ]}
               labelFormatter={(label) => formatFinanceDate(String(label))}
               contentStyle={{ border: "1px solid #e5e5e5", borderRadius: 3, fontSize: 13 }}
             />
             <Area
-              type="monotone"
+              type="stepAfter"
               dataKey="balance"
               baseValue={0}
               stroke="none"
@@ -122,18 +135,18 @@ export default function PaymentAccountsChart({
               />
             )}
             <Line
-              type="monotone"
+              type="stepAfter"
               dataKey="balance"
               stroke={
                 zeroStroke === 0 ? "#ff422d" : zeroStroke === 100 ? "#2786ff" : `url(#${id}-stroke)`
               }
-              strokeWidth={1.6}
-              strokeDasharray="3 2"
+              strokeWidth={1.8}
+              strokeDasharray="6 4"
               dot={false}
               isAnimationActive={false}
             />
             <Line
-              type="monotone"
+              type="stepAfter"
               dataKey="actual"
               stroke={
                 zeroActual === 0
@@ -142,7 +155,7 @@ export default function PaymentAccountsChart({
                     ? "#2786ff"
                     : `url(#${id}-actual-stroke)`
               }
-              strokeWidth={1.6}
+              strokeWidth={2.6}
               dot={false}
               connectNulls={false}
               isAnimationActive={false}

@@ -4,7 +4,7 @@ import { financeToday, paymentFactAmount } from "./finance-payment-status.ts";
 const money = (value: number) => Math.round(value * 100) / 100;
 
 export type OpeningAnchor = { date: string; amount: number };
-export type CalendarCashPoint = { date: string; balance: number; actual: number | null };
+export type CalendarCashPoint = { date: string; balance: number; actual: number };
 
 export function paymentCashDate(payment: Payment): string {
   return (
@@ -21,9 +21,12 @@ export function buildFinanceCalendar(
   monthIndex: number,
   today = financeToday(),
   anchor?: OpeningAnchor | null,
+  actualAnchor: OpeningAnchor | null | undefined = anchor,
 ): { ledger: DayMoneyLedger[]; chart: CalendarCashPoint[]; opening: number } {
   const from = `${year}-${String(monthIndex + 1).padStart(2, "0")}-01`;
   const base = anchor && anchor.date <= from ? anchor : null;
+  const actualBase =
+    actualAnchor && actualAnchor.date <= from && actualAnchor.date <= today ? actualAnchor : null;
   const actual = new Map<string, number>();
   const income = new Map<string, number>();
   const expense = new Map<string, number>();
@@ -58,7 +61,16 @@ export function buildFinanceCalendar(
       0,
     );
   let projected = money((base?.amount ?? 0) + before(income) - before(expense));
-  let conducted = money((base?.amount ?? 0) + before(actual));
+  let conducted = money(
+    (actualBase?.amount ?? 0) +
+      Array.from(actual).reduce(
+        (sum, [date, value]) =>
+          date < from && date <= today && (!actualBase || date >= actualBase.date)
+            ? sum + value
+            : sum,
+        0,
+      ),
+  );
   const opening = projected;
   const ledger: DayMoneyLedger[] = [];
   const chart: CalendarCashPoint[] = [];
@@ -68,7 +80,7 @@ export function buildFinanceCalendar(
     const dayIncome = income.get(date) ?? 0;
     const dayExpense = expense.get(date) ?? 0;
     const closing = money(projected + dayIncome - dayExpense);
-    conducted = money(conducted + (actual.get(date) ?? 0));
+    if (date <= today) conducted = money(conducted + (actual.get(date) ?? 0));
     ledger.push({
       date,
       day,
@@ -80,7 +92,7 @@ export function buildFinanceCalendar(
       hasGap: projected < 0 || closing < 0,
       payments: byDay.get(date) ?? [],
     });
-    chart.push({ date, balance: closing, actual: date <= today ? conducted : null });
+    chart.push({ date, balance: closing, actual: conducted });
     projected = closing;
   }
   return { ledger, chart, opening };

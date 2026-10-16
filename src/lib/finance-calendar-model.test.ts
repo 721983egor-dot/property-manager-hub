@@ -38,7 +38,7 @@ test("previous income and expenses carry across empty months; future money stays
   const october = buildFinanceCalendar(rows, 2026, 9, today);
   assert.equal(october.opening, 10000);
   assert.equal(october.chart[15]?.actual, 10000);
-  assert.equal(october.chart[21]?.actual, null);
+  assert.equal(october.chart[21]?.actual, 10000);
   assert.equal(october.ledger.at(-1)?.closing, 15000);
 });
 test("early manual payment from a future month appears on its actual day exactly once", () => {
@@ -93,4 +93,36 @@ test("carried balances retain exact kopecks", () => {
   const rows = [p({ id: "1", amount: 0.1 }), p({ id: "2", amount: 0.2 })];
   assert.equal(buildFinanceCalendar(rows, 2026, 9, today).chart[13]?.actual, 0.3);
   assert.equal(buildFinanceCalendar(rows, 2026, 10, today).opening, 0.3);
+});
+
+test("future months retain today's actual cash; only dashed forecast includes future income and expenses", () => {
+  const rows = [
+    p({ amount: 150000 }),
+    p({ direction: "out", planned_date: "2026-10-30", amount: 10000 }),
+    p({ planned_date: "2026-11-04", amount: 40000 }),
+    p({ direction: "out", planned_date: "2026-11-10", amount: 50000 }),
+  ];
+  const october = buildFinanceCalendar(rows, 2026, 9, today);
+  assert.equal(october.chart.at(-1)?.actual, 150000);
+  assert.equal(october.chart.at(-1)?.balance, 140000);
+  const november = buildFinanceCalendar(rows, 2026, 10, today);
+  assert.ok(november.chart.every((day) => day.actual === 150000));
+  assert.equal(november.chart[3]?.balance, 180000);
+  assert.equal(november.chart[9]?.balance, 130000);
+});
+test("a future dated paid entry and a future manual opening do not inflate actual cash", () => {
+  const rows = [
+    p(),
+    p({ status: "paid", planned_date: "2026-11-15", paid_at: "2026-11-01", amount: 7000 }),
+  ];
+  const result = buildFinanceCalendar(
+    rows,
+    2026,
+    10,
+    today,
+    { date: "2026-11-01", amount: 99999 },
+    { date: "2026-10-01", amount: 100 },
+  );
+  assert.ok(result.chart.every((day) => day.actual === 12100));
+  assert.equal(result.chart[0]?.balance, 106999);
 });

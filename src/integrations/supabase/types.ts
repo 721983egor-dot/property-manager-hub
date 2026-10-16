@@ -2507,6 +2507,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finance_account_usage: { Args: { p_id: string }; Returns: { payments: number; deals: number } };
+      delete_finance_account: { Args: { p_id: string; p_transfer_to?: string | null }; Returns: undefined };
+
       create_management_fee_payment: { Args: {p_booking_id: string; p_period: string; p_expected_amount: number}; Returns: string }
 
       create_owner_settlement: { Args: { p_property_id:string; p_period:string; p_amount:number; p_legal_entity:string }; Returns:string };

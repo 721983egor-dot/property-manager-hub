@@ -2118,7 +2118,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getPaymentCalendar: tool({
-      description: "Календарь финансов с непрерывным остатком из всей истории и фактически проведёнными суммами. Состояние на сегодня по Москве. Ручной начальный остаток браузера можно передать явно.",
+      description: "Календарь финансов с непрерывным остатком из всей истории и фактически проведёнными суммами. Сплошная линия — фактический остаток на сегодня, продолженный на будущие даты; пунктир — план с доходами и расходами. Состояние на сегодня по Москве. Ручной начальный остаток браузера можно передать явно.",
       inputSchema: z.object({
         month: z.string().regex(/^\d{4}-\d{2}$/), propertyRef: z.string().optional(),
         account: z.string().optional(), articleId: z.string().optional(), openingBalance: z.number().optional(),
@@ -2260,8 +2260,26 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     listFinanceAccounts: tool({
-      description: "Счета финансов: расчётные счета, карты и наличные. Активные и архивные; архивные не выбираются для новых операций.",
-      inputSchema:z.object({}),execute:async()=>{const {data,error}=await admin.from("finance_accounts").select("id,name,type,archived").order("name");return error?{error:error.message}:{accounts:data};},
+      description: "Действующие счета финансов. Архив скрыт по умолчанию; includeArchived=true показывает архив для восстановления или удаления.",
+      inputSchema: z.object({ includeArchived: z.boolean().optional() }),
+      execute: async ({ includeArchived }) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const client = await ownerFinanceAdminClient();
+        let query = client.from("finance_accounts").select("id,name,type,archived").order("name");
+        if (!includeArchived) query = query.eq("archived", false);
+        const { data, error } = await query;
+        return error ? { error: error.message } : { accounts: data };
+      },
+    }),
+    getFinanceAccountUsage: tool({
+      description: "Число операций и связанных сделок на счёте перед удалением. При ненулевом количестве выберите другой действующий счёт для переноса.",
+      inputSchema: z.object({ id: z.string().uuid() }),
+      execute: async ({ id }) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const client = await ownerFinanceAdminClient();
+        const { data, error } = await client.rpc("finance_account_usage", { p_id: id });
+        return error ? { error: error.message } : { id, usage: data };
+      },
     }),
     getFinanceRentalTerms: tool({
       description: "Договорная аренда объектов РМ ОС для финансов: сроки, день оплаты, цена из договора/периодов, отдельная комиссия за управление, доход компании и собственнику до расходов. Это план, не полученные деньги. Только администратор. Не использовать комиссию из объявления.",

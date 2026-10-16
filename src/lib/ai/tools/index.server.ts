@@ -6,7 +6,7 @@
 // Rental copy: draftRentalDescription; import proposal includes copy; property update supports locationDescription.
 // Rental import: inspectYandexDiskPhotos, selectYandexDiskPhotos (all-source vision selection), proposeImportRentalFromDisk; confirmed importRentalFromDisk.
 // Owner settlements: getOwnerSettlements; proposeOwnerPayoutSettings, proposeCreateOwnerSettlement, proposePayOwnerSettlement (confirmed administrator actions).
-// Finance accounts: listFinanceAccounts, proposeCreateFinanceAccount, proposeUpdateFinanceAccount, proposeArchiveFinanceAccount.
+// Finance accounts: listFinanceAccounts, proposeCreateFinanceAccount, proposeUpdateFinanceAccount, proposeArchiveFinanceAccount, getFinanceAccountUsage, proposeDeleteFinanceAccount.
 // Финансовые объекты: getFinanceObjects; save/delete/assignFinanceObjectClassification, updateFinanceObligation — только через подтверждение.
 // Финансовый дашборд, ДДС/ОПиУ/план-факт/объекты/долги: getFinanceAnalytics; политика статей: proposeSaveFinanceArticle.
 import { createReadTools } from "@/lib/ai/tools/read.server";
