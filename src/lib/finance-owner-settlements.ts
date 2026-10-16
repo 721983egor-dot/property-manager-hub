@@ -4,11 +4,12 @@ export type OwnerSettlement = {
   property_id: string;
   period: string;
   obligation_id: string;
+  automatic?: boolean;
 };
 export async function fetchOwnerSettlements(propertyId?: string) {
   let query = supabase
     .from("finance_owner_settlements")
-    .select("id,property_id,period,obligation_id")
+    .select("id,property_id,period,obligation_id,automatic")
     .order("period", { ascending: false });
   if (propertyId) query = query.eq("property_id", propertyId);
   const rows: OwnerSettlement[] = [];

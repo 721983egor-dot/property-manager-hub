@@ -1,3 +1,4 @@
+import { fetchFinanceClientRentals } from "@/lib/finance-workspace";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fetchFinanceAccounts, FINANCE_ACCOUNT_TYPES } from "@/lib/finance-accounts";
 import { Info } from "lucide-react";
@@ -61,9 +62,14 @@ type Props = {
   defaultCounterpartyName?: string | undefined;
   defaultObligationId?: string | undefined;
   defaultAmount?: number | undefined;
+  defaultBookingId?: string | undefined;
+  defaultCompany?: boolean | undefined;
+  defaultRentalComponent?: "rent" | "utilities" | undefined;
 };
 
 type FormState = {
+  booking_id: string;
+  rental_component: "" | "rent" | "utilities";
   planned_date: string;
   amount: string;
   direction: PaymentDirection;
@@ -94,8 +100,10 @@ function emptyForm(
   counterpartyId = "",
   counterpartyName = "",
 ): FormState {
-  const kind = direction === "out" ? "agency_cost" : "rent_in";
+  const kind = direction === "out" ? "agency_cost" : "other";
   return {
+    booking_id: "",
+    rental_component: "",
     planned_date: date || toISODate(new Date()),
     amount: "",
     direction,
@@ -122,6 +130,13 @@ function emptyForm(
 
 function fromPayment(payment: Payment): FormState {
   return {
+    booking_id: payment.booking_id ?? "",
+    rental_component:
+      payment.rental_component === "rent" || payment.rental_component === "utilities"
+        ? payment.rental_component
+        : payment.kind === "rent_in"
+          ? "rent"
+          : "",
     planned_date: payment.planned_date,
     amount: String(payment.amount),
     direction: payment.direction,
@@ -157,8 +172,16 @@ export function PaymentDialog({
   defaultCounterpartyName,
   defaultObligationId,
   defaultAmount,
+  defaultBookingId,
+  defaultCompany,
+  defaultRentalComponent,
 }: Props) {
   const queryClient = useQueryClient();
+  const rentals = useQuery({
+    queryKey: ["finance-client-rentals"],
+    queryFn: fetchFinanceClientRentals,
+    enabled: open,
+  });
   const amountRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormState>(() =>
     emptyForm(
@@ -220,6 +243,16 @@ export function PaymentDialog({
               defaultCounterpartyId,
               defaultCounterpartyName,
             ),
+            booking_id: defaultBookingId ?? "",
+            rental_component: defaultRentalComponent ?? "",
+            kind:
+              defaultRentalComponent === "rent"
+                ? "rent_in"
+                : defaultCompany
+                  ? "other"
+                  : defaultDirection === "out"
+                    ? "agency_cost"
+                    : "other",
             amount: defaultAmount === undefined ? "" : String(defaultAmount),
             countInObligations: Boolean(defaultObligationId),
           },
@@ -234,6 +267,9 @@ export function PaymentDialog({
     defaultCounterpartyName,
     defaultAmount,
     defaultObligationId,
+    defaultBookingId,
+    defaultRentalComponent,
+    defaultCompany,
   ]);
 
   useEffect(() => {
@@ -285,16 +321,26 @@ export function PaymentDialog({
     void queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-counterparties"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-obligations"] });
+    void queryClient.invalidateQueries({ queryKey: ["finance-owner-settlements"] });
   };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (accountsQuery.error || !selectedAccountValid)
         throw new Error("Выберите действующий счёт в настройках финансов");
+      if (payment?.rental_component === "owner_plan")
+        throw new Error("Подтвердите выплату в разделе Собственники");
+      const rental = rentals.data?.find((b) => b.id === form.booking_id);
+      if (form.rental_component && !rental) throw new Error("Выберите аренду клиента");
       const party = await ensureCounterparty({
-        id: form.counterparty_id || null,
-        name: form.counterparty_name,
-        kind: kindFromPaymentDirection(form.direction, form.kind) as CounterpartyKind,
+        id: form.rental_component
+          ? (counterparties.find((c) => c.client_id === rental?.client_id)?.id ?? null)
+          : form.counterparty_id || null,
+        name: form.rental_component ? (rental?.clients?.full_name ?? "") : form.counterparty_name,
+        clientId: form.rental_component ? (rental?.client_id ?? null) : null,
+        kind: form.rental_component
+          ? "tenant"
+          : (kindFromPaymentDirection(form.direction, form.kind) as CounterpartyKind),
       });
       const selectedArticle = findArticle(articleList, form.article_id);
       const input = {
@@ -302,10 +348,23 @@ export function PaymentDialog({
         amount: Number(form.amount),
         direction: form.direction,
         status: form.status,
-        kind: selectedArticle ? kindFromArticle(selectedArticle) : form.kind,
+        kind:
+          form.rental_component === "rent"
+            ? ("rent_in" as const)
+            : form.rental_component === "utilities"
+              ? ("other" as const)
+              : selectedArticle
+                ? kindFromArticle(selectedArticle)
+                : form.kind,
         article_id: form.article_id || null,
-        property_id: form.property_id || null,
-        client_id: payment?.client_id ?? null,
+        property_id: form.rental_component ? rental!.property_id : form.property_id || null,
+        client_id: form.rental_component ? rental!.client_id : (payment?.client_id ?? null),
+        booking_id: form.rental_component ? rental!.id : (payment?.booking_id ?? null),
+        deal_id: payment?.deal_id ?? null,
+        rental_component: form.rental_component || null,
+        rental_period: form.rental_component
+          ? (form.accrual_date || form.planned_date).slice(0, 7) + "-01"
+          : null,
         counterparty_id: party.id,
         counterparty_name: party.name || form.counterparty_name,
         account: form.account,
@@ -315,6 +374,8 @@ export function PaymentDialog({
         accrual_date: form.otherAccrual ? form.accrual_date || null : null,
         obligation_id: payment?.obligation_id ?? defaultObligationId ?? null,
       };
+      if (form.rental_component && form.repeat)
+        throw new Error("Для аренды используйте график в карточке клиента");
       let repeatOpts = null as {
         interval: PaymentRepeatInterval;
         count?: number;
@@ -337,7 +398,13 @@ export function PaymentDialog({
         }
       }
       const id = await savePaymentSeries(payment?.id ?? null, input, repeatOpts);
-      if (form.countInObligations && party.id && !payment?.obligation_id && !defaultObligationId) {
+      if (
+        !form.rental_component &&
+        form.countInObligations &&
+        party.id &&
+        !payment?.obligation_id &&
+        !defaultObligationId
+      ) {
         const obligationId = await saveObligation(null, {
           counterparty_id: party.id,
           planned_date: form.planned_date,
@@ -402,7 +469,9 @@ export function PaymentDialog({
                       ...prev,
                       direction: value as PaymentDirection,
                       article_id: "",
-                      kind: value === "in" ? "rent_in" : "agency_cost",
+                      kind: value === "in" ? "other" : "agency_cost",
+                      rental_component: "",
+                      booking_id: "",
                     }))
                   }
                 >
@@ -419,6 +488,83 @@ export function PaymentDialog({
           </SheetTitle>
         </SheetHeader>
 
+        {payment?.rental_component === "owner_plan" && (
+          <p className="p-5">
+            Это план выплаты собственнику. Подтвердите полную или частичную выплату в разделе{" "}
+            <a href="/finance/owners" className="underline">
+              Собственники
+            </a>
+            .
+          </p>
+        )}
+        {form.direction === "in" && (
+          <div className="grid gap-3 px-5 py-3 border-b">
+            <label className="text-sm">
+              Назначение поступления
+              <select
+                aria-label="Назначение поступления"
+                className="block w-full border rounded p-2 mt-1"
+                value={form.rental_component}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    rental_component: e.target.value as FormState["rental_component"],
+                    repeat: false,
+                    countInObligations: false,
+                    kind: e.target.value === "rent" ? "rent_in" : "other",
+                    article_id: "",
+                  }))
+                }
+              >
+                <option value="">Доход компании</option>
+                <option value="rent">Арендная плата клиента</option>
+                <option value="utilities">КУ клиента · собственнику</option>
+              </select>
+            </label>
+            {form.rental_component && (
+              <label className="text-sm">
+                Аренда клиента
+                <select
+                  aria-label="Аренда клиента"
+                  className="block w-full border rounded p-2 mt-1"
+                  value={form.booking_id}
+                  onChange={(e) => {
+                    const b = rentals.data?.find((x) => x.id === e.target.value);
+                    setForm((p) => ({
+                      ...p,
+                      booking_id: e.target.value,
+                      property_id: b?.property_id ?? p.property_id,
+                      counterparty_name: b?.clients?.full_name ?? p.counterparty_name,
+                    }));
+                  }}
+                >
+                  <option value="">Выберите договор аренды</option>
+                  {rentals.data
+                    ?.filter((b) => b.status === "active" || b.id === form.booking_id)
+                    .map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.clients?.full_name ?? "Клиент"} ·{" "}
+                        {properties.find((p) => p.id === b.property_id)?.internal_name ||
+                          properties.find((p) => p.id === b.property_id)?.title ||
+                          "Объект"}{" "}
+                        · {b.start_date} — {b.end_date}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+            {rentals.error && form.rental_component && (
+              <p role="alert">Не удалось загрузить договоры аренды</p>
+            )}
+            {form.rental_component && (
+              <p className="text-xs text-muted-foreground">
+                Аренда распределяется на комиссию компании и выплату собственнику. КУ перечисляются
+                собственнику полностью. Период расчёта — месяц даты начисления, а без неё — месяц
+                операции.
+              </p>
+            )}
+          </div>
+        )}
         <div className="finance-payment-fields">
           <Field label="Сумма" required>
             <Input
@@ -501,6 +647,7 @@ export function PaymentDialog({
           </Field>
           <Field label="Объект">
             <Select
+              disabled={Boolean(form.rental_component)}
               value={form.property_id || ""}
               onValueChange={(v) =>
                 setForm((p) => ({ ...p, property_id: v === "__none__" ? "" : v }))
@@ -519,8 +666,9 @@ export function PaymentDialog({
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Контрагент">
+          <Field label={form.rental_component ? "Клиент" : "Контрагент"}>
             <Select
+              disabled={Boolean(form.rental_component)}
               value={form.counterparty_id || ""}
               onValueChange={(v) => {
                 if (v === "__none__") {
@@ -536,7 +684,14 @@ export function PaymentDialog({
               }}
             >
               <SelectTrigger className="finance-field-select" aria-label="Контрагент">
-                <SelectValue placeholder="Выберите контрагента…" />
+                <SelectValue
+                  placeholder={
+                    form.rental_component
+                      ? (rentals.data?.find((b) => b.id === form.booking_id)?.clients?.full_name ??
+                        "Выберите аренду клиента")
+                      : "Выберите контрагента…"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">Новый / без карточки</SelectItem>
@@ -564,7 +719,9 @@ export function PaymentDialog({
         <div className="finance-payment-options">
           <label className="finance-payment-option">
             <Checkbox
-              disabled={Boolean(payment?.obligation_id || defaultObligationId)}
+              disabled={Boolean(
+                form.rental_component || payment?.obligation_id || defaultObligationId,
+              )}
               checked={form.countInObligations}
               onCheckedChange={(v) => setForm((p) => ({ ...p, countInObligations: v === true }))}
             />
@@ -601,6 +758,7 @@ export function PaymentDialog({
             <div>
               <label className="finance-payment-option">
                 <Checkbox
+                  disabled={Boolean(form.rental_component)}
                   checked={form.repeat}
                   onCheckedChange={(v) => setForm((p) => ({ ...p, repeat: v === true }))}
                 />
@@ -698,6 +856,7 @@ export function PaymentDialog({
               !form.planned_date ||
               !Number.isFinite(Number(form.amount)) ||
               Number(form.amount) <= 0 ||
+              payment?.rental_component === "owner_plan" ||
               saveMutation.isPending ||
               (!!form.repeat && !payment && form.repeatEndMode === "until" && !form.repeatUntil)
             }
@@ -715,7 +874,7 @@ export function PaymentDialog({
               type="button"
               variant="ghost"
               className="text-destructive"
-              disabled={deleteMutation.isPending}
+              disabled={payment?.rental_component === "owner_plan" || deleteMutation.isPending}
               onClick={() => {
                 if (window.confirm("Удалить операцию?")) deleteMutation.mutate();
               }}

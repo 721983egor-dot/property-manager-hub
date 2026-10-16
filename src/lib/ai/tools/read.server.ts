@@ -2188,7 +2188,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getFinanceSummary: tool({
-      description: "Сводка финансов за месяц: план/факт приход и расход, число просрочек.",
+      description: "Все движения денег за месяц, включая транзитные средства. Для доходов и расходов только компании используйте getFinanceWorkspace. План/факт и просрочки.",
       inputSchema: z.object({
         month: z.string().describe("ГГГГ-ММ"),
         propertyRef: z.string().optional(),
@@ -2246,6 +2246,65 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getFinanceWorkspace: tool({
+      description:
+        "Финансы компании отдельно от денег собственников и депозитов; клиенты с оформленной арендой. Только администратор. Комиссия внутри арендного поступления не является вторым поступлением на счёт. Чтение ничего не начисляет.",
+      inputSchema: z.object({
+        month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+        clientId: z.string().uuid().optional(),
+        propertyId: z.string().uuid().optional(),
+      }),
+      execute: async ({ month, clientId, propertyId }) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const client = await ownerFinanceAdminClient();
+        const result = await allFinancePages((from, to) => {
+          let q = client.from("payments").select("*").order("id").range(from, to);
+          if (propertyId) q = q.eq("property_id", propertyId);
+          return q;
+        });
+        if (result.error) return { error: result.error.message };
+        const rentals = await allFinancePages((from, to) => {
+          let q = client
+            .from("bookings")
+            .select(
+              "id,client_id,property_id,start_date,end_date,price_month,payment_day,status,clients(id,full_name,phone)",
+            )
+            .order("id")
+            .range(from, to);
+          if (clientId) q = q.eq("client_id", clientId);
+          if (propertyId) q = q.eq("property_id", propertyId);
+          return q;
+        });
+        if (rentals.error) return { error: rentals.error.message };
+        const { companySummary, companyPayments, clientPayments } =
+          await import("@/lib/finance-company-model");
+        const rows = result.data as unknown as Payment[];
+        const end = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0))
+          .toISOString()
+          .slice(0, 10);
+        const ops = (clientId ? clientPayments(rows, clientId) : companyPayments(rows)).filter(
+          (p) => p.planned_date.startsWith(month),
+        );
+        return {
+          month,
+          company: companySummary(rows, month + "-01", end),
+          balanceBasis: "Только внесённые операции; начальные остатки из календаря не включены",
+          rentals: rentals.data.slice(0, 200),
+          operations: ops
+            .slice(0, 100)
+            .map((p) => ({
+              id: p.id,
+              date: p.planned_date,
+              amount: p.amount,
+              clientId: p.client_id,
+              bookingId: p.booking_id,
+              status: effectivePaymentStatus(p),
+              kind: p.kind,
+            })),
+          operationCount: ops.length,
+        };
+      },
+    }),
     getOwnerSettlements: tool({
       description:"Расчёты с собственниками: дата выплаты, выплачено, остаток долга, просрочка. Только администратору в РМ ОС.",
       inputSchema:z.object({propertyId:z.string().uuid().optional()}),execute:async({propertyId})=>{
@@ -2323,7 +2382,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getFinanceAnalytics: tool({
-      description: "Дашборд и отчёты Финансов: ДДС по оплатам, прибыль по начислениям (депозиты и исключённые статьи не входят), план/факт, категории, объекты РМ ОС, текущая задолженность. Долги не являются историческим срезом на дату. По датам оплаты без полной истории частичных взносов доступны агрегированные суммы операций.",
+      description: "Расширенные отчёты всех движений (не основной экран компании; для него getFinanceWorkspace): ДДС по оплатам, прибыль по начислениям (депозиты и исключённые статьи не входят), план/факт, категории, объекты РМ ОС, текущая задолженность. Долги не являются историческим срезом на дату. По датам оплаты без полной истории частичных взносов доступны агрегированные суммы операций.",
       inputSchema: z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),propertyId:z.string().optional()}),
       execute: async ({from,to,propertyId}) => {
         if(from>to) return {error:"Дата начала позже окончания"};

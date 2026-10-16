@@ -2,8 +2,10 @@ import "./finance-ui.css";
 import { Link } from "@tanstack/react-router";
 
 const ITEMS = [
-  { to: "/finance", label: "Дашборд", active: "dashboard" },
-  { to: "/finance/calendar", label: "Календарь", active: "calendar" },
+  { to: "/finance", label: "Компания", active: "dashboard" },
+  { to: "/finance/owners", label: "Собственники", active: "owners" },
+  { to: "/finance/clients", label: "Клиенты", active: "clients" },
+  { to: "/finance/calendar", label: "Все движения", active: "calendar" },
   { to: "/finance/objects", label: "Объекты", active: "objects" },
   { to: "/finance/counterparties", label: "Контрагенты", active: "counterparties" },
   { to: "/finance/reports", label: "Отчёты", active: "reports" },
@@ -13,7 +15,15 @@ const ITEMS = [
 export function FinanceTabs({
   active,
 }: {
-  active: "objects" | "dashboard" | "calendar" | "counterparties" | "reports" | "settings";
+  active:
+    | "owners"
+    | "clients"
+    | "objects"
+    | "dashboard"
+    | "calendar"
+    | "counterparties"
+    | "reports"
+    | "settings";
 }) {
   return (
     <div className="finance-nav mt-6 border-b border-border">

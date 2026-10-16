@@ -14,9 +14,11 @@ import { formatAdeskMoney, formatFinanceDate, type DayMoneyLedger } from "@/lib/
 
 export default function PaymentAccountsChart({
   ledger,
+  title = "Деньги на счетах",
   chart: chartData,
   today,
 }: {
+  title?: string;
   ledger: DayMoneyLedger[];
   chart: CalendarCashPoint[];
   today: string;
@@ -53,7 +55,7 @@ export default function PaymentAccountsChart({
       className="finance-accounts-chart"
       aria-label="Деньги на счетах — прогноз остатка по дням"
     >
-      <h2>Деньги на счетах</h2>
+      <h2>{title}</h2>
       <div
         className="mb-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500"
         aria-label="Обозначения линий"

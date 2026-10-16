@@ -1207,6 +1207,70 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   saveOwnerPayoutSettings:async input=>{
     const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const day=Number(input["day"]);if(!Number.isInteger(day)||day<1||day>31)throw new Error("День от 1 до 31");const {error}=await client.from("finance_object_settings").upsert({property_id:String(input["propertyId"]),owner_counterparty_id:String(input["ownerId"]),payout_day:day},{onConflict:"property_id"});if(error)throw new Error(error.message);return "Условия выплаты сохранены";
   },
+  saveRentalOwnerSettings: async (input) => {
+    const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+    const client = await ownerFinanceAdminClient();
+    const { error } = await client.rpc("finance_save_rental_settings", {
+      p_property: String(input["propertyId"]),
+      p_owner: String(input["ownerId"]),
+      p_day: Number(input["day"]),
+      p_fee: Number(input["fee"]),
+      p_fee_type: String(input["feeType"]),
+    });
+    if (error) throw new Error(error.message);
+    return "Условия комиссии и выплаты сохранены";
+  },
+  createRentalSchedule: async (input) => {
+    const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+    const client = await ownerFinanceAdminClient();
+    const { data, error } = await client.rpc("finance_create_rental_schedule", {
+      p_booking: String(input["bookingId"]),
+      p_account: String(input["account"]),
+    });
+    if (error) throw new Error(error.message);
+    return `Добавлено платежей аренды: ${data}`;
+  },
+  refreshRentalSettlements: async () => {
+    const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+    const client = await ownerFinanceAdminClient();
+    const { error } = await client.rpc("finance_refresh_rental_settlements");
+    if (error) throw new Error(error.message);
+    return "Начисления собственникам обновлены. Переводы не подтверждены";
+  },
+  createRentalReceipt: async (input) => {
+    const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+    const client = await ownerFinanceAdminClient();
+    const { data: b, error: load } = await client
+      .from("bookings")
+      .select("id,client_id,property_id")
+      .eq("id", String(input["bookingId"]))
+      .single();
+    if (load || !b) throw new Error("Аренда не найдена");
+    const component = String(input["component"]);
+    if (!["rent", "utilities"].includes(component)) throw new Error("Выберите аренду или КУ");
+    const { error } = await client
+      .from("payments")
+      .upsert(
+        {
+          id: String(input["requestId"]),
+          booking_id: b.id,
+          client_id: b.client_id,
+          property_id: b.property_id,
+          amount: Number(input["amount"]),
+          planned_date: String(input["date"]),
+          direction: "in",
+          status: "expected",
+          kind: component === "rent" ? "rent_in" : "other",
+          rental_component: component,
+          rental_period: String(input["period"]) + "-01",
+          account: String(input["account"]),
+          comment: component === "rent" ? "Аренда клиента" : "КУ клиента",
+        } as never,
+        { onConflict: "id", ignoreDuplicates: true },
+      );
+    if (error) throw new Error(error.message);
+    return "Поступление добавлено, распределение и начисление собственнику обновлены";
+  },
   createOwnerSettlement:async input=>{
     const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const {error}=await client.rpc("create_owner_settlement",{p_property_id:String(input["propertyId"]),p_period:String(input["month"])+"-01",p_amount:Number(input["amount"]),p_legal_entity:String(input["legalEntity"])});if(error)throw new Error(error.message);return "Расчёт создан, долг собственнику учтён";
   },

@@ -774,7 +774,7 @@ export type Database = {
         Relationships: []
       }
       finance_owner_settlements: {
-        Row: { id:string; property_id:string; period:string; obligation_id:string; created_at:string };
+        Row: { id:string; property_id:string; period:string; obligation_id:string; automatic:boolean; created_at:string };
         Insert: { property_id:string; period:string; obligation_id:string };
         Update: { property_id?:string; period?:string; obligation_id?:string };
         Relationships: [];
@@ -1104,6 +1104,10 @@ export type Database = {
           kind: Database["public"]["Enums"]["payment_kind"]
           property_id: string | null
           client_id: string | null
+          rental_component: "rent" | "utilities" | "owner_plan" | null
+          rental_period: string | null
+          company_fee: number | null
+          crm_charge: string | null
           management_period: string | null
           booking_id: string | null
           deal_id: string | null
@@ -1128,6 +1132,10 @@ export type Database = {
           kind?: Database["public"]["Enums"]["payment_kind"]
           property_id?: string | null
           client_id?: string | null
+          rental_component?: "rent" | "utilities" | "owner_plan" | null
+          rental_period?: string | null
+          company_fee?: number | null
+          crm_charge?: string | null
           management_period?: string | null
           booking_id?: string | null
           deal_id?: string | null
@@ -1152,6 +1160,10 @@ export type Database = {
           kind?: Database["public"]["Enums"]["payment_kind"]
           property_id?: string | null
           client_id?: string | null
+          rental_component?: "rent" | "utilities" | "owner_plan" | null
+          rental_period?: string | null
+          company_fee?: number | null
+          crm_charge?: string | null
           management_period?: string | null
           booking_id?: string | null
           deal_id?: string | null
@@ -2507,6 +2519,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finance_save_rental_settings: { Args: { p_property: string; p_owner: string; p_day: number; p_fee: number; p_fee_type: string; p_owner_name?: string | null }; Returns: undefined };
+      finance_refresh_rental_settlements: { Args: Record<PropertyKey, never>; Returns: undefined };
+      finance_create_rental_schedule: { Args: { p_booking: string; p_account: string }; Returns: number };
       finance_account_usage: { Args: { p_id: string }; Returns: { payments: number; deals: number } };
       delete_finance_account: { Args: { p_id: string; p_transfer_to?: string | null }; Returns: undefined };
 

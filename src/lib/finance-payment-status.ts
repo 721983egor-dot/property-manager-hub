@@ -12,17 +12,31 @@ export function financeToday(now = new Date()): string {
 
 /** План становится фактом в день операции; ручное проведение действует и для будущей даты. */
 export function effectivePaymentStatus(
-  payment: { status: string; planned_date: string },
+  payment: {
+    status: string;
+    planned_date: string;
+    kind?: string;
+    rental_component?: string | null;
+  },
   today = financeToday(),
 ): PaymentStatus {
   if (payment.status === "paid") return "paid";
   // Явно введённая частичная оплата не означает получения всей суммы.
+  if (payment.kind === "owner_payout" && payment.rental_component === "owner_plan")
+    return payment.planned_date < today ? "overdue" : "expected";
   if (payment.status === "partial") return "partial";
+  if (payment.kind === "owner_payout") return payment.planned_date < today ? "overdue" : "expected";
   return payment.planned_date <= today ? "paid" : "expected";
 }
 
 export function paymentFactAmount(
-  payment: { status: string; planned_date: string; amount: number; paid_amount: number | null },
+  payment: {
+    status: string;
+    planned_date: string;
+    amount: number;
+    paid_amount: number | null;
+    kind?: string;
+  },
   today = financeToday(),
 ): number {
   if (payment.status === "partial") return payment.paid_amount ?? 0;

@@ -1,3 +1,4 @@
+import { bankPayments } from "@/lib/finance-company-model";
 import { paymentCashDate } from "@/lib/finance-calendar-model";
 import { paymentFactAmount } from "@/lib/finance-payment-status";
 import { useFinanceToday } from "@/hooks/use-finance-today";
@@ -22,11 +23,13 @@ import {
 
 export function FinanceDayCard({
   date,
+  forecasts = [],
   onClose,
   onEdit,
   onAdd,
 }: {
   date: string | null;
+  forecasts?: Payment[];
   onClose: () => void;
   onEdit: (payment: Payment) => void;
   onAdd: (date: string, direction: PaymentDirection) => void;
@@ -51,7 +54,7 @@ export function FinanceDayCard({
     queryFn: () => fetchPayments(),
     enabled: Boolean(date),
   });
-  const payments = history.filter(
+  const payments = [...bankPayments(history), ...forecasts].filter(
     (p) =>
       p.planned_date === date || (paymentFactAmount(p, today) > 0 && paymentCashDate(p) === date),
   );
@@ -140,7 +143,7 @@ export function FinanceDayCard({
                         variant="outline"
                         aria-label={`Провести операцию: ${payment.article?.name ?? kindLabel(payment.kind)}`}
                         title="Провести операцию"
-                        disabled={markPaid.isPending}
+                        disabled={markPaid.isPending || payment.id.startsWith("owner-forecast:")}
                         onClick={() => markPaid.mutate(payment.id)}
                       >
                         <Check size={18} />

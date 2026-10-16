@@ -1120,6 +1120,74 @@ export function createMutateTools(ctx: AssistantToolContext) {
         const summary=`Доход компании за ${input.month}: ${money(plan.fee)}, ожидается ${plan.due}. Фактическая оплата не отмечается.`;ctx.propose({tool:"createManagementFeePayment",summary,input:{...input,amount:plan.fee}});return {proposed:true,summary};
       },
     }),
+    proposeRentalOwnerSettings: tool({
+      description:
+        "Предложить атомарно задать собственника, день выплаты и комиссию компании по объекту. Сохранённые комиссии проведённых платежей не переписываются. Только с подтверждением администратора.",
+      inputSchema: z.object({
+        propertyId: z.string().uuid(),
+        ownerId: z.string().uuid(),
+        day: z.number().int().min(1).max(31),
+        fee: z.number().nonnegative().max(100000000),
+        feeType: z.enum(["percent", "amount"]),
+      }),
+      execute: async (input) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        await ownerFinanceAdminClient();
+        if (input.feeType === "percent" && input.fee > 100)
+          return { error: "Процент не выше 100" };
+        const summary = `Объект ${input.propertyId}: собственник ${input.ownerId}, выплата ${input.day}-го, комиссия ${input.fee} ${input.feeType === "percent" ? "%" : "₽"}.`;
+        ctx.propose({ tool: "saveRentalOwnerSettings", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+    proposeRentalSchedule: tool({
+      description:
+        "Предложить сформировать ежемесячную аренду клиента с текущего месяца до конца договора (до 36 месяцев), с привязкой к объекту и счёту. Даты сегодня/в прошлом автоматически считаются проведёнными. Только после подтверждения администратора.",
+      inputSchema: z.object({ bookingId: z.string().uuid(), account: z.string().trim().min(1) }),
+      execute: async (input) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        await ownerFinanceAdminClient();
+        const summary = `Сформировать график аренды ${input.bookingId} на счёт «${input.account}». Даты сегодня и в прошлом станут фактом, будущие останутся планом. До 36 месяцев, без дублей.`;
+        ctx.propose({ tool: "createRentalSchedule", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
+    proposeRefreshRentalSettlements: tool({
+      description:
+        "Предложить обновить автоматические начисления собственникам из поступившей аренды и КУ. Деньги не перечисляются, ручные расчёты не изменяются. Требуется подтверждение администратора.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        await ownerFinanceAdminClient();
+        const summary =
+          "Обновить начисления собственникам: поступившая аренда минус комиссия, плюс КУ. Переводы не подтверждаются.";
+        ctx.propose({ tool: "refreshRentalSettlements", summary, input: {} });
+        return { proposed: true, summary };
+      },
+    }),
+    proposeRentalReceipt: tool({
+      description:
+        "Предложить поступление аренды или КУ конкретного клиента по договору. Аренда делится на комиссию и долг собственнику, КУ полностью собственнику. Даты сегодня/в прошлом считаются фактом. Требуется подтверждение администратора.",
+      inputSchema: z.object({
+        bookingId: z.string().uuid(),
+        component: z.enum(["rent", "utilities"]),
+        amount: z.number().positive(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+        account: z.string().trim().min(1),
+      }),
+      execute: async (input) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        await ownerFinanceAdminClient();
+        const summary = `Добавить ${input.component === "rent" ? "аренду" : "КУ"} ${money(input.amount)} за ${input.period}, дата ${input.date}, счёт «${input.account}», договор ${input.bookingId}.`;
+        ctx.propose({
+          tool: "createRentalReceipt",
+          summary,
+          input: { ...input, requestId: crypto.randomUUID() },
+        });
+        return { proposed: true, summary };
+      },
+    }),
     proposeOwnerPayoutSettings: tool({
       description:"Предложить установить собственника и ежемесячный день выплаты для объекта. Только администратору в РМ ОС, с подтверждением.",
       inputSchema:z.object({propertyId:z.string().uuid(),ownerId:z.string().uuid(),day:z.number().int().min(1).max(31)}),execute:async input=>{
@@ -1191,7 +1259,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
     }),
     proposeCreatePayment: tool({
       description:
-        "Предложить создание платежа в календаре Финансов: дата, сумма, приход/расход, статья, объект, контрагент, статус. Требует подтверждения менеджера.",
+        "Для связанной аренды/КУ используйте proposeRentalReceipt. Предложить прочий платёж в календаре Финансов: дата, сумма, приход/расход, статья, объект, контрагент, статус. Требует подтверждения менеджера.",
       inputSchema: z.object({
         plannedDate: z.string().describe("ГГГГ-ММ-ДД"),
         amount: z.number(),

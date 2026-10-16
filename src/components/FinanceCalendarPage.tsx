@@ -1,3 +1,6 @@
+import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
+import { fetchOwnerSettlements } from "@/lib/finance-owner-settlements";
+import { bankPayments, ownerForecastPayments } from "@/lib/finance-company-model";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -168,15 +171,27 @@ export function FinanceCalendarPage() {
     staleTime: 30 * 1000,
   });
 
+  const rentalSettings = useQuery({
+    queryKey: ["finance-object-settings"],
+    queryFn: fetchFinanceObjectAssignments,
+  });
+  const ownerSettlements = useQuery({
+    queryKey: ["finance-owner-settlements", "calendar"],
+    queryFn: () => fetchOwnerSettlements(),
+  });
+  const forecasts = useMemo(
+    () => ownerForecastPayments(payments, rentalSettings.data ?? [], ownerSettlements.data ?? []),
+    [payments, rentalSettings.data, ownerSettlements.data],
+  );
   const scoped = useMemo(
     () =>
-      payments.filter(
+      [...bankPayments(payments), ...forecasts].filter(
         (payment) =>
           (propertyId === "all" || payment.property_id === propertyId) &&
           (account === "all" || payment.account === account) &&
           (articleId === "all" || payment.article_id === articleId),
       ),
-    [payments, propertyId, account, articleId],
+    [payments, forecasts, propertyId, account, articleId],
   );
   const calendar = useMemo(
     () => buildFinanceCalendar(scoped, year, monthIndex, today, openingAnchor, actualOpeningAnchor),
@@ -227,6 +242,12 @@ export function FinanceCalendarPage() {
   };
 
   const openEdit = (payment: Payment) => {
+    if (payment.id.startsWith("owner-forecast:")) {
+      toast.info(
+        "Это прогноз. Начисление появится после поступления аренды; условия — в разделе Собственники.",
+      );
+      return;
+    }
     setEditing(payment);
     setDefaultDate("");
     setDialogOpen(true);
@@ -525,6 +546,11 @@ export function FinanceCalendarPage() {
           </div>
         )}
 
+        {(rentalSettings.error || ownerSettlements.error) && (
+          <p role="alert" className="text-red-600">
+            Не удалось загрузить условия выплат собственникам. Их прогноз может быть неполным.
+          </p>
+        )}
         {!isLoading && view === "list" && (
           <div className="mt-5 overflow-hidden rounded-xl border border-[#e8edf2] bg-white">
             <div className="hidden grid-cols-[7rem_1fr_8rem_7rem_6rem] gap-3 border-b border-[#e8edf2] bg-[#fafbfc] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 sm:grid">
@@ -592,7 +618,9 @@ export function FinanceCalendarPage() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={markPaidMutation.isPending}
+                        disabled={
+                          markPaidMutation.isPending || payment.id.startsWith("owner-forecast:")
+                        }
                         onClick={() => markPaidMutation.mutate(payment.id)}
                       >
                         <Check size={16} /> Провести
@@ -608,6 +636,7 @@ export function FinanceCalendarPage() {
         )}
       </div>
       <FinanceDayCard
+        forecasts={forecasts}
         date={selectedDay}
         onClose={() => setSelectedDay(null)}
         onEdit={(payment) => {

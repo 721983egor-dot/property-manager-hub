@@ -5,7 +5,7 @@ export { summarizeCounterparty, obligationCash } from "./finance-counterparty-mo
 export type CounterpartyKind = "tenant" | "owner" | "contractor" | "employee" | "deposit" | "other";
 
 export const COUNTERPARTY_KINDS: { value: CounterpartyKind; label: string }[] = [
-  { value: "tenant", label: "Арендатор" },
+  { value: "tenant", label: "Клиент" },
   { value: "owner", label: "Собственник" },
   { value: "contractor", label: "Подрядчик" },
   { value: "employee", label: "Сотрудник" },
@@ -182,12 +182,11 @@ export async function ensureCounterparty(input: {
   }
   const name = (input.name ?? "").trim();
   if (!name) return { id: null, name: "" };
-  const { data: found } = await supabase
-    .from("finance_counterparties")
-    .select("id, name")
-    .ilike("name", name)
-    .limit(1)
-    .maybeSingle();
+  let lookup = supabase.from("finance_counterparties").select("id,name");
+  lookup = input.clientId
+    ? lookup.eq("client_id", input.clientId)
+    : lookup.ilike("name", name).is("client_id", null);
+  const { data: found } = await lookup.limit(1).maybeSingle();
   if (found) return { id: String((found as { id: string }).id), name };
   const id = await saveCounterparty(null, {
     name,

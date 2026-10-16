@@ -44,6 +44,10 @@ export const PAYMENT_ACCOUNTS = ["Основной", "Касса"] as const;
 
 export type Payment = {
   management_period?: string | null;
+  rental_component?: "rent" | "utilities" | "owner_plan" | null;
+  rental_period?: string | null;
+  company_fee?: number | null;
+  crm_charge?: string | null;
   id: string;
   planned_date: string;
   amount: number;
@@ -89,6 +93,8 @@ export type PaymentInput = {
   kind: PaymentKind;
   property_id: string | null;
   client_id: string | null;
+  rental_component?: "rent" | "utilities" | null;
+  rental_period?: string | null;
   booking_id?: string | null;
   deal_id?: string | null;
   counterparty_id?: string | null;
@@ -103,9 +109,9 @@ export type PaymentInput = {
 };
 
 const PAYMENT_SELECT =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, finance_article_categories(id, name))";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, finance_article_categories(id, name))";
 const PAYMENT_SELECT_LEGACY =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -160,6 +166,10 @@ function mapPayment(row: Record<string, unknown>): Payment {
     client_id: (row["client_id"] as string | null) ?? null,
     booking_id: (row["booking_id"] as string | null) ?? null,
     management_period: (row["management_period"] as string | null) ?? null,
+    rental_component: row["rental_component"] as Payment["rental_component"],
+    rental_period: row["rental_period"] as string | null,
+    company_fee: row["company_fee"] == null ? null : Number(row["company_fee"]),
+    crm_charge: row["crm_charge"] as string | null,
     deal_id: (row["deal_id"] as string | null) ?? null,
     counterparty_id: (row["counterparty_id"] as string | null) ?? null,
     counterparty_name: String(row["counterparty_name"] ?? ""),
@@ -324,6 +334,8 @@ function normalizeInput(input: PaymentInput) {
     property_id: input.property_id || null,
     client_id: input.client_id || null,
     booking_id: input.booking_id || null,
+    ...(input.rental_component !== undefined ? { rental_component: input.rental_component } : {}),
+    ...(input.rental_period !== undefined ? { rental_period: input.rental_period } : {}),
     deal_id: input.deal_id || null,
     counterparty_id: input.counterparty_id || null,
     counterparty_name: (input.counterparty_name ?? "").trim(),
@@ -455,12 +467,29 @@ export async function markPaymentPaid(
 ): Promise<void> {
   const { data: current, error: loadError } = await supabase
     .from("payments")
-    .select("amount")
+    .select("amount,kind,rental_component,obligation_id,account")
     .eq("id", id)
     .maybeSingle();
   if (loadError) throw loadError;
   if (!current) throw new Error("Платёж не найден");
   const amount = Number((current as { amount: number }).amount);
+  const plan = current as unknown as {
+    rental_component: string | null;
+    obligation_id: string | null;
+    account: string;
+  };
+  if (plan.rental_component === "owner_plan" && plan.obligation_id) {
+    const { payOwnerSettlement } = await import("./finance-owner-settlements");
+    await payOwnerSettlement(
+      plan.obligation_id,
+      opts?.paidAmount ?? amount,
+      plan.account,
+      opts?.paidAt || financeToday(),
+      crypto.randomUUID(),
+    );
+    return;
+  }
+
   const { error } = await supabase
     .from("payments")
     .update({
