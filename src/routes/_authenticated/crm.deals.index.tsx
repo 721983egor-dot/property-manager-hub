@@ -1,9 +1,13 @@
+import { DealBoardActions } from "@/components/DealBoardActions";
+import { DealWonDialog } from "@/components/DealWonDialog";
+import { DealLostDialog } from "@/components/DealLostDialog";
+import { IntakeWonDialog } from "@/components/IntakeWonDialog";
 import "@/components/crm-results.css";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { BarChart3, Columns3, Plus, Search, Settings2, Trash2, Users } from "lucide-react";
+import { BarChart3, Columns3, Plus, Search, Settings2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -123,10 +127,12 @@ function DealsPage() {
   const [editing, setEditing] = useState<Deal | null>(null);
   const [defaultStage, setDefaultStage] = useState<string | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [quickResult,setQuickResult]=useState<{deal:Deal;kind:"won"|"lost"}|null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [pageView, setPageView] = useState<"board" | "analytics">("board");
 
   const setFunnel = (next: "deals" | "intake") => {
+    setQuickResult(null);
     setPageView("board");
     setDialogOpen(false);
     setEditing(null);
@@ -381,15 +387,14 @@ function DealsPage() {
 
                 <div className="flex flex-col gap-2">
                   {items.map((deal) => (
-                    <button
+                    <div
                       key={deal.id}
-                      type="button"
                       draggable
                       onDragStart={() => setDragId(deal.id)}
                       onDragEnd={() => setDragId(null)}
-                      onClick={() => openDeal(deal)}
                       className="rounded-md border border-border bg-background p-3 text-left shadow-sm transition-shadow hover:shadow-md"
                     >
+                      <button type="button" className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => openDeal(deal)}>
                       <p className="text-sm font-medium">{deal.title || "Без названия"}</p>
                       {deal.client_id && (
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -461,21 +466,15 @@ function DealsPage() {
                           </p>
                         ),
                       )}
-                      {isAdmin && (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteId(deal.id);
-                          }}
-                          onKeyDown={(e) => e.key === "Enter" && setDeleteId(deal.id)}
-                          className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="size-3" /> Удалить
-                        </span>
-                      )}
-                    </button>
+                      </button>
+                      {isAdmin && <DealBoardActions
+                        canWin={stages.some(s=>s.kind==="won")}
+                        canLose={stages.some(s=>s.kind==="lost")}
+                        onWon={()=>setQuickResult({deal,kind:"won"})}
+                        onLost={()=>setQuickResult({deal,kind:"lost"})}
+                        onDelete={()=>setDeleteId(deal.id)}
+                      />}
+                    </div>
                   ))}
                 </div>
 
@@ -524,6 +523,12 @@ function DealsPage() {
           fields={fields}
           pipeline={pipeline}
         />
+      )}
+
+      {quickResult?.kind==="lost" && <DealLostDialog open deal={quickResult.deal} onOpenChange={v=>{if(!v)setQuickResult(null);}}/>}
+      {quickResult?.kind==="won" && (quickResult.deal.pipeline==="intake"
+        ? <IntakeWonDialog deal={quickResult.deal} onClose={()=>setQuickResult(null)}/>
+        : <DealWonDialog open deal={quickResult.deal} properties={properties} stageId={stages.find(s=>s.kind==="won")?.id??""} onOpenChange={v=>{if(!v)setQuickResult(null);}}/>
       )}
 
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
