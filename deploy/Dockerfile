@@ -23,8 +23,10 @@ RUN bun install && bun run build && rm -rf node_modules /root/.bun /tmp/*
 # Runtime
 FROM node:22-alpine
 
-# Alpine CDN connections can stall indefinitely; retry stalled downloads within the deploy window.
-RUN for attempt in 1 2 3; do apk --timeout 30 add --no-cache ffmpeg && exit 0; done; exit 1
+# Use the official regional Alpine mirror verified from the deployment host; package signatures stay enabled.
+# Keep bounded retries for transient network failures.
+RUN sed -i 's~https://dl-cdn.alpinelinux.org/alpine~https://mirror.yandex.ru/mirrors/alpine~g' /etc/apk/repositories \
+    && for attempt in 1 2 3; do apk --timeout 30 add --no-cache ffmpeg && exit 0; done; exit 1
 
 WORKDIR /app
 
