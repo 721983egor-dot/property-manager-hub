@@ -32,8 +32,11 @@ CREATE TABLE payments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),planned_date
 CREATE UNIQUE INDEX management_unique ON payments(booking_id,management_period) WHERE management_period IS NOT NULL;
 `);
 await db.query("INSERT INTO finance_accounts VALUES($1,'Карта',false)",[id(90)]);
+await db.exec("UPDATE finance_articles SET category_id=(SELECT id FROM finance_article_categories LIMIT 1);UPDATE finance_article_categories SET name='Custom income'");
 await db.exec(await fs.readFile('supabase/migrations/20261016190000_crm_commission_calendar.sql','utf8'));
 await db.exec(await fs.readFile('supabase/migrations/20261016210000_crm_commission_cancellation.sql','utf8'));
+await db.exec(await fs.readFile('supabase/migrations/20261016220000_crm_commission_article.sql','utf8'));
+assert.equal((await db.query('SELECT count(*) n FROM finance_articles')).rows[0].n,2,'renamed category still gets both income articles');
 const terms={property_id:id(20),start_date:'2027-01-20',end_date:'2027-12-20',price_month:150000,deposit:150000,payment_day:20,closing_source:'ЦИАН',income_type:'percent',income_value:10,create_booking:true,account_id:id(90),one_time:50000,one_time_date:'2027-01-20',seasons:[{start_date:'2027-06-01',end_date:'2027-08-31',price_month:200000}]};
 const win=(n,t=terms)=>db.query('SELECT crm_close_won_finance($1,$2)',[id(n),t]);
 await db.query("SELECT set_config('test.user',$1,false)",[id(2)]);await assert.rejects(win(40),/Только администратор/);
