@@ -5,7 +5,7 @@ await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_ro
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('test.user',true),'')::uuid $$;
 CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT current_setting('test.role',true) $$;
 CREATE TYPE property_type AS ENUM('apartment','aparts','house','villa','townhouse');CREATE TYPE property_status AS ENUM('free','booked','rented','archived');CREATE TYPE management_fee_type AS ENUM('percent','amount');CREATE TYPE property_service_type AS ENUM('management','commission_only');CREATE TYPE booking_source AS ENUM('avito','cian','website','social','referral');
-CREATE TABLE user_roles(user_id uuid,role text);CREATE TABLE properties(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,internal_name text,address text,type property_type,rooms int,area numeric,price_month numeric,description text,portfolio text DEFAULT 'rm',published boolean DEFAULT false,for_rent boolean,status property_status DEFAULT 'free',management_fee_type management_fee_type,management_fee_value numeric,floor int,total_floors int,bathrooms int,deposit numeric,commission numeric,service_type property_service_type,complex_id uuid);
+CREATE TABLE user_roles(user_id uuid,role text);CREATE FUNCTION has_role(p_user uuid,p_role text) RETURNS boolean LANGUAGE sql AS $$ SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id=p_user AND role=p_role) $$;CREATE TABLE properties(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,internal_name text,address text,type property_type,rooms int,area numeric,price_month numeric,description text,portfolio text DEFAULT 'rm',published boolean DEFAULT false,for_rent boolean,status property_status DEFAULT 'free',management_fee_type management_fee_type,management_fee_value numeric,floor int,total_floors int,bathrooms int,deposit numeric,commission numeric,service_type property_service_type,complex_id uuid);
 CREATE TABLE clients(id uuid PRIMARY KEY);CREATE TABLE bookings(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),property_id uuid REFERENCES properties,client_id uuid,start_date date,end_date date,price_type text,price_month numeric,payment_day int,deposit numeric,source booking_source,status text,comment text,stay_kind text);
 CREATE TABLE deal_stages(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,color text,position int,kind text,pipeline text);
 CREATE TABLE deals(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,stage_id uuid REFERENCES deal_stages,pipeline text,client_id uuid,property_id uuid,closed_property_id uuid,start_date date,end_date date,price_month numeric,deposit numeric,payment_day int,source text,custom jsonb DEFAULT '{}',created_at timestamptz DEFAULT now());
@@ -63,4 +63,11 @@ await win(41,{...terms,create_booking:false,payment_day:31,one_time:0,seasons:[]
 assert.equal((await db.query("SELECT planned_date::text FROM payments WHERE deal_id=$1 AND crm_charge='month:2028-02'",[id(41)])).rows[0].planned_date,'2028-02-29');
 await assert.rejects(db.query('UPDATE bookings SET payment_day=15 WHERE id=$1',[booking.id]),/редактор брони/);
 await assert.rejects(db.query('DELETE FROM bookings WHERE id=$1',[booking.id]),/финансовый график/);
+await win(42,{...terms,seasons:[],one_time:0,start_date:'2029-01-01',end_date:'2029-04-01'});
+const cancelId=(await db.query('SELECT booking_id FROM deals WHERE id=$1',[id(42)])).rows[0].booking_id;
+await db.query("SELECT set_config('test.user',$1,false)",[id(2)]);
+await assert.rejects(db.query("UPDATE bookings SET status='cancelled' WHERE id=$1",[cancelId]),/редактор брони/);
+await db.query("SELECT set_config('test.user',$1,false)",[id(1)]);
+await db.query("UPDATE bookings SET status='cancelled' WHERE id=$1",[cancelId]);
+assert.equal((await db.query('SELECT count(*) n FROM payments WHERE deal_id=$1',[id(42)])).rows[0].n,0,'confirmed assistant cancellation also synchronizes plan');
 console.log('PASS: admin; seasonal fees; separate turnover; atomic rollback; idempotency; no-booking schedule; month-end/leap year; edits and cancellation preserve paid history.');await db.close();

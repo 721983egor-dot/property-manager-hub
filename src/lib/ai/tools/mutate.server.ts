@@ -287,12 +287,12 @@ export function createMutateTools(ctx: AssistantToolContext) {
     }),
 
     proposeCancelBooking: tool({
-      description: "Предложить отмену брони по объекту и дате начала.",
+      description: "Предложить отмену брони по объекту и дате начала. У связанной с финансами брони также снимаются неоплаченные ежемесячные комиссии; оплаченная история и разовая комиссия сохраняются.",
       inputSchema: z.object({ ref: z.string(), startDate: z.string() }),
       execute: async ({ ref, startDate }) => {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
-        const summary = `Отменить бронь «${p.text}» с ${startDate}`;
+        const summary = `Отменить бронь «${p.text}» с ${startDate}; снять неоплаченные ежемесячные комиссии связанного графика, сохранив полученные суммы и разовую комиссию`;
         ctx.propose({ tool: "cancelBooking", summary, input: { propertyId: p.id, startDate } });
         return { proposed: true, summary };
       },

@@ -65,7 +65,7 @@ BEGIN
    WHERE payments.status IN ('expected','overdue') AND coalesce(payments.paid_amount,0)=0 AND payments.paid_at IS NULL;
  END IF;
  -- Paid and partially paid history is never rewritten or deleted by contract edits.
- DELETE FROM public.payments WHERE deal_id=d.id AND crm_charge IS NOT NULL AND NOT(crm_charge=ANY(keep)) AND status IN ('expected','overdue') AND coalesce(paid_amount,0)=0 AND paid_at IS NULL;
+ DELETE FROM public.payments WHERE deal_id=d.id AND crm_charge IS NOT NULL AND NOT(crm_charge=ANY(keep)) AND status IN ('expected','overdue') AND coalesce(paid_amount,0)=0 AND paid_at IS NULL AND (b.status<>'cancelled' OR planned_date>=(now() AT TIME ZONE 'Europe/Moscow')::date);
 END $$;
 REVOKE ALL ON FUNCTION public.crm_sync_commission(uuid) FROM PUBLIC,anon,authenticated,service_role;
 
@@ -138,6 +138,9 @@ CREATE FUNCTION public.crm_guard_linked_booking_write() RETURNS trigger LANGUAGE
 DECLARE b uuid;
 BEGIN
  IF TG_TABLE_NAME='bookings' THEN b:=NEW.id;
+  IF NEW.status='cancelled' AND OLD.status IS DISTINCT FROM NEW.status AND
+   (to_jsonb(NEW)-'status'-'updated_at')=(to_jsonb(OLD)-'status'-'updated_at') AND
+   coalesce(auth.role()='service_role' OR public.has_role(auth.uid(),'admin'),false) THEN RETURN NEW; END IF;
  ELSE b:=CASE WHEN TG_OP='DELETE' THEN OLD.booking_id ELSE NEW.booking_id END;
  END IF;
  IF EXISTS(SELECT 1 FROM public.deals WHERE booking_id=b AND finance_terms IS NOT NULL) AND current_setting('rm.crm_finance_write',true) IS DISTINCT FROM b::text THEN
@@ -148,7 +151,16 @@ BEGIN
 END $$;
 CREATE TRIGGER crm_linked_booking_write BEFORE UPDATE OF start_date,end_date,price_type,price_month,payment_day,status,property_id,client_id ON public.bookings FOR EACH ROW EXECUTE FUNCTION public.crm_guard_linked_booking_write();
 CREATE TRIGGER crm_linked_booking_period_write BEFORE INSERT OR UPDATE OR DELETE ON public.booking_price_periods FOR EACH ROW EXECUTE FUNCTION public.crm_guard_linked_booking_write();
-CREATE FUNCTION public.crm_protect_finance_booking() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$
+CREATE FUNCTION public.crm_cancel_linked_commission() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE d uuid;
+BEGIN
+ IF current_setting('rm.crm_finance_write',true)=NEW.id::text THEN RETURN NEW; END IF;
+ SELECT id INTO d FROM public.deals WHERE booking_id=NEW.id AND finance_terms IS NOT NULL;
+ IF d IS NOT NULL THEN PERFORM public.crm_sync_commission(d); END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER crm_cancel_linked_commission AFTER UPDATE OF status ON public.bookings FOR EACH ROW WHEN (NEW.status='cancelled' AND OLD.status IS DISTINCT FROM NEW.status) EXECUTE FUNCTION public.crm_cancel_linked_commission();
+CREATE FUNCTION public.crm_protect_finance_booking() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 BEGIN
  IF EXISTS(SELECT 1 FROM public.deals WHERE booking_id=OLD.id AND finance_terms IS NOT NULL) THEN RAISE EXCEPTION 'У брони есть финансовый график: отмените бронь вместо удаления'; END IF;
  RETURN OLD;
