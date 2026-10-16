@@ -23,7 +23,8 @@ RUN bun install && bun run build && rm -rf node_modules /root/.bun /tmp/*
 # Runtime
 FROM node:22-alpine
 
-RUN apk add --no-cache ffmpeg
+# Alpine CDN connections can stall indefinitely; retry stalled downloads within the deploy window.
+RUN for attempt in 1 2 3; do apk --timeout 30 add --no-cache ffmpeg && exit 0; done; exit 1
 
 WORKDIR /app
 
