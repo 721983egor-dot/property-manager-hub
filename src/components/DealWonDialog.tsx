@@ -22,6 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { closeDealAsWon, DEAL_SOURCES, type Deal } from "@/lib/deals";
+import { fetchFinanceAccounts } from "@/lib/finance-accounts";
+import { validateSeasons } from "@/lib/crm-commission-model";
+import type { SeasonalRent } from "@/lib/crm-commission";
 import { companyIncome } from "@/lib/crm-results-model";
 import { internalTitle, type Property } from "@/lib/properties";
 type Props = {
@@ -49,6 +52,15 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
   const [incomeType, setIncomeType] = useState<"percent" | "amount">("percent");
   const [income, setIncome] = useState("");
   const [booking, setBooking] = useState(true);
+  const accounts = useQuery({
+    queryKey: ["finance-accounts"],
+    queryFn: fetchFinanceAccounts,
+    enabled: open,
+  });
+  const [account, setAccount] = useState("");
+  const [oneTime, setOneTime] = useState("0");
+  const [oneDate, setOneDate] = useState("");
+  const [seasons, setSeasons] = useState<SeasonalRent[]>([]);
   const property = properties.find((p) => p.id === propertyId);
   const active = properties.filter((p) => p.status !== "archived" && p.portfolio === "rm");
   useEffect(() => {
@@ -63,6 +75,10 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
     setIncomeType(deal.income_type ?? "percent");
     setIncome(deal.income_value == null ? "" : String(deal.income_value));
     setBooking(true);
+    setAccount(deal.finance_terms?.account_id ?? "");
+    setOneTime(String(deal.finance_terms?.one_time ?? 0));
+    setOneDate(deal.finance_terms?.one_time_date ?? deal.start_date ?? "");
+    setSeasons(deal.finance_terms?.seasons ?? []);
   }, [
     open,
     deal.id,
@@ -77,6 +93,7 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
     deal.source,
     deal.income_type,
     deal.income_value,
+    deal.finance_terms,
   ]);
   const selectProperty = (id: string) => {
     setPropertyId(id);
@@ -118,10 +135,23 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
         throw new Error(
           "Заполните объект, клиента, сроки, стоимость, депозит, площадку и доход компании",
         );
+      validateSeasons(seasons, start, end);
+      if (!account) throw new Error("Выберите счёт для дохода компании");
+      if (
+        !Number.isFinite(Number(oneTime)) ||
+        Number(oneTime) < 0 ||
+        (Number(oneTime) > 0 && !oneDate)
+      )
+        throw new Error("Укажите сумму и дату разовой комиссии");
+      for (const period of seasons) companyIncome(period.price_month, incomeType, Number(income));
       return closeDealAsWon(
         deal.id,
         stageId,
         {
+          account_id: account,
+          one_time: Number(oneTime),
+          one_time_date: Number(oneTime) > 0 ? oneDate : null,
+          seasons,
           property_id: propertyId,
           start_date: start,
           end_date: end,
@@ -143,6 +173,8 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
     },
     onSuccess: () => {
       for (const key of [
+        "payments",
+        "crm-commission-payments",
         "deals",
         "deal-history",
         "properties",
@@ -151,7 +183,7 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
         "finance-object-properties",
       ])
         qc.invalidateQueries({ queryKey: [key] });
-      toast.success(booking ? "Сделка закрыта, бронь создана" : "Сделка закрыта успешно");
+      toast.success("Сделка закрыта. Доходы добавлены в финансовый календарь");
       onClosed?.();
       onOpenChange(false);
     },
@@ -162,6 +194,7 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
       <Label>{label}</Label>
       <Input
         type={type}
+        aria-label={label}
         value={value}
         onChange={(e) => set(e.target.value)}
         min={type === "number" ? 0 : undefined}
@@ -230,6 +263,64 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
               </Select>
             </div>
           </div>
+          <div className="mt-5 grid gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Сезонные цены аренды</Label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setSeasons([...seasons, { start_date: "", end_date: "", price_month: 0 }])
+                }
+              >
+                + Добавить период
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Вне этих периодов действует основная цена. Процент комиссии пересчитывается по цене на
+              дату платежа.
+            </p>
+            {seasons.map((season, i) => {
+              const update = (patch: Partial<SeasonalRent>) =>
+                setSeasons(seasons.map((v, n) => (n === i ? { ...v, ...patch } : v)));
+              return (
+                <div key={i} className="grid gap-2 rounded-md border p-3 sm:grid-cols-4">
+                  <div>
+                    <Label>С</Label>
+                    <Input
+                      type="date"
+                      value={season.start_date}
+                      onChange={(e) => update({ start_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>По включительно</Label>
+                    <Input
+                      type="date"
+                      value={season.end_date}
+                      onChange={(e) => update({ end_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Аренда, ₽/мес.</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={season.price_month || ""}
+                      onChange={(e) => update({ price_month: Number(e.target.value) })}
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    className="self-end"
+                    onClick={() => setSeasons(seasons.filter((_, n) => n !== i))}
+                  >
+                    Убрать
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
         </section>
         <section className="crm-section">
           <h3>03 · Доход компании</h3>
@@ -256,6 +347,35 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
               "number",
             )}
           </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {field("Разовая комиссия компании, ₽", oneTime, setOneTime, "number")}
+            {Number(oneTime) > 0 && field("Дата разовой комиссии", oneDate, setOneDate, "date")}
+            <div className="grid gap-1.5">
+              <Label>Счёт получения дохода</Label>
+              <Select value={account} onValueChange={setAccount}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Карта, наличные или расчётный счёт" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(accounts.data ?? [])
+                    .filter((a) => !a.archived)
+                    .map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {accounts.isError && (
+                <p className="text-xs text-destructive">Не удалось загрузить счета.</p>
+              )}
+              {accounts.isSuccess && !accounts.data.some((a) => !a.archived) && (
+                <p className="text-xs text-muted-foreground">
+                  Добавьте счёт в настройках финансов.
+                </p>
+              )}
+            </div>
+          </div>
           <div className="crm-income mt-4">
             <div>
               <small>Доход компании / месяц</small>
@@ -268,6 +388,28 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
               </strong>
             </div>
           </div>
+          {seasons.length > 0 && (
+            <div className="mt-3 space-y-1 text-sm">
+              {seasons.map((s, i) => (
+                <p key={i}>
+                  {s.start_date || "Дата"} — {s.end_date || "Дата"}: комиссия{" "}
+                  {s.price_month > 0 && fee != null
+                    ? (incomeType === "percent"
+                        ? Math.round(s.price_month * Number(income)) / 100
+                        : Number(income)
+                      ).toLocaleString("ru-RU")
+                    : "—"}{" "}
+                  ₽/мес.
+                </p>
+              ))}
+            </div>
+          )}
+          <p className="mt-4 text-xs text-muted-foreground">
+            В финансовый календарь попадёт только доход компании: разовая комиссия и ежемесячное
+            вознаграждение. Платежи запланированы на указанное число в пределах срока аренды (дата
+            окончания не включается); если этого числа в месяце нет — на последний день. Получение
+            денег отмечается отдельно.
+          </p>
         </section>
         <label className="flex items-start gap-3 text-sm">
           <Checkbox checked={booking} onCheckedChange={(v) => setBooking(v === true)} />

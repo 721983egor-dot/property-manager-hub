@@ -1,3 +1,4 @@
+import { CrmCommissionAnalytics } from "./CrmCommissionAnalytics";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,11 +79,11 @@ export function DealAnalytics({
         ? [
             ["Успешные сделки", rows.length],
             [
-              "Аренда по договорам / мес.",
-              formatBudget(rows.reduce((s, d) => s + (d.price_month ?? 0), 0)),
+              "Разовые комиссии новых сделок",
+              formatBudget(rows.reduce((s, d) => s + (d.finance_terms?.one_time ?? 0), 0)),
             ],
             [
-              "Доход компании / мес.",
+              "Комиссия новых договоров / мес. (базовая)",
               rows.some((d) => d.income_month != null)
                 ? formatBudget(rows.reduce((s, d) => s + (d.income_month ?? 0), 0))
                 : "Не указан",
@@ -210,6 +211,15 @@ export function DealAnalytics({
           не включаются в произвольный период.
         </p>
       )}
+      {mode === "won" && deals[0]?.pipeline !== "intake" && (
+        <CrmCommissionAnalytics
+          deals={scoped.filter(
+            (d) => source === ALL || (d.closing_source?.trim() || "Не указан") === source,
+          )}
+          from={from}
+          to={to}
+        />
+      )}
       <div className="crm-metrics">
         {metrics.map(([label, value]) => (
           <div key={label} className="crm-panel">
@@ -327,7 +337,11 @@ export function DealAnalytics({
                 "Источник обращения",
                 mode === "won" ? "Площадка сделки" : "Результат",
                 "Ответственный",
-                mode === "lost" ? "Причина" : "Аренда / мес.",
+                mode === "lost"
+                  ? "Причина"
+                  : mode === "won"
+                    ? "Наша комиссия / мес. (базовая)"
+                    : "Аренда / мес.",
               ].map((x) => (
                 <th key={x}>{x}</th>
               ))}
@@ -363,7 +377,7 @@ export function DealAnalytics({
                 <td>
                   {mode === "lost"
                     ? d.loss_reason_name || "Не указана"
-                    : formatBudget(d.price_month)}
+                    : formatBudget(mode === "won" ? (d.income_month ?? null) : d.price_month)}
                 </td>
               </tr>
             ))}

@@ -1,3 +1,4 @@
+// CRM commission: proposeDealWon -> closeDealWon atomically creates booking and dated one-time/seasonal monthly company income; getCrmResults returns commission plan/actual and separate rental turnover.
 // CRM: getCrmResults, listDealLossReasons; confirmed reason catalog, loss/win and intake acceptance.
 // Personal Telegram reminders: listReminders, proposeReminder/proposeManageReminder; confirmed create/manage, administrator only.
 // Rental finance: getFinanceRentalTerms; proposeManagementFee, proposeManagementFeePayment (admin confirmation).

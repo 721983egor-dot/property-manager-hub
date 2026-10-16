@@ -60,6 +60,32 @@ export async function readCrmResults(pipeline: string, mode: ResultMode, from: s
     to,
     total: filtered.length,
     sources: crmSources(filtered, stages.data as DealStage[], mode),
+    commission:
+      mode === "won"
+        ? await (async () => {
+            const ids = new Set(all.map((d) => d.id));
+            const payments = [];
+            for (let offset = 0; ; offset += 500) {
+              const q = await db
+                .from("payments")
+                .select(
+                  "id,deal_id,planned_date,amount,status,paid_at,paid_amount,rental_turnover,crm_charge",
+                )
+                .not("crm_charge", "is", null)
+                .order("id")
+                .range(offset, offset + 499);
+              if (q.error) throw q.error;
+              payments.push(...q.data.filter((p) => ids.has(p.deal_id)));
+              if (q.data.length < 500) break;
+            }
+            const { commissionTotals } = await import("./crm-commission-model");
+            return {
+              ...commissionTotals(payments, from, to),
+              basis:
+                "Комиссии по датам платежей; оборот отдельно; получено по paid_at; частичные оплаты суммарно по сохранённой дате",
+            };
+          })()
+        : undefined,
     deals: filtered.slice(0, 100),
     truncated: filtered.length > 100,
   };
@@ -108,18 +134,24 @@ export async function executeCrmResult(tool: string, input: Record<string, unkno
       p_actor: actor,
     });
   else
-    result = await db.rpc("crm_close_won", {
+    result = await db.rpc("crm_close_won_finance", {
       p_deal: input["dealId"],
-      p_property: input["propertyId"],
-      p_start: input["startDate"],
-      p_end: input["endDate"],
-      p_rent: input["priceMonth"],
-      p_deposit: input["deposit"],
-      p_day: input["paymentDay"],
-      p_source: input["closingSource"],
-      p_income_type: input["incomeType"],
-      p_income_value: input["incomeValue"],
-      p_create_booking: input["createBooking"] !== false,
+      p_terms: {
+        property_id: input["propertyId"],
+        start_date: input["startDate"],
+        end_date: input["endDate"],
+        price_month: input["priceMonth"],
+        deposit: input["deposit"],
+        payment_day: input["paymentDay"],
+        closing_source: input["closingSource"],
+        income_type: input["incomeType"],
+        income_value: input["incomeValue"],
+        create_booking: input["createBooking"] !== false,
+        account_id: input["accountId"],
+        one_time: input["oneTime"] ?? 0,
+        one_time_date: input["oneTimeDate"] ?? null,
+        seasons: input["seasons"] ?? [],
+      },
       p_actor: actor,
     });
   if (result.error) throw result.error;
@@ -127,5 +159,5 @@ export async function executeCrmResult(tool: string, input: Record<string, unkno
     ? "Сделка закрыта с причиной отказа"
     : tool === "acceptIntake"
       ? "Объект принят в работу. Публикация — отдельное действие"
-      : "Сделка закрыта успешно, условия сохранены";
+      : "Сделка закрыта успешно, комиссии запланированы в финансовом календаре";
 }

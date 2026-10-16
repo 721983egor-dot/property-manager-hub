@@ -378,6 +378,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Показ добавлен в сделку";
   },
 
+  // Shared atomic CRM RPC creates the booking and commission schedule after confirmation.
   closeDealWon: async(input)=>{const {executeCrmResult}=await import("@/lib/crm-results.server");return executeCrmResult("closeDealWon",input);},
   closeDealLost: async(input)=>{const {executeCrmResult}=await import("@/lib/crm-results.server");return executeCrmResult("closeDealLost",input);},
   saveDealLossReason: async(input)=>{const {executeCrmResult}=await import("@/lib/crm-results.server");return executeCrmResult("saveDealLossReason",input);},

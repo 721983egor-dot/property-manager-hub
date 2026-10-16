@@ -206,6 +206,8 @@ export function BookingDialog({
       await qc.invalidateQueries({ queryKey: ["properties"] });
       await qc.invalidateQueries({ queryKey: ["crm-bookings"] });
       await qc.invalidateQueries({ queryKey: ["client-bookings"] });
+      for (const key of ["payments", "crm-commission-payments", "finance-rentals", "deals"])
+        await qc.invalidateQueries({ queryKey: [key] });
       toast.success(booking ? "Бронирование обновлено" : "Бронирование создано");
       onOpenChange(false);
     },
@@ -225,6 +227,8 @@ export function BookingDialog({
       await qc.invalidateQueries({ queryKey: ["current-booking"] });
       await qc.invalidateQueries({ queryKey: ["crm-bookings"] });
       await qc.invalidateQueries({ queryKey: ["client-bookings"] });
+      for (const key of ["payments", "crm-commission-payments", "finance-rentals", "deals"])
+        await qc.invalidateQueries({ queryKey: [key] });
       toast.success("Бронирование удалено, данные клиента сохранены");
       onOpenChange(false);
     },

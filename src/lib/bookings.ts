@@ -214,6 +214,16 @@ export type BookingInput = {
 };
 
 export async function saveBooking(id: string | null, input: BookingInput) {
+  if (id) {
+    const { crmDb } = await import("./crm-results");
+    const linked = await crmDb.from("deals").select("id").eq("booking_id", id).not("finance_terms", "is", null).maybeSingle();
+    if (linked.error) throw linked.error;
+    if (linked.data) {
+      const result = await crmDb.rpc("crm_save_finance_booking", { p_booking: id, p_input: input });
+      if (result.error) throw result.error;
+      return id;
+    }
+  }
   const { periods, ...row } = input;
   let bookingId = id;
   if (id) {
@@ -275,6 +285,10 @@ export async function markPropertyRented(propertyId: string) {
 
 /** Удаляет бронирование и его периоды; запись клиента сохраняется. */
 export async function deleteBooking(id: string) {
+  const { crmDb } = await import("./crm-results");
+  const linked = await crmDb.from("deals").select("id").eq("booking_id", id).not("finance_terms", "is", null).maybeSingle();
+  if (linked.error) throw linked.error;
+  if (linked.data) throw new Error("У брони есть финансовый график. Вместо удаления выберите статус «Отменена» — оплаченная история сохранится");
   const { error: periodsError } = await supabase
     .from("booking_price_periods")
     .delete()

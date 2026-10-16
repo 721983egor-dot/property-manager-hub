@@ -44,6 +44,7 @@ export type DealField = {
 };
 
 export type Deal = {
+  finance_terms?: { account_id: string; one_time: number; one_time_date: string | null; seasons: import("./crm-commission").SeasonalRent[] } | null;
   closed_at?: string | null; closing_source?: string; loss_reason_id?: string | null;
   loss_reason_name?: string | null; loss_comment?: string; booking_id?: string | null;
   income_type?: "percent" | "amount" | null; income_value?: number | null; income_month?: number | null;
@@ -140,7 +141,7 @@ const DEAL_COLUMNS_CORE =
   "id, title, stage_id, client_id, property_id, lead_id, responsible_id, source, budget, adults, children, comment, custom, position, created_at, updated_at, start_date, end_date, closed_property_id, price_month, deposit, commission, payment_day";
 
 const DEAL_COLUMNS = `${DEAL_COLUMNS_CORE}, telegram, preferred_messenger`;
-const DEAL_COLUMNS_WITH_PIPELINE = `${DEAL_COLUMNS}, pipeline, closed_at, closing_source, loss_reason_id, loss_reason_name, loss_comment, booking_id, income_type, income_value, income_month`;
+const DEAL_COLUMNS_WITH_PIPELINE = `${DEAL_COLUMNS}, pipeline, closed_at, closing_source, loss_reason_id, loss_reason_name, loss_comment, booking_id, income_type, income_value, income_month, finance_terms`;
 const DEAL_COLUMNS_CORE_WITH_PIPELINE = `${DEAL_COLUMNS_CORE}, pipeline`;
 
 function missingDealContactColumn(message: string) {
@@ -695,6 +696,7 @@ export async function fetchClientDeals(clientId: string): Promise<Deal[]> {
 /* ---------------- успешное закрытие ---------------- */
 
 export type DealWonInput = {
+  account_id: string; one_time: number; one_time_date: string | null; seasons: import("./crm-commission").SeasonalRent[];
   property_id: string;
   start_date: string;
   end_date: string;
@@ -712,11 +714,8 @@ export async function closeDealAsWon(
   input: DealWonInput,
   _context: { client_id: string | null; service_type: "management" | "commission_only"; source: string },
 ) {
-  const { error } = await crmDb.rpc("crm_close_won", {
-    p_deal: dealId, p_property: input.property_id, p_start: input.start_date, p_end: input.end_date,
-    p_rent: input.price_month, p_deposit: input.deposit, p_day: input.payment_day,
-    p_source: input.closing_source, p_income_type: input.income_type, p_income_value: input.income_value,
-    p_create_booking: input.create_booking,
+  const { error } = await crmDb.rpc("crm_close_won_finance", {
+    p_deal: dealId, p_terms: input,
   });
   if (error) throw error;
 }
