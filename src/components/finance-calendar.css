@@ -725,3 +725,5 @@
 .finance-payment-header {
   text-align: left;
 }
+
+.finance-day { cursor: pointer; }

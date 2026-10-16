@@ -1,3 +1,4 @@
+import { effectivePaymentStatus, financeToday, paymentFactAmount } from "@/lib/finance-payment-status";
 import {objectFinanceSummary,filterFinanceObjects} from "@/lib/finance-object-model";
 import type {FinancePropertyOption} from "@/lib/finance";
 import { reportEntries, entryTotals, groupEntries, currentDebts, planFactCategories } from "@/lib/finance-analytics";
@@ -2039,7 +2040,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     listPayments: tool({
       description:
-        "Список платежей блока «Финансы»: период, объект, статус, направление. Просрочка считается по plannedDate, если статус не paid.",
+        "Список платежей блока «Финансы»: период, объект, статус, направление. Сегодняшние и прошедшие операции считаются проведёнными, будущие — планируемыми; ручное проведение и частичная оплата учитываются отдельно.",
       inputSchema: z.object({
         from: z.string().optional().describe("ГГГГ-ММ-ДД"),
         to: z.string().optional().describe("ГГГГ-ММ-ДД"),
@@ -2058,10 +2059,6 @@ export function createReadTools(ctx: AssistantToolContext) {
         if (from) query = query.gte("planned_date", from);
         if (to) query = query.lte("planned_date", to);
         if (direction === "in" || direction === "out") query = query.eq("direction", direction);
-        if (status === "expected" || status === "partial" || status === "paid" || status === "overdue") {
-          query = query.eq("status", status);
-        }
-        if (status === "open") query = query.in("status", ["expected", "partial", "overdue"]);
         if (propertyRef) {
           const found = await ctx.findProperty(propertyRef);
           if (!found) return { error: "Объект не найден" };
@@ -2069,7 +2066,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         }
         const { data, error } = await query;
         if (error) return { error: error.message };
-        const today = dateOnly(new Date().toISOString());
+        const today = financeToday();
         const propIds = Array.from(
           new Set((data ?? []).map((r) => r.property_id).filter(Boolean) as string[]),
         );
@@ -2083,12 +2080,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           }
         }
         const payments = (data ?? []).map((row) => {
-          const effective =
-            row.status === "paid"
-              ? "paid"
-              : row.planned_date < today
-                ? "overdue"
-                : row.status;
+          const effective = effectivePaymentStatus(row, today);
           return {
             id: row.id,
             plannedDate: row.planned_date,
@@ -2108,7 +2100,8 @@ export function createReadTools(ctx: AssistantToolContext) {
             bookingId: row.booking_id,
             dealId: row.deal_id,
           };
-        });
+        }).filter((payment) => !status || status === "all" ||
+          (status === "open" ? payment.effectiveStatus !== "paid" : payment.effectiveStatus === status));
         return { count: payments.length, payments };
       },
     }),
@@ -2142,7 +2135,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         }
         const { data, error } = await query;
         if (error) return { error: error.message };
-        const today = dateOnly(new Date().toISOString());
+        const today = financeToday();
         const byDay: Record<string, number> = {};
         let planIn = 0;
         let planOut = 0;
@@ -2160,25 +2153,25 @@ export function createReadTools(ctx: AssistantToolContext) {
           planOut,
           byDay,
           count: (data ?? []).length,
-          payments: data ?? [],
+          payments: (data ?? []).map(row => ({ ...row, effectiveStatus: effectivePaymentStatus(row, today) })),
         };
       },
     }),
 
     listOverduePayments: tool({
-      description: "Просроченные платежи: plannedDate < сегодня и статус не paid.",
+      description: "Просроченные частично оплаченные операции. Обычные операции проводятся автоматически в свою дату.",
       inputSchema: z.object({
         propertyRef: z.string().optional(),
       }),
       execute: async ({ propertyRef }) => {
-        const today = dateOnly(new Date().toISOString());
+        const today = financeToday();
         let query = admin
           .from("payments")
           .select(
             "id, planned_date, amount, direction, status, kind, property_id, counterparty_name, paid_amount, comment",
           )
           .lt("planned_date", today)
-          .neq("status", "paid")
+          .eq("status", "partial")
           .order("planned_date")
           .limit(200);
         if (propertyRef) {
@@ -2205,7 +2198,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const m = Number(month.slice(5, 7));
         const lastDay = new Date(y, m, 0).getDate();
         const to = `${month}-${String(lastDay).padStart(2, "0")}`;
-        const today = dateOnly(new Date().toISOString());
+        const today = financeToday();
         let query = admin
           .from("payments")
           .select("planned_date, amount, direction, status, paid_amount")
@@ -2228,18 +2221,12 @@ export function createReadTools(ctx: AssistantToolContext) {
           const amount = Number(row.amount);
           if (row.direction === "in") planIn += amount;
           else planOut += amount;
-          if (row.status === "paid") {
-            const fact = Number(row.paid_amount ?? amount);
-            if (row.direction === "in") factIn += fact;
-            else factOut += fact;
-          } else if (row.status === "partial") {
-            const fact = Number(row.paid_amount ?? 0);
-            if (row.direction === "in") factIn += fact;
-            else factOut += fact;
-          }
-          if (row.status !== "paid" && row.planned_date < today) {
+          const fact = paymentFactAmount(row, today);
+          if (row.direction === "in") factIn += fact;
+          else factOut += fact;
+          if (row.status === "partial" && row.planned_date < today) {
             overdueCount += 1;
-            overdueAmount += Math.max(0, amount - Number(row.paid_amount ?? 0));
+            overdueAmount += Math.max(0, amount - fact);
           }
         }
         return {
@@ -2391,7 +2378,11 @@ export function createReadTools(ctx: AssistantToolContext) {
             .order("id")
             .range(from, to),
         );
-        return error ? { error: error.message } : { date, payments: data ?? [] };
+        const today = financeToday();
+        return error ? { error: error.message } : {
+          date,
+          payments: (data ?? []).map(row => ({ ...row, effectiveStatus: effectivePaymentStatus(row, today) })),
+        };
       },
     }),
 
@@ -2484,13 +2475,13 @@ export function createReadTools(ctx: AssistantToolContext) {
           const direction = item.direction === "receivable" ? "in" : "out";
           const settled = (payments ?? [])
             .filter(
-              (p) => p.obligation_id === item.id && (p.status === "paid" || p.status === "partial"),
+              (p) => p.obligation_id === item.id,
             )
             .reduce(
               (sum, p) =>
                 sum +
                 (p.direction === direction ? 1 : 0) *
-                  Number(p.paid_amount ?? (p.status === "paid" ? p.amount : 0)),
+                  paymentFactAmount(p),
               0,
             );
           const remaining = Math.max(0, Number(item.amount) - settled);
@@ -2499,13 +2490,9 @@ export function createReadTools(ctx: AssistantToolContext) {
         let transferredToUs = 0;
         let weTransferred = 0;
         for (const payment of payments ?? []) {
-          if (payment.status === "paid" || payment.status === "partial") {
-            const fact = Number(
-              payment.paid_amount ?? (payment.status === "paid" ? payment.amount : 0),
-            );
-            if (payment.direction === "in") transferredToUs += fact;
-            else weTransferred += fact;
-          }
+          const fact = paymentFactAmount(payment);
+          if (payment.direction === "in") transferredToUs += fact;
+          else weTransferred += fact;
         }
         return {
           counterparty: party,

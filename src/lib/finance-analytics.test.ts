@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test, mock } from "node:test";
+mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-16T09:00:00Z") });
 import {
   reportEntries,
   entryTotals,
@@ -41,7 +42,7 @@ test("cash follows actual payment date across planned months", () => {
     0,
   );
 });
-test("partial and expected amounts never become full cash", () => {
+test("due plans become full cash while partial payments keep their actual amount", () => {
   assert.equal(
     entryTotals(
       entries(
@@ -53,11 +54,16 @@ test("partial and expected amounts never become full cash", () => {
         "cash",
       ),
     ).income,
-    20,
+    120,
   );
 });
 test("explicit accrual recognizes full unpaid amount in its period", () => {
-  const pay = p({ status: "expected", accrual_date: "2026-10-05" });
+  const pay = p({
+    status: "expected",
+    planned_date: "2026-11-05",
+    paid_at: null,
+    accrual_date: "2026-10-05",
+  });
   assert.equal(entryTotals(entries([pay], "profit")).income, 100);
   assert.equal(entries([pay], "cash").length, 0);
   assert.equal(entries([p({ accrual_date: "2026-09-01" })], "profit").length, 0);

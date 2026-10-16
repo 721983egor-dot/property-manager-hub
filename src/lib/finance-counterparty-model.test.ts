@@ -44,7 +44,7 @@ test("partial settlement uses paid amount; expected and unrelated payments do no
   const items = [
     payment({ direction: "out", status: "partial", paid_amount: 15000 }),
     payment({ direction: "out", status: "partial", paid_amount: null }),
-    payment({ direction: "out", status: "expected" }),
+    payment({ direction: "out", status: "expected", planned_date: "2099-08-24" }),
     payment({ direction: "out", obligation_id: "other" }),
   ];
   assert.equal(obligationCash(obligation(), items).remaining, 85000);
@@ -62,4 +62,10 @@ test("period filters do not hide repayments when computing outstanding debt", ()
       .theyOweUs,
     0,
   );
+});
+
+test("due planned settlements count as paid without a database status update", () => {
+  const due = payment({ direction: "out", status: "expected", planned_date: "2000-01-01" });
+  assert.equal(obligationCash(obligation(), [due]).remaining, 0);
+  assert.equal(summarizeCounterparty([due], [obligation()]).weTransferred, 100000);
 });

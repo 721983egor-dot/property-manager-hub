@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
+  Check,
   Heart,
   Plus,
   RotateCcw,
@@ -44,7 +45,7 @@ import {
 } from "@/lib/finance";
 import { formatMoney, internalTitle } from "@/lib/properties";
 import { cn } from "@/lib/utils";
-import { toISODate } from "@/lib/rentals";
+import { useFinanceToday } from "@/hooks/use-finance-today";
 import { fetchFinanceCatalog } from "@/lib/finance-articles";
 import "./finance-calendar.css";
 
@@ -60,8 +61,8 @@ const STATUS_TONE: Record<PaymentStatus, string> = {
 
 export function FinanceCalendarPage() {
   const queryClient = useQueryClient();
-  const today = toISODate(new Date());
-  const now = new Date();
+  const today = useFinanceToday();
+  const now = new Date(`${today}T12:00:00`);
   const [year, setYear] = useState(now.getFullYear());
   const [monthIndex, setMonthIndex] = useState(now.getMonth());
   const [view, setView] = useState<ViewMode>("month");
@@ -94,7 +95,9 @@ export function FinanceCalendarPage() {
           String(value["statusFilter"]),
         )
       )
-        setStatusFilter(value["statusFilter"] as StatusFilter);
+        setStatusFilter(
+          value["statusFilter"] === "overdue" ? "paid" : (value["statusFilter"] as StatusFilter),
+        );
       setFavorite(true);
     } catch {
       /* unavailable or invalid saved preferences */
@@ -156,7 +159,7 @@ export function FinanceCalendarPage() {
     mutationFn: (id: string) => markPaymentPaid(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["payments"] });
-      toast.success("Отмечено оплаченным");
+      toast.success("Операция проведена");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Ошибка"),
   });
@@ -400,11 +403,10 @@ export function FinanceCalendarPage() {
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               >
                 <option value="all">Все статусы</option>
-                <option value="open">Не оплачено</option>
-                <option value="expected">Ожидается</option>
-                <option value="overdue">Просрочено</option>
+                <option value="open">Не проведено полностью</option>
+                <option value="expected">Планируемые</option>
                 <option value="partial">Частично</option>
-                <option value="paid">Оплачено</option>
+                <option value="paid">Проведённые</option>
               </select>
             </label>
             <p>Начальный остаток сохраняется в этом браузере для выбранного месяца.</p>
@@ -506,7 +508,7 @@ export function FinanceCalendarPage() {
                         disabled={markPaidMutation.isPending}
                         onClick={() => markPaidMutation.mutate(payment.id)}
                       >
-                        Оплачено
+                        <Check size={16} /> Провести
                       </Button>
                     ) : (
                       <span className="text-xs text-slate-400">✓</span>

@@ -81,7 +81,16 @@ export function PaymentCalendarMonth({
               const cell = byDate.get(iso);
               if (!cell)
                 return (
-                  <div key={iso} className="finance-day finance-day-outside">
+                  <div
+                    key={iso}
+                    className="finance-day finance-day-outside"
+                    onClick={(event) => {
+                      if (!(event.target as HTMLElement).closest("button")) onDay(iso);
+                    }}
+                  >
+                    <button type="button" className="sr-only" onClick={() => onDay(iso)}>
+                      Открыть все операции за {iso}
+                    </button>
                     <button
                       type="button"
                       className="finance-outside-add"
@@ -158,6 +167,9 @@ const DayCell = memo(function DayCell({
 
   return (
     <div
+      onClick={(event) => {
+        if (!(event.target as HTMLElement).closest("button, [role='menu']")) onDay(cell.date);
+      }}
       className={cn(
         "finance-day",
         showGap && "finance-day-gap",
@@ -165,6 +177,9 @@ const DayCell = memo(function DayCell({
         cell.date > today && "finance-day-future",
       )}
     >
+      <button type="button" className="sr-only" onClick={() => onDay(cell.date)}>
+        Открыть все операции за {cell.date}
+      </button>
       <div className="finance-day-top">
         <div className="finance-day-menu-anchor" ref={menuRef}>
           <button

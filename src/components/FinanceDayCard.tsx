@@ -1,4 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useFinanceToday } from "@/hooks/use-finance-today";
+import { Check } from "lucide-react";
+import { toast } from "sonner";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -7,6 +10,8 @@ import {
   formatAdeskMoney,
   formatFinanceDate,
   kindLabel,
+  markPaymentPaid,
+  financePropertyLabel,
   statusLabel,
   effectivePaymentStatus,
   type Payment,
@@ -24,6 +29,17 @@ export function FinanceDayCard({
   onEdit: (payment: Payment) => void;
   onAdd: (date: string, direction: PaymentDirection) => void;
 }) {
+  const today = useFinanceToday();
+  const queryClient = useQueryClient();
+  const markPaid = useMutation({
+    mutationFn: (id: string) => markPaymentPaid(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["payments"] });
+      toast.success("Операция проведена");
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Не удалось провести операцию"),
+  });
   const {
     data: payments = [],
     isLoading,
@@ -79,32 +95,59 @@ export function FinanceDayCard({
               )}
               <div>
                 {payments.map((payment) => (
-                  <button
-                    key={payment.id}
-                    onClick={() => onEdit(payment)}
-                    className="flex w-full items-start justify-between gap-4 border-b py-4 text-left hover:bg-muted/40"
-                  >
-                    <span>
-                      <strong className="block">
-                        {payment.article?.name ?? kindLabel(payment.kind)}
-                      </strong>
-                      <span className="block text-sm text-muted-foreground">
-                        {counterpartyLabel(payment)}
-                      </span>
-                      <span className="block text-sm">{payment.comment}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {statusLabel(effectivePaymentStatus(payment))} · {payment.account}
-                      </span>
-                    </span>
-                    <strong
-                      className={payment.direction === "in" ? "text-emerald-600" : "text-red-600"}
+                  <div key={payment.id} className="flex items-start gap-3 border-b py-4">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(payment)}
+                      className="flex min-w-0 flex-1 items-start justify-between gap-4 text-left hover:bg-muted/40"
                     >
-                      {formatAdeskMoney(
-                        payment.direction === "in" ? payment.amount : -payment.amount,
-                        true,
-                      )}
-                    </strong>
-                  </button>
+                      <span>
+                        <strong className="block">
+                          {payment.article?.name ?? kindLabel(payment.kind)}
+                        </strong>
+                        <span className="block text-sm text-muted-foreground">
+                          {counterpartyLabel(payment)}
+                        </span>
+                        <span className="block text-sm">{payment.comment}</span>
+                        <span className="block text-sm text-muted-foreground">
+                          {payment.property
+                            ? financePropertyLabel(payment.property)
+                            : "Без объекта"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {statusLabel(effectivePaymentStatus(payment, today))} · {payment.account}
+                        </span>
+                      </span>
+                      <strong
+                        className={payment.direction === "in" ? "text-emerald-600" : "text-red-600"}
+                      >
+                        {formatAdeskMoney(
+                          payment.direction === "in" ? payment.amount : -payment.amount,
+                          true,
+                        )}
+                      </strong>
+                    </button>
+                    {effectivePaymentStatus(payment, today) !== "paid" ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        aria-label={`Провести операцию: ${payment.article?.name ?? kindLabel(payment.kind)}`}
+                        title="Провести операцию"
+                        disabled={markPaid.isPending}
+                        onClick={() => markPaid.mutate(payment.id)}
+                      >
+                        <Check size={18} />
+                      </Button>
+                    ) : (
+                      <span
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"
+                        title="Операция проведена"
+                      >
+                        <Check size={18} aria-label="Проведена" />
+                      </span>
+                    )}
+                  </div>
                 ))}
               </div>
             </>

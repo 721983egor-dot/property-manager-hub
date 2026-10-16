@@ -1,5 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toISODate } from "@/lib/rentals";
+import {
+  effectivePaymentStatus,
+  financeToday,
+  paymentFactAmount,
+} from "./finance-payment-status.ts";
+export { effectivePaymentStatus } from "./finance-payment-status.ts";
 
 export type PaymentDirection = "in" | "out";
 export type PaymentStatus = "expected" | "partial" | "paid" | "overdue";
@@ -18,9 +24,9 @@ export const PAYMENT_DIRECTIONS: { value: PaymentDirection; label: string }[] = 
 ];
 
 export const PAYMENT_STATUSES: { value: PaymentStatus; label: string }[] = [
-  { value: "expected", label: "Ожидается" },
+  { value: "expected", label: "Планируемая" },
   { value: "partial", label: "Частично" },
-  { value: "paid", label: "Оплачено" },
+  { value: "paid", label: "Проведена" },
   { value: "overdue", label: "Просрочено" },
 ];
 
@@ -172,19 +178,6 @@ function mapPayment(row: Record<string, unknown>): Payment {
   };
 }
 
-/** Эффективный статус: просрочка по дате, если ещё не оплачено. */
-export function effectivePaymentStatus(
-  payment: Pick<Payment, "status" | "planned_date">,
-  today = toISODate(new Date()),
-): PaymentStatus {
-  if (payment.status === "paid") return "paid";
-  if (payment.status === "partial") {
-    return payment.planned_date < today ? "overdue" : "partial";
-  }
-  if (payment.planned_date < today) return "overdue";
-  return payment.status === "overdue" ? "overdue" : "expected";
-}
-
 export function directionLabel(value: PaymentDirection) {
   return PAYMENT_DIRECTIONS.find((d) => d.value === value)?.label ?? value;
 }
@@ -234,12 +227,6 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
     if (opts.propertyId) query = query.eq("property_id", opts.propertyId);
     if (opts.counterpartyId) query = query.eq("counterparty_id", opts.counterpartyId);
     if (opts.direction && opts.direction !== "all") query = query.eq("direction", opts.direction);
-    if (opts.status && opts.status !== "all" && opts.status !== "open") {
-      query = query.eq("status", opts.status);
-    }
-    if (opts.status === "open") {
-      query = query.in("status", ["expected", "partial", "overdue"]);
-    }
     return query;
   };
 
@@ -256,7 +243,12 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
     rows.push(...page);
     if (page.length < 500) break;
   }
-  return rows.map(mapPayment);
+  const today = financeToday();
+  return rows.map(mapPayment).filter((payment) => {
+    if (!opts.status || opts.status === "all") return true;
+    const status = effectivePaymentStatus(payment, today);
+    return opts.status === "open" ? status !== "paid" : status === opts.status;
+  });
 }
 
 /** Лёгкий список объектов для фильтров Финансов — без select(*) и без server fn. */
@@ -292,7 +284,7 @@ export async function fetchFinanceReportPropertyOptions(
   return rows.sort((a, b) => financePropertyLabel(a).localeCompare(financePropertyLabel(b), "ru"));
 }
 
-export function financePropertyLabel(p: FinancePropertyOption) {
+export function financePropertyLabel(p: Pick<FinancePropertyOption, "title" | "internal_name">) {
   const name = p.internal_name?.trim() ? p.internal_name : p.title;
   return name;
 }
@@ -473,7 +465,7 @@ export async function markPaymentPaid(
     .from("payments")
     .update({
       status: "paid",
-      paid_at: opts?.paidAt || toISODate(new Date()),
+      paid_at: opts?.paidAt || financeToday(),
       paid_amount: opts?.paidAmount ?? amount,
     } as never)
     .eq("id", id);
@@ -496,7 +488,7 @@ export type MonthFinanceSummary = {
 };
 
 export function summarizeMonth(payments: Payment[], month: string): MonthFinanceSummary {
-  const today = toISODate(new Date());
+  const today = financeToday();
   let planIn = 0;
   let planOut = 0;
   let factIn = 0;
@@ -509,7 +501,7 @@ export function summarizeMonth(payments: Payment[], month: string): MonthFinance
     else planOut += payment.amount;
     const status = effectivePaymentStatus(payment, today);
     if (status === "paid") {
-      const fact = payment.paid_amount ?? payment.amount;
+      const fact = paymentFactAmount(payment, today);
       if (payment.direction === "in") factIn += fact;
       else factOut += fact;
     } else if (status === "partial") {
@@ -517,7 +509,7 @@ export function summarizeMonth(payments: Payment[], month: string): MonthFinance
       if (payment.direction === "in") factIn += fact;
       else factOut += fact;
     }
-    if (status === "overdue") {
+    if (status === "partial" && payment.planned_date < today) {
       overdueCount += 1;
       overdueAmount += Math.max(0, payment.amount - (payment.paid_amount ?? 0));
     }
@@ -538,7 +530,7 @@ export type FinanceCounterparty = {
 /** Тонкий слой контрагентов из платежей (+ имя клиента CRM). */
 export function buildCounterparties(
   payments: Payment[],
-  today = toISODate(new Date()),
+  today = financeToday(),
 ): FinanceCounterparty[] {
   const map = new Map<string, FinanceCounterparty>();
   for (const payment of payments) {

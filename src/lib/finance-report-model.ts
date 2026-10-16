@@ -1,3 +1,4 @@
+import { paymentFactAmount } from "./finance-payment-status.ts";
 import type { Payment, PaymentDirection } from "./finance.ts";
 import { groupArticlesByCategory, type FinanceCatalog } from "./finance-articles-model.ts";
 
@@ -9,11 +10,7 @@ export type CategoryReportRow = {
   articles: { key: string; name: string; plan: number; fact: number }[];
 };
 
-function factAmount(payment: Payment) {
-  if (payment.status === "paid") return payment.paid_amount ?? payment.amount;
-  if (payment.status === "partial") return payment.paid_amount ?? 0;
-  return 0;
-}
+const factAmount = paymentFactAmount;
 
 /** План/факт по категориям статей для отчёта. */
 export function summarizeByArticleCategory(

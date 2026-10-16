@@ -1,3 +1,4 @@
+import { financeToday } from "@/lib/finance-payment-status";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   propertyUpdateFieldsToDbPatch,
@@ -1351,7 +1352,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       .from("payments")
       .update({
         status: "paid",
-        paid_at: (input["paidAt"] as string | null) || new Date().toISOString().slice(0, 10),
+        paid_at: (input["paidAt"] as string | null) || financeToday(),
         paid_amount: input["paidAmount"] == null ? amount : Number(input["paidAmount"]),
       } as never)
       .eq("id", paymentId);

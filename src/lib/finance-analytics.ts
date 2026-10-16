@@ -1,3 +1,4 @@
+import { paymentFactAmount } from "./finance-payment-status.ts";
 import type { Payment } from "./finance.ts";
 import type { FinanceCatalog } from "./finance-articles-model.ts";
 import type { FinanceObligation } from "./finance-counterparties.ts";
@@ -18,13 +19,7 @@ export const activityLabels = {
   investing: "Инвестиционная деятельность",
   financing: "Финансовая деятельность",
 };
-export function paidAmount(p: Payment) {
-  return p.status === "paid"
-    ? (p.paid_amount ?? p.amount)
-    : p.status === "partial"
-      ? (p.paid_amount ?? 0)
-      : 0;
-}
+export const paidAmount = paymentFactAmount;
 export function reportEntries(
   payments: Payment[],
   catalog: FinanceCatalog,

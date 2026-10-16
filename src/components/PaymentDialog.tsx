@@ -763,9 +763,9 @@ export function PaymentDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="expected">Ожидается</SelectItem>
+                    <SelectItem value="expected">Автоматически по дате</SelectItem>
                     <SelectItem value="partial">Частично оплачено</SelectItem>
-                    <SelectItem value="paid">Оплачено</SelectItem>
+                    <SelectItem value="paid">Проведена вручную</SelectItem>
                   </SelectContent>
                 </Select>
               </label>

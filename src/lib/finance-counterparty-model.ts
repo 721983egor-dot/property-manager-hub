@@ -1,3 +1,4 @@
+import { effectivePaymentStatus, paymentFactAmount } from "./finance-payment-status.ts";
 import type { Payment } from "./finance.ts";
 import type { FinanceObligation } from "./finance-counterparties.ts";
 
@@ -25,8 +26,8 @@ export function summarizeCounterparty(
   let weTransferred = 0;
   const propertyIds: string[] = [];
   for (const payment of payments) {
-    const status = payment.status;
-    const fact = payment.paid_amount ?? (status === "paid" ? payment.amount : 0);
+    const status = effectivePaymentStatus(payment);
+    const fact = paymentFactAmount(payment);
     if (status === "paid" || status === "partial") {
       if (payment.direction === "in") transferredToUs += fact;
       else weTransferred += fact;
@@ -54,9 +55,9 @@ export function obligationCash(obligation: FinanceObligation, payments: Payment[
   const settlementDirection = obligation.direction === "receivable" ? "in" : "out";
   let paid = 0;
   for (const payment of linked) {
-    const status = payment.status;
+    const status = effectivePaymentStatus(payment);
     if (status === "paid" || status === "partial") {
-      const fact = payment.paid_amount ?? (status === "paid" ? payment.amount : 0);
+      const fact = paymentFactAmount(payment);
       if (payment.direction === settlementDirection) paid += fact;
     }
   }

@@ -1419,7 +1419,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
     }),
 
     proposeMarkPaymentPaid: tool({
-      description: "Предложить отметить платёж оплаченным (вручную, без банка). Требует подтверждения.",
+      description: "Предложить провести операцию, в том числе будущую, вручную. Сегодняшние и прошедшие операции проводятся автоматически, кроме явно частичных оплат. Требует подтверждения.",
       inputSchema: z.object({
         paymentId: z.string(),
         paidAt: z.string().optional().describe("ГГГГ-ММ-ДД"),
