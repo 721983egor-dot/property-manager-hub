@@ -1147,6 +1147,19 @@ export function createMutateTools(ctx: AssistantToolContext) {
       inputSchema:z.object({name:z.string().trim().min(1),type:z.enum(["bank","card","cash"])}),
       execute:async input=>{const names={bank:"расчётный счёт",card:"карта",cash:"наличные"};const summary=`Добавить счёт «${input.name}» (${names[input.type]})`;ctx.propose({tool:"createFinanceAccount",summary,input});return {proposed:true,summary};},
     }),
+    proposeUpdateFinanceAccount: tool({
+      description: "Предложить изменить название и тип счёта. Операции переименовываются атомарно вместе со счётом. Требует подтверждения администратора.",
+      inputSchema: z.object({ id: z.string().uuid(), name: z.string().trim().min(1), type: z.enum(["bank", "card", "cash"]) }),
+      execute: async input => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const client = await ownerFinanceAdminClient();
+        const { data, error } = await client.from("finance_accounts").select("name,type").eq("id", input.id).maybeSingle();
+        if (error || !data) return { error: error?.message ?? "Счёт не найден" };
+        const summary = `Изменить счёт «${data.name}» → «${input.name}», тип ${input.type}. Сохранить все связанные операции`;
+        ctx.propose({ tool: "updateFinanceAccount", summary, input });
+        return { proposed: true, summary };
+      },
+    }),
     proposeArchiveFinanceAccount: tool({
       description:"Предложить архивировать или восстановить счёт. История операций сохраняется. Требует подтверждения.",
       inputSchema:z.object({id:z.string().uuid(),archived:z.boolean()}),

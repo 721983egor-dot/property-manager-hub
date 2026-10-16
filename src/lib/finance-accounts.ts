@@ -16,15 +16,40 @@ export async function fetchFinanceAccounts(): Promise<FinanceAccount[]> {
     .from("finance_accounts")
     .select("id,name,type,archived")
     .order("name");
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") throw new Error("Счёт с таким названием уже существует");
+    throw error;
+  }
   return (data ?? []) as FinanceAccount[];
 }
 export async function createFinanceAccount(name: string, type: FinanceAccountType) {
   if (!name.trim()) throw new Error("Укажите название счёта");
   const { error } = await supabase.from("finance_accounts").insert({ name: name.trim(), type });
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") throw new Error("Счёт с таким названием уже существует");
+    throw error;
+  }
 }
 export async function archiveFinanceAccount(id: string, archived: boolean) {
   const { error } = await supabase.from("finance_accounts").update({ archived }).eq("id", id);
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") throw new Error("Счёт с таким названием уже существует");
+    throw error;
+  }
+}
+
+export async function updateFinanceAccount(id: string, name: string, type: FinanceAccountType) {
+  if (!name.trim()) throw new Error("Укажите название счёта");
+  if (!(type in FINANCE_ACCOUNT_TYPES)) throw new Error("Укажите тип счёта");
+  const { data, error } = await supabase
+    .from("finance_accounts")
+    .update({ name: name.trim(), type })
+    .eq("id", id)
+    .select("id")
+    .single();
+  if (error) {
+    if (error.code === "23505") throw new Error("Счёт с таким названием уже существует");
+    throw error;
+  }
+  if (!data) throw new Error("Счёт не найден или недоступен");
 }

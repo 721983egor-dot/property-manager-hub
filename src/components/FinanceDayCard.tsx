@@ -1,3 +1,5 @@
+import { paymentCashDate } from "@/lib/finance-calendar-model";
+import { paymentFactAmount } from "@/lib/finance-payment-status";
 import { useFinanceToday } from "@/hooks/use-finance-today";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
@@ -41,14 +43,18 @@ export function FinanceDayCard({
       toast.error(error instanceof Error ? error.message : "Не удалось провести операцию"),
   });
   const {
-    data: payments = [],
+    data: history = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["payments", "day", date],
-    queryFn: () => fetchPayments({ from: date!, to: date! }),
+    queryKey: ["payments", "calendar-history"],
+    queryFn: () => fetchPayments(),
     enabled: Boolean(date),
   });
+  const payments = history.filter(
+    (p) =>
+      p.planned_date === date || (paymentFactAmount(p, today) > 0 && paymentCashDate(p) === date),
+  );
   const income = payments.filter((p) => p.direction === "in").reduce((sum, p) => sum + p.amount, 0);
   const expense = payments
     .filter((p) => p.direction === "out")

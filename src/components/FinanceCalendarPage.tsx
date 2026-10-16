@@ -27,17 +27,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  buildMonthDayLedger,
   counterpartyLabel,
   effectivePaymentStatus,
   fetchFinancePropertyOptions,
   fetchPayments,
   financePropertyLabel,
   kindLabel,
-  loadMonthOpeningBalance,
   markPaymentPaid,
   monthBounds,
-  saveMonthOpeningBalance,
   statusLabel,
   type Payment,
   type PaymentDirection,
@@ -47,6 +44,13 @@ import { formatMoney, internalTitle } from "@/lib/properties";
 import { cn } from "@/lib/utils";
 import { useFinanceToday } from "@/hooks/use-finance-today";
 import { fetchFinanceCatalog } from "@/lib/finance-articles";
+import {
+  buildFinanceCalendar,
+  findOpeningAnchor,
+  openingAnchorKey,
+  type OpeningAnchor,
+} from "@/lib/finance-calendar-model";
+import { fetchFinanceAccounts } from "@/lib/finance-accounts";
 import "./finance-calendar.css";
 
 type ViewMode = "month" | "list";
@@ -74,7 +78,8 @@ export function FinanceCalendarPage() {
   const [editing, setEditing] = useState<Payment | null>(null);
   const [defaultDate, setDefaultDate] = useState<string>("");
   const [defaultDirection, setDefaultDirection] = useState<PaymentDirection>("out");
-  const [openingDraft, setOpeningDraft] = useState("0");
+  const [openingDraft, setOpeningDraft] = useState<string | null>(null);
+  const [openingAnchor, setOpeningAnchor] = useState<OpeningAnchor | null>(null);
   const [showOpening, setShowOpening] = useState(false);
   const [account, setAccount] = useState("all");
   const [articleId, setArticleId] = useState("all");
@@ -104,11 +109,23 @@ export function FinanceCalendarPage() {
     }
   }, []);
 
+  const { data: accounts = [] } = useQuery({
+    queryKey: ["finance-accounts"],
+    queryFn: fetchFinanceAccounts,
+  });
+  const accountScope = accounts.find((a) => a.name === account)?.id ?? account;
+  const scope =
+    propertyId === "all" && account === "all" && articleId === "all"
+      ? ""
+      : JSON.stringify([propertyId, accountScope, articleId]);
   useEffect(() => {
-    setOpeningDraft(String(loadMonthOpeningBalance(bounds.monthKey)));
-  }, [bounds.monthKey]);
-
-  const openingBalance = Number(openingDraft) || 0;
+    setOpeningDraft(null);
+    try {
+      setOpeningAnchor(findOpeningAnchor(localStorage, bounds.monthKey, scope));
+    } catch {
+      setOpeningAnchor(null);
+    }
+  }, [bounds.monthKey, scope]);
 
   // Лёгкий список объектов (не select(*) через server fn) — не блокирует календарь.
   const { data: propertyOptions = [] } = useQuery({
@@ -129,31 +146,46 @@ export function FinanceCalendarPage() {
     isFetching,
     error: paymentsError,
   } = useQuery({
-    queryKey: ["payments", bounds.from, bounds.to, propertyId],
-    queryFn: () =>
-      fetchPayments({
-        from: bounds.from,
-        to: bounds.to,
-        propertyId: propertyId === "all" ? null : propertyId,
-      }),
+    queryKey: ["payments", "calendar-history"],
+    queryFn: () => fetchPayments(),
     staleTime: 30 * 1000,
   });
 
-  const filtered = useMemo(() => {
-    return payments.filter((payment) => {
-      if (account !== "all" && payment.account !== account) return false;
-      if (articleId !== "all" && payment.article_id !== articleId) return false;
-      const status = effectivePaymentStatus(payment, today);
-      if (statusFilter === "all") return true;
-      if (statusFilter === "open") return status !== "paid";
-      return status === statusFilter;
-    });
-  }, [payments, statusFilter, today, account, articleId]);
-
-  const ledger = useMemo(
-    () => buildMonthDayLedger(filtered, year, monthIndex, openingBalance),
-    [filtered, year, monthIndex, openingBalance],
+  const scoped = useMemo(
+    () =>
+      payments.filter(
+        (payment) =>
+          (propertyId === "all" || payment.property_id === propertyId) &&
+          (account === "all" || payment.account === account) &&
+          (articleId === "all" || payment.article_id === articleId),
+      ),
+    [payments, propertyId, account, articleId],
   );
+  const calendar = useMemo(
+    () => buildFinanceCalendar(scoped, year, monthIndex, today, openingAnchor),
+    [scoped, year, monthIndex, today, openingAnchor],
+  );
+  const openingBalance = calendar.opening;
+  const filtered = useMemo(
+    () =>
+      scoped.filter((payment) => {
+        if (payment.planned_date < bounds.from || payment.planned_date > bounds.to) return false;
+        const status = effectivePaymentStatus(payment, today);
+        return (
+          statusFilter === "all" ||
+          (statusFilter === "open" ? status !== "paid" : status === statusFilter)
+        );
+      }),
+    [scoped, bounds.from, bounds.to, statusFilter, today],
+  );
+  // Display filters hide operations, but never erase money already received from the balance.
+  const ledger = useMemo(() => {
+    const ids = new Set(filtered.map((p) => p.id));
+    return calendar.ledger.map((row) => ({
+      ...row,
+      payments: row.payments.filter((p) => ids.has(p.id)),
+    }));
+  }, [calendar, filtered]);
 
   const markPaidMutation = useMutation({
     mutationFn: (id: string) => markPaymentPaid(id),
@@ -190,11 +222,21 @@ export function FinanceCalendarPage() {
     .format(new Date(year, monthIndex, 1))
     .replace(/\s*г\.?$/, "");
 
-  const applyOpening = () => {
-    const value = Number(openingDraft) || 0;
-    saveMonthOpeningBalance(bounds.monthKey, value);
-    setOpeningDraft(String(value));
-    toast.success("Начальный остаток сохранён");
+  const applyOpening = (): void => {
+    const value = Number(openingDraft ?? openingBalance);
+    if (!Number.isFinite(value)) {
+      toast.error("Укажите корректный остаток");
+      return;
+    }
+    try {
+      localStorage.setItem(openingAnchorKey(bounds.monthKey, scope), String(value));
+    } catch {
+      toast.error("Не удалось сохранить начальный остаток");
+      return;
+    }
+    setOpeningAnchor({ date: bounds.from, amount: value });
+    setOpeningDraft(null);
+    toast.success("Начальный остаток сохранён и будет перенесён в следующие месяцы");
   };
 
   return (
@@ -333,7 +375,9 @@ export function FinanceCalendarPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все счета</SelectItem>
-              {Array.from(new Set(["Основной", "Касса", ...payments.map((p) => p.account)]))
+              {Array.from(
+                new Set([...accounts.map((a) => a.name), ...payments.map((p) => p.account)]),
+              )
                 .filter(Boolean)
                 .map((name) => (
                   <SelectItem key={name} value={name}>
@@ -366,12 +410,28 @@ export function FinanceCalendarPage() {
               Начальный остаток
               <Input
                 type="number"
-                value={openingDraft}
+                value={openingDraft ?? openingBalance.toFixed(2)}
                 onChange={(e) => setOpeningDraft(e.target.value)}
               />
             </label>
-            <Button type="button" onClick={applyOpening}>
+            <Button type="button" onClick={applyOpening} disabled={isLoading || !!paymentsError}>
               Применить
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                try {
+                  localStorage.removeItem(openingAnchorKey(bounds.monthKey, scope));
+                  setOpeningAnchor(findOpeningAnchor(localStorage, bounds.monthKey, scope));
+                  setOpeningDraft(null);
+                  toast.success("Остаток рассчитывается по истории операций");
+                } catch {
+                  toast.error("Не удалось изменить настройку остатка");
+                }
+              }}
+            >
+              Считать автоматически
             </Button>
             <label>
               Вид
@@ -409,7 +469,10 @@ export function FinanceCalendarPage() {
                 <option value="paid">Проведённые</option>
               </select>
             </label>
-            <p>Начальный остаток сохраняется в этом браузере для выбранного месяца.</p>
+            <p>
+              Остаток переносится из предыдущих месяцев автоматически. Ручной остаток сохраняется в
+              этом браузере для выбранных фильтров и переносится дальше.
+            </p>
           </section>
         )}
         {paymentsError && (
@@ -429,6 +492,7 @@ export function FinanceCalendarPage() {
               year={year}
               monthIndex={monthIndex}
               ledger={ledger}
+              chart={calendar.chart}
               today={today}
               cellMode={cellMode}
               onAdd={openCreate}

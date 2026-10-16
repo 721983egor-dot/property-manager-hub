@@ -1,3 +1,4 @@
+import type { CalendarCashPoint } from "@/lib/finance-calendar-model";
 import { lazy, memo, Suspense, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 
@@ -38,6 +39,7 @@ type Props = {
   year: number;
   monthIndex: number;
   ledger: DayMoneyLedger[];
+  chart: CalendarCashPoint[];
   today: string;
   cellMode: CellMode;
   onAdd: (date: string, direction: PaymentDirection) => void;
@@ -49,6 +51,7 @@ export function PaymentCalendarMonth({
   year,
   monthIndex,
   ledger,
+  chart,
   today,
   cellMode,
   onAdd,
@@ -66,7 +69,7 @@ export function PaymentCalendarMonth({
   return (
     <div className="finance-month-layout">
       <Suspense fallback={<div className="finance-chart-loading">Загрузка графика…</div>}>
-        <PaymentAccountsChart ledger={ledger} today={today} />
+        <PaymentAccountsChart ledger={ledger} chart={chart} today={today} />
       </Suspense>
       <div className="finance-calendar-card">
         <div className="finance-calendar-scroll">
@@ -147,7 +150,7 @@ const DayCell = memo(function DayCell({
   const menuRef = useRef<HTMLDivElement>(null);
   const isToday = cell.date === today;
   const showGap = isToday && cell.closing < 0;
-  const hasActivity = cell.payments.length > 0;
+  const hasActivity = cell.payments.length > 0 || cell.income !== 0 || cell.expense !== 0;
 
   useEffect(() => {
     if (!menuOpen) return;

@@ -1217,6 +1217,18 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if(!name||!["bank","card","cash"].includes(type))throw new Error("Укажите название и тип счёта");
     const {error}=await supabaseAdmin.from("finance_accounts").insert({name,type});if(error)throw new Error(error.message);return `Добавлен счёт «${name}»`;
   },
+  updateFinanceAccount: async input => {
+    const name = String(input["name"] ?? "").trim();
+    const type = String(input["type"] ?? "");
+    if (!name || !["bank", "card", "cash"].includes(type)) throw new Error("Укажите название и тип счёта");
+    const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+    const client = await ownerFinanceAdminClient();
+    const { data, error } = await client.from("finance_accounts").update({ name, type })
+      .eq("id", must(input["id"] as string, "Не указан счёт")).select("id").single();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("Счёт не найден");
+    return `Счёт «${name}» изменён, история операций сохранена`;
+  },
   archiveFinanceAccount:async input=>{
     if(typeof input["archived"]!=="boolean")throw new Error("Укажите состояние счёта");
     const {data,error}=await supabaseAdmin.from("finance_accounts").update({archived:input["archived"]}).eq("id",must(input["id"] as string,"Не указан счёт")).select("name").single();if(error)throw new Error(error.message);return `Счёт «${data.name}»: ${input["archived"]?"в архиве":"активен"}`;

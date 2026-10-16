@@ -1,3 +1,4 @@
+import type { CalendarCashPoint } from "@/lib/finance-calendar-model";
 import { useId } from "react";
 import {
   Area,
@@ -13,30 +14,15 @@ import { formatAdeskMoney, formatFinanceDate, type DayMoneyLedger } from "@/lib/
 
 export default function PaymentAccountsChart({
   ledger,
+  chart: chartData,
   today,
 }: {
   ledger: DayMoneyLedger[];
+  chart: CalendarCashPoint[];
   today: string;
 }) {
   const id = useId().replace(/:/g, "");
   const opening = ledger[0]?.opening ?? 0;
-  const paidByDate = new Map<string, number>();
-  for (const row of ledger) {
-    for (const payment of row.payments) {
-      const paid = payment.paid_amount ?? (payment.status === "paid" ? payment.amount : 0);
-      if (!paid) continue;
-      const date = payment.paid_at || payment.planned_date;
-      paidByDate.set(
-        date,
-        (paidByDate.get(date) ?? 0) + (payment.direction === "in" ? paid : -paid),
-      );
-    }
-  }
-  let actual = opening;
-  const chartData = ledger.map((row) => {
-    actual += paidByDate.get(row.date) ?? 0;
-    return { date: row.date, balance: row.closing, actual: row.date <= today ? actual : null };
-  });
   const values = [opening, ...chartData.flatMap((d) => [d.balance, d.actual ?? 0])];
   const min = Math.min(0, ...values);
   const max = Math.max(0, ...values);
@@ -113,7 +99,7 @@ export default function PaymentAccountsChart({
             <Tooltip
               formatter={(value: number, name: string) => [
                 formatAdeskMoney(value),
-                name === "actual" ? "Оплаченные операции" : "Прогноз остатка",
+                name === "actual" ? "Проведённые операции" : "Прогноз остатка",
               ]}
               labelFormatter={(label) => formatFinanceDate(String(label))}
               contentStyle={{ border: "1px solid #e5e5e5", borderRadius: 3, fontSize: 13 }}

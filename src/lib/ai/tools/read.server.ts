@@ -1,3 +1,4 @@
+import { buildFinanceCalendar, paymentCashDate } from "@/lib/finance-calendar-model";
 import { effectivePaymentStatus, financeToday, paymentFactAmount } from "@/lib/finance-payment-status";
 import {objectFinanceSummary,filterFinanceObjects} from "@/lib/finance-object-model";
 import type {FinancePropertyOption} from "@/lib/finance";
@@ -2117,53 +2118,44 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getPaymentCalendar: tool({
-      description:
-        "Календарь оплат за месяц (ГГГГ-ММ): сводка по дням + список платежей. Синоним listPayments с месячным окном.",
+      description: "Календарь финансов с непрерывным остатком из всей истории и фактически проведёнными суммами. Состояние на сегодня по Москве. Ручной начальный остаток браузера можно передать явно.",
       inputSchema: z.object({
-        month: z.string().describe("ГГГГ-ММ"),
-        propertyRef: z.string().optional(),
+        month: z.string().regex(/^\d{4}-\d{2}$/), propertyRef: z.string().optional(),
+        account: z.string().optional(), articleId: z.string().optional(), openingBalance: z.number().optional(),
       }),
-      execute: async ({ month, propertyRef }) => {
-        if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Месяц в формате ГГГГ-ММ" };
-        const from = `${month}-01`;
-        const y = Number(month.slice(0, 4));
-        const m = Number(month.slice(5, 7));
-        const lastDay = new Date(y, m, 0).getDate();
-        const to = `${month}-${String(lastDay).padStart(2, "0")}`;
-        let query = admin
-          .from("payments")
-          .select(
-            "id, planned_date, amount, direction, status, kind, property_id, counterparty_name, paid_amount",
-          )
-          .gte("planned_date", from)
-          .lte("planned_date", to)
-          .order("planned_date");
+      execute: async ({ month, propertyRef, account, articleId, openingBalance }) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const client = await ownerFinanceAdminClient();
+        const y = Number(month.slice(0, 4)), m = Number(month.slice(5, 7));
+        if (m < 1 || m > 12) return { error: "Укажите корректный месяц" };
+        let propertyId: string | null = null;
         if (propertyRef) {
           const found = await ctx.findProperty(propertyRef);
           if (!found) return { error: "Объект не найден" };
-          query = query.eq("property_id", found["id"] as string);
+          propertyId = String(found["id"]);
         }
-        const { data, error } = await query;
+        const { data, error } = await allFinancePages((from, to) => {
+          let query = client.from("payments").select("*").order("id");
+          if (propertyId) query = query.eq("property_id", propertyId);
+          if (account) query = query.eq("account", account);
+          if (articleId) query = query.eq("article_id", articleId);
+          return query.range(from, to);
+        });
         if (error) return { error: error.message };
         const today = financeToday();
-        const byDay: Record<string, number> = {};
-        let planIn = 0;
-        let planOut = 0;
-        for (const row of data ?? []) {
-          byDay[row.planned_date] = (byDay[row.planned_date] ?? 0) + 1;
-          if (row.direction === "in") planIn += Number(row.amount);
-          else planOut += Number(row.amount);
-        }
-        return {
-          month,
-          from,
-          to,
-          today,
-          planIn,
-          planOut,
-          byDay,
-          count: (data ?? []).length,
-          payments: (data ?? []).map(row => ({ ...row, effectiveStatus: effectivePaymentStatus(row, today) })),
+        const rows = (data ?? []) as unknown as Payment[];
+        const calendar = buildFinanceCalendar(rows, y, m - 1, today,
+          openingBalance == null ? null : { date: `${month}-01`, amount: openingBalance });
+        const visible = rows.filter(p => p.planned_date.startsWith(month) ||
+          (paymentFactAmount(p, today) > 0 && paymentCashDate(p).startsWith(month)));
+        return { month, today, from: calendar.ledger[0]?.date, to: calendar.ledger.at(-1)?.date,
+          openingBalance: calendar.opening, closingBalance: calendar.ledger.at(-1)?.closing,
+          planIn: calendar.ledger.reduce((sum, day) => sum + day.income, 0),
+          planOut: calendar.ledger.reduce((sum, day) => sum + day.expense, 0),
+          byDay: Object.fromEntries(calendar.ledger.map(day => [day.date, day.payments.length])),
+          days: calendar.ledger.map(({ payments, ...day }) => ({ ...day, paymentIds: payments.map(p => p.id) })),
+          chart: calendar.chart, count: visible.length,
+          payments: visible.map(row => ({ ...row, effectiveStatus: effectivePaymentStatus(row, today) })),
         };
       },
     }),
@@ -2383,7 +2375,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           admin
             .from("payments")
             .select("*")
-            .eq("planned_date", date)
+            .or(`planned_date.eq.${date},paid_at.eq.${date}`)
             .order("created_at")
             .order("id")
             .range(from, to),
@@ -2391,7 +2383,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const today = financeToday();
         return error ? { error: error.message } : {
           date,
-          payments: (data ?? []).map(row => ({ ...row, effectiveStatus: effectivePaymentStatus(row, today) })),
+          payments: (data ?? []).filter(row => row.planned_date === date || (paymentFactAmount(row, today) > 0 && paymentCashDate(row as unknown as Payment) === date)).map(row => ({ ...row, effectiveStatus: effectivePaymentStatus(row, today) })),
         };
       },
     }),
