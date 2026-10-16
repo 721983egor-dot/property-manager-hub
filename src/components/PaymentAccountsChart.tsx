@@ -118,7 +118,7 @@ export default function PaymentAccountsChart({
               contentStyle={{ border: "1px solid #e5e5e5", borderRadius: 3, fontSize: 13 }}
             />
             <Area
-              type="stepAfter"
+              type="monotone"
               dataKey="balance"
               baseValue={0}
               stroke="none"
@@ -135,7 +135,7 @@ export default function PaymentAccountsChart({
               />
             )}
             <Line
-              type="stepAfter"
+              type="monotone"
               dataKey="balance"
               stroke={
                 zeroStroke === 0 ? "#ff422d" : zeroStroke === 100 ? "#2786ff" : `url(#${id}-stroke)`
@@ -146,7 +146,7 @@ export default function PaymentAccountsChart({
               isAnimationActive={false}
             />
             <Line
-              type="stepAfter"
+              type="monotone"
               dataKey="actual"
               stroke={
                 zeroActual === 0
