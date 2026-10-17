@@ -49,6 +49,8 @@ import { useAccess } from "@/hooks/useAccess";
 import { useServerFn } from "@tanstack/react-start";
 import { UNASSIGNED_LANE_LABEL } from "@/lib/hotel";
 import { assignHotelBookingRoom } from "@/lib/hotel.functions";
+import { fetchFinanceAccounts } from "@/lib/finance-accounts";
+import { fetchBookingFinanceAccount } from "@/lib/bookings";
 
 type Props = {
   open: boolean;
@@ -57,7 +59,6 @@ type Props = {
   defaultPropertyId?: string;
   defaultClientId?: string;
 };
-
 
 type FormState = {
   property_id: string;
@@ -127,6 +128,7 @@ export function BookingDialog({
   const [clientPhone, setClientPhone] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [assignRoomId, setAssignRoomId] = useState("");
+  const [financeAccount, setFinanceAccount] = useState("");
   const assignRoomFn = useServerFn(assignHotelBookingRoom);
 
   useEffect(() => {
@@ -138,20 +140,39 @@ export function BookingDialog({
     setClientPhone("");
     setClientSearch("");
     setAssignRoomId("");
+    setFinanceAccount("");
   }, [open, booking?.id, defaultPropertyId, defaultClientId]);
-
 
   const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
     queryFn: fetchProperties,
   });
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: fetchClients });
+  const isRm = properties.find((p) => p.id === form.property_id)?.portfolio === "rm";
+  const accounts = useQuery({
+    queryKey: ["finance-accounts"],
+    queryFn: fetchFinanceAccounts,
+    enabled: open && isAdmin && isRm,
+  });
+  const financeConfig = useQuery({
+    queryKey: ["booking-finance-account", booking?.id],
+    queryFn: () => fetchBookingFinanceAccount(booking!.id),
+    enabled: open && isAdmin && isRm && !!booking,
+  });
+  useEffect(() => {
+    if (!open || !isRm || financeAccount) return;
+    if (financeConfig.data) setFinanceAccount(financeConfig.data);
+    else if (!booking && accounts.data?.filter((a) => !a.archived).length === 1)
+      setFinanceAccount(accounts.data.filter((a) => !a.archived)[0]!.id);
+  }, [open, isRm, financeConfig.data, financeAccount, accounts.data, booking]);
 
   const filteredClients = useMemo(() => {
     const q = clientSearch.trim().toLowerCase();
     if (!q) return clients;
     return clients.filter(
-      (c) => c.full_name.toLowerCase().includes(q) || normalizePhone(c.phone).includes(normalizePhone(q)),
+      (c) =>
+        c.full_name.toLowerCase().includes(q) ||
+        normalizePhone(c.phone).includes(normalizePhone(q)),
     );
   }, [clients, clientSearch]);
 
@@ -177,8 +198,11 @@ export function BookingDialog({
       if (form.end_date < form.start_date) throw new Error("Дата окончания раньше даты начала");
       const selected = properties.find((p) => p.id === form.property_id);
       const hotel = selected?.portfolio === "n11";
+      if (isAdmin && selected?.portfolio === "rm" && !financeAccount)
+        throw new Error("Выберите счёт для графика аренды");
 
       const bookingId = await saveBooking(booking?.id ?? null, {
+        ...(isAdmin && selected?.portfolio === "rm" ? { finance_account_id: financeAccount } : {}),
         property_id: form.property_id,
         client_id: clientId,
         start_date: form.start_date,
@@ -206,7 +230,16 @@ export function BookingDialog({
       await qc.invalidateQueries({ queryKey: ["properties"] });
       await qc.invalidateQueries({ queryKey: ["crm-bookings"] });
       await qc.invalidateQueries({ queryKey: ["client-bookings"] });
-      for (const key of ["payments", "crm-commission-payments", "finance-rentals", "deals"])
+      for (const key of [
+        "payments",
+        "crm-commission-payments",
+        "finance-rentals",
+        "finance-client-rentals",
+        "finance-owner-settlements",
+        "finance-obligations",
+        "booking-finance-account",
+        "deals",
+      ])
         await qc.invalidateQueries({ queryKey: [key] });
       toast.success(booking ? "Бронирование обновлено" : "Бронирование создано");
       onOpenChange(false);
@@ -227,9 +260,21 @@ export function BookingDialog({
       await qc.invalidateQueries({ queryKey: ["current-booking"] });
       await qc.invalidateQueries({ queryKey: ["crm-bookings"] });
       await qc.invalidateQueries({ queryKey: ["client-bookings"] });
-      for (const key of ["payments", "crm-commission-payments", "finance-rentals", "deals"])
+      for (const key of [
+        "payments",
+        "crm-commission-payments",
+        "finance-rentals",
+        "finance-client-rentals",
+        "finance-owner-settlements",
+        "finance-obligations",
+        "deals",
+      ])
         await qc.invalidateQueries({ queryKey: [key] });
-      toast.success("Бронирование удалено, данные клиента сохранены");
+      toast.success(
+        isRm
+          ? "Бронь отменена, финансовая история сохранена"
+          : "Бронирование удалено, данные клиента сохранены",
+      );
       onOpenChange(false);
     },
     onError: (e: unknown) => {
@@ -270,13 +315,16 @@ export function BookingDialog({
     },
   });
 
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {mode === "view" ? "Бронирование" : booking ? "Редактирование брони" : "Новое бронирование"}
+            {mode === "view"
+              ? "Бронирование"
+              : booking
+                ? "Редактирование брони"
+                : "Новое бронирование"}
           </DialogTitle>
           <DialogDescription>
             {property
@@ -375,15 +423,23 @@ export function BookingDialog({
                 <Button
                   variant="destructive"
                   onClick={() => {
-                    if (window.confirm("Удалить бронирование? Данные клиента сохранятся.")) {
+                    if (
+                      window.confirm(
+                        isRm
+                          ? "Отменить бронь и убрать будущие неоплаченные платежи графика? Полученные деньги, предоплаты и частичные оплаты сохранятся."
+                          : "Удалить бронирование? Данные клиента сохранятся.",
+                      )
+                    ) {
                       remove.mutate();
                     }
                   }}
                   disabled={remove.isPending}
                 >
-                  {remove.isPending ? "Удаление..." : "Удалить"}
+                  {remove.isPending ? "Сохраняем..." : isRm ? "Отменить бронь" : "Удалить"}
                 </Button>
-              ) : <span />}
+              ) : (
+                <span />
+              )}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
                   Закрыть
@@ -470,10 +526,7 @@ export function BookingDialog({
               <div className="flex items-center justify-between gap-3">
                 <Label className="text-sm font-semibold">Клиент</Label>
                 <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Checkbox
-                    checked={newClient}
-                    onCheckedChange={(v) => setNewClient(Boolean(v))}
-                  />
+                  <Checkbox checked={newClient} onCheckedChange={(v) => setNewClient(Boolean(v))} />
                   Новый клиент
                 </label>
               </div>
@@ -535,9 +588,7 @@ export function BookingDialog({
               <Label className="text-sm font-semibold">Стоимость аренды</Label>
               <Select
                 value={form.price_type}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, price_type: v as BookingPriceType }))
-                }
+                onValueChange={(v) => setForm((f) => ({ ...f, price_type: v as BookingPriceType }))}
               >
                 <SelectTrigger className="mt-2">
                   <SelectValue />
@@ -646,6 +697,36 @@ export function BookingDialog({
               )}
             </div>
 
+            {isAdmin && isRm && (
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+                <Label>Счёт для оплаты аренды</Label>
+                <Select value={financeAccount} onValueChange={setFinanceAccount}>
+                  <SelectTrigger aria-label="Счёт графика аренды">
+                    <SelectValue placeholder="Выберите счёт" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(accounts.data ?? [])
+                      .filter((a) => !a.archived || a.id === financeAccount)
+                      .map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                          {a.archived ? " · архивный" : ""}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  После сохранения будущие платежи аренды, комиссия и прогноз выплат собственнику
+                  обновятся автоматически. Цены по периодам и день оплаты меняйте здесь. Полученные
+                  суммы и отдельные графики предоплат сохраняются.
+                </p>
+                {(accounts.error || financeConfig.error) && (
+                  <p className="text-xs text-destructive">
+                    Не удалось загрузить настройки графика. Обновите страницу перед сохранением.
+                  </p>
+                )}
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <Label>День ежемесячной оплаты</Label>

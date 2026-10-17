@@ -6,6 +6,8 @@ import { FinanceTabs } from "./FinanceTabs";
 import { Button } from "./ui/button";
 import { PaymentDialog } from "./PaymentDialog";
 import { RentalInstallmentsDialog } from "./RentalInstallmentsDialog";
+import { BookingDialog } from "./BookingDialog";
+import { fetchBooking } from "@/lib/bookings";
 import { OwnerPayoutDialog } from "./OwnerPayoutDialog";
 import PaymentAccountsChart from "./PaymentAccountsChart";
 import {
@@ -36,10 +38,8 @@ import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import {
   fetchFinanceClientRentals,
   refreshRentalSettlements,
-  createRentalSchedule,
   saveRentalOwnerSettings,
 } from "@/lib/finance-workspace";
-import { fetchFinanceAccounts } from "@/lib/finance-accounts";
 import { ownerSettlementState } from "@/lib/finance-owner-model";
 import { fetchFinanceObjectProperties } from "@/lib/finance-rentals";
 import { useFinanceToday } from "@/hooks/use-finance-today";
@@ -78,6 +78,12 @@ export function FinanceWorkspacePage({
   const property = scope?.property ?? localProperty;
   const [detail, setDetail] = useState<"company" | "all" | "clients" | "owners">("all");
   const [inlineClient, setInlineClient] = useState<string>();
+  const [contractId, setContractId] = useState<string | null>(null);
+  const contract = useQuery({
+    queryKey: ["booking-finance-editor", contractId],
+    queryFn: () => fetchBooking(contractId!),
+    enabled: !!contractId,
+  });
   const clientId = routeClientId ?? inlineClient;
   const [operationDate, setOperationDate] = useState("");
   const [editing, setEditing] = useState<Payment | null>(null),
@@ -116,7 +122,6 @@ export function FinanceWorkspacePage({
     queryKey: ["finance-owner-settlements", "workspace"],
     queryFn: () => fetchOwnerSettlements(),
   });
-  const accounts = useQuery({ queryKey: ["finance-accounts"], queryFn: fetchFinanceAccounts });
   const invalidate = () => {
     for (const key of [
       "payments",
@@ -135,16 +140,6 @@ export function FinanceWorkspacePage({
     if (!embedded) refreshRef.current();
   }, [today, embedded]);
   const [installmentsBooking, setInstallmentsBooking] = useState<string | null>(null);
-  const [schedule, setSchedule] = useState<{ booking: string; account: string } | null>(null);
-  const generate = useMutation({
-    mutationFn: () => createRentalSchedule(schedule!.booking, schedule!.account),
-    onSuccess: (n) => {
-      setSchedule(null);
-      invalidate();
-      toast.success(`Добавлено платежей: ${n}`);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
   const rows = payments.data ?? [],
     books = rentals.data ?? [],
     props = properties.data ?? [],
@@ -825,13 +820,26 @@ export function FinanceWorkspacePage({
                           </div>
                         </div>
                         <div className="fw-actions">
+                          <Button variant="outline" onClick={() => setContractId(b.id)}>
+                            Условия аренды и график
+                          </Button>
                           <Button
                             variant="outline"
-                            onClick={() =>
-                              setAdding({ booking: b.id, component: "rent", direction: "in" })
-                            }
+                            onClick={() => {
+                              const planned = rows
+                                .filter(
+                                  (p) =>
+                                    p.booking_id === b.id &&
+                                    p.rental_schedule &&
+                                    p.rental_component === "rent" &&
+                                    paymentFactAmount(p, today) < p.amount,
+                                )
+                                .sort((a, b) => a.planned_date.localeCompare(b.planned_date))[0];
+                              if (planned) setEditing(planned);
+                              else setAdding({ booking: b.id, component: "rent", direction: "in" });
+                            }}
                           >
-                            + Арендная плата
+                            Оплата аренды
                           </Button>
                           <Button
                             variant="outline"
@@ -852,14 +860,6 @@ export function FinanceWorkspacePage({
                           {b.status === "active" && (
                             <Button variant="outline" onClick={() => setInstallmentsBooking(b.id)}>
                               Предоплата и остаток
-                            </Button>
-                          )}
-                          {b.status === "active" && (
-                            <Button
-                              variant="outline"
-                              onClick={() => setSchedule({ booking: b.id, account: "" })}
-                            >
-                              Сформировать график аренды
                             </Button>
                           )}
                         </div>
@@ -956,6 +956,21 @@ export function FinanceWorkspacePage({
           onClose={() => setInstallmentsBooking(null)}
         />
       )}
+      {contractId && contract.data && (
+        <BookingDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setContractId(null);
+              void qc.invalidateQueries({ queryKey: ["booking-finance-editor"] });
+            }
+          }}
+          booking={contract.data}
+        />
+      )}
+      {contractId && contract.error && (
+        <p className="text-destructive">Не удалось открыть бронь: {String(contract.error)}</p>
+      )}
       <PaymentDialog
         open={!!editing || !!adding}
         onOpenChange={(v) => {
@@ -983,52 +998,6 @@ export function FinanceWorkspacePage({
           remaining={payout.remaining}
           onClose={() => setPayout(null)}
         />
-      )}
-      {schedule && (
-        <div
-          className="fw-panel fixed z-50 inset-x-4 top-1/3 mx-auto max-w-lg shadow-lg"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Сформировать график аренды"
-        >
-          <h2>График ежемесячной аренды</h2>
-          <p className="my-4">
-            Добавим платежи с текущего месяца до конца договора, максимум на 36 месяцев.
-            Существующие поступления не дублируются. Даты сегодня и в прошлом считаются проведёнными
-            по принятому правилу учёта; проверьте первый месяц.
-          </p>
-          <select
-            aria-label="Счёт графика аренды"
-            className="w-full"
-            value={schedule.account}
-            onChange={(e) => setSchedule({ ...schedule, account: e.target.value })}
-          >
-            <option value="">Выберите счёт поступления</option>
-            {accounts.data
-              ?.filter((a) => !a.archived)
-              .map((a) => (
-                <option key={a.id} value={a.name}>
-                  {a.name}
-                </option>
-              ))}
-          </select>
-          {accounts.error && <p role="alert">Не удалось загрузить счета</p>}
-          <div className="fw-actions">
-            <Button
-              disabled={generate.isPending || !schedule.account}
-              onClick={() => generate.mutate()}
-            >
-              Сформировать
-            </Button>
-            <Button
-              variant="outline"
-              disabled={generate.isPending}
-              onClick={() => setSchedule(null)}
-            >
-              Отмена
-            </Button>
-          </div>
-        </div>
       )}
     </div>
   );

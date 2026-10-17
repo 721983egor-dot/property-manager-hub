@@ -504,6 +504,12 @@ export function PaymentDialog({
           </SheetTitle>
         </SheetHeader>
 
+        {payment?.rental_schedule && (
+          <p className="rounded-md border p-3 text-sm text-muted-foreground">
+            Платёж создан из условий аренды. Для изменения суммы, даты или отмены откройте «Условия
+            аренды и график» в карточке клиента. Здесь можно подтвердить получение денег.
+          </p>
+        )}
         {payment?.rental_installment_id && (
           <p className="rounded border bg-muted p-3 text-sm">
             {payment.rental_stage === "prepayment"
@@ -528,6 +534,7 @@ export function PaymentDialog({
               Назначение поступления
               <select
                 aria-label="Назначение поступления"
+                disabled={!!payment?.rental_schedule}
                 className="block w-full border rounded p-2 mt-1"
                 value={form.rental_component}
                 onChange={(e) =>
@@ -557,6 +564,7 @@ export function PaymentDialog({
                 Аренда клиента
                 <select
                   aria-label="Аренда клиента"
+                  disabled={!!payment?.rental_schedule}
                   className="block w-full border rounded p-2 mt-1"
                   value={form.booking_id}
                   onChange={(e) => {
@@ -601,6 +609,7 @@ export function PaymentDialog({
             <Input
               ref={amountRef}
               aria-label="Сумма"
+              disabled={!!payment?.rental_schedule}
               type="number"
               min={0}
               step="0.01"
@@ -677,6 +686,7 @@ export function PaymentDialog({
           <Field label="Дата">
             <Input
               aria-label="Дата операции"
+              disabled={!!payment?.rental_schedule}
               type="date"
               value={form.planned_date}
               onChange={(e) => setForm((p) => ({ ...p, planned_date: e.target.value }))}
@@ -913,6 +923,7 @@ export function PaymentDialog({
               variant="ghost"
               className="text-destructive"
               disabled={
+                !!payment?.rental_schedule ||
                 !!payment?.rental_installment_id ||
                 payment?.rental_component === "owner_plan" ||
                 deleteMutation.isPending

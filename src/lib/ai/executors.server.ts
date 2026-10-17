@@ -217,6 +217,11 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
 
   createBooking: async (input) => {
     const propertyId = must(input["propertyId"] as string, "Не указан объект");
+    const property = await supabaseAdmin.from("properties").select("portfolio").eq("id",propertyId).single();
+    if(property.error) throw property.error;
+    const isRm=property.data.portfolio==="rm";
+    if(isRm && !input["accountId"]) throw new Error("Укажите счёт графика аренды через accountId");
+    const access=isRm ? await (await import("@/lib/crm-results.server")).crmAccess(input) : null;
     const fullName = must(input["clientName"] as string, "Не указан клиент");
     const phone = (input["clientPhone"] as string) ?? "";
     let clientId: string | null = null;
@@ -237,6 +242,11 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       clientId = created.id;
     }
     const priceMonth = (input["priceMonth"] as number) ?? null;
+    if(access) {
+      const result=await access.db.rpc("finance_save_booking",{p_booking:null,p_account:input["accountId"],p_actor:access.actor,p_input:{property_id:propertyId,client_id:clientId,start_date:input["startDate"],end_date:input["endDate"],price_type:"fixed",price_month:priceMonth,payment_day:input["paymentDay"]??1,deposit:input["deposit"]??null,source:input["source"]??null,status:"active",comment:input["comment"]??"",stay_kind:"long_term",periods:[]}});
+      if(result.error) throw result.error;
+      return "Бронь создана; будущие платежи аренды добавлены автоматически";
+    }
     const { error } = await supabaseAdmin.from("bookings").insert({
       property_id: propertyId,
       client_id: clientId,
@@ -252,6 +262,15 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     });
     if (error) throw new Error(error.message);
     return "Бронь добавлена";
+  },
+
+  updateRentalContract: async (input) => {
+    const {updateRentalContract}=await import("@/lib/rental-contract.server");
+    return updateRentalContract(input);
+  },
+  cancelRentalContract: async (input) => {
+    const {cancelRentalContract}=await import("@/lib/rental-contract.server");
+    return cancelRentalContract(input);
   },
 
   cancelBooking: async (input) => {

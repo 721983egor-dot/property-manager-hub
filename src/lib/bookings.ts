@@ -109,19 +109,19 @@ const SELECT =
   "id, property_id, client_id, start_date, end_date, price_type, price_month, price_night, payment_day, deposit, source, status, comment, stay_kind, bnovo_id, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
 
 function normalize(row: Record<string, unknown>): Booking {
-  const client = (row['clients'] ?? null) as Client | null;
-  const periods = (row['booking_price_periods'] ?? []) as BookingPricePeriod[];
+  const client = (row["clients"] ?? null) as Client | null;
+  const periods = (row["booking_price_periods"] ?? []) as BookingPricePeriod[];
   return {
     ...(row as unknown as Booking),
     client,
     periods: [...periods]
       .map((p) => ({ ...p, price_month: Number(p.price_month) }))
       .sort((a, b) => a.start_date.localeCompare(b.start_date)),
-    price_month: row['price_month'] == null ? null : Number(row['price_month']),
-    price_night: row['price_night'] == null ? null : Number(row['price_night']),
-    deposit: row['deposit'] == null ? null : Number(row['deposit']),
-    stay_kind: row['stay_kind'] === "short_stay" ? "short_stay" : "long_term",
-    bnovo_id: typeof row['bnovo_id'] === "string" ? row['bnovo_id'] : null,
+    price_month: row["price_month"] == null ? null : Number(row["price_month"]),
+    price_night: row["price_night"] == null ? null : Number(row["price_night"]),
+    deposit: row["deposit"] == null ? null : Number(row["deposit"]),
+    stay_kind: row["stay_kind"] === "short_stay" ? "short_stay" : "long_term",
+    bnovo_id: typeof row["bnovo_id"] === "string" ? row["bnovo_id"] : null,
   };
 }
 
@@ -197,6 +197,7 @@ export async function createClient(input: { full_name: string; phone: string }) 
 }
 
 export type BookingInput = {
+  finance_account_id?: string | undefined;
   property_id: string;
   client_id: string;
   start_date: string;
@@ -214,9 +215,25 @@ export type BookingInput = {
 };
 
 export async function saveBooking(id: string | null, input: BookingInput) {
+  if (input.finance_account_id !== undefined) {
+    const { crmDb } = await import("./crm-results");
+    const { finance_account_id, ...booking } = input;
+    const result = await crmDb.rpc("finance_save_booking", {
+      p_booking: id,
+      p_input: booking,
+      p_account: finance_account_id || null,
+    });
+    if (result.error) throw result.error;
+    return String(result.data);
+  }
   if (id) {
     const { crmDb } = await import("./crm-results");
-    const linked = await crmDb.from("deals").select("id").eq("booking_id", id).not("finance_terms", "is", null).maybeSingle();
+    const linked = await crmDb
+      .from("deals")
+      .select("id")
+      .eq("booking_id", id)
+      .not("finance_terms", "is", null)
+      .maybeSingle();
     if (linked.error) throw linked.error;
     if (linked.data) {
       const result = await crmDb.rpc("crm_save_finance_booking", { p_booking: id, p_input: input });
@@ -227,7 +244,10 @@ export async function saveBooking(id: string | null, input: BookingInput) {
   const { periods, ...row } = input;
   let bookingId = id;
   if (id) {
-    const { error } = await supabase.from("bookings").update(row as never).eq("id", id);
+    const { error } = await supabase
+      .from("bookings")
+      .update(row as never)
+      .eq("id", id);
     if (error) throw error;
   } else {
     const { data, error } = await supabase
@@ -286,9 +306,28 @@ export async function markPropertyRented(propertyId: string) {
 /** Удаляет бронирование и его периоды; запись клиента сохраняется. */
 export async function deleteBooking(id: string) {
   const { crmDb } = await import("./crm-results");
-  const linked = await crmDb.from("deals").select("id").eq("booking_id", id).not("finance_terms", "is", null).maybeSingle();
+  const current = await supabase
+    .from("bookings")
+    .select("stay_kind,properties(portfolio)")
+    .eq("id", id)
+    .single();
+  if (current.error) throw current.error;
+  if (current.data.stay_kind === "long_term" && current.data.properties?.portfolio === "rm") {
+    const result = await crmDb.rpc("finance_cancel_booking", { p_booking: id });
+    if (result.error) throw result.error;
+    return;
+  }
+  const linked = await crmDb
+    .from("deals")
+    .select("id")
+    .eq("booking_id", id)
+    .not("finance_terms", "is", null)
+    .maybeSingle();
   if (linked.error) throw linked.error;
-  if (linked.data) throw new Error("У брони есть финансовый график. Вместо удаления выберите статус «Отменена» — оплаченная история сохранится");
+  if (linked.data)
+    throw new Error(
+      "У брони есть финансовый график. Вместо удаления выберите статус «Отменена» — оплаченная история сохранится",
+    );
   const { error: periodsError } = await supabase
     .from("booking_price_periods")
     .delete()
@@ -296,6 +335,31 @@ export async function deleteBooking(id: string) {
   if (periodsError) throw periodsError;
   const { error } = await supabase.from("bookings").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function fetchBooking(id: string): Promise<Booking> {
+  const { data, error } = await supabase.from("bookings").select(SELECT).eq("id", id).single();
+  if (error) throw error;
+  return normalize(data as unknown as Record<string, unknown>);
+}
+
+export async function fetchBookingFinanceAccount(id: string): Promise<string> {
+  const { crmDb } = await import("./crm-results");
+  const config = await crmDb
+    .from("finance_booking_schedules")
+    .select("account_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (config.error) throw config.error;
+  if (config.data) return String(config.data.account_id);
+  const deal = await crmDb
+    .from("deals")
+    .select("finance_terms")
+    .eq("booking_id", id)
+    .not("finance_terms", "is", null)
+    .maybeSingle();
+  if (deal.error) throw deal.error;
+  return String(deal.data?.finance_terms?.account_id ?? "");
 }
 
 /** Все бронирования (для CRM). */

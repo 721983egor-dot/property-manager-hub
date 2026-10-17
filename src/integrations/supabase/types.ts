@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance_booking_schedules: {
+        Row: {id:string; account_id:string; created_at:string};
+        Insert: {id:string; account_id:string; created_at?:string};
+        Update: {account_id?:string};
+        Relationships: [];
+      };
       activity_log: {
         Row: {
           action: string
@@ -2531,11 +2537,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finance_save_booking: {Args:{p_booking:string|null;p_input:Json;p_account?:string|null;p_actor?:string|null};Returns:string};
+      finance_cancel_booking: {Args:{p_booking:string;p_actor?:string|null};Returns:undefined};
       finance_save_rental_settings: { Args: { p_property: string; p_owner: string; p_day: number; p_fee: number; p_fee_type: string; p_owner_name?: string | null }; Returns: undefined };
       finance_refresh_rental_settlements: { Args: Record<PropertyKey, never>; Returns: undefined };
       finance_create_rental_installments: { Args: { p_booking: string; p_period: string; p_total: number; p_fee: number; p_advance: number; p_advance_date: string; p_balance_date: string; p_account: string; p_request: string }; Returns: string };
       finance_create_rental_schedule: { Args: { p_booking: string; p_account: string }; Returns: number };
-      finance_account_usage: { Args: { p_id: string }; Returns: { payments: number; deals: number } };
+      finance_account_usage: { Args: { p_id: string }; Returns: { payments: number; deals: number; schedules?: number } };
       delete_finance_account: { Args: { p_id: string; p_transfer_to?: string | null }; Returns: undefined };
 
       create_management_fee_payment: { Args: {p_booking_id: string; p_period: string; p_expected_amount: number}; Returns: string }

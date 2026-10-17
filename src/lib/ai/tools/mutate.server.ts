@@ -264,10 +264,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeBooking: tool({
       description:
-        "Предложить бронь в календаре: объект, клиент (имя и телефон или существующий), даты, цена в месяц, день оплаты, депозит.",
+        "Предложить бронь в календаре: объект, клиент, даты, цена, день оплаты, депозит. Для РМ обязательно accountId из listFinanceAccounts: бронь автоматически создаёт полный график аренды. Требует подтверждения администратора.",
       inputSchema: z.object({
         ref: z.string(),
         clientName: z.string(),
+        accountId: z.string().uuid().optional(),
         clientPhone: z.string().optional(),
         startDate: z.string(),
         endDate: z.string(),
@@ -280,7 +281,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async ({ ref, ...rest }) => {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
-        const summary = `Добавить бронь «${p.text}» для ${rest.clientName}: ${rest.startDate} — ${rest.endDate}${rest.priceMonth ? `, ${money(rest.priceMonth)}/мес` : ""}`;
+        const summary = `Добавить бронь «${p.text}» для ${rest.clientName}: ${rest.startDate} — ${rest.endDate}${rest.priceMonth ? `, ${money(rest.priceMonth)}/мес` : ""}${rest.accountId ? `; счёт ${rest.accountId}, будущие платежи аренды создадутся автоматически` : ""}`;
         ctx.propose({ tool: "createBooking", summary, input: { propertyId: p.id, ...rest } });
         return { proposed: true, summary };
       },
@@ -1140,14 +1141,30 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+    proposeUpdateRentalContract: tool({
+      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты и счёт. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. Для периодической цены передай полный список periods и priceType=periodic. Только администратор.",
+      inputSchema:z.object({bookingId:z.string().uuid(),startDate:z.string().optional(),endDate:z.string().optional(),priceType:z.enum(["fixed","periodic"]).optional(),priceMonth:z.number().positive().optional(),paymentDay:z.number().int().min(1).max(31).optional(),deposit:z.number().nonnegative().optional(),accountId:z.string().uuid().optional(),comment:z.string().optional(),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional()}),
+      execute:async input=>{
+        const {crmAccess}=await import("@/lib/crm-results.server");await crmAccess();
+        const changes=Object.entries(input).filter(([key])=>key!=="bookingId").map(([key,value])=>`${key}: ${JSON.stringify(value)}`).join("; ");
+        if(!changes)return {error:"Укажите изменения условий"};
+        const summary=`Изменить условия аренды ${input.bookingId}: ${changes}. Будущие платежи пересчитаются, полученные деньги и предоплаты сохранятся.`;
+        ctx.propose({tool:"updateRentalContract",summary,input});return {proposed:true,summary};
+      },
+    }),
+    proposeCancelRentalContract: tool({
+      description:"Предложить отменить бронь РМ и убрать будущие неоплаченные платежи графика. Полученные деньги, частичные платежи и графики предоплат сохраняются для расчёта. Требует подтверждения администратора.",
+      inputSchema:z.object({bookingId:z.string().uuid()}),
+      execute:async input=>{const {crmAccess}=await import("@/lib/crm-results.server");await crmAccess();const summary=`Отменить бронь ${input.bookingId}, убрать будущие неоплаченные платежи графика и сохранить полученные суммы, частичные оплаты и предоплаты`;ctx.propose({tool:"cancelRentalContract",summary,input});return {proposed:true,summary};},
+    }),
     proposeRentalSchedule: tool({
       description:
-        "Предложить сформировать ежемесячную аренду клиента с текущего месяца до конца договора (до 36 месяцев), с привязкой к объекту и счёту. Даты сегодня/в прошлом автоматически считаются проведёнными. Только после подтверждения администратора.",
+        "Подключить автоматический график аренды к существующей брони и счёту. Будущие платежи до конца договора (до 20 лет) синхронизируются при следующих изменениях брони. Историю не достраивает. Только после подтверждения администратора.",
       inputSchema: z.object({ bookingId: z.string().uuid(), account: z.string().trim().min(1) }),
       execute: async (input) => {
         const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
         await ownerFinanceAdminClient();
-        const summary = `Сформировать график аренды ${input.bookingId} на счёт «${input.account}». Даты сегодня и в прошлом станут фактом, будущие останутся планом. До 36 месяцев, без дублей.`;
+        const summary = `Подключить автоматический график аренды ${input.bookingId} на счёт «${input.account}». Платежи с сегодняшней даты до конца договора, без дублей; будущие изменения брони обновляют график автоматически. История и предоплаты сохраняются.`;
         ctx.propose({ tool: "createRentalSchedule", summary, input });
         return { proposed: true, summary };
       },
@@ -1250,7 +1267,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (source.error || !source.data) return { error: "Счёт не найден" };
         const usage = await client.rpc("finance_account_usage", { p_id: input.id });
         if (usage.error || !usage.data) return { error: usage.error?.message ?? "Не удалось проверить счёт" };
-        const used = usage.data.payments > 0 || usage.data.deals > 0;
+        const used = usage.data.payments > 0 || usage.data.deals > 0 || (usage.data.schedules ?? 0) > 0;
         if (used && !input.transferTo) return { error: "Выберите другой счёт для переноса истории операций и связанных сделок" };
         let targetName = "";
         if (input.transferTo) {
@@ -1259,7 +1276,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
           if (!target.data) return { error: "Для переноса выберите действующий счёт" };
           targetName = target.data.name;
         }
-        const summary = `Удалить счёт «${source.data.name}» без восстановления${used ? `; перенести ${usage.data.payments} операций и ${usage.data.deals} связанных сделок на «${targetName}», сохранив суммы и даты` : "; связанных операций и сделок нет"}`;
+        const summary = `Удалить счёт «${source.data.name}» без восстановления${used ? `; перенести ${usage.data.payments} операций и ${usage.data.deals} связанных сделок и ${usage.data.schedules ?? 0} графиков аренды на «${targetName}», сохранив суммы и даты` : "; связанных операций и сделок нет"}`;
         ctx.propose({ tool: "deleteFinanceAccount", summary, input });
         return { proposed: true, summary };
       },
