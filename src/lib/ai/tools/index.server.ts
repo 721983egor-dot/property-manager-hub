@@ -1,3 +1,4 @@
+// Статьи компании: getFinanceAnalytics/getFinanceObjects выделяют комиссию из аренды; listFinanceCatalog + подтверждённый proposeSaveFinanceArticle → saveFinanceArticle, аудит существующих таблиц.
 // Предоплата: getRentalInstallments; proposeRentalInstallments → createRentalInstallments (подтверждение администратора, аудит).
 // Company/client finance: getFinanceWorkspace; confirmed proposeRentalOwnerSettings, proposeRentalReceipt, proposeRentalSchedule, proposeRefreshRentalSettlements.
 // CRM commission: proposeDealWon -> closeDealWon atomically creates booking and dated one-time/seasonal monthly company income; getCrmResults returns commission plan/actual and separate rental turnover.

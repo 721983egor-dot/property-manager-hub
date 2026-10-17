@@ -18,7 +18,7 @@ const p = (patch: Partial<Payment> = {}): Payment =>
     amount: 100,
     direction: "in",
     status: "paid",
-    kind: "rent_in",
+    kind: "other",
     planned_date: "2026-09-15",
     paid_at: "2026-10-02",
     paid_amount: null,
@@ -144,4 +144,163 @@ test("category plan/fact retains cash from plans outside the selected month", ()
   assert.equal(group?.fact, 100);
   assert.equal(group?.planEntries.length, 1);
   assert.equal(group?.cashEntries.length, 1);
+});
+
+test("rental advance and balance recognize fee once; transit stays in cash only", () => {
+  const cat: FinanceCatalog = {
+    categories: [
+      {
+        id: "income",
+        name: "Доходы компании",
+        direction: "in",
+        position: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ],
+    articles: [
+      {
+        id: "fee",
+        name: "Комиссия компании",
+        direction: "in",
+        category_id: "income",
+        code: "company_commission",
+        affects_profit: true,
+        position: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ],
+  };
+  const advance = p({
+    id: "advance",
+    amount: 150000,
+    planned_date: "2026-10-14",
+    paid_at: null,
+    kind: "rent_in",
+    rental_component: "rent",
+    company_fee: 100000,
+    booking_id: "b",
+    rental_period: "2026-10-01",
+  });
+  const all = [
+    advance,
+    p({
+      id: "balance",
+      amount: 750000,
+      planned_date: "2026-10-19",
+      paid_at: null,
+      status: "expected",
+      kind: "rent_in",
+      rental_component: "rent",
+      company_fee: 0,
+      booking_id: "b",
+      rental_period: "2026-10-01",
+    }),
+    p({
+      id: "deposit",
+      amount: 500000,
+      planned_date: "2026-10-19",
+      paid_at: null,
+      kind: "deposit_in",
+      status: "expected",
+    }),
+    p({
+      id: "owner",
+      amount: 800000,
+      planned_date: "2026-10-19",
+      paid_at: null,
+      kind: "owner_payout",
+      direction: "out",
+      status: "partial",
+      paid_amount: 0,
+    }),
+    p({
+      id: "ku",
+      amount: 2500,
+      planned_date: "2026-10-14",
+      paid_at: null,
+      rental_component: "utilities",
+      company_fee: 0,
+    }),
+    p({
+      id: "advert",
+      amount: 2000,
+      planned_date: "2026-10-14",
+      paid_at: null,
+      direction: "out",
+      kind: "agency_cost",
+    }),
+    p({
+      id: "legacy",
+      amount: 100000,
+      planned_date: "2026-10-19",
+      paid_at: null,
+      booking_id: "b",
+      management_period: "2026-10-01",
+    }),
+  ];
+  const profit = entries(all, "profit", cat);
+  assert.deepEqual(entryTotals(profit), { income: 100000, expense: 2000, net: 98000, margin: 98 });
+  assert.equal(profit[0]!.article, "Комиссия компании");
+  assert.equal(profit[0]!.category, "Доходы компании");
+  assert.equal(profit[0]!.payment, advance, "editing allocation opens original 150000 receipt");
+  assert.equal(
+    entryTotals(entries(all, "cash", cat)).income,
+    152500,
+    "actual advance plus KU, no duplicate fee",
+  );
+  assert.equal(
+    entryTotals(entries(all, "plan", cat)).income,
+    1402500,
+    "gross rent + deposit + KU, no legacy duplicate",
+  );
+  assert.equal(entries(all, "profit", cat, "another-object").length, 0);
+  assert.equal(
+    entryTotals(entries([advance], "profit")).income,
+    100000,
+    "works without catalog during rollout",
+  );
+  assert.equal(
+    entries([p({ kind: "rent_in", planned_date: "2026-10-14" })], "profit").length,
+    0,
+    "unknown commission is not guessed",
+  );
+});
+
+test("transit article policy excludes KU remittance and deposit return from company profit", () => {
+  const cat: FinanceCatalog = {
+    categories: [],
+    articles: [
+      {
+        id: "ku-out",
+        name: "Перечисление КУ собственнику",
+        code: "utilities_out",
+        direction: "out",
+        category_id: null,
+        affects_profit: false,
+        position: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ],
+  };
+  const all = [
+    p({
+      id: "ku-out",
+      amount: 2500,
+      direction: "out",
+      planned_date: "2026-10-14",
+      article_id: "ku-out",
+    }),
+    p({
+      id: "deposit-return",
+      amount: 500000,
+      direction: "out",
+      planned_date: "2026-10-14",
+      kind: "deposit_out",
+    }),
+  ];
+  assert.equal(entries(all, "profit", cat).length, 0);
+  assert.equal(entryTotals(entries(all, "cash", cat)).expense, 502500);
 });

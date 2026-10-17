@@ -105,4 +105,27 @@ assert.equal((await db.query("SELECT count(*) n FROM activity_log WHERE table_na
 await db.query("SELECT set_config('test.user','',false)");
 await assert.rejects(db.query('SELECT finance_create_rental_installments($1,$2,$3,$4,$5,$6,$7,$8,$9)',args),/администратор/);
 console.log('PASS: two-stage 900k rent, 150k advance, upfront fee 100k, 750k remaining, 50k then 800k owner debt, replay, immutable contract amounts/links, admin guard and audit');
+// Catalog migration must preserve every financial amount and fee allocation.
+await db.exec(`CREATE TYPE payment_direction AS ENUM ('in','out');
+CREATE TABLE finance_article_categories(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,direction payment_direction,position int,created_at timestamptz DEFAULT now());
+ALTER TABLE finance_articles ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE finance_articles ADD COLUMN name text,ADD COLUMN direction payment_direction,ADD COLUMN category_id uuid REFERENCES finance_article_categories,ADD COLUMN position int,ADD COLUMN cash_flow_type text,ADD COLUMN created_at timestamptz DEFAULT now();
+CREATE UNIQUE INDEX article_code_test ON finance_articles(code) WHERE code IS NOT NULL;
+CREATE TRIGGER log_finance_articles AFTER INSERT OR UPDATE OR DELETE ON finance_articles FOR EACH ROW EXECUTE FUNCTION log_activity();
+CREATE TRIGGER log_finance_article_categories AFTER INSERT OR UPDATE OR DELETE ON finance_article_categories FOR EACH ROW EXECUTE FUNCTION log_activity();`);
+const beforeArticles=(await db.query('SELECT id,amount,company_fee,planned_date,status FROM payments ORDER BY id')).rows;
+const articlesMigration=await fs.readFile('supabase/migrations/20261017140000_company_finance_articles.sql','utf8');
+await db.exec(articlesMigration);
+assert.deepEqual((await db.query('SELECT id,amount,company_fee,planned_date,status FROM payments ORDER BY id')).rows,beforeArticles);
+await db.exec(articlesMigration);
+assert.equal((await db.query('SELECT count(*) n FROM finance_articles')).rows[0].n,11,'catalog replay no duplicates');
+assert.equal((await db.query("SELECT count(*) n FROM finance_articles WHERE code IN ('rent_in','utilities_in','utilities_out','deposit_in','deposit_out','owner_payout') AND affects_profit=false")).rows[0].n,6);
+assert.equal((await db.query("SELECT count(*) n FROM finance_articles WHERE code='company_commission' AND affects_profit=true")).rows[0].n,1);
+await db.query("UPDATE payments SET comment='article mapping only' WHERE id=$1",[advanceId]);
+assert.equal((await db.query('SELECT a.code FROM payments p JOIN finance_articles a ON a.id=p.article_id WHERE p.id=$1',[advanceId])).rows[0].code,'rent_in');
+assert.equal(Number((await db.query('SELECT company_fee FROM payments WHERE id=$1',[advanceId])).rows[0].company_fee),100000);
+await db.query("INSERT INTO payments(id,planned_date,amount,direction,status,kind) VALUES($1,$2,500000,'in','expected','deposit_in')",[id(500),nextMonth]);
+assert.equal((await db.query('SELECT a.code FROM payments p JOIN finance_articles a ON a.id=p.article_id WHERE p.id=$1',[id(500)])).rows[0].code,'deposit_in');
+assert.ok((await db.query("SELECT count(*) n FROM activity_log WHERE table_name='finance_articles'")).rows[0].n>=11);
+console.log('PASS: article policies, idempotent seed, untouched payment history, installment fee unchanged, automatic deposit/rent article, catalog audit');
 await db.close();

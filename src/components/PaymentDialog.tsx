@@ -224,6 +224,15 @@ export function PaymentDialog({
   const articles = catalog?.articles;
   const categories = catalog?.categories;
   const articleList = useMemo(() => articles ?? [], [articles]);
+  const rentalArticleCode =
+    form.rental_component === "rent"
+      ? "rent_in"
+      : form.rental_component === "utilities"
+        ? "utilities_in"
+        : form.rental_component === "deposit"
+          ? "deposit_in"
+          : null;
+  const rentalArticle = articleList.find((a) => a.code === rentalArticleCode);
   const categoryList = useMemo(() => categories ?? [], [categories]);
   const { data: counterparties = [] } = useQuery({
     queryKey: ["finance-counterparties"],
@@ -362,7 +371,7 @@ export function PaymentDialog({
                 : selectedArticle
                   ? kindFromArticle(selectedArticle)
                   : form.kind,
-        article_id: form.article_id || null,
+        article_id: rentalArticle?.id ?? (form.article_id || null),
         property_id: form.rental_component ? rental!.property_id : form.property_id || null,
         client_id: form.rental_component ? rental!.client_id : (payment?.client_id ?? null),
         booking_id: form.rental_component ? rental!.id : (payment?.booking_id ?? null),
@@ -626,7 +635,8 @@ export function PaymentDialog({
           </Field>
           <Field label="Статья">
             <Select
-              value={form.article_id || ""}
+              value={rentalArticle?.id ?? (form.article_id || "")}
+              disabled={!!form.rental_component}
               onValueChange={(v) => {
                 if (v === "__none__") {
                   setForm((p) => ({ ...p, article_id: "" }));
@@ -657,6 +667,12 @@ export function PaymentDialog({
                 ))}
               </SelectContent>
             </Select>
+            {!!form.rental_component && (
+              <p className="text-xs text-muted-foreground">
+                Статья определяется назначением платежа. Комиссия из аренды выделяется
+                автоматически.
+              </p>
+            )}
           </Field>
           <Field label="Дата">
             <Input

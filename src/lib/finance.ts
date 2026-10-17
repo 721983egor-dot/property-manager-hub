@@ -79,6 +79,7 @@ export type Payment = {
   } | null;
   client: { id: string; full_name: string; phone: string } | null;
   article: {
+    affects_profit?: boolean;
     id: string;
     name: string;
     category_id: string | null;
@@ -111,7 +112,7 @@ export type PaymentInput = {
 };
 
 const PAYMENT_SELECT =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, finance_article_categories(id, name))";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
 const PAYMENT_SELECT_LEGACY =
   "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
@@ -148,6 +149,9 @@ function mapArticleJoin(row: Record<string, unknown>): Payment["article"] {
     category_id: (raw["category_id"] as string | null) ?? null,
     category_name: cat ? String(cat["name"] ?? "") : null,
     code: (raw["code"] as string | null) ?? null,
+    ...(typeof raw["affects_profit"] === "boolean"
+      ? { affects_profit: raw["affects_profit"] }
+      : {}),
   };
 }
 

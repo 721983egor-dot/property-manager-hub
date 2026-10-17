@@ -24,7 +24,7 @@ const p = (patch: Partial<Payment> = {}): Payment =>
     direction: "in",
     status: "paid",
     paid_amount: null,
-    kind: "rent_in",
+    kind: "other",
     planned_date: "2026-10-02",
     paid_at: "2026-10-02",
     accrual_date: null,

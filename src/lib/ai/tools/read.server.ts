@@ -2271,7 +2271,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
         const client = await ownerFinanceAdminClient();
         const result = await allFinancePages((from, to) => {
-          let q = client.from("payments").select("*").order("id").range(from, to);
+          let q = client.from("payments").select("*, finance_articles(id,name,code,category_id,affects_profit)").order("id").range(from, to);
           if (propertyId) q = q.eq("property_id", propertyId);
           return q;
         });
@@ -2291,7 +2291,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         if (rentals.error) return { error: rentals.error.message };
         const { companySummary, companyPayments, clientPayments, ownerRentalIncome } =
           await import("@/lib/finance-company-model");
-        const rows = result.data as unknown as Payment[];
+        const rows = (result.data ?? []).map(p => ({...p, article:p.finance_articles})) as unknown as Payment[];
         const end = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0))
           .toISOString()
           .slice(0, 10);
@@ -2399,7 +2399,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getFinanceAnalytics: tool({
-      description: "Расширенные отчёты всех движений (не основной экран компании; для него getFinanceWorkspace): ДДС по оплатам, прибыль по начислениям (депозиты и исключённые статьи не входят), план/факт, категории, объекты РМ ОС, текущая задолженность. Долги не являются историческим срезом на дату. По датам оплаты без полной истории частичных взносов доступны агрегированные суммы операций.",
+      description: "Расширенные отчёты всех движений (не основной экран компании; для него getFinanceWorkspace): ДДС по оплатам, прибыль компании по начислениям (из связанной аренды только комиссия; деньги собственника, КУ, депозиты и исключённые статьи не входят), план/факт, категории, объекты РМ ОС, текущая задолженность. Долги не являются историческим срезом на дату. По датам оплаты без полной истории частичных взносов доступны агрегированные суммы операций.",
       inputSchema: z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),propertyId:z.string().optional()}),
       execute: async ({from,to,propertyId}) => {
         if(from>to) return {error:"Дата начала позже окончания"};
@@ -2658,7 +2658,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     listFinanceCatalog: tool({
       description:
-        "Справочник статей и категорий Финансов: приход/расход. Категории — группы для отчётов, статьи выбираются в форме операции.",
+        "Справочник статей и категорий Финансов: приход/расход. Категории — группы для отчётов, статьи выбираются в форме операции. Предоплата и остаток — этапы аренды, комиссия выделяется из неё автоматически; отдельный приход комиссии не создавать.",
       inputSchema: z.object({
         direction: z.enum(["in", "out", "all"]).optional(),
       }),

@@ -3,6 +3,7 @@ import type { Payment } from "./finance.ts";
 import type { FinanceCatalog } from "./finance-articles-model.ts";
 import type { FinanceObligation } from "./finance-counterparties.ts";
 import { obligationCash } from "./finance-counterparty-model.ts";
+import { reportPayments } from "./finance-report-payments.ts";
 
 export type ReportBasis = "cash" | "profit" | "plan";
 export type ReportEntry = {
@@ -29,7 +30,8 @@ export function reportEntries(
   propertyId = "all",
 ): ReportEntry[] {
   const entries: ReportEntry[] = [];
-  for (const p of payments) {
+  const originals = new Map(payments.map((p) => [p.id, p]));
+  for (const p of reportPayments(payments, catalog, basis === "profit")) {
     if (
       propertyId !== "all" &&
       (propertyId === "none" ? !!p.property_id : p.property_id !== propertyId)
@@ -55,7 +57,8 @@ export function reportEntries(
       article?.cash_flow_type ??
       (["deposit_in", "deposit_out"].includes(p.kind) ? "financing" : "operating");
     entries.push({
-      payment: p,
+      // Drill-down must edit the original full receipt, never the commission allocation.
+      payment: originals.get(p.id.replace(/^company:/, "")) ?? p,
       date,
       amount,
       category,

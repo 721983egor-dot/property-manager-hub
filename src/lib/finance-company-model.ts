@@ -85,6 +85,7 @@ export function companyPayments(rows: Payment[]): Payment[] {
       ["rent_in", "owner_payout", "deposit_in", "deposit_out"].includes(p.kind)
     )
       return [];
+    if (p.article?.affects_profit === false || p.article?.code === "utilities_out") return [];
     return [p];
   });
 }
