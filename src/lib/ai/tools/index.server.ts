@@ -1,3 +1,4 @@
+// Lease documents: getLeaseContext; proposePrepareLease, proposeSaveClientPassport, proposeLeaseCompany, proposeLeaseTemplate; encrypted confirmed executors.
 // Единая бронь → финансы: getRentalContract; подтверждённые proposeUpdateRentalContract → updateRentalContract и proposeCancelRentalContract → cancelRentalContract, аудит брони/графика/платежей.
 // Статьи компании: getFinanceAnalytics/getFinanceObjects выделяют комиссию из аренды; listFinanceCatalog + подтверждённый proposeSaveFinanceArticle → saveFinanceArticle, аудит существующих таблиц.
 // Предоплата: getRentalInstallments; proposeRentalInstallments → createRentalInstallments (подтверждение администратора, аудит).

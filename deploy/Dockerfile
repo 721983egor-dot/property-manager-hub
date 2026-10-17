@@ -26,12 +26,13 @@ FROM node:22-alpine
 # Use the official regional Alpine mirror verified from the deployment host; package signatures stay enabled.
 # Keep bounded retries for transient network failures.
 RUN sed -i 's~https://dl-cdn.alpinelinux.org/alpine~https://mirror.yandex.ru/mirrors/alpine~g' /etc/apk/repositories \
-    && for attempt in 1 2 3; do apk --timeout 30 add --no-cache ffmpeg && exit 0; done; exit 1
+    && for attempt in 1 2 3; do apk --timeout 30 add --no-cache ffmpeg tesseract-ocr tesseract-ocr-data-rus tesseract-ocr-data-eng && exit 0; done; exit 1
 
 WORKDIR /app
 
 COPY --from=builder /app/.output ./.output
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/assets/lease-fonts ./assets/lease-fonts
 COPY --from=builder /app/public/video-watermark.png ./public/video-watermark.png
 COPY --from=builder /app/public/photo-watermark.png ./public/photo-watermark.png
 

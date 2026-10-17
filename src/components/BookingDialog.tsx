@@ -1,3 +1,4 @@
+import { LeaseDocumentsButton } from "@/components/LeaseDocuments";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
@@ -334,6 +335,7 @@ export function BookingDialog({
               : "Выберите объект и клиента"}
           </DialogDescription>
         </DialogHeader>
+        {booking && isAdmin && booking.stay_kind === "long_term" && <LeaseDocumentsButton bookingId={booking.id} />}
 
         {mode === "view" && booking ? (
           <div className="space-y-4">

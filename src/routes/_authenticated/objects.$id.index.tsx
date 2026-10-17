@@ -1,3 +1,4 @@
+import { LeaseDocumentsButton } from "@/components/LeaseDocuments";
 import { ClientOnly, createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -184,6 +185,7 @@ function ObjectViewPage() {
             )}
           </section>
 
+          {isAdmin && data.portfolio === "rm" && <LeaseDocumentsButton propertyId={id} />}
           <BookingDialog
             open={bookingOpen}
             onOpenChange={setBookingOpen}

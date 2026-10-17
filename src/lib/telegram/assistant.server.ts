@@ -27,6 +27,10 @@ type TgMessage = {
   voice?: TgFile;
   audio?: TgFile;
   video_note?: TgFile;
+  media_group_id?: string;
+  reply_to_message?: { message_id: number };
+  photo?: TgFile[];
+  document?: TgFile & { mime_type?: string; file_name?: string };
 };
 /** Медиа, заранее скачанное telegram-poller (обход нестабильного fetch к api.telegram.org из Node). */
 export type RmOsMedia = {
@@ -221,7 +225,7 @@ async function runAssistant(messages: AssistantChatMessage[]) {
 
 async function storeProposal(action: AssistantAction, chatId: number, telegramUserId: number) {
   const input = JSON.parse(action.input || "{}");
-  if (["createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(action.tool)) {
+  if (["prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(action.tool)) {
     await reminderAccount(telegramUserId, chatId);
     input._telegramChatId = chatId;
     input._telegramUserId = telegramUserId;
@@ -367,6 +371,26 @@ async function handleMessage(message: TgMessage, preloaded?: RmOsMedia) {
     return;
   }
 
+  const image = message.photo?.at(-1) ?? (message.document?.mime_type?.startsWith("image/") ? message.document : undefined);
+  if (image) {
+    try {
+      const bound=await reminderAccount(from.id,chatId);
+      if ((image.file_size??0)>10*1024*1024) throw new Error("Пришлите фото до 10 МБ");
+      await sendChatAction(chatId);
+      const bytes=preloaded?.file_id===image.file_id ? Buffer.from(preloaded.base64,"base64") : Buffer.from((await downloadFile(image.file_id)).bytes);
+      const {recognizePassport}=await import("@/lib/lease/passport.server");
+      const recognized=await recognizePassport(bytes,message.document?.mime_type || "image/jpeg");
+      const {storePassportDraft}=await import("@/lib/lease/service.server");
+      const draft=await storePassportDraft(bound.user_id,chatId,recognized.identity,message.media_group_id || "message:"+(message.reply_to_message?.message_id || message.message_id));
+      const safe=`Паспорт обработан локально. Имя арендатора: ${draft.identity.full_name || "уточнить"}. passportDraftId=${draft.id}. Недостающие поля: ${draft.missing.join(", ")||"нет"}. ${rawText}`;
+      await saveMessage(chatId,"user",safe);
+      if (rawText && !/^паспорт[.! ]*$/i.test(rawText)) await sendAssistantReply(chatId,await loadHistory(chatId),from.id);
+      else await sendMessage(chatId,"Фото обработано, данные пока в закрытом черновике. Паспорт и регистрацию лучше присылать одним альбомом. Затем напишите объект и условия аренды — подготовлю договор для подтверждения.");
+    } catch(e){await sendMessage(chatId,(e as Error).message);}
+    return;
+  }
+  if (message.document) { await sendMessage(chatId,"Паспорт отправьте фотографиями JPG/PNG, по одной странице. Шаблон Word можно загрузить в РМ ОС во вкладке договора."); return; }
+
   const audio = message.voice ?? message.audio ?? message.video_note;
   let userText = rawText;
 
@@ -475,7 +499,7 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       await answerCallbackQuery(query.id, "Предложение не найдено");
       return;
     }
-    if (["createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(target.tool_name)) {
+    if (["prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(target.tool_name)) {
       const owner = target.input as Record<string, unknown>;
       try { await reminderAccount(query.from.id, chatId); } catch { await answerCallbackQuery(query.id, "Нет доступа"); return; }
       if (owner["_telegramUserId"] !== query.from.id || owner["_telegramChatId"] !== chatId) {
@@ -556,7 +580,7 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       await answerCallbackQuery(query.id, "Уже обработано");
       return;
     }
-    if (["importRentalFromDisk", "createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(proposal.tool_name)) {
+    if (["importRentalFromDisk", "prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake"].includes(proposal.tool_name)) {
       const { data: claimed, error } = await supabaseAdmin
         .from("ai_action_proposals")
         .update({ status: "executing", confirmed_at: new Date().toISOString() })

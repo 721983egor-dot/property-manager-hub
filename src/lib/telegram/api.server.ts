@@ -144,3 +144,11 @@ export async function webhookSecret(): Promise<string> {
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
+
+/** Sends the generated lease only to the confirmed requester's private chat. */
+export async function sendLeaseDocument(chatId:number,bytes:Uint8Array,filename:string){
+ const form=new FormData();form.set('chat_id',String(chatId));form.set('document',new Blob([new Uint8Array(bytes)]),filename);
+ const response=await telegramFetch(`${TELEGRAM_API_URL}/bot${botToken()}/sendDocument`,{method:'POST',body:form});
+ if(!response.ok)throw new Error('Договор сохранён в брони, но Telegram не принял файл. Скачайте его в РМ ОС');
+ const result=await response.json() as {ok:boolean};if(!result.ok)throw new Error('Не удалось отправить документ в Telegram');
+}

@@ -1,3 +1,4 @@
+import { leaseReadTools } from "@/lib/lease/tools.server";
 import { buildFinanceCalendar, paymentCashDate } from "@/lib/finance-calendar-model";
 import { effectivePaymentStatus, financeToday, paymentFactAmount } from "@/lib/finance-payment-status";
 import {objectFinanceSummary,filterFinanceObjects} from "@/lib/finance-object-model";
@@ -134,6 +135,7 @@ export function createReadTools(ctx: AssistantToolContext) {
   };
 
   return {
+    ...leaseReadTools(ctx),
     getCrmResults: tool({
       description: "CRM: в режиме won также возвращает commission: план и факт дохода компании по датам платежей, включая ранее закрытые договоры; оборот аренды отдельно, сезонные цены учтены. Обращения по дате создания и исходному источнику, успешные по дате закрытия и площадке сделки, проваленные по причинам. Даты YYYY-MM-DD по Москве; пустые даты = всё время. Только администратор.",
       inputSchema: z.object({pipeline:z.enum(["rental","intake"]),mode:z.enum(["inquiries","won","lost"]),from:z.string(),to:z.string()}),

@@ -25,6 +25,9 @@ async function logAction(summary: string, tool: string, input: Input) {
 
 /** Исполнители подтверждённых действий Ассистента. Ключ = поле `tool` предложения. */
 export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
+  prepareLease: async input => {const s=await import("@/lib/lease/service.server");return s.executeLeasePreparation(input);},
+  saveClientPassport: async input => {const s=await import("@/lib/lease/service.server");return s.executeSavePassport(input);},
+  saveLeaseSetting: async input => {const s=await import("@/lib/lease/service.server");return s.executeLeaseSetting(input);},
   createReminder: async (input) => { const { createReminder } = await import("@/lib/reminders/service.server"); return createReminder(input); },
   manageReminder: async (input) => { const { manageReminderProposal } = await import("@/lib/reminders/service.server"); return manageReminderProposal(input); },
   importRentalFromDisk: async (input) => {

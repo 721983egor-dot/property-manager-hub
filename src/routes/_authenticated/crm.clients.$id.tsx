@@ -1,3 +1,4 @@
+import { ClientIdentityButton } from "@/components/LeaseDocuments";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
@@ -204,7 +205,8 @@ function ClientPage() {
             </Button>
             {isAdmin ? (
               <>
-                <Button onClick={() => setEditOpen(true)}>Редактировать</Button>
+                <ClientIdentityButton clientId={id} />
+              <Button onClick={() => setEditOpen(true)}>Редактировать</Button>
                 <Button
                   variant="destructive"
                   disabled={remove.isPending}

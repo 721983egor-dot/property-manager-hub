@@ -23,6 +23,8 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as ServiceRouteImport } from './routes/service'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedLeasesRouteImport } from './routes/_authenticated/leases'
+import { Route as ApiLeaseDocumentsRouteImport } from './routes/api/lease-documents'
 import { Route as ApiPhotoUploadRouteImport } from './routes/api/photo-upload'
 import { Route as ApiSocialMediaUploadRouteImport } from './routes/api/social-media-upload'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
@@ -168,6 +170,16 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLeasesRoute = AuthenticatedLeasesRouteImport.update({
+  id: '/leases',
+  path: '/leases',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiLeaseDocumentsRoute = ApiLeaseDocumentsRouteImport.update({
+  id: '/api/lease-documents',
+  path: '/api/lease-documents',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPhotoUploadRoute = ApiPhotoUploadRouteImport.update({
   id: '/api/photo-upload',
@@ -615,6 +627,8 @@ export interface FileRoutesByFullPath {
   '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/leases': typeof AuthenticatedLeasesRoute
+  '/api/lease-documents': typeof ApiLeaseDocumentsRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -704,6 +718,8 @@ export interface FileRoutesByTo {
   '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/leases': typeof AuthenticatedLeasesRoute
+  '/api/lease-documents': typeof ApiLeaseDocumentsRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -797,6 +813,8 @@ export interface FileRoutesById {
   '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/leases': typeof AuthenticatedLeasesRoute
+  '/api/lease-documents': typeof ApiLeaseDocumentsRoute
   '/api/photo-upload': typeof ApiPhotoUploadRoute
   '/api/social-media-upload': typeof ApiSocialMediaUploadRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -890,6 +908,8 @@ export interface FileRouteTypes {
     | '/service'
     | '/sitemap.xml'
     | '/calendar'
+    | '/leases'
+    | '/api/lease-documents'
     | '/api/photo-upload'
     | '/api/social-media-upload'
     | '/blog/$slug'
@@ -979,6 +999,8 @@ export interface FileRouteTypes {
     | '/service'
     | '/sitemap.xml'
     | '/calendar'
+    | '/leases'
+    | '/api/lease-documents'
     | '/api/photo-upload'
     | '/api/social-media-upload'
     | '/blog/$slug'
@@ -1071,6 +1093,8 @@ export interface FileRouteTypes {
     | '/service'
     | '/sitemap.xml'
     | '/_authenticated/calendar'
+    | '/_authenticated/leases'
+    | '/api/lease-documents'
     | '/api/photo-upload'
     | '/api/social-media-upload'
     | '/blog/$slug'
@@ -1163,6 +1187,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   ServiceRoute: typeof ServiceRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiLeaseDocumentsRoute: typeof ApiLeaseDocumentsRoute
   ApiPhotoUploadRoute: typeof ApiPhotoUploadRoute
   ApiSocialMediaUploadRoute: typeof ApiSocialMediaUploadRoute
   PCodeRoute: typeof PCodeRoute
@@ -1284,6 +1309,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/calendar'
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/leases': {
+      id: '/_authenticated/leases'
+      path: '/leases'
+      fullPath: '/leases'
+      preLoaderRoute: typeof AuthenticatedLeasesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/lease-documents': {
+      id: '/api/lease-documents'
+      path: '/api/lease-documents'
+      fullPath: '/api/lease-documents'
+      preLoaderRoute: typeof ApiLeaseDocumentsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/photo-upload': {
       id: '/api/photo-upload'
@@ -1822,6 +1861,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedLeasesRoute: typeof AuthenticatedLeasesRoute
   AuthenticatedComplexesNewRoute: typeof AuthenticatedComplexesNewRoute
   AuthenticatedFinanceCalendarRoute: typeof AuthenticatedFinanceCalendarRoute
   AuthenticatedFinanceOwnersRoute: typeof AuthenticatedFinanceOwnersRoute
@@ -1876,6 +1916,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedLeasesRoute: AuthenticatedLeasesRoute,
   AuthenticatedComplexesNewRoute: AuthenticatedComplexesNewRoute,
   AuthenticatedFinanceCalendarRoute: AuthenticatedFinanceCalendarRoute,
   AuthenticatedFinanceOwnersRoute: AuthenticatedFinanceOwnersRoute,
@@ -1979,6 +2020,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   ServiceRoute: ServiceRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiLeaseDocumentsRoute: ApiLeaseDocumentsRoute,
   ApiPhotoUploadRoute: ApiPhotoUploadRoute,
   ApiSocialMediaUploadRoute: ApiSocialMediaUploadRoute,
   PCodeRoute: PCodeRoute,

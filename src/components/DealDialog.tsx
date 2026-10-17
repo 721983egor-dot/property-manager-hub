@@ -1,3 +1,4 @@
+import { LeaseDocumentsButton } from "@/components/LeaseDocuments";
 import { DealLostDialog } from "@/components/DealLostDialog";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -561,6 +562,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           </div>
 
           <DialogFooter>
+            {deal && isAdmin && <LeaseDocumentsButton dealId={deal.id} />}
             <Button
               onClick={() => {
                 setPendingClose(null);

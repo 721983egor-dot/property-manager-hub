@@ -84,6 +84,10 @@ def attach_media(upd: dict) -> None:
     if not isinstance(msg, dict):
         return
     media = msg.get("voice") or msg.get("audio") or msg.get("video_note")
+    if not media:
+        photos = msg.get("photo") or []
+        document = msg.get("document") or {}
+        media = photos[-1] if photos else (document if str(document.get("mime_type", "")).startswith("image/") else None)
     if not isinstance(media, dict):
         return
     file_id = media.get("file_id")
