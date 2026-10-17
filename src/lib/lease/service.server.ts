@@ -118,7 +118,7 @@ export async function leaseContext(
       .neq("status", "cancelled")
       .order("start_date", { ascending: false })
       .limit(100);
-    if (clientId) q = q.eq("client_id", clientId);
+    if (params.dealId && clientId) q = q.eq("client_id", clientId);
     bookings = check(await q).data ?? [];
   }
   let draft = null,
@@ -127,7 +127,10 @@ export async function leaseContext(
     const d = check(
       await db.from("lease_drafts").select("cipher").eq("booking_id", bookingId).maybeSingle(),
     );
-    draft = d.data ? unseal(d.data.cipher, "draft:" + bookingId) : null;
+    const saved = d.data
+      ? unseal<LeaseInput & { savedClientId?: string }>(d.data.cipher, "draft:" + bookingId)
+      : null;
+    draft = saved?.savedClientId === clientId ? saved : null;
     documents =
       check(
         await db
@@ -177,13 +180,16 @@ export async function readLeaseIdentity(actor: string, clientId: string) {
   return identity(clientId);
 }
 export async function saveLeaseDraft(actor: string, input: unknown) {
-  const p = input as { bookingId: string };
+  const p = leaseInputSchema.parse(input);
   if (!p.bookingId) throw new Error("Сначала выберите бронь");
-  check(await db.from("bookings").select("id").eq("id", p.bookingId).single());
+  const booking = check(
+    await db.from("bookings").select("id,client_id").eq("id", p.bookingId).single(),
+  ).data;
+  if (!booking) throw new Error("Бронь не найдена");
   check(
     await db.from("lease_drafts").upsert({
       booking_id: p.bookingId,
-      cipher: seal(input, "draft:" + p.bookingId),
+      cipher: seal({ ...p, savedClientId: booking.client_id }, "draft:" + p.bookingId),
       updated_at: new Date().toISOString(),
     }),
   );
