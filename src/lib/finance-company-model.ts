@@ -4,6 +4,46 @@ import { paymentCashDate } from "./finance-calendar-model.ts";
 const money = (n: number) => Math.round(n * 100) / 100;
 export const paymentPeriod = (p: Payment) =>
   (p.rental_period ?? p.management_period ?? p.planned_date).slice(0, 7);
+
+/** Earned from received rent for the rental period, independently of owner transfers.
+ * Utilities are reimbursements, never rental income. Unknown fees stay unallocated. */
+export function ownerRentalIncome(
+  rows: Payment[],
+  month: string,
+  propertyId?: string,
+  today = financeToday(),
+) {
+  let rent = 0,
+    commission = 0,
+    utilities = 0,
+    unallocatedRent = 0;
+  for (const p of rows) {
+    if (
+      p.direction !== "in" ||
+      paymentPeriod(p) !== month ||
+      (propertyId && p.property_id !== propertyId)
+    )
+      continue;
+    const fact = paymentFactAmount(p, today);
+    if (fact <= 0) continue;
+    if (p.rental_component === "utilities") utilities += fact;
+    else if (p.rental_component === "rent") {
+      if (p.company_fee == null || p.amount <= 0) unallocatedRent += fact;
+      else {
+        rent += fact;
+        commission += (fact * p.company_fee) / p.amount;
+      }
+    } else if (p.kind === "rent_in") unallocatedRent += fact;
+  }
+  return {
+    rent: money(rent),
+    commission: money(commission),
+    netRent: money(rent - commission),
+    utilities: money(utilities),
+    total: money(rent - commission + utilities),
+    unallocatedRent: money(unallocatedRent),
+  };
+}
 /** Legacy monthly commission is already contained in a linked gross receipt. Upfront fees remain separate. */
 export function bankPayments(rows: Payment[]) {
   const gross = new Set(

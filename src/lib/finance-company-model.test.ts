@@ -191,3 +191,60 @@ test("compatibility owner plan with zero actual amount is planned/overdue, not p
   assert.equal(effectivePaymentStatus(pending, "2026-10-16"), "overdue");
   assert.equal(paymentFactAmount(pending, "2026-10-16"), 0);
 });
+
+test("owner rental income excludes KU, company costs and transfers, and scopes by object and rental period", async () => {
+  const { ownerRentalIncome } = await import("./finance-company-model.ts");
+  const payments = [
+    ...rows,
+    p("other-object", 500000, {
+      property_id: "other",
+      rental_component: "rent",
+      company_fee: 50000,
+    }),
+    p("next-period", 200000, {
+      rental_period: "2026-11-01",
+      rental_component: "rent",
+      company_fee: 20000,
+    }),
+    p("owner", 40000, { direction: "out", kind: "owner_payout" }),
+    p("deposit", 50000, { kind: "deposit_in" }),
+  ];
+  assert.deepEqual(ownerRentalIncome(payments, "2026-10", "o", "2026-10-17"), {
+    rent: 100000,
+    commission: 10000,
+    netRent: 90000,
+    utilities: 2500,
+    total: 92500,
+    unallocatedRent: 0,
+  });
+  assert.equal(ownerRentalIncome(payments, "2026-10", undefined, "2026-10-17").netRent, 540000);
+});
+
+test("owner income uses received part only and never guesses an unknown fee", async () => {
+  const { ownerRentalIncome } = await import("./finance-company-model.ts");
+  const payments = [
+    p("partial", 100000, {
+      rental_component: "rent",
+      company_fee: 10000,
+      status: "partial",
+      paid_amount: 40000,
+    }),
+    p("unknown", 50000, { rental_component: "rent", company_fee: null }),
+    p("legacy", 30000, { kind: "rent_in" }),
+    p("zero", 0, { rental_component: "rent", company_fee: 0 }),
+    p("future", 100000, {
+      rental_component: "rent",
+      company_fee: 10000,
+      status: "expected",
+      planned_date: "2026-10-25",
+    }),
+  ];
+  assert.deepEqual(ownerRentalIncome(payments, "2026-10", "o", "2026-10-17"), {
+    rent: 40000,
+    commission: 4000,
+    netRent: 36000,
+    utilities: 0,
+    total: 36000,
+    unallocatedRent: 80000,
+  });
+});

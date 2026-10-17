@@ -2276,7 +2276,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           return q;
         });
         if (rentals.error) return { error: rentals.error.message };
-        const { companySummary, companyPayments, clientPayments } =
+        const { companySummary, companyPayments, clientPayments, ownerRentalIncome } =
           await import("@/lib/finance-company-model");
         const rows = result.data as unknown as Payment[];
         const end = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0))
@@ -2288,6 +2288,9 @@ export function createReadTools(ctx: AssistantToolContext) {
         return {
           month,
           company: companySummary(rows, month + "-01", end),
+          ownerRentalIncome: ownerRentalIncome(rows, month),
+          ownerIncomeBasis:
+            "Полученная аренда за период после комиссии, до прочих расходов собственника; КУ отдельно, неизвестная комиссия — unallocatedRent",
           balanceBasis: "Только внесённые операции; начальные остатки из календаря не включены",
           rentals: rentals.data.slice(0, 200),
           operations: ops
@@ -2306,7 +2309,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getOwnerSettlements: tool({
-      description:"Расчёты с собственниками: дата выплаты, выплачено, остаток долга, просрочка. Только администратору в РМ ОС.",
+      description:"Расчёты с собственниками: доход от полученной аренды после комиссии (без КУ, до прочих расходов), КУ отдельно, дата выплаты, выплачено, остаток долга, просрочка. Только администратору в РМ ОС.",
       inputSchema:z.object({propertyId:z.string().uuid().optional()}),execute:async({propertyId})=>{
         const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();
         let query=client.from("finance_owner_settlements").select("id,property_id,period,obligation_id").order("period",{ascending:false});if(propertyId)query=query.eq("property_id",propertyId);
@@ -2314,8 +2317,9 @@ export function createReadTools(ctx: AssistantToolContext) {
         const obligations=await allFinancePages((start,end)=>client.from("finance_obligations").select("*").order("id").range(start,end));
         const payments=await allFinancePages((start,end)=>client.from("payments").select("*").order("id").range(start,end));
         if(obligations.error||payments.error)return {error:obligations.error?.message??payments.error?.message};
+        const {ownerRentalIncome}=await import("@/lib/finance-company-model");
         const {ownerSettlementState}=await import("@/lib/finance-owner-model");const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Moscow"}).format(new Date());
-        return {settlements:settlements.data.map(s=>{const o=obligations.data.find(o=>o.id===s.obligation_id);return {...s,obligation:o,state:o?ownerSettlementState(o as unknown as FinanceObligation,payments.data as unknown as Payment[],today):null};})};
+        return {settlements:settlements.data.map(s=>{const o=obligations.data.find(o=>o.id===s.obligation_id);return {...s,obligation:o,rentalIncome:ownerRentalIncome(payments.data as unknown as Payment[],s.period.slice(0,7),s.property_id,today),state:o?ownerSettlementState(o as unknown as FinanceObligation,payments.data as unknown as Payment[],today):null};})};
       },
     }),
     listFinanceAccounts: tool({

@@ -19,6 +19,9 @@ import {
 } from "@/lib/finance";
 import { financeToday, paymentFactAmount } from "@/lib/finance-payment-status";
 import {
+  bankPayments,
+  ownerForecastPayments,
+  ownerRentalIncome,
   companyPayments,
   companySummary,
   clientPayments,
@@ -48,13 +51,33 @@ const periodLabel = (date: string) =>
     year: "numeric",
     timeZone: "Europe/Moscow",
   });
-export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?: string }) {
+export function FinanceWorkspacePage({
+  mode,
+  clientId: routeClientId,
+  embedded,
+  scope,
+  onBack,
+  onOwners,
+}: {
+  mode: Mode;
+  clientId?: string | undefined;
+  embedded?: boolean;
+  onBack?: () => void;
+  onOwners?: () => void;
+  scope?: { month: string; property: string };
+}) {
   const today = useFinanceToday(),
     qc = useQueryClient();
-  const [month, setMonth] = useState(today.slice(0, 7)),
-    [property, setProperty] = useState("all"),
+  const [localMonth, setMonth] = useState(today.slice(0, 7)),
+    [localProperty, setProperty] = useState("all"),
     [query, setQuery] = useState(""),
     [showHistory, setShowHistory] = useState(false);
+  const month = scope?.month ?? localMonth;
+  const property = scope?.property ?? localProperty;
+  const [detail, setDetail] = useState<"company" | "all" | "clients" | "owners">("all");
+  const [inlineClient, setInlineClient] = useState<string>();
+  const clientId = routeClientId ?? inlineClient;
+  const [operationDate, setOperationDate] = useState("");
   const [editing, setEditing] = useState<Payment | null>(null),
     [adding, setAdding] = useState<{
       booking?: string;
@@ -107,8 +130,8 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
   const refreshRef = useRef(refresh.mutate);
   refreshRef.current = refresh.mutate;
   useEffect(() => {
-    refreshRef.current();
-  }, [today]);
+    if (!embedded) refreshRef.current();
+  }, [today, embedded]);
   const [schedule, setSchedule] = useState<{ booking: string; account: string } | null>(null);
   const generate = useMutation({
     mutationFn: () => createRentalSchedule(schedule!.booking, schedule!.account),
@@ -136,7 +159,21 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
       Number(month.slice(5, 7)) - 1,
       today,
     );
-  const currentCompany = company.filter((p) => p.planned_date.startsWith(month));
+  const bank = [
+    ...bankPayments(source),
+    ...ownerForecastPayments(source, cfg, settlements.data ?? []),
+  ];
+  const bankCalendar = buildFinanceCalendar(
+    bank,
+    Number(month.slice(0, 4)),
+    Number(month.slice(5, 7)) - 1,
+    today,
+  );
+  const visiblePayments = (detail === "company" ? company : bank).filter(
+    (p) =>
+      p.planned_date.startsWith(month) &&
+      (!operationDate.startsWith(month) || p.planned_date === operationDate),
+  );
   const error = [payments, rentals, properties, settings, parties, obligations, settlements].find(
     (q) => q.error,
   )?.error;
@@ -144,19 +181,21 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
     (q) => q.isPending,
   );
   const title =
-    mode === "company"
-      ? "Деньги компании"
-      : mode === "owners"
-        ? "Расчёты с собственниками"
-        : "Клиенты";
+    mode === "company" ? "Финансы" : mode === "owners" ? "Расчёты с собственниками" : "Клиенты";
   const ownerRows = (settlements.data ?? [])
     .filter((s) => s.period.startsWith(month) && (property === "all" || s.property_id === property))
     .flatMap((s) => {
       const o = obligations.data?.find((o) => o.id === s.obligation_id);
       return o ? [{ ...s, obligation: o, state: ownerSettlementState(o, rows, today) }] : [];
     });
+  const ownerIncome = ownerRentalIncome(source, month, undefined, today);
   const selected = ownerRows.find((s) => s.id === selectedSettlement) ?? ownerRows[0];
-  const clientBooks = books.filter((b) => b.client_id === clientId);
+  const selectedIncome = selected
+    ? ownerRentalIncome(rows, selected.period.slice(0, 7), selected.property_id, today)
+    : null;
+  const clientBooks = books.filter(
+    (b) => b.client_id === clientId && (property === "all" || b.property_id === property),
+  );
   const client = clientBooks.find((b) => b.clients)?.clients;
   const received = clientId ? clientPayments(source, clientId) : [];
   const inMonth = received.filter((p) => paymentPeriod(p) === month);
@@ -184,6 +223,12 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
     return p ? financePropertyLabel(p) : "Объект";
   };
   const openPayment = (p: Payment) => {
+    if (p.id.startsWith("owner-forecast:")) {
+      toast.info(
+        "Прогноз выплаты по графику аренды. После поступления денег появится расчёт для подтверждения перевода.",
+      );
+      return;
+    }
     if (p.id.startsWith("company:"))
       toast.info("Комиссия — часть аренды. Открыто исходное поступление клиента.");
     if (p.rental_component === "owner_plan") {
@@ -194,55 +239,63 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
     setEditing(rows.find((x) => x.id === p.id.replace(/^company:/, "")) ?? p);
   };
   return (
-    <div className="fw">
-      <div className="fw-head">
-        <div>
-          <h1>{title}</h1>
-          <p>
-            {mode === "company"
-              ? "Доходы, расходы и результат вашей работы"
-              : mode === "owners"
-                ? "Начисления, выплаты и задолженность по объектам"
-                : "Аренда и платежи после заключения договора"}
-          </p>
-        </div>
-        {refresh.isPending && <p>Обновляем расчёты…</p>}
-      </div>
-      <FinanceTabs active={mode === "company" ? "dashboard" : mode} />
-      <div className="fw-tools">
-        <div className="flex gap-3 flex-wrap">
-          <input
-            type="month"
-            aria-label="Месяц финансов"
-            value={month}
-            onChange={(e) => e.target.value && setMonth(e.target.value)}
-          />
-          <select
-            aria-label="Объект финансов"
-            value={property}
-            onChange={(e) => setProperty(e.target.value)}
-          >
-            <option value="all">Все объекты</option>
-            {props.map((p) => (
-              <option key={p.id} value={p.id}>
-                {financePropertyLabel(p)}
-              </option>
-            ))}
-          </select>
-        </div>
-        {mode === "company" ? (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setAdding({ direction: "in" })}>
-              + Доход компании
-            </Button>
-            <Button onClick={() => setAdding({ direction: "out" })}>− Расход компании</Button>
+    <div className={embedded ? "fw-embedded" : "fw"}>
+      {!embedded && (
+        <>
+          <div className="fw-head">
+            <div>
+              <h1>{title}</h1>
+              <p>
+                {mode === "company"
+                  ? "Общий график, деньги компании, клиенты и выплаты собственникам"
+                  : mode === "owners"
+                    ? "Начисления, выплаты и задолженность по объектам"
+                    : "Аренда и платежи после заключения договора"}
+              </p>
+            </div>
+            {refresh.isPending && <p>Обновляем расчёты…</p>}
           </div>
-        ) : (
-          <Button variant="outline" disabled={refresh.isPending} onClick={() => refresh.mutate()}>
-            Обновить расчёты
-          </Button>
-        )}
-      </div>
+          <FinanceTabs active={mode === "company" ? "dashboard" : mode} />
+          <div className="fw-tools">
+            <div className="flex gap-3 flex-wrap">
+              <input
+                type="month"
+                aria-label="Месяц финансов"
+                value={month}
+                onChange={(e) => e.target.value && setMonth(e.target.value)}
+              />
+              <select
+                aria-label="Объект финансов"
+                value={property}
+                onChange={(e) => setProperty(e.target.value)}
+              >
+                <option value="all">Все объекты</option>
+                {props.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {financePropertyLabel(p)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {mode === "company" ? (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setAdding({ direction: "in" })}>
+                  + Доход компании
+                </Button>
+                <Button onClick={() => setAdding({ direction: "out" })}>− Расход компании</Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                disabled={refresh.isPending}
+                onClick={() => refresh.mutate()}
+              >
+                Обновить расчёты
+              </Button>
+            )}
+          </div>
+        </>
+      )}
       {refresh.error && (
         <div className="fw-error" role="alert">
           Не удалось обновить выплаты: {refresh.error.message}.{" "}
@@ -293,7 +346,9 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                 <span>
                   Деньги компании <b>{money(summary.available)}</b>
                 </span>
-                <Link to="/finance/calendar">Все движения →</Link>
+                <button className="fw-link" onClick={() => setDetail("all")}>
+                  Все движения ↓
+                </button>
               </div>
               <p className="mb-4">
                 Остатки рассчитаны по внесённым операциям. Начальные остатки счетов из календаря
@@ -303,29 +358,111 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                 <div className="fw-notice">
                   Не распределено арендных платежей: {summary.unallocated}. Привяжите их к аренде
                   клиента и укажите комиссию — пока вся их сумма зарезервирована, в доход компании
-                  она не попадает. <Link to="/finance/clients">Открыть клиентов →</Link>
+                  она не попадает.{" "}
+                  <button className="fw-link" onClick={() => setDetail("clients")}>
+                    Открыть клиентов ↓
+                  </button>
                 </div>
               )}
               <PaymentAccountsChart
-                title="Деньги компании по дням"
-                ledger={calendar.ledger}
-                chart={calendar.chart}
+                title="Все деньги и результат компании"
+                ledger={bankCalendar.ledger}
+                chart={bankCalendar.chart}
+                companyChart={calendar.chart}
                 today={today}
               />
-              <div className="fw-panel">
-                <h2>Операции компании</h2>
-                <PaymentTable payments={currentCompany} onOpen={openPayment} />
-                {!currentCompany.length && (
-                  <p className="mt-5">В выбранном месяце операций компании нет.</p>
-                )}
+              <p className="mb-4">
+                Синий — все деньги, включая аренду, КУ, депозиты и выплаты собственникам. Зелёный —
+                накопленные доходы минус расходы компании, без денег собственников и депозитов.
+              </p>
+              <div className="fw-section-switch" aria-label="Детали финансов">
+                {(
+                  [
+                    ["all", "Все операции"],
+                    ["company", "Только компания"],
+                    ["clients", "Клиенты"],
+                    ["owners", "Выплаты собственникам"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    variant={detail === value ? "default" : "outline"}
+                    aria-pressed={detail === value}
+                    onClick={() => setDetail(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
+              {detail === "owners" || detail === "clients" ? (
+                <FinanceWorkspacePage
+                  key={detail}
+                  mode={detail}
+                  onBack={() => setInlineClient(undefined)}
+                  onOwners={() => setDetail("owners")}
+                  clientId={detail === "clients" ? inlineClient : undefined}
+                  embedded
+                  scope={{ month, property }}
+                />
+              ) : (
+                <div className="fw-panel">
+                  <div className="fw-panel-head">
+                    <h2>{detail === "company" ? "Операции компании" : "Все операции"}</h2>
+                    <label className="text-sm">
+                      Дата{" "}
+                      <input
+                        type="date"
+                        aria-label="Дата операций"
+                        min={month + "-01"}
+                        max={end}
+                        value={operationDate.startsWith(month) ? operationDate : ""}
+                        onChange={(e) => setOperationDate(e.target.value)}
+                      />
+                    </label>
+                    {operationDate && (
+                      <Button variant="ghost" onClick={() => setOperationDate("")}>
+                        Весь месяц
+                      </Button>
+                    )}
+                  </div>
+                  <PaymentTable
+                    payments={visiblePayments}
+                    onOpen={openPayment}
+                    onClient={(id) => {
+                      setDetail("clients");
+                      setInlineClient(id);
+                    }}
+                  />
+                  {!visiblePayments.length && (
+                    <p className="mt-5">За выбранный период операций нет.</p>
+                  )}
+                  <p className="mt-4">
+                    Платежи с пометкой «Бронь» связаны с договором аренды. Остальные — отдельные
+                    операции, расчёты и прогнозы выплат.{" "}
+                    <Link to="/finance/calendar" className="fw-link">
+                      Открыть сетку календаря →
+                    </Link>
+                  </p>
+                </div>
+              )}
             </>
           )}
           {mode === "owners" && (
             <>
               <div className="fw-metrics">
                 <Metric
-                  label="Начислено собственникам"
+                  label="Доход собственников от аренды"
+                  amount={ownerIncome.netRent}
+                  positive
+                  note="Полученная аренда после комиссии, без КУ"
+                />
+                <Metric
+                  label="Получено КУ"
+                  amount={ownerIncome.utilities}
+                  note="Возмещение КУ — отдельно от дохода"
+                />
+                <Metric
+                  label="Начислено к переводу"
                   amount={ownerRows.reduce((s, r) => s + r.obligation.amount, 0)}
                   note="Аренда после комиссии + КУ"
                 />
@@ -333,6 +470,13 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                   label="Уже перечислено"
                   amount={ownerRows.reduce((s, r) => s + r.state.paid, 0)}
                   note="По расчётам выбранного месяца"
+                />
+                <Metric
+                  label="Осталось выплатить"
+                  amount={ownerRows
+                    .filter((r) => r.obligation.status === "open")
+                    .reduce((s, r) => s + r.state.remaining, 0)}
+                  note="Включая выплаты, срок которых ещё не наступил"
                 />
                 <Metric
                   label="Просрочено собственникам"
@@ -343,6 +487,12 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                   note="После даты выплаты, без подтверждения перевода"
                 />
               </div>
+              {ownerIncome.unallocatedRent > 0 && (
+                <div className="fw-notice">
+                  Аренда без распределения: {money(ownerIncome.unallocatedRent)}. Укажите привязку к
+                  брони и комиссию — до этого доход собственника по этим платежам не определён.
+                </div>
+              )}
               <div className="fw-panel">
                 <h2>Собственники и выплаты</h2>
                 <div className="fw-table-wrap">
@@ -351,6 +501,8 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                       <tr>
                         <th>СОБСТВЕННИК</th>
                         <th>ОБЪЕКТ / ПЕРИОД</th>
+                        <th className="fw-right">ДОХОД ОТ АРЕНДЫ</th>
+                        <th className="fw-right">КУ</th>
                         <th>ДАТА ВЫПЛАТЫ</th>
                         <th>СТАТУС</th>
                         <th className="fw-right">ОСТАЛОСЬ</th>
@@ -376,6 +528,18 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                           <td>
                             {propertyName(r.property_id)}
                             <small>{periodLabel(r.period)}</small>
+                          </td>
+                          <td className="fw-right">
+                            {money(
+                              ownerRentalIncome(rows, r.period.slice(0, 7), r.property_id, today)
+                                .netRent,
+                            )}
+                          </td>
+                          <td className="fw-right">
+                            {money(
+                              ownerRentalIncome(rows, r.period.slice(0, 7), r.property_id, today)
+                                .utilities,
+                            )}
                           </td>
                           <td>{r.obligation.planned_date}</td>
                           <td>
@@ -415,54 +579,35 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                 <div className="fw-split">
                   <div className="fw-panel">
                     <h2>Расчёт выплаты · {propertyName(selected.property_id)}</h2>
-                    {(
-                      [
-                        ["Аренда от клиентов", "rent"],
-                        ["КУ от клиентов", "utilities"],
-                      ] as const
-                    ).map(([label, component]) => (
-                      <div className="fw-calc" key={component}>
-                        <span>{label}</span>
-                        <b>
-                          {money(
-                            rows
-                              .filter(
-                                (p) =>
-                                  p.property_id === selected.property_id &&
-                                  p.rental_period === selected.period &&
-                                  p.rental_component === component,
-                              )
-                              .reduce((s, p) => s + paymentFactAmount(p, today), 0),
-                          )}
-                        </b>
-                      </div>
-                    ))}
+                    <div className="fw-calc">
+                      <span>Полученная аренда с известной комиссией</span>
+                      <b>{money(selectedIncome!.rent)}</b>
+                    </div>
                     <div className="fw-calc">
                       <span>Комиссия компании</span>
-                      <b>
-                        −
-                        {money(
-                          rows
-                            .filter(
-                              (p) =>
-                                p.property_id === selected.property_id &&
-                                p.rental_period === selected.period &&
-                                p.rental_component === "rent",
-                            )
-                            .reduce(
-                              (s, p) =>
-                                s + (p.company_fee ?? 0) * (paymentFactAmount(p, today) / p.amount),
-                              0,
-                            ),
-                        )}
-                      </b>
+                      <b>−{money(selectedIncome!.commission)}</b>
                     </div>
+                    <div className="fw-calc fw-total">
+                      <span>Доход собственника от аренды</span>
+                      <span>{money(selectedIncome!.netRent)}</span>
+                    </div>
+                    <div className="fw-calc">
+                      <span>КУ · отдельно от дохода</span>
+                      <b>{money(selectedIncome!.utilities)}</b>
+                    </div>
+                    {selectedIncome!.unallocatedRent > 0 && (
+                      <div className="fw-notice">
+                        Не распределено аренды: {money(selectedIncome!.unallocatedRent)}. Доход по
+                        ней пока не определён.
+                      </div>
+                    )}
                     <div className="fw-calc fw-total">
                       <span>Начислено собственнику</span>
                       <span>{money(selected.obligation.amount)}</span>
                     </div>
                     <p>
-                      КУ перечисляются полностью, комиссия удерживается только с аренды.
+                      Доход показан по полученной аренде после комиссии, до прочих расходов
+                      собственника. КУ перечисляются полностью и в доход не включены.
                       {!selected.automatic &&
                         " Это ранее созданный ручной расчёт; автоматический пересчёт его не изменяет."}
                     </p>
@@ -501,7 +646,10 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
               )}
               {rows.some(
                 (p) =>
-                  p.kind === "owner_payout" && !p.obligation_id && p.planned_date.startsWith(month),
+                  p.kind === "owner_payout" &&
+                  !p.obligation_id &&
+                  p.planned_date.startsWith(month) &&
+                  (property === "all" || p.property_id === property),
               ) && (
                 <div className="fw-notice">
                   Есть выплаты собственникам без привязки к расчёту. По этим объектам автоматическое
@@ -569,9 +717,9 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                         return (
                           <tr key={id}>
                             <td>
-                              <Link to="/finance/clients/$id" params={{ id }}>
+                              <button className="fw-link" onClick={() => setInlineClient(id)}>
                                 {c.full_name}
-                              </Link>
+                              </button>
                               <small>{c.phone}</small>
                             </td>
                             <td>
@@ -590,9 +738,9 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                                 : "График не сформирован"}
                             </td>
                             <td>
-                              <Link to="/finance/clients/$id" params={{ id }}>
+                              <button className="fw-link" onClick={() => setInlineClient(id)}>
                                 Открыть →
-                              </Link>
+                              </button>
                             </td>
                           </tr>
                         );
@@ -610,9 +758,21 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
           )}
           {mode === "clients" && clientId && (
             <>
-              <Link to="/finance/clients" className="fw-link">
-                ← Все клиенты
-              </Link>
+              {routeClientId && !embedded ? (
+                <Link to="/finance/clients" className="fw-link">
+                  ← Все клиенты
+                </Link>
+              ) : (
+                <button
+                  className="fw-link"
+                  onClick={() => {
+                    setInlineClient(undefined);
+                    onBack?.();
+                  }}
+                >
+                  ← Все клиенты
+                </button>
+              )}
               {!client ? (
                 <div className="fw-panel mt-5">
                   <p>Клиент с оформленной арендой не найден.</p>
@@ -742,9 +902,15 @@ export function FinanceWorkspacePage({ mode, clientId }: { mode: Mode; clientId?
                     </div>
                     <p>
                       Состояние перевода собственнику смотрите в{" "}
-                      <Link to="/finance/owners" className="fw-link">
-                        расчётах с собственниками →
-                      </Link>
+                      {onOwners ? (
+                        <button className="fw-link" onClick={onOwners}>
+                          расчётах с собственниками ↓
+                        </button>
+                      ) : (
+                        <Link to="/finance/owners" className="fw-link">
+                          расчётах с собственниками →
+                        </Link>
+                      )}
                     </p>
                   </div>
                 </>
@@ -853,7 +1019,15 @@ function Metric({
     </div>
   );
 }
-function PaymentTable({ payments, onOpen }: { payments: Payment[]; onOpen: (p: Payment) => void }) {
+function PaymentTable({
+  payments,
+  onOpen,
+  onClient,
+}: {
+  payments: Payment[];
+  onOpen: (p: Payment) => void;
+  onClient?: (id: string) => void;
+}) {
   const today = financeToday();
   return (
     <div className="fw-table-wrap">
@@ -879,14 +1053,29 @@ function PaymentTable({ payments, onOpen }: { payments: Payment[]; onOpen: (p: P
                     ? "Коммунальные услуги"
                     : (p.article?.name ?? kindLabel(p.kind))}
                 <small>{p.comment}</small>
+                <small>
+                  {p.booking_id
+                    ? `Бронь · ${paymentPeriod(p)}`
+                    : p.id.startsWith("owner-forecast:")
+                      ? "Прогноз по графику аренды"
+                      : p.obligation_id
+                        ? "Расчёт с собственником"
+                        : "Отдельная операция"}
+                </small>
               </td>
               <td>
                 {p.property ? financePropertyLabel(p.property) : "Компания"}
                 {p.client_id && (
                   <small>
-                    <Link to="/finance/clients/$id" params={{ id: p.client_id }}>
-                      {p.client?.full_name ?? p.counterparty_name}
-                    </Link>
+                    {onClient ? (
+                      <button className="fw-link" onClick={() => onClient(p.client_id!)}>
+                        {p.client?.full_name ?? p.counterparty_name}
+                      </button>
+                    ) : (
+                      <Link to="/finance/clients/$id" params={{ id: p.client_id }}>
+                        {p.client?.full_name ?? p.counterparty_name}
+                      </Link>
+                    )}
                   </small>
                 )}
               </td>

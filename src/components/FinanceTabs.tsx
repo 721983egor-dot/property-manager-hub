@@ -2,7 +2,7 @@ import "./finance-ui.css";
 import { Link } from "@tanstack/react-router";
 
 const ITEMS = [
-  { to: "/finance", label: "Компания", active: "dashboard" },
+  { to: "/finance", label: "Обзор финансов", active: "dashboard" },
   { to: "/finance/owners", label: "Собственники", active: "owners" },
   { to: "/finance/clients", label: "Клиенты", active: "clients" },
   { to: "/finance/calendar", label: "Все движения", active: "calendar" },
@@ -28,24 +28,49 @@ export function FinanceTabs({
   return (
     <div className="finance-nav mt-6 border-b border-border">
       <div className="flex gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap sm:gap-2">
-        {ITEMS.map((item) => {
-          const isActive = item.active === active;
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              activeOptions={{ exact: item.active === "dashboard" }}
-              className={
-                "-mb-px border-b-2 px-3 pb-3 text-sm font-medium transition-colors " +
-                (isActive
-                  ? "border-[#383838] text-[#383838]"
-                  : "border-transparent text-muted-foreground hover:text-foreground")
-              }
-            >
-              {item.label}
-            </Link>
-          );
-        })}
+        {ITEMS.filter((item) => item.active === "dashboard" || item.active === "calendar").map(
+          (item) => {
+            const isActive = item.active === active;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                activeOptions={{ exact: item.active === "dashboard" }}
+                className={
+                  "-mb-px border-b-2 px-3 pb-3 text-sm font-medium transition-colors " +
+                  (isActive
+                    ? "border-[#383838] text-[#383838]"
+                    : "border-transparent text-muted-foreground hover:text-foreground")
+                }
+              >
+                {item.label}
+              </Link>
+            );
+          },
+        )}
+        <details className="relative pb-3 text-sm">
+          <summary className="cursor-pointer px-3 font-medium">
+            Разделы и настройки
+            {active !== "dashboard" && active !== "calendar"
+              ? ` · ${ITEMS.find((item) => item.active === active)?.label}`
+              : ""}
+          </summary>
+          <div className="mt-3 flex flex-wrap gap-3 px-3">
+            {ITEMS.filter((item) => item.active !== "dashboard" && item.active !== "calendar").map(
+              (item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={
+                    active === item.active ? "font-semibold underline" : "text-muted-foreground"
+                  }
+                >
+                  {item.label}
+                </Link>
+              ),
+            )}
+          </div>
+        </details>
       </div>
     </div>
   );

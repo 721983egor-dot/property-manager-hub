@@ -1,5 +1,5 @@
 import type { CalendarCashPoint } from "@/lib/finance-calendar-model";
-import { useId } from "react";
+import { useId, useState } from "react";
 import {
   Area,
   ComposedChart,
@@ -17,15 +17,29 @@ export default function PaymentAccountsChart({
   title = "Деньги на счетах",
   chart: chartData,
   today,
+  companyChart,
 }: {
+  companyChart?: CalendarCashPoint[];
   title?: string;
   ledger: DayMoneyLedger[];
   chart: CalendarCashPoint[];
   today: string;
 }) {
   const id = useId().replace(/:/g, "");
+  const [showBank, setShowBank] = useState(true);
+  const [showCompany, setShowCompany] = useState(true);
+  const companyByDate = new Map(companyChart?.map((point) => [point.date, point]));
+  const data = chartData.map((point) => ({
+    ...point,
+    companyActual: companyByDate.get(point.date)?.actual,
+    companyPlan: companyByDate.get(point.date)?.balance,
+  }));
   const opening = ledger[0]?.opening ?? 0;
-  const values = [opening, ...chartData.flatMap((d) => [d.balance, d.actual ?? 0])];
+  const values = [
+    ...(showBank ? [opening] : []),
+    ...(showBank ? chartData.flatMap((d) => [d.balance, d.actual ?? 0]) : []),
+    ...(showCompany ? (companyChart ?? []).flatMap((d) => [d.balance, d.actual ?? 0]) : []),
+  ];
   const min = Math.min(0, ...values);
   const max = Math.max(0, ...values);
   const extent = max - min || 1000;
@@ -51,27 +65,46 @@ export default function PaymentAccountsChart({
   const zeroActual = strokeZero(chartData.flatMap((d) => (d.actual === null ? [] : [d.actual])));
 
   return (
-    <section
-      className="finance-accounts-chart"
-      aria-label="Деньги на счетах — прогноз остатка по дням"
-    >
+    <section className="finance-accounts-chart" aria-label={title}>
       <h2>{title}</h2>
+      {companyChart && (
+        <div className="mb-3 flex flex-wrap gap-5 text-sm">
+          <label>
+            <input
+              type="checkbox"
+              checked={showBank}
+              disabled={!showCompany}
+              onChange={(e) => setShowBank(e.target.checked)}
+            />{" "}
+            Все деньги на счетах · синий
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={showCompany}
+              disabled={!showBank}
+              onChange={(e) => setShowCompany(e.target.checked)}
+            />{" "}
+            Доходы минус расходы компании · зелёный
+          </label>
+        </div>
+      )}
       <div
         className="mb-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500"
         aria-label="Обозначения линий"
       >
         <span className="inline-flex items-center gap-2">
           <span className="inline-block w-7 border-t-[3px] border-blue-600" />
-          Фактический остаток
+          Факт
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="inline-block w-7 border-t-2 border-dashed border-slate-500" />
-          План с учётом доходов и расходов
+          Прогноз с учётом доходов и расходов
         </span>
       </div>
       <div className="finance-accounts-plot">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 26, right: 12, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 26, right: 12, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#c2eee6" stopOpacity={0.5} />
@@ -114,12 +147,24 @@ export default function PaymentAccountsChart({
             <Tooltip
               formatter={(value: number, name: string) => [
                 formatAdeskMoney(value),
-                name === "actual" ? "Фактический остаток" : "Плановый остаток",
+                companyChart
+                  ? ((
+                      {
+                        actual: "Все деньги · факт",
+                        balance: "Все деньги · прогноз",
+                        companyActual: "Компания · факт",
+                        companyPlan: "Компания · прогноз",
+                      } as Record<string, string>
+                    )[name] ?? name)
+                  : name === "actual"
+                    ? "Фактический остаток"
+                    : "Плановый остаток",
               ]}
               labelFormatter={(label) => formatFinanceDate(String(label))}
               contentStyle={{ border: "1px solid #e5e5e5", borderRadius: 3, fontSize: 13 }}
             />
             <Area
+              hide={!showBank}
               type="monotone"
               dataKey="balance"
               baseValue={0}
@@ -137,6 +182,7 @@ export default function PaymentAccountsChart({
               />
             )}
             <Line
+              hide={!showBank}
               type="monotone"
               dataKey="balance"
               stroke={
@@ -148,6 +194,26 @@ export default function PaymentAccountsChart({
               isAnimationActive={false}
             />
             <Line
+              hide={!companyChart || !showCompany}
+              type="monotone"
+              dataKey="companyPlan"
+              stroke="#22845b"
+              strokeWidth={1.8}
+              strokeDasharray="6 4"
+              dot={false}
+              isAnimationActive={false}
+            />
+            <Line
+              hide={!companyChart || !showCompany}
+              type="monotone"
+              dataKey="companyActual"
+              stroke="#22845b"
+              strokeWidth={2.6}
+              dot={false}
+              isAnimationActive={false}
+            />
+            <Line
+              hide={!showBank}
               type="monotone"
               dataKey="actual"
               stroke={
