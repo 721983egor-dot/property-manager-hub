@@ -12,8 +12,16 @@ export function parsePassportText(text: string): Partial<Identity> {
       .split(/[.\-/]/)
       .reverse()
       .join("-");
-  const get = (label: string) =>
-    clean.match(new RegExp(label + "[ :\\t]*([^\\n]+)", "i"))?.[1]?.trim();
+  const get = (label: string) => {
+    const rest = clean.match(new RegExp(label + "[ :\\t]*([^\\n]*)(?:\\r?\\n([^\\n]+))?", "i"));
+    const value = rest?.[1]?.trim() || rest?.[2]?.trim();
+    return value &&
+      !/^(Фамилия|Имя|Отчество|Дата рождения|Дата выдачи|Кем выдан|Место рождения|Адрес регистрации|Место жительства|Код подразделения)(?:\s|:|$)/i.test(
+        value,
+      )
+      ? value
+      : undefined;
+  };
   const series =
     clean.match(/\b(\d{2})[ \t]+(\d{2})[ \t]+(\d{6})\b/) ??
     clean.match(/\b(\d{2})(\d{2})[ \t]+(\d{6})\b/);
@@ -33,7 +41,7 @@ export function parsePassportText(text: string): Partial<Identity> {
     name = get("Имя"),
     patronymic = get("Отчество");
   if (surname && name) p.full_name = [surname, name, patronymic].filter(Boolean).join(" ");
-  const issuedBy = get("Кем выдан");
+  const issuedBy = get("Кем выдан") || get("Паспорт выдан");
   if (issuedBy) p.issued_by = issuedBy;
   const place = get("Место рождения");
   if (place) p.birth_place = place;

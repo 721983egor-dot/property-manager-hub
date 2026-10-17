@@ -562,7 +562,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
           </div>
 
           <DialogFooter>
-            {deal && isAdmin && <LeaseDocumentsButton dealId={deal.id} />}
+            {deal && isAdmin && deal.pipeline === "rental" && <LeaseDocumentsButton dealId={deal.id} />}
             <Button
               onClick={() => {
                 setPendingClose(null);

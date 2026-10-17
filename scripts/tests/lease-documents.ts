@@ -157,6 +157,11 @@ test("passport OCR parser uses labelled evidence and never guesses missing field
   assert.equal(p.birth_date, "1990-01-01");
   assert.equal(p.registration, undefined);
   assert.deepEqual(parsePassportText("Квартира с кошкой"), {});
+  assert.equal(parsePassportText("Фамилия\nИмя\nПРИМЕР").full_name, undefined);
+  assert.equal(
+    parsePassportText("Фамилия\nТЕСТОВ\nИмя\nПРИМЕР\nОтчество\nПРИМЕРОВИЧ").full_name,
+    "ТЕСТОВ ПРИМЕР ПРИМЕРОВИЧ",
+  );
 });
 test("render actual PDF and DOCX files for visual QA", async () => {
   const files = await renderLeaseFiles(sample);
