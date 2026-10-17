@@ -69,6 +69,8 @@ export function companyPayments(rows: Payment[]): Payment[] {
         {
           ...p,
           id: `company:${p.id}`,
+          rental_stage: null,
+          rental_installment_id: null,
           amount: p.company_fee,
           paid_amount: p.paid_amount == null ? null : money(p.paid_amount * ratio),
           kind: "other" as const,
@@ -189,6 +191,8 @@ export function ownerForecastPayments(
     result.push({
       ...first,
       id: `owner-forecast:${key}`,
+      rental_stage: null,
+      rental_installment_id: null,
       planned_date: `${month}-${String(day).padStart(2, "0")}`,
       amount: remaining,
       status: "expected",

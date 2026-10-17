@@ -324,3 +324,22 @@ test("planned 500k insurance deposit stays separate from rent, owner income and 
   assert.equal(after.available, 100000);
   assert.equal(ownerRentalIncome(pair, "2026-10", "o", "2026-10-19").netRent, 800000);
 });
+
+test("derived owner forecasts and company allocations never inherit the prepayment label", async () => {
+  const { ownerForecastPayments } = await import("./finance-company-model.ts");
+  const receipt = p("advance", 150000, {
+    kind: "rent_in",
+    rental_component: "rent",
+    company_fee: 100000,
+    rental_stage: "prepayment",
+    rental_installment_id: "g",
+  });
+  const forecast = ownerForecastPayments(
+    [receipt],
+    [{ property_id: "o", owner_counterparty_id: "owner", payout_day: 19 }],
+    [],
+  )[0]!;
+  assert.equal(forecast.rental_stage, null);
+  assert.equal(forecast.rental_installment_id, null);
+  assert.equal(companyPayments([receipt])[0]?.rental_stage, null);
+});
