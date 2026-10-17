@@ -64,12 +64,12 @@ type Props = {
   defaultAmount?: number | undefined;
   defaultBookingId?: string | undefined;
   defaultCompany?: boolean | undefined;
-  defaultRentalComponent?: "rent" | "utilities" | undefined;
+  defaultRentalComponent?: "rent" | "utilities" | "deposit" | undefined;
 };
 
 type FormState = {
   booking_id: string;
-  rental_component: "" | "rent" | "utilities";
+  rental_component: "" | "rent" | "utilities" | "deposit";
   planned_date: string;
   amount: string;
   direction: PaymentDirection;
@@ -134,9 +134,11 @@ function fromPayment(payment: Payment): FormState {
     rental_component:
       payment.rental_component === "rent" || payment.rental_component === "utilities"
         ? payment.rental_component
-        : payment.kind === "rent_in"
-          ? "rent"
-          : "",
+        : payment.kind === "deposit_in" && payment.booking_id
+          ? "deposit"
+          : payment.kind === "rent_in"
+            ? "rent"
+            : "",
     planned_date: payment.planned_date,
     amount: String(payment.amount),
     direction: payment.direction,
@@ -246,13 +248,15 @@ export function PaymentDialog({
             booking_id: defaultBookingId ?? "",
             rental_component: defaultRentalComponent ?? "",
             kind:
-              defaultRentalComponent === "rent"
-                ? "rent_in"
-                : defaultCompany
-                  ? "other"
-                  : defaultDirection === "out"
-                    ? "agency_cost"
-                    : "other",
+              defaultRentalComponent === "deposit"
+                ? "deposit_in"
+                : defaultRentalComponent === "rent"
+                  ? "rent_in"
+                  : defaultCompany
+                    ? "other"
+                    : defaultDirection === "out"
+                      ? "agency_cost"
+                      : "other",
             amount: defaultAmount === undefined ? "" : String(defaultAmount),
             countInObligations: Boolean(defaultObligationId),
           },
@@ -349,19 +353,22 @@ export function PaymentDialog({
         direction: form.direction,
         status: form.status,
         kind:
-          form.rental_component === "rent"
-            ? ("rent_in" as const)
-            : form.rental_component === "utilities"
-              ? ("other" as const)
-              : selectedArticle
-                ? kindFromArticle(selectedArticle)
-                : form.kind,
+          form.rental_component === "deposit"
+            ? ("deposit_in" as const)
+            : form.rental_component === "rent"
+              ? ("rent_in" as const)
+              : form.rental_component === "utilities"
+                ? ("other" as const)
+                : selectedArticle
+                  ? kindFromArticle(selectedArticle)
+                  : form.kind,
         article_id: form.article_id || null,
         property_id: form.rental_component ? rental!.property_id : form.property_id || null,
         client_id: form.rental_component ? rental!.client_id : (payment?.client_id ?? null),
         booking_id: form.rental_component ? rental!.id : (payment?.booking_id ?? null),
         deal_id: payment?.deal_id ?? null,
-        rental_component: form.rental_component || null,
+        rental_component:
+          form.rental_component === "deposit" ? null : form.rental_component || null,
         rental_period: form.rental_component
           ? (form.accrual_date || form.planned_date).slice(0, 7) + "-01"
           : null,
@@ -488,6 +495,15 @@ export function PaymentDialog({
           </SheetTitle>
         </SheetHeader>
 
+        {payment?.rental_installment_id && (
+          <p className="rounded border bg-muted p-3 text-sm">
+            {payment.rental_stage === "prepayment"
+              ? "Предоплата за аренду"
+              : "Остаток оплаты при заезде"}
+            . Комиссия удерживается из предоплаты. Сумма, дата и связь с бронью закреплены в
+            графике; можно подтвердить оплату и изменить примечание.
+          </p>
+        )}
         {payment?.rental_component === "owner_plan" && (
           <p className="p-5">
             Это план выплаты собственнику. Подтвердите полную или частичную выплату в разделе{" "}
@@ -511,7 +527,12 @@ export function PaymentDialog({
                     rental_component: e.target.value as FormState["rental_component"],
                     repeat: false,
                     countInObligations: false,
-                    kind: e.target.value === "rent" ? "rent_in" : "other",
+                    kind:
+                      e.target.value === "deposit"
+                        ? "deposit_in"
+                        : e.target.value === "rent"
+                          ? "rent_in"
+                          : "other",
                     article_id: "",
                   }))
                 }
@@ -519,6 +540,7 @@ export function PaymentDialog({
                 <option value="">Доход компании</option>
                 <option value="rent">Арендная плата клиента</option>
                 <option value="utilities">КУ клиента · собственнику</option>
+                <option value="deposit">Страховой депозит клиента · не доход</option>
               </select>
             </label>
             {form.rental_component && (
@@ -558,9 +580,9 @@ export function PaymentDialog({
             )}
             {form.rental_component && (
               <p className="text-xs text-muted-foreground">
-                Аренда распределяется на комиссию компании и выплату собственнику. КУ перечисляются
-                собственнику полностью. Период расчёта — месяц даты начисления, а без неё — месяц
-                операции.
+                {form.rental_component === "deposit"
+                  ? "Страховой депозит хранится отдельно от дохода компании и денег собственника. Связан с выбранной бронью."
+                  : "Аренда распределяется на комиссию компании и выплату собственнику. КУ перечисляются собственнику полностью. Период расчёта — месяц даты начисления, а без неё — месяц операции."}
               </p>
             )}
           </div>
@@ -874,7 +896,11 @@ export function PaymentDialog({
               type="button"
               variant="ghost"
               className="text-destructive"
-              disabled={payment?.rental_component === "owner_plan" || deleteMutation.isPending}
+              disabled={
+                !!payment?.rental_installment_id ||
+                payment?.rental_component === "owner_plan" ||
+                deleteMutation.isPending
+              }
               onClick={() => {
                 if (window.confirm("Удалить операцию?")) deleteMutation.mutate();
               }}

@@ -28,6 +28,7 @@ let previous=await fs.readFile('supabase/migrations/20261008100000_owner_settlem
 previous=previous.replace(/ALTER TABLE public.finance_object_settings[\s\S]*?payout_day integer CHECK\(payout_day BETWEEN 1 AND 31\);/,'');
 await db.exec(previous);
 await db.exec(await fs.readFile('supabase/migrations/20261017100000_company_client_owner_finance.sql','utf8'));
+await db.exec(await fs.readFile('supabase/migrations/20261017120000_rental_prepayment_installments.sql','utf8'));
 await db.query("SELECT set_config('test.user',$1,false)",[id(1)]);
 const now=(await db.query("SELECT (now() AT TIME ZONE 'Europe/Moscow')::date::text d,date_trunc('month',now())::date::text m")).rows[0];
 await db.query("INSERT INTO properties VALUES($1,'А3','percent',10);",[id(10)]);
@@ -74,4 +75,34 @@ assert.equal((await db.query("SELECT count(*) n FROM payments WHERE rental_sched
 assert.equal(Number((await db.query('SELECT amount FROM payments WHERE id=$1',[id(100)])).rows[0].amount),100000,'paid rent history preserved');
 assert.ok((await db.query("SELECT count(*) n FROM activity_log WHERE table_name='finance_owner_settlements'")).rows[0].n>0);
 console.log('PASS: real migrations, 100000 + 2500 allocation, automatic liability, single calendar plan, partial/full payout, replay, overpayment/correction guards, schedule replay, future receipts, admin/null guards, audit');
+
+// Advance collected now for next month's stay: fee is retained once from the advance.
+await db.query("UPDATE bookings SET status='active',price_month=900000 WHERE id=$1",[id(30)]);
+const nextMonth=(await db.query("SELECT (date_trunc('month',now())+interval '1 month')::date::text d")).rows[0].d;
+const args=[id(30),nextMonth,900000,100000,150000,now.d,nextMonth,'РМ',id(300)];
+await db.query('SELECT finance_create_rental_installments($1,$2,$3,$4,$5,$6,$7,$8,$9)',args);
+let pair=(await db.query('SELECT * FROM payments WHERE rental_installment_id=$1 ORDER BY rental_stage',[id(300)])).rows;
+assert.equal(pair.length,2);
+assert.equal(Number(pair.find(p=>p.rental_stage==='prepayment').company_fee),100000);
+assert.equal(Number(pair.find(p=>p.rental_stage==='balance').company_fee),0);
+assert.equal(Number(pair.find(p=>p.rental_stage==='balance').amount),750000);
+let futureOb=(await db.query('SELECT o.* FROM finance_owner_settlements s JOIN finance_obligations o ON o.id=s.obligation_id WHERE s.period=$1',[nextMonth])).rows[0];
+assert.equal(Number(futureOb.amount),50000,'only received advance minus full fee is an actual owner liability');
+await db.query('SELECT finance_create_rental_installments($1,$2,$3,$4,$5,$6,$7,$8,$9)',args);
+await db.query('SELECT finance_create_rental_installments($1,$2,$3,$4,$5,$6,$7,$8,$9)',[...args.slice(0,8),id(301)]);
+assert.equal((await db.query('SELECT count(*) n FROM payments WHERE rental_installment_id=$1',[id(300)])).rows[0].n,2,'replay never duplicates receipts');
+await assert.rejects(db.query('SELECT finance_create_rental_installments($1,$2,$3,$4,$5,$6,$7,$8,$9)',[...args.slice(0,4),200000,...args.slice(5)]),/другими условиями/);
+const advanceId=pair.find(p=>p.rental_stage==='prepayment').id;
+await assert.rejects(db.query('UPDATE payments SET amount=200000 WHERE id=$1',[advanceId]),/закреплены/);
+await assert.rejects(db.query('UPDATE payments SET rental_installment_id=null,rental_stage=null WHERE id=$1',[advanceId]),/отвязать/);
+await assert.rejects(db.query('UPDATE payments SET rental_component=null WHERE id=$1',[advanceId]),/назначение/);
+await assert.rejects(db.query('DELETE FROM payments WHERE id=$1',[advanceId]),/удаление/);
+await db.query('UPDATE payments SET company_fee=0 WHERE id=$1',[advanceId]);
+assert.equal(Number((await db.query('SELECT company_fee FROM payments WHERE id=$1',[advanceId])).rows[0].company_fee),100000,'fee cannot be silently reset or prorated again');
+await db.query("UPDATE payments SET status='paid',paid_at=$2 WHERE id=$1",[pair.find(p=>p.rental_stage==='balance').id,now.d]);
+assert.equal(Number((await db.query('SELECT amount FROM finance_obligations WHERE id=$1',[futureOb.id])).rows[0].amount),800000,'full collection creates exact 800k owner obligation, not a paid transfer');
+assert.equal((await db.query("SELECT count(*) n FROM activity_log WHERE table_name='finance_rental_installments'")).rows[0].n,1);
+await db.query("SELECT set_config('test.user','',false)");
+await assert.rejects(db.query('SELECT finance_create_rental_installments($1,$2,$3,$4,$5,$6,$7,$8,$9)',args),/администратор/);
+console.log('PASS: two-stage 900k rent, 150k advance, upfront fee 100k, 750k remaining, 50k then 800k owner debt, replay, immutable contract amounts/links, admin guard and audit');
 await db.close();

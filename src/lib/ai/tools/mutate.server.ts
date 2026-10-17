@@ -1165,12 +1165,24 @@ export function createMutateTools(ctx: AssistantToolContext) {
         return { proposed: true, summary };
       },
     }),
+    proposeRentalInstallments: tool({
+      description: "Предложить предоплату и остаток одной месячной аренды. Фиксированная комиссия целиком из предоплаты; остаток собственнику. Прошлые даты станут фактом. Не создаёт перевод собственнику. Только администратор, обязательно подтверждение.",
+      inputSchema: z.object({ bookingId: z.string().uuid(), period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), total: z.number().positive(), fee: z.number().nonnegative(), advance: z.number().positive(), advanceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), balanceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), account: z.string().trim().min(1) }),
+      execute: async (input) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        await ownerFinanceAdminClient();
+        if (input.advance >= input.total || input.fee > input.advance || input.balanceDate < input.advanceDate) return { error: "Проверьте предоплату, комиссию и даты" };
+        const summary = `Аренда ${money(input.total)} за ${input.period}: предоплата ${money(input.advance)} ${input.advanceDate}, остаток ${money(input.total-input.advance)} ${input.balanceDate}. Комиссия ${money(input.fee)} из предоплаты. Счёт «${input.account}». Договор ${input.bookingId}. Перевод собственнику не подтверждается.`;
+        ctx.propose({ tool: "createRentalInstallments", summary, input: { ...input, requestId: crypto.randomUUID() } });
+        return { proposed: true, summary };
+      },
+    }),
     proposeRentalReceipt: tool({
       description:
-        "Предложить поступление аренды или КУ конкретного клиента по договору. Аренда делится на комиссию и долг собственнику, КУ полностью собственнику. Даты сегодня/в прошлом считаются фактом. Требуется подтверждение администратора.",
+        "Предложить поступление аренды, КУ или страхового депозита конкретного клиента по договору. Депозит не доход компании и не выплата собственнику. Аренда делится на комиссию и долг собственнику, КУ полностью собственнику. Даты сегодня/в прошлом считаются фактом. Требуется подтверждение администратора.",
       inputSchema: z.object({
         bookingId: z.string().uuid(),
-        component: z.enum(["rent", "utilities"]),
+        component: z.enum(["rent", "utilities", "deposit"]),
         amount: z.number().positive(),
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
@@ -1179,7 +1191,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async (input) => {
         const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
         await ownerFinanceAdminClient();
-        const summary = `Добавить ${input.component === "rent" ? "аренду" : "КУ"} ${money(input.amount)} за ${input.period}, дата ${input.date}, счёт «${input.account}», договор ${input.bookingId}.`;
+        const summary = `Добавить ${input.component === "deposit" ? "страховой депозит" : input.component === "rent" ? "аренду" : "КУ"} ${money(input.amount)} за ${input.period}, дата ${input.date}, счёт «${input.account}», договор ${input.bookingId}.`;
         ctx.propose({
           tool: "createRentalReceipt",
           summary,

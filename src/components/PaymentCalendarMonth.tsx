@@ -7,7 +7,7 @@ import {
   effectivePaymentStatus,
   formatAdeskMoney,
   formatGapLabel,
-  kindLabel,
+  rentalPaymentLabel,
   type DayMoneyLedger,
   type Payment,
   type PaymentDirection,
@@ -232,6 +232,16 @@ const DayCell = memo(function DayCell({
           {cell.day}
         </button>
       </div>
+      {cell.payments.some((p) => p.rental_stage === "prepayment") && (
+        <button type="button" className="text-xs text-blue-700" onClick={() => onDay(cell.date)}>
+          Предоплата
+        </button>
+      )}
+      {cell.payments.some((p) => p.rental_stage === "balance") && (
+        <button type="button" className="text-xs text-blue-700" onClick={() => onDay(cell.date)}>
+          Остаток при заезде
+        </button>
+      )}
       {cellMode === "ops" ? (
         <div className="finance-day-operations">
           {cell.payments.map((payment) => (
@@ -239,7 +249,7 @@ const DayCell = memo(function DayCell({
               key={payment.id}
               type="button"
               onClick={() => onEdit(payment)}
-              title={`${payment.article?.name ?? kindLabel(payment.kind)} · ${counterpartyLabel(payment)}`}
+              title={`${rentalPaymentLabel(payment)} · ${counterpartyLabel(payment)}`}
             >
               <span
                 className={cn(

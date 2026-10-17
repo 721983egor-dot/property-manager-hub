@@ -51,3 +51,30 @@ export async function saveRentalOwnerSettings(input: {
   });
   if (error) throw error;
 }
+
+export type RentalInstallmentsInput = {
+  bookingId: string;
+  period: string;
+  total: number;
+  fee: number;
+  advance: number;
+  advanceDate: string;
+  balanceDate: string;
+  account: string;
+  requestId: string;
+};
+export async function createRentalInstallments(input: RentalInstallmentsInput) {
+  const { data, error } = await supabase.rpc("finance_create_rental_installments", {
+    p_booking: input.bookingId,
+    p_period: input.period + "-01",
+    p_total: input.total,
+    p_fee: input.fee,
+    p_advance: input.advance,
+    p_advance_date: input.advanceDate,
+    p_balance_date: input.balanceDate,
+    p_account: input.account,
+    p_request: input.requestId,
+  });
+  if (error) throw error;
+  return String(data);
+}

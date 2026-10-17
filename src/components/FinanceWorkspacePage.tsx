@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { FinanceTabs } from "./FinanceTabs";
 import { Button } from "./ui/button";
 import { PaymentDialog } from "./PaymentDialog";
+import { RentalInstallmentsDialog } from "./RentalInstallmentsDialog";
 import { OwnerPayoutDialog } from "./OwnerPayoutDialog";
 import PaymentAccountsChart from "./PaymentAccountsChart";
 import {
@@ -13,7 +14,7 @@ import {
   financePropertyLabel,
   formatAdeskMoney,
   statusLabel,
-  kindLabel,
+  rentalPaymentLabel,
   effectivePaymentStatus,
   type Payment,
 } from "@/lib/finance";
@@ -22,6 +23,7 @@ import {
   bankPayments,
   ownerForecastPayments,
   ownerRentalIncome,
+  rentalInstallmentSummary,
   companyPayments,
   companySummary,
   clientPayments,
@@ -81,7 +83,7 @@ export function FinanceWorkspacePage({
   const [editing, setEditing] = useState<Payment | null>(null),
     [adding, setAdding] = useState<{
       booking?: string;
-      component?: "rent" | "utilities";
+      component?: "rent" | "utilities" | "deposit";
       direction?: "in" | "out";
     } | null>(null);
   const [selectedSettlement, setSelectedSettlement] = useState<string | null>(null),
@@ -132,6 +134,7 @@ export function FinanceWorkspacePage({
   useEffect(() => {
     if (!embedded) refreshRef.current();
   }, [today, embedded]);
+  const [installmentsBooking, setInstallmentsBooking] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<{ booking: string; account: string } | null>(null);
   const generate = useMutation({
     mutationFn: () => createRentalSchedule(schedule!.booking, schedule!.account),
@@ -838,6 +841,19 @@ export function FinanceWorkspacePage({
                           >
                             + КУ
                           </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              setAdding({ booking: b.id, component: "deposit", direction: "in" })
+                            }
+                          >
+                            + Страховой депозит
+                          </Button>
+                          {b.status === "active" && (
+                            <Button variant="outline" onClick={() => setInstallmentsBooking(b.id)}>
+                              Предоплата и остаток
+                            </Button>
+                          )}
                           {b.status === "active" && (
                             <Button
                               variant="outline"
@@ -876,6 +892,21 @@ export function FinanceWorkspacePage({
                   </div>
                   <div className="fw-panel">
                     <h2>Платежи клиента · все периоды</h2>
+                    {[
+                      ...new Set(
+                        received
+                          .map((p) => p.rental_installment_id)
+                          .filter((id): id is string => !!id),
+                      ),
+                    ].map((id) => {
+                      const pair = rentalInstallmentSummary(received, id, today);
+                      return (
+                        <div className="fw-notice" key={id}>
+                          Аренда с предоплатой: всего {money(pair.total)} · Получено{" "}
+                          {money(pair.received)} · Осталось {money(pair.remaining)}
+                        </div>
+                      );
+                    })}
                     <PaymentTable payments={received} onOpen={openPayment} />
                     {!received.length && (
                       <p className="mt-5">
@@ -918,6 +949,12 @@ export function FinanceWorkspacePage({
             </>
           )}
         </>
+      )}
+      {installmentsBooking && books.find((b) => b.id === installmentsBooking) && (
+        <RentalInstallmentsDialog
+          booking={books.find((b) => b.id === installmentsBooking)!}
+          onClose={() => setInstallmentsBooking(null)}
+        />
       )}
       <PaymentDialog
         open={!!editing || !!adding}
@@ -1051,7 +1088,7 @@ function PaymentTable({
                   ? "Комиссия за управление"
                   : p.rental_component === "utilities"
                     ? "Коммунальные услуги"
-                    : (p.article?.name ?? kindLabel(p.kind))}
+                    : rentalPaymentLabel(p)}
                 <small>{p.comment}</small>
                 <small>
                   {p.booking_id

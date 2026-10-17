@@ -43,6 +43,8 @@ export const PAYMENT_KINDS: { value: PaymentKind; label: string; direction: Paym
 export const PAYMENT_ACCOUNTS = ["Основной", "Касса"] as const;
 
 export type Payment = {
+  rental_installment_id?: string | null;
+  rental_stage?: "prepayment" | "balance" | null;
   management_period?: string | null;
   rental_component?: "rent" | "utilities" | "owner_plan" | null;
   rental_period?: string | null;
@@ -109,9 +111,9 @@ export type PaymentInput = {
 };
 
 const PAYMENT_SELECT =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, finance_article_categories(id, name))";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, finance_article_categories(id, name))";
 const PAYMENT_SELECT_LEGACY =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -166,7 +168,9 @@ function mapPayment(row: Record<string, unknown>): Payment {
     client_id: (row["client_id"] as string | null) ?? null,
     booking_id: (row["booking_id"] as string | null) ?? null,
     management_period: (row["management_period"] as string | null) ?? null,
-    rental_component: row["rental_component"] as Payment["rental_component"],
+    rental_installment_id: (row["rental_installment_id"] as string | null) ?? null,
+    rental_stage: (row["rental_stage"] as Payment["rental_stage"]) ?? null,
+    rental_component: (row["rental_component"] as Payment["rental_component"]) ?? null,
     rental_period: row["rental_period"] as string | null,
     company_fee: row["company_fee"] == null ? null : Number(row["company_fee"]),
     crm_charge: row["crm_charge"] as string | null,
@@ -198,6 +202,12 @@ export function statusLabel(value: PaymentStatus) {
 
 export function kindLabel(value: PaymentKind) {
   return PAYMENT_KINDS.find((k) => k.value === value)?.label ?? value;
+}
+
+export function rentalPaymentLabel(payment: Payment) {
+  if (payment.rental_stage === "prepayment") return "Предоплата за аренду";
+  if (payment.rental_stage === "balance") return "Остаток оплаты при заезде";
+  return payment.article?.name ?? kindLabel(payment.kind);
 }
 
 export function defaultDirectionForKind(kind: PaymentKind): PaymentDirection {
@@ -249,7 +259,7 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
       result = await run(columns, offset);
     }
     if (result.error) throw result.error;
-    const page = (result.data ?? []) as Record<string, unknown>[];
+    const page = (result.data ?? []) as unknown as Record<string, unknown>[];
     rows.push(...page);
     if (page.length < 500) break;
   }

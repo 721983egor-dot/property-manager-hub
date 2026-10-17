@@ -773,6 +773,12 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_rental_installments: {
+        Row: { id: string; booking_id: string; period: string; total_amount: number; total_fee: number; advance_amount: number; advance_date: string; balance_date: string; account: string; created_by: string; created_at: string; };
+        Insert: { id: string; booking_id: string; period: string; total_amount: number; total_fee: number; advance_amount: number; advance_date: string; balance_date: string; account: string; created_by?: string; created_at?: string };
+        Update: { total_amount?: number; total_fee?: number; advance_amount?: number; advance_date?: string; balance_date?: string; account?: string };
+        Relationships: [];
+      };
       finance_owner_settlements: {
         Row: { id:string; property_id:string; period:string; obligation_id:string; automatic:boolean; created_at:string };
         Insert: { property_id:string; period:string; obligation_id:string };
@@ -1104,6 +1110,8 @@ export type Database = {
           kind: Database["public"]["Enums"]["payment_kind"]
           property_id: string | null
           client_id: string | null
+          rental_installment_id: string | null
+          rental_stage: "prepayment" | "balance" | null
           rental_component: "rent" | "utilities" | "owner_plan" | null
           rental_period: string | null
           company_fee: number | null
@@ -1132,6 +1140,8 @@ export type Database = {
           kind?: Database["public"]["Enums"]["payment_kind"]
           property_id?: string | null
           client_id?: string | null
+          rental_installment_id?: string | null
+          rental_stage?: "prepayment" | "balance" | null
           rental_component?: "rent" | "utilities" | "owner_plan" | null
           rental_period?: string | null
           company_fee?: number | null
@@ -1160,6 +1170,8 @@ export type Database = {
           kind?: Database["public"]["Enums"]["payment_kind"]
           property_id?: string | null
           client_id?: string | null
+          rental_installment_id?: string | null
+          rental_stage?: "prepayment" | "balance" | null
           rental_component?: "rent" | "utilities" | "owner_plan" | null
           rental_period?: string | null
           company_fee?: number | null
@@ -2521,6 +2533,7 @@ export type Database = {
     Functions: {
       finance_save_rental_settings: { Args: { p_property: string; p_owner: string; p_day: number; p_fee: number; p_fee_type: string; p_owner_name?: string | null }; Returns: undefined };
       finance_refresh_rental_settlements: { Args: Record<PropertyKey, never>; Returns: undefined };
+      finance_create_rental_installments: { Args: { p_booking: string; p_period: string; p_total: number; p_fee: number; p_advance: number; p_advance_date: string; p_balance_date: string; p_account: string; p_request: string }; Returns: string };
       finance_create_rental_schedule: { Args: { p_booking: string; p_account: string }; Returns: number };
       finance_account_usage: { Args: { p_id: string }; Returns: { payments: number; deals: number } };
       delete_finance_account: { Args: { p_id: string; p_transfer_to?: string | null }; Returns: undefined };

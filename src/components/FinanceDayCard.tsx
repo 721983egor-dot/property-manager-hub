@@ -1,4 +1,4 @@
-import { bankPayments } from "@/lib/finance-company-model";
+import { bankPayments, rentalInstallmentSummary } from "@/lib/finance-company-model";
 import { paymentCashDate } from "@/lib/finance-calendar-model";
 import { paymentFactAmount } from "@/lib/finance-payment-status";
 import { useFinanceToday } from "@/hooks/use-finance-today";
@@ -12,7 +12,7 @@ import {
   fetchPayments,
   formatAdeskMoney,
   formatFinanceDate,
-  kindLabel,
+  rentalPaymentLabel,
   markPaymentPaid,
   financePropertyLabel,
   statusLabel,
@@ -111,13 +111,39 @@ export function FinanceDayCard({
                       className="flex min-w-0 flex-1 items-start justify-between gap-4 text-left hover:bg-muted/40"
                     >
                       <span>
-                        <strong className="block">
-                          {payment.article?.name ?? kindLabel(payment.kind)}
-                        </strong>
+                        <strong className="block">{rentalPaymentLabel(payment)}</strong>
                         <span className="block text-sm text-muted-foreground">
                           {counterpartyLabel(payment)}
                         </span>
                         <span className="block text-sm">{payment.comment}</span>
+                        {payment.rental_installment_id && (
+                          <span className="block text-sm font-medium">
+                            Всего{" "}
+                            {formatAdeskMoney(
+                              rentalInstallmentSummary(
+                                history,
+                                payment.rental_installment_id,
+                                today,
+                              ).total,
+                            )}{" "}
+                            · Получено{" "}
+                            {formatAdeskMoney(
+                              rentalInstallmentSummary(
+                                history,
+                                payment.rental_installment_id,
+                                today,
+                              ).received,
+                            )}{" "}
+                            · Осталось{" "}
+                            {formatAdeskMoney(
+                              rentalInstallmentSummary(
+                                history,
+                                payment.rental_installment_id,
+                                today,
+                              ).remaining,
+                            )}
+                          </span>
+                        )}
                         <span className="block text-sm text-muted-foreground">
                           {payment.property
                             ? financePropertyLabel(payment.property)
@@ -141,7 +167,7 @@ export function FinanceDayCard({
                         type="button"
                         size="icon"
                         variant="outline"
-                        aria-label={`Провести операцию: ${payment.article?.name ?? kindLabel(payment.kind)}`}
+                        aria-label={`Провести операцию: ${rentalPaymentLabel(payment)}`}
                         title="Провести операцию"
                         disabled={markPaid.isPending || payment.id.startsWith("owner-forecast:")}
                         onClick={() => markPaid.mutate(payment.id)}

@@ -35,7 +35,7 @@ import {
   fetchFinancePropertyOptions,
   fetchPayments,
   financePropertyLabel,
-  kindLabel,
+  rentalPaymentLabel,
   markPaymentPaid,
   monthBounds,
   statusLabel,
@@ -588,9 +588,7 @@ export function FinanceCalendarPage() {
                     onClick={() => openEdit(payment)}
                   >
                     <p className="truncate text-sm">
-                      <span className="font-medium">
-                        {payment.article?.name ?? kindLabel(payment.kind)}
-                      </span>
+                      <span className="font-medium">{rentalPaymentLabel(payment)}</span>
                       <span className="text-slate-500"> · {counterpartyLabel(payment)}</span>
                     </p>
                     <p className="truncate text-xs text-slate-400">{propertyTitle}</p>

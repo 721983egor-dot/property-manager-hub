@@ -1237,6 +1237,18 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (error) throw new Error(error.message);
     return "Начисления собственникам обновлены. Переводы не подтверждены";
   },
+  createRentalInstallments: async (input) => {
+    const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+    const client = await ownerFinanceAdminClient();
+    const { data, error } = await client.rpc("finance_create_rental_installments", {
+      p_booking: String(input["bookingId"]), p_period: String(input["period"])+"-01",
+      p_total: Number(input["total"]), p_fee: Number(input["fee"]), p_advance: Number(input["advance"]),
+      p_advance_date: String(input["advanceDate"]), p_balance_date: String(input["balanceDate"]),
+      p_account: String(input["account"]), p_request: String(input["requestId"]),
+    });
+    if (error) throw new Error(error.message);
+    return `Предоплата и остаток созданы: ${data}. Перевод собственнику не проведён`;
+  },
   createRentalReceipt: async (input) => {
     const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
     const client = await ownerFinanceAdminClient();
@@ -1247,7 +1259,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       .single();
     if (load || !b) throw new Error("Аренда не найдена");
     const component = String(input["component"]);
-    if (!["rent", "utilities"].includes(component)) throw new Error("Выберите аренду или КУ");
+    if (!["rent", "utilities", "deposit"].includes(component)) throw new Error("Выберите аренду или КУ");
     const { error } = await client
       .from("payments")
       .upsert(
@@ -1260,11 +1272,11 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
           planned_date: String(input["date"]),
           direction: "in",
           status: "expected",
-          kind: component === "rent" ? "rent_in" : "other",
-          rental_component: component,
+          kind: component === "deposit" ? "deposit_in" : component === "rent" ? "rent_in" : "other",
+          rental_component: component === "deposit" ? null : component,
           rental_period: String(input["period"]) + "-01",
           account: String(input["account"]),
-          comment: component === "rent" ? "Аренда клиента" : "КУ клиента",
+          comment: component === "deposit" ? "Страховой депозит клиента" : component === "rent" ? "Аренда клиента" : "КУ клиента",
         } as never,
         { onConflict: "id", ignoreDuplicates: true },
       );

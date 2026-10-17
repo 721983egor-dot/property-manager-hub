@@ -212,3 +212,14 @@ export function ownerForecastPayments(
   }
   return result;
 }
+
+/** The pair is one contract amount, never a third bank receipt. Read from full payment history. */
+export function rentalInstallmentSummary(rows: Payment[], groupId: string, today = financeToday()) {
+  const pair = rows.filter(
+    (p) =>
+      p.rental_installment_id === groupId && p.direction === "in" && !p.id.startsWith("company:"),
+  );
+  const total = money(pair.reduce((sum, p) => sum + p.amount, 0));
+  const received = money(pair.reduce((sum, p) => sum + paymentFactAmount(p, today), 0));
+  return { total, received, remaining: money(Math.max(0, total - received)) };
+}

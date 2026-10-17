@@ -2246,6 +2246,19 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getRentalInstallments: tool({
+      description: "Предоплаты и остатки конкретной брони: общий договор, комиссия, две даты, получено и остаток. Только администратор. Чтение не проводит будущие платежи.",
+      inputSchema: z.object({ bookingId: z.string().uuid() }),
+      execute: async ({ bookingId }) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const client = await ownerFinanceAdminClient();
+        const groups = await client.from("finance_rental_installments").select("*").eq("booking_id", bookingId).order("period");
+        const payments = await client.from("payments").select("*").eq("booking_id", bookingId).not("rental_installment_id", "is", null).order("planned_date");
+        if (groups.error || payments.error) return { error: groups.error?.message ?? payments.error?.message };
+        const { rentalInstallmentSummary } = await import("@/lib/finance-company-model");
+        return { groups: (groups.data ?? []).map((g) => ({ ...g, ...rentalInstallmentSummary(payments.data as unknown as Payment[],g.id) })), payments: payments.data };
+      },
+    }),
     getFinanceWorkspace: tool({
       description:
         "Финансы компании отдельно от денег собственников и депозитов; клиенты с оформленной арендой. Только администратор. Комиссия внутри арендного поступления не является вторым поступлением на счёт. Чтение ничего не начисляет.",

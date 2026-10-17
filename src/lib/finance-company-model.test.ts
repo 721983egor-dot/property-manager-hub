@@ -248,3 +248,79 @@ test("owner income uses received part only and never guesses an unknown fee", as
     unallocatedRent: 80000,
   });
 });
+
+test("prepayment fee is retained once and the pair remains one 900k contract", async () => {
+  const { rentalInstallmentSummary, ownerRentalIncome } =
+    await import("./finance-company-model.ts");
+  const pair = [
+    p("advance", 150000, {
+      kind: "rent_in",
+      rental_component: "rent",
+      company_fee: 100000,
+      rental_installment_id: "g",
+      rental_stage: "prepayment",
+      planned_date: "2026-10-14",
+    }),
+    p("balance", 750000, {
+      kind: "rent_in",
+      rental_component: "rent",
+      company_fee: 0,
+      rental_installment_id: "g",
+      rental_stage: "balance",
+      planned_date: "2026-10-19",
+      status: "expected",
+    }),
+  ];
+  assert.deepEqual(rentalInstallmentSummary(pair, "g", "2026-10-17"), {
+    total: 900000,
+    received: 150000,
+    remaining: 750000,
+  });
+  const before = companySummary(pair, "2026-10-01", "2026-10-31", "2026-10-17");
+  assert.equal(before.bank, 150000);
+  assert.equal(before.income, 100000);
+  assert.equal(before.ownerReserve, 50000);
+  assert.equal(ownerRentalIncome(pair, "2026-10", "o", "2026-10-17").netRent, 50000);
+  const after = companySummary(pair, "2026-10-01", "2026-10-31", "2026-10-19");
+  assert.equal(after.bank, 900000);
+  assert.equal(after.income, 100000);
+  assert.equal(after.ownerReserve, 800000);
+  assert.deepEqual(rentalInstallmentSummary(pair, "g", "2026-10-19"), {
+    total: 900000,
+    received: 900000,
+    remaining: 0,
+  });
+});
+
+test("planned 500k insurance deposit stays separate from rent, owner income and company profit", async () => {
+  const { ownerRentalIncome } = await import("./finance-company-model.ts");
+  const pair = [
+    p("advance", 150000, {
+      kind: "rent_in",
+      rental_component: "rent",
+      company_fee: 100000,
+      planned_date: "2026-10-14",
+    }),
+    p("balance", 750000, {
+      kind: "rent_in",
+      rental_component: "rent",
+      company_fee: 0,
+      planned_date: "2026-10-19",
+      status: "expected",
+    }),
+    p("insurance", 500000, {
+      kind: "deposit_in",
+      rental_component: null,
+      planned_date: "2026-10-19",
+      status: "expected",
+    }),
+  ];
+  assert.equal(companySummary(pair, "2026-10-01", "2026-10-31", "2026-10-17").deposits, 0);
+  const after = companySummary(pair, "2026-10-01", "2026-10-31", "2026-10-19");
+  assert.equal(after.bank, 1400000);
+  assert.equal(after.deposits, 500000);
+  assert.equal(after.income, 100000);
+  assert.equal(after.ownerReserve, 800000);
+  assert.equal(after.available, 100000);
+  assert.equal(ownerRentalIncome(pair, "2026-10", "o", "2026-10-19").netRent, 800000);
+});
