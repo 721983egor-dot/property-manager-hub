@@ -263,3 +263,247 @@
   padding: 0;
   margin-right: 5px;
 }
+
+.fw-result-caption {
+  font-size: 14px;
+  font-weight: 600;
+}
+.fw-result-caption small {
+  color: #929ba2;
+  font-size: 11px;
+  font-weight: 400;
+  margin-left: 15px;
+}
+.fw-overview-metrics {
+  margin-top: 13px;
+}
+.fw-metric-highlight {
+  background: #edf5f0;
+  border-color: #d6e6dd;
+}
+.fw-balance-caption {
+  color: #929ba2;
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.fw-reserves {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e1e7e9;
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.fw-reserves > div,
+.fw-reserves > button {
+  flex: 1;
+  min-width: 150px;
+  text-align: left;
+}
+.fw-reserves > button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+.fw-reserves > button:hover {
+  background: #faf8fc;
+}
+.fw-reserves label {
+  display: block;
+  font-size: 11px;
+  color: #7e8a92;
+  margin-bottom: 9px;
+  cursor: inherit;
+}
+.fw-reserves strong {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+.fw-reserves small {
+  display: block;
+  color: #929ba2;
+  font-size: 10px;
+  margin-top: 7px;
+}
+.fw-reserves > span {
+  font-size: 22px;
+  color: #a9b5ba;
+}
+.fw-owner-color {
+  color: #9467c5;
+}
+.fw-own-cash {
+  border-left: 1px solid #e1e8e4;
+  padding-left: 18px;
+}
+.fw-overview-chart {
+  border: 1px solid #e1e7ea;
+  border-radius: 10px;
+  padding: 22px;
+  background: #fff;
+  margin-bottom: 18px;
+}
+.fw-overview-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+.fw-overview-chart-head p {
+  margin-top: 6px;
+  font-size: 11px;
+}
+.fw .fw-overview-chart .finance-accounts-chart {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+.fw .fw-chart-total {
+  text-align: right;
+  margin: 14px 0 8px;
+  font-size: 11px;
+}
+.fw-forecast-strip {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.2fr 1fr;
+  align-items: start;
+  gap: 25px;
+  padding: 0 8px 20px;
+}
+.fw-forecast-strip label {
+  font-size: 11px;
+  color: #89949b;
+  display: block;
+  margin-bottom: 9px;
+}
+.fw-forecast-strip strong {
+  font-size: 18px;
+  font-weight: 600;
+}
+.fw-forecast-strip p {
+  font-size: 10px;
+  padding-left: 20px;
+  border-left: 1px solid #e1e6e8;
+}
+.fw-upcoming .fw-panel-head {
+  margin-bottom: 10px;
+}
+.fw-upcoming .fw-panel-head p {
+  font-size: 11px;
+  margin-top: 7px;
+}
+.fw-upcoming .fw-panel-head > span {
+  font-size: 11px;
+}
+.fw-upcoming-row {
+  display: flex;
+  width: 100%;
+  gap: 16px;
+  padding: 17px 0;
+  align-items: center;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid #edf0f2;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.fw-upcoming-row:hover {
+  background: #f8faf9;
+}
+.fw-upcoming-row > span:first-child {
+  font-size: 12px;
+  min-width: 90px;
+}
+.fw-upcoming-row small {
+  display: block;
+  font-size: 10px;
+  color: #929ba2;
+  margin-top: 6px;
+}
+.fw-upcoming-description {
+  flex: 1;
+  min-width: 100px;
+}
+.fw-upcoming-description b {
+  font-weight: 500;
+  font-size: 13px;
+}
+.fw-upcoming-row strong {
+  font-size: 14px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+.fw-direction {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #f5f0ed;
+  color: #b28a72;
+  flex-shrink: 0;
+}
+.fw-direction.incoming {
+  background: #edf6f1;
+  color: #308468;
+}
+.fw-direction.owner {
+  background: #f2edf8;
+  color: #9467c5;
+}
+.fw-upcoming-open {
+  color: #7b8f88;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.fw-upcoming-footer {
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding-top: 17px;
+  font-size: 12px;
+  color: #426d54;
+}
+@media (max-width: 800px) {
+  .fw-result-caption small {
+    display: block;
+    margin: 7px 0 0;
+  }
+  .fw-forecast-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fw-reserves {
+    gap: 15px;
+  }
+  .fw-upcoming-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .fw-upcoming-row .fw-badge,
+  .fw-upcoming-open {
+    display: none;
+  }
+  .fw-overview-chart {
+    padding: 15px;
+  }
+  .fw-overview-chart-head .finance-object-flow {
+    width: 100%;
+  }
+  .fw .fw-overview-chart .finance-object-flow button {
+    min-width: 0;
+    flex: 1;
+    padding: 10px;
+  }
+}

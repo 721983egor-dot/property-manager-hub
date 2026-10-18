@@ -1,3 +1,4 @@
+// getFinanceWorkspace: обзор компании, остатки по потокам, прогноз и ближайшие платежи; без локальных остатков браузера.
 // Календарь «Все движения» и потоки объекта: getFinanceObjectFlow (company/owner/total), тот же расчёт факта и прогноза, что в интерфейсе. Только чтение администратора.
 // Lease documents: getLeaseContext; proposePrepareLease, proposeSaveClientPassport, proposeLeaseCompany, proposeLeaseTemplate; encrypted confirmed executors.
 // Единая бронь → финансы: getRentalContract; подтверждённые proposeUpdateRentalContract → updateRentalContract и proposeCancelRentalContract → cancelRentalContract, аудит брони/графика/платежей.

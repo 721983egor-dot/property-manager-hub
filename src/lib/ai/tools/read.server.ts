@@ -2263,7 +2263,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
     getFinanceWorkspace: tool({
       description:
-        "Финансы компании отдельно от денег собственников и депозитов; клиенты с оформленной арендой. Только администратор. Комиссия внутри арендного поступления не является вторым поступлением на счёт. Чтение ничего не начисляет.",
+        "Финансы компании отдельно от денег собственников и депозитов; клиенты с оформленной арендой. Только администратор. Комиссия внутри арендного поступления не является вторым поступлением на счёт. Чтение ничего не начисляет. Возвращает обзор: результат за месяц, текущие остатки company/owner/deposit, нераспределённый остаток, прогноз по трём потокам, просрочки и платежи на 7 дней. Локальные начальные остатки браузера Ассистенту недоступны: balanceBasis указывает это ограничение.",
       inputSchema: z.object({
         month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
         clientId: z.string().uuid().optional(),
@@ -2291,18 +2291,30 @@ export function createReadTools(ctx: AssistantToolContext) {
           return q;
         });
         if (rentals.error) return { error: rentals.error.message };
-        const { companySummary, companyPayments, clientPayments, ownerRentalIncome } =
+        const { companyPayments, clientPayments, ownerRentalIncome } =
           await import("@/lib/finance-company-model");
         const rows = (result.data ?? []).map(p => ({...p, article:p.finance_articles})) as unknown as Payment[];
-        const end = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0))
-          .toISOString()
-          .slice(0, 10);
         const ops = (clientId ? clientPayments(rows, clientId) : companyPayments(rows)).filter(
           (p) => p.planned_date.startsWith(month),
         );
+        const [categories, articles, settings, settlements] = await Promise.all([
+          client.from("finance_article_categories").select("*"), client.from("finance_articles").select("*"),
+          allFinancePages((from,to)=>client.from("finance_object_settings").select("property_id,classification_id,owner_counterparty_id,payout_day").order("property_id").range(from,to)),
+          allFinancePages((from,to)=>client.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic").order("id").range(from,to)),
+        ]);
+        const overviewError=categories.error??articles.error??settings.error??settlements.error;
+        if(overviewError)return {error:overviewError.message};
+        const {financeOverview}=await import("@/lib/finance-overview-model");
+        const overview=financeOverview(rows,{categories:categories.data??[],articles:articles.data??[]},settings.data??[],settlements.data??[],month,financeToday(),propertyId??null);
         return {
           month,
-          company: companySummary(rows, month + "-01", end),
+          overview:{today:overview.today,from:overview.from,to:overview.to,income:overview.income,expense:overview.expense,result:overview.profit,
+            bank:overview.bank,ownerReserve:overview.ownerReserve,deposits:overview.deposits,companyCash:overview.available,unallocatedBalance:overview.unallocatedBalance,
+            expectedIncome:overview.expectedIncome,expectedExpense:overview.expectedExpense,overdueCount:overview.overdueCount,weekEnd:overview.weekEnd,
+            flows:Object.fromEntries(Object.entries(overview.flows).map(([flow,data])=>[flow,{actualBalance:data.currentBalance,forecastBalance:data.forecastBalance,chart:data.calendar.chart}])),
+            upcoming:overview.upcoming.map(({payment:p,remaining,forecastOnly,overdue})=>({id:p.id,propertyId:p.property_id,date:p.planned_date,remaining,direction:p.direction,kind:p.kind,forecastOnly,overdue})),
+          },
+          company: {income:overview.income,expense:overview.expense,profit:overview.profit,bank:overview.bank,ownerReserve:overview.ownerReserve,deposits:overview.deposits,available:overview.available,unallocated:overview.unallocatedRent},
           ownerRentalIncome: ownerRentalIncome(rows, month),
           ownerIncomeBasis:
             "Полученная аренда за период после комиссии, до прочих расходов собственника; КУ отдельно, неизвестная комиссия — unallocatedRent",

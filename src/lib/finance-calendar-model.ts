@@ -121,3 +121,17 @@ export function findOpeningAnchor(
 export function openingAnchorKey(monthKey: string, scope = "") {
   return scope ? `${PREFIX}scope:${scope}:${monthKey}` : `${PREFIX}${monthKey}`;
 }
+
+/** Shared opening-balance scope for calendar and overview. Legacy totals retain their keys. */
+export function financeOpeningScope(
+  propertyId = "all",
+  account = "all",
+  articleId = "all",
+  flow = "total",
+) {
+  const filters =
+    propertyId === "all" && account === "all" && articleId === "all"
+      ? ""
+      : JSON.stringify([propertyId, account, articleId]);
+  return flow === "total" ? filters : JSON.stringify([flow, filters]);
+}

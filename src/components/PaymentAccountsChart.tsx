@@ -18,7 +18,9 @@ export default function PaymentAccountsChart({
   chart: chartData,
   today,
   companyChart,
+  color = "#2786ff",
 }: {
+  color?: string;
   companyChart?: CalendarCashPoint[];
   title?: string;
   ledger: DayMoneyLedger[];
@@ -65,8 +67,8 @@ export default function PaymentAccountsChart({
   const zeroActual = strokeZero(chartData.flatMap((d) => (d.actual === null ? [] : [d.actual])));
 
   return (
-    <section className="finance-accounts-chart" aria-label={title}>
-      <h2>{title}</h2>
+    <section className="finance-accounts-chart" aria-label={title || "Динамика остатка"}>
+      {title && <h2>{title}</h2>}
       {companyChart && (
         <div className="mb-3 flex flex-wrap gap-5 text-sm">
           <label>
@@ -94,7 +96,7 @@ export default function PaymentAccountsChart({
         aria-label="Обозначения линий"
       >
         <span className="inline-flex items-center gap-2">
-          <span className="inline-block w-7 border-t-[3px] border-blue-600" />
+          <span className="inline-block w-7 border-t-[3px]" style={{ borderColor: color }} />
           Факт
         </span>
         <span className="inline-flex items-center gap-2">
@@ -113,11 +115,11 @@ export default function PaymentAccountsChart({
                 <stop offset="100%" stopColor="#f4aea5" stopOpacity={0.55} />
               </linearGradient>
               <linearGradient id={`${id}-stroke`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset={`${zeroStroke}%`} stopColor="#2786ff" />
+                <stop offset={`${zeroStroke}%`} stopColor={color} />
                 <stop offset={`${zeroStroke}%`} stopColor="#ff422d" />
               </linearGradient>
               <linearGradient id={`${id}-actual-stroke`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset={`${zeroActual}%`} stopColor="#2786ff" />
+                <stop offset={`${zeroActual}%`} stopColor={color} />
                 <stop offset={`${zeroActual}%`} stopColor="#ff422d" />
               </linearGradient>
             </defs>
@@ -186,7 +188,7 @@ export default function PaymentAccountsChart({
               type="monotone"
               dataKey="balance"
               stroke={
-                zeroStroke === 0 ? "#ff422d" : zeroStroke === 100 ? "#2786ff" : `url(#${id}-stroke)`
+                zeroStroke === 0 ? "#ff422d" : zeroStroke === 100 ? color : `url(#${id}-stroke)`
               }
               strokeWidth={1.8}
               strokeDasharray="6 4"
@@ -220,7 +222,7 @@ export default function PaymentAccountsChart({
                 zeroActual === 0
                   ? "#ff422d"
                   : zeroActual === 100
-                    ? "#2786ff"
+                    ? color
                     : `url(#${id}-actual-stroke)`
               }
               strokeWidth={2.6}

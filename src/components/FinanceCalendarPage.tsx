@@ -52,6 +52,7 @@ import { fetchFinanceCatalog } from "@/lib/finance-articles";
 import {
   buildFinanceCalendar,
   findOpeningAnchor,
+  financeOpeningScope,
   openingAnchorKey,
   type OpeningAnchor,
 } from "@/lib/finance-calendar-model";
@@ -129,11 +130,7 @@ export function FinanceCalendarPage() {
       setAccount("all");
   }, [accountsReady, accounts, account]);
   const accountScope = accounts.find((a) => a.name === account)?.id ?? account;
-  const filterScope =
-    propertyId === "all" && account === "all" && articleId === "all"
-      ? ""
-      : JSON.stringify([propertyId, accountScope, articleId]);
-  const scope = flow === "total" ? filterScope : JSON.stringify([flow, filterScope]);
+  const scope = financeOpeningScope(propertyId, accountScope, articleId, flow);
   useEffect(() => {
     setOpeningDraft(null);
     try {

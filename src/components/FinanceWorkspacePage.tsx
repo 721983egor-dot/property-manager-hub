@@ -9,7 +9,7 @@ import { RentalInstallmentsDialog } from "./RentalInstallmentsDialog";
 import { BookingDialog } from "./BookingDialog";
 import { fetchBooking } from "@/lib/bookings";
 import { OwnerPayoutDialog } from "./OwnerPayoutDialog";
-import PaymentAccountsChart from "./PaymentAccountsChart";
+import { FinanceOverview } from "./FinanceOverview";
 import {
   fetchPayments,
   fetchFinancePropertyOptions,
@@ -27,11 +27,10 @@ import {
   ownerRentalIncome,
   rentalInstallmentSummary,
   companyPayments,
-  companySummary,
   clientPayments,
   paymentPeriod,
 } from "@/lib/finance-company-model";
-import { buildFinanceCalendar } from "@/lib/finance-calendar-model";
+
 import { fetchCounterparties, fetchObligations } from "@/lib/finance-counterparties";
 import { fetchOwnerSettlements } from "@/lib/finance-owner-settlements";
 import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
@@ -76,7 +75,12 @@ export function FinanceWorkspacePage({
     [showHistory, setShowHistory] = useState(false);
   const month = scope?.month ?? localMonth;
   const property = scope?.property ?? localProperty;
-  const [detail, setDetail] = useState<"company" | "all" | "clients" | "owners">("all");
+  const [detail, setDetail] = useState<"company" | "all" | "clients" | "owners">("company");
+  const [showDetails, setShowDetails] = useState(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (showDetails) detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showDetails, detail]);
   const [inlineClient, setInlineClient] = useState<string>();
   const [contractId, setContractId] = useState<string | null>(null);
   const contract = useQuery({
@@ -149,24 +153,11 @@ export function FinanceWorkspacePage({
   const end = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0))
     .toISOString()
     .slice(0, 10);
-  const summary = companySummary(source, month + "-01", end, today);
-  const company = companyPayments(source),
-    calendar = buildFinanceCalendar(
-      company,
-      Number(month.slice(0, 4)),
-      Number(month.slice(5, 7)) - 1,
-      today,
-    );
+  const company = companyPayments(source);
   const bank = [
     ...bankPayments(source),
     ...ownerForecastPayments(source, cfg, settlements.data ?? []),
   ];
-  const bankCalendar = buildFinanceCalendar(
-    bank,
-    Number(month.slice(0, 4)),
-    Number(month.slice(5, 7)) - 1,
-    today,
-  );
   const visiblePayments = (detail === "company" ? company : bank).filter(
     (p) =>
       p.planned_date.startsWith(month) &&
@@ -179,7 +170,11 @@ export function FinanceWorkspacePage({
     (q) => q.isPending,
   );
   const title =
-    mode === "company" ? "Финансы" : mode === "owners" ? "Расчёты с собственниками" : "Клиенты";
+    mode === "company"
+      ? "Обзор финансов"
+      : mode === "owners"
+        ? "Расчёты с собственниками"
+        : "Клиенты";
   const ownerRows = (settlements.data ?? [])
     .filter((s) => s.period.startsWith(month) && (property === "all" || s.property_id === property))
     .flatMap((s) => {
@@ -222,6 +217,9 @@ export function FinanceWorkspacePage({
   };
   const openPayment = (p: Payment) => {
     if (p.id.startsWith("owner-forecast:")) {
+      setMonth(paymentPeriod(p));
+      setDetail("owners");
+      setShowDetails(true);
       toast.info(
         "Прогноз выплаты по графику аренды. После поступления денег появится расчёт для подтверждения перевода.",
       );
@@ -245,7 +243,7 @@ export function FinanceWorkspacePage({
               <h1>{title}</h1>
               <p>
                 {mode === "company"
-                  ? "Общий график, деньги компании, клиенты и выплаты собственникам"
+                  ? "Результат компании и деньги, которыми вы распоряжаетесь"
                   : mode === "owners"
                     ? "Начисления, выплаты и задолженность по объектам"
                     : "Аренда и платежи после заключения договора"}
@@ -312,135 +310,103 @@ export function FinanceWorkspacePage({
         <>
           {mode === "company" && (
             <>
-              <div className="fw-metrics">
-                <Metric
-                  label="Доходы компании"
-                  amount={summary.income}
-                  positive
-                  note="Комиссия и другие доходы компании"
-                />
-                <Metric
-                  label="Расходы компании"
-                  amount={summary.expense}
-                  note="Ваши операционные расходы"
-                />
-                <Metric
-                  label="Прибыль компании"
-                  amount={summary.profit}
-                  positive={summary.profit >= 0}
-                  note="Доходы минус расходы по проведённым операциям"
-                />
-              </div>
-              <div className="fw-cash">
-                <span>
-                  На счетах по операциям <b>{money(summary.bank)}</b>
-                </span>
-                <span>
-                  Собственникам <b>{money(summary.ownerReserve)}</b>
-                </span>
-                <span>
-                  Депозиты <b>{money(summary.deposits)}</b>
-                </span>
-                <span>
-                  Деньги компании <b>{money(summary.available)}</b>
-                </span>
-                <button className="fw-link" onClick={() => setDetail("all")}>
-                  Все движения ↓
-                </button>
-              </div>
-              <p className="mb-4">
-                Остатки рассчитаны по внесённым операциям. Начальные остатки счетов из календаря
-                сюда не включены.
-              </p>
-              {summary.unallocated > 0 && (
-                <div className="fw-notice">
-                  Не распределено арендных платежей: {summary.unallocated}. Привяжите их к аренде
-                  клиента и укажите комиссию — пока вся их сумма зарезервирована, в доход компании
-                  она не попадает.{" "}
-                  <button className="fw-link" onClick={() => setDetail("clients")}>
-                    Открыть клиентов ↓
-                  </button>
-                </div>
-              )}
-              <PaymentAccountsChart
-                title="Все деньги и результат компании"
-                ledger={bankCalendar.ledger}
-                chart={bankCalendar.chart}
-                companyChart={calendar.chart}
+              <FinanceOverview
+                payments={rows}
+                settings={cfg}
+                settlements={settlements.data ?? []}
+                month={month}
                 today={today}
+                propertyId={property}
+                onOpen={openPayment}
+                onClients={() => {
+                  setDetail("clients");
+                  setShowDetails(true);
+                }}
+                onOwners={() => {
+                  setMonth(today.slice(0, 7));
+                  setDetail("owners");
+                  setShowDetails(true);
+                }}
               />
-              <p className="mb-4">
-                Синий — все деньги, включая аренду, КУ, депозиты и выплаты собственникам. Зелёный —
-                накопленные доходы минус расходы компании, без денег собственников и депозитов.
-              </p>
-              <div className="fw-section-switch" aria-label="Детали финансов">
-                {(
-                  [
-                    ["all", "Все операции"],
-                    ["company", "Только компания"],
-                    ["clients", "Клиенты"],
-                    ["owners", "Выплаты собственникам"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <Button
-                    key={value}
-                    variant={detail === value ? "default" : "outline"}
-                    aria-pressed={detail === value}
-                    onClick={() => setDetail(value)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-              {detail === "owners" || detail === "clients" ? (
-                <FinanceWorkspacePage
-                  key={detail}
-                  mode={detail}
-                  onBack={() => setInlineClient(undefined)}
-                  onOwners={() => setDetail("owners")}
-                  clientId={detail === "clients" ? inlineClient : undefined}
-                  embedded
-                  scope={{ month, property }}
-                />
-              ) : (
-                <div className="fw-panel">
-                  <div className="fw-panel-head">
-                    <h2>{detail === "company" ? "Операции компании" : "Все операции"}</h2>
-                    <label className="text-sm">
-                      Дата{" "}
-                      <input
-                        type="date"
-                        aria-label="Дата операций"
-                        min={month + "-01"}
-                        max={end}
-                        value={operationDate.startsWith(month) ? operationDate : ""}
-                        onChange={(e) => setOperationDate(e.target.value)}
-                      />
-                    </label>
-                    {operationDate && (
-                      <Button variant="ghost" onClick={() => setOperationDate("")}>
-                        Весь месяц
+              <Button
+                variant="outline"
+                aria-expanded={showDetails}
+                onClick={() => setShowDetails((v) => !v)}
+              >
+                {showDetails ? "Скрыть детали" : "Операции, клиенты и расчёты"}
+              </Button>
+              {showDetails && (
+                <div ref={detailsRef}>
+                  <div className="fw-section-switch" aria-label="Детали финансов">
+                    {(
+                      [
+                        ["all", "Все операции"],
+                        ["company", "Только компания"],
+                        ["clients", "Клиенты"],
+                        ["owners", "Выплаты собственникам"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <Button
+                        key={value}
+                        variant={detail === value ? "default" : "outline"}
+                        aria-pressed={detail === value}
+                        onClick={() => setDetail(value)}
+                      >
+                        {label}
                       </Button>
-                    )}
+                    ))}
                   </div>
-                  <PaymentTable
-                    payments={visiblePayments}
-                    onOpen={openPayment}
-                    onClient={(id) => {
-                      setDetail("clients");
-                      setInlineClient(id);
-                    }}
-                  />
-                  {!visiblePayments.length && (
-                    <p className="mt-5">За выбранный период операций нет.</p>
+                  {detail === "owners" || detail === "clients" ? (
+                    <FinanceWorkspacePage
+                      key={detail}
+                      mode={detail}
+                      onBack={() => setInlineClient(undefined)}
+                      onOwners={() => setDetail("owners")}
+                      clientId={detail === "clients" ? inlineClient : undefined}
+                      embedded
+                      scope={{ month, property }}
+                    />
+                  ) : (
+                    <div className="fw-panel">
+                      <div className="fw-panel-head">
+                        <h2>{detail === "company" ? "Операции компании" : "Все операции"}</h2>
+                        <label className="text-sm">
+                          Дата{" "}
+                          <input
+                            type="date"
+                            aria-label="Дата операций"
+                            min={month + "-01"}
+                            max={end}
+                            value={operationDate.startsWith(month) ? operationDate : ""}
+                            onChange={(e) => setOperationDate(e.target.value)}
+                          />
+                        </label>
+                        {operationDate && (
+                          <Button variant="ghost" onClick={() => setOperationDate("")}>
+                            Весь месяц
+                          </Button>
+                        )}
+                      </div>
+                      <PaymentTable
+                        payments={visiblePayments}
+                        onOpen={openPayment}
+                        onClient={(id) => {
+                          setDetail("clients");
+                          setInlineClient(id);
+                        }}
+                      />
+                      {!visiblePayments.length && (
+                        <p className="mt-5">За выбранный период операций нет.</p>
+                      )}
+                      <p className="mt-4">
+                        Платежи с пометкой «Бронь» связаны с договором аренды. Остальные — отдельные
+                        операции, расчёты и прогнозы выплат.{" "}
+                        <Link to="/finance/calendar" className="fw-link">
+                          Открыть сетку календаря →
+                        </Link>
+                      </p>
+                    </div>
                   )}
-                  <p className="mt-4">
-                    Платежи с пометкой «Бронь» связаны с договором аренды. Остальные — отдельные
-                    операции, расчёты и прогнозы выплат.{" "}
-                    <Link to="/finance/calendar" className="fw-link">
-                      Открыть сетку календаря →
-                    </Link>
-                  </p>
                 </div>
               )}
             </>
