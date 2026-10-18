@@ -36,6 +36,7 @@ const STATUS_DOT: Record<PaymentStatus, string> = {
 const PaymentAccountsChart = lazy(() => import("@/components/PaymentAccountsChart"));
 
 type Props = {
+  chartTitle?: string;
   year: number;
   monthIndex: number;
   ledger: DayMoneyLedger[];
@@ -48,6 +49,7 @@ type Props = {
 };
 
 export function PaymentCalendarMonth({
+  chartTitle,
   year,
   monthIndex,
   ledger,
@@ -69,7 +71,7 @@ export function PaymentCalendarMonth({
   return (
     <div className="finance-month-layout">
       <Suspense fallback={<div className="finance-chart-loading">Загрузка графика…</div>}>
-        <PaymentAccountsChart ledger={ledger} chart={chart} today={today} />
+        <PaymentAccountsChart title={chartTitle} ledger={ledger} chart={chart} today={today} />
       </Suspense>
       <div className="finance-calendar-card">
         <div className="finance-calendar-scroll">

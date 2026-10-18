@@ -24,12 +24,16 @@ import {
 export function FinanceDayCard({
   date,
   forecasts = [],
+  rows,
+  flowLabel,
   onClose,
   onEdit,
   onAdd,
 }: {
   date: string | null;
   forecasts?: Payment[];
+  rows?: Payment[];
+  flowLabel?: string;
   onClose: () => void;
   onEdit: (payment: Payment) => void;
   onAdd: (date: string, direction: PaymentDirection) => void;
@@ -54,7 +58,7 @@ export function FinanceDayCard({
     queryFn: () => fetchPayments(),
     enabled: Boolean(date),
   });
-  const payments = [...bankPayments(history), ...forecasts].filter(
+  const payments = (rows ?? [...bankPayments(history), ...forecasts]).filter(
     (p) =>
       p.planned_date === date || (paymentFactAmount(p, today) > 0 && paymentCashDate(p) === date),
   );
@@ -75,8 +79,10 @@ export function FinanceDayCard({
         </SheetHeader>
         <div className="space-y-6 p-5">
           <p className="text-sm text-muted-foreground">
-            Все операции дня, независимо от фильтров календаря. Нажмите на операцию, чтобы изменить
-            её.
+            {rows
+              ? `Поток «${flowLabel}», с учётом объекта, счёта и статьи календаря. Все статусы дня.`
+              : "Все операции дня, независимо от фильтров календаря."}{" "}
+            Нажмите на операцию, чтобы открыть исходный платёж.
           </p>
           <div className="flex gap-3">
             <Button onClick={() => date && onAdd(date, "in")}>+ Приход</Button>
@@ -167,10 +173,18 @@ export function FinanceDayCard({
                         type="button"
                         size="icon"
                         variant="outline"
-                        aria-label={`Провести операцию: ${rentalPaymentLabel(payment)}`}
-                        title="Провести операцию"
+                        aria-label={`${/^(company|owner):/.test(payment.id) ? "Открыть исходный платёж" : "Провести операцию"}: ${rentalPaymentLabel(payment)}`}
+                        title={
+                          /^(company|owner):/.test(payment.id)
+                            ? "Открыть полный исходный платёж"
+                            : "Провести операцию"
+                        }
                         disabled={markPaid.isPending || payment.id.startsWith("owner-forecast:")}
-                        onClick={() => markPaid.mutate(payment.id)}
+                        onClick={() =>
+                          /^(company|owner):/.test(payment.id)
+                            ? onEdit(payment)
+                            : markPaid.mutate(payment.id)
+                        }
                       >
                         <Check size={18} />
                       </Button>

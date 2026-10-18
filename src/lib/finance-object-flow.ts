@@ -21,7 +21,7 @@ const round = (n: number) => Math.round(n * 100) / 100;
 export const objectFlowSourceId = (id: string) => id.replace(/^(company|owner):/, "");
 
 export function objectFlowPayments(
-  id: string,
+  id: string | null,
   payments: Payment[],
   catalog: FinanceCatalog,
   flow: ObjectMoneyFlow,
@@ -29,7 +29,7 @@ export function objectFlowPayments(
   settlements: OwnerSettlement[] = [],
 ): Payment[] {
   const scoped = payments
-    .filter((p) => p.property_id === id)
+    .filter((p) => id == null || p.property_id === id)
     .map((p) => {
       const article = catalog.articles.find((a) => a.id === (p.article_id ?? p.article?.id));
       return article ? { ...p, article: { ...article, category_name: null } } : p;

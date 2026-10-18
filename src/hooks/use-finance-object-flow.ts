@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ObjectMoneyFlow } from "@/lib/finance-object-flow";
-const key = "rm-os-finance-object-flow";
-export function useFinanceObjectFlow() {
-  const [flow, setFlow] = useState<ObjectMoneyFlow>("company");
+export function useFinanceObjectFlow(
+  initial: ObjectMoneyFlow = "company",
+  key = "rm-os-finance-object-flow",
+) {
+  const [flow, setFlow] = useState<ObjectMoneyFlow>(initial);
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(key);
@@ -10,7 +12,7 @@ export function useFinanceObjectFlow() {
     } catch {
       /* Storage is optional. */
     }
-  }, []);
+  }, [key]);
   return [
     flow,
     (value: ObjectMoneyFlow) => {

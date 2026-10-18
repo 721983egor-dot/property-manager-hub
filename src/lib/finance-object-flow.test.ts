@@ -166,3 +166,57 @@ test("a due unpaid owner plan stays forecast, and an existing plan is not duplic
   assert.equal(s.actualBalance, 90000);
   assert.equal(s.forecastBalance, 0);
 });
+
+test("all movements include multiple properties and unassigned company expenses", () => {
+  const history = [
+    p("a", 100000),
+    p("b", 200000, { property_id: "another", booking_id: "b2" }),
+    p("office", 5000, {
+      property_id: null,
+      rental_component: null,
+      company_fee: null,
+      kind: "agency_cost",
+      direction: "out",
+    }),
+    p("deposit", 500000, { kind: "deposit_in", rental_component: null, company_fee: null }),
+  ];
+  const read = (flow: "company" | "owner" | "total") =>
+    objectFlowSummary(
+      objectFlowPayments(null, history, catalog, flow),
+      catalog,
+      "2026-10-01",
+      "2026-10-31",
+      "2026-10-18",
+    );
+  assert.equal(read("company").actualBalance, 25000);
+  assert.equal(read("owner").actualBalance, 270000);
+  assert.equal(read("total").actualBalance, 795000);
+  assert.equal(objectFlowPayments("home", history, catalog, "company").length, 1);
+});
+test("all movements retain account filters and canonical commission articles after allocation", () => {
+  const history = [
+    p("cash", 100000, { account: "Наличные" }),
+    p("bank", 200000, { property_id: "another", booking_id: "b2", account: "Банк" }),
+  ];
+  const catalogWithFee = {
+    categories: [],
+    articles: [
+      {
+        id: "fee",
+        name: "Комиссия",
+        code: "company_commission",
+        category_id: null,
+        direction: "in" as const,
+        affects_profit: true,
+        archived: false,
+        sort_order: 0,
+      },
+    ],
+  };
+  const selected = objectFlowPayments(null, history, catalogWithFee, "company").filter(
+    (p) => p.account === "Наличные" && p.article_id === "fee",
+  );
+  assert.equal(selected.length, 1);
+  assert.equal(selected[0]?.amount, 10000);
+  assert.equal(objectFlowSourceId(selected[0]!.id), "cash");
+});

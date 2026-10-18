@@ -1,6 +1,8 @@
 import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import { fetchOwnerSettlements } from "@/lib/finance-owner-settlements";
-import { bankPayments, ownerForecastPayments } from "@/lib/finance-company-model";
+import { FinanceObjectFlowSelector } from "@/components/FinanceObjectFlowSelector";
+import { useFinanceObjectFlow } from "@/hooks/use-finance-object-flow";
+import { objectFlowPayments, objectFlowSourceId, objectFlowNotes } from "@/lib/finance-object-flow";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -69,6 +71,7 @@ const STATUS_TONE: Record<PaymentStatus, string> = {
 export function FinanceCalendarPage() {
   const queryClient = useQueryClient();
   const today = useFinanceToday();
+  const [flow, setFlow] = useFinanceObjectFlow("total", "rm-os-finance-calendar-flow");
   const now = new Date(`${today}T12:00:00`);
   const [year, setYear] = useState(now.getFullYear());
   const [monthIndex, setMonthIndex] = useState(now.getMonth());
@@ -126,10 +129,11 @@ export function FinanceCalendarPage() {
       setAccount("all");
   }, [accountsReady, accounts, account]);
   const accountScope = accounts.find((a) => a.name === account)?.id ?? account;
-  const scope =
+  const filterScope =
     propertyId === "all" && account === "all" && articleId === "all"
       ? ""
       : JSON.stringify([propertyId, accountScope, articleId]);
+  const scope = flow === "total" ? filterScope : JSON.stringify([flow, filterScope]);
   useEffect(() => {
     setOpeningDraft(null);
     try {
@@ -179,19 +183,30 @@ export function FinanceCalendarPage() {
     queryKey: ["finance-owner-settlements", "calendar"],
     queryFn: () => fetchOwnerSettlements(),
   });
-  const forecasts = useMemo(
-    () => ownerForecastPayments(payments, rentalSettings.data ?? [], ownerSettlements.data ?? []),
-    [payments, rentalSettings.data, ownerSettlements.data],
-  );
   const scoped = useMemo(
     () =>
-      [...bankPayments(payments), ...forecasts].filter(
+      objectFlowPayments(
+        propertyId === "all" ? null : propertyId,
+        payments,
+        catalog ?? { articles: [], categories: [] },
+        flow,
+        rentalSettings.data ?? [],
+        ownerSettlements.data ?? [],
+      ).filter(
         (payment) =>
-          (propertyId === "all" || payment.property_id === propertyId) &&
           (account === "all" || payment.account === account) &&
           (articleId === "all" || payment.article_id === articleId),
       ),
-    [payments, forecasts, propertyId, account, articleId],
+    [
+      payments,
+      catalog,
+      flow,
+      rentalSettings.data,
+      ownerSettlements.data,
+      propertyId,
+      account,
+      articleId,
+    ],
   );
   const calendar = useMemo(
     () => buildFinanceCalendar(scoped, year, monthIndex, today, openingAnchor, actualOpeningAnchor),
@@ -248,7 +263,14 @@ export function FinanceCalendarPage() {
       );
       return;
     }
-    setEditing(payment);
+    const source = payments.find((p) => p.id === objectFlowSourceId(payment.id));
+    if (!source) {
+      toast.error("Исходная операция не найдена");
+      return;
+    }
+    if (source.id !== payment.id)
+      toast.info("Открыт полный исходный платёж. Доля потока рассчитывается автоматически.");
+    setEditing(source);
     setDefaultDate("");
     setDialogOpen(true);
   };
@@ -286,6 +308,14 @@ export function FinanceCalendarPage() {
       </header>
 
       <div className="finance-calendar-body">
+        <div className="mb-5 space-y-2">
+          <FinanceObjectFlowSelector value={flow} onChange={setFlow} label="Поток денег" />
+          <p className="text-sm text-slate-500">
+            {flow === "total"
+              ? "Все поступления и расходы, включая деньги компании, собственников и страховые депозиты. Комиссия внутри аренды не дублируется."
+              : objectFlowNotes[flow]}
+          </p>
+        </div>
         <div className="finance-toolbar">
           <button
             type="button"
@@ -533,6 +563,13 @@ export function FinanceCalendarPage() {
         {!isLoading && view === "month" && (
           <div className="finance-month-content">
             <PaymentCalendarMonth
+              chartTitle={
+                flow === "company"
+                  ? "Деньги компании"
+                  : flow === "owner"
+                    ? "Деньги собственников у компании"
+                    : "Все деньги на счетах"
+              }
               year={year}
               monthIndex={monthIndex}
               ledger={ledger}
@@ -619,9 +656,14 @@ export function FinanceCalendarPage() {
                         disabled={
                           markPaidMutation.isPending || payment.id.startsWith("owner-forecast:")
                         }
-                        onClick={() => markPaidMutation.mutate(payment.id)}
+                        onClick={() =>
+                          /^(company|owner):/.test(payment.id)
+                            ? openEdit(payment)
+                            : markPaidMutation.mutate(payment.id)
+                        }
                       >
-                        <Check size={16} /> Провести
+                        <Check size={16} />{" "}
+                        {/^(company|owner):/.test(payment.id) ? "Открыть платёж" : "Провести"}
                       </Button>
                     ) : (
                       <span className="text-xs text-slate-400">✓</span>
@@ -634,7 +676,8 @@ export function FinanceCalendarPage() {
         )}
       </div>
       <FinanceDayCard
-        forecasts={forecasts}
+        rows={scoped}
+        flowLabel={flow === "company" ? "Компания" : flow === "owner" ? "Собственник" : "Всего"}
         date={selectedDay}
         onClose={() => setSelectedDay(null)}
         onEdit={(payment) => {
@@ -653,6 +696,7 @@ export function FinanceCalendarPage() {
         defaultPropertyId={propertyId === "all" ? undefined : propertyId}
         defaultDate={defaultDate}
         defaultDirection={defaultDirection}
+        defaultCompany={flow === "company"}
       />
     </div>
   );

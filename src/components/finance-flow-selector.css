@@ -1,0 +1,44 @@
+.finance-object-flow {
+  display: inline-flex;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid #e4e9ed;
+  border-radius: 12px;
+  background: #f2f5f6;
+}
+.finance-object-flow button {
+  min-width: 138px;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #737e87;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.finance-object-flow button[aria-pressed="true"] {
+  background: #fff;
+  box-shadow: 0 1px 5px #273c5014;
+  color: #168b71;
+}
+.finance-object-flow button[data-flow="owner"][aria-pressed="true"] {
+  color: #9365c4;
+}
+.finance-object-flow button[data-flow="total"][aria-pressed="true"] {
+  color: #2782ec;
+}
+.finance-object-flow button:focus-visible {
+  outline: 2px solid #2782ec;
+  outline-offset: 2px;
+}
+@media (max-width: 600px) {
+  .finance-object-flow {
+    width: 100%;
+  }
+  .finance-object-flow button {
+    min-width: 0;
+    flex: 1;
+    padding: 10px;
+  }
+}
