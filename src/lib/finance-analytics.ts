@@ -1,4 +1,4 @@
-import { paymentFactAmount } from "./finance-payment-status.ts";
+import { paymentFactAmount, financeToday } from "./finance-payment-status.ts";
 import type { Payment } from "./finance.ts";
 import type { FinanceCatalog } from "./finance-articles-model.ts";
 import type { FinanceObligation } from "./finance-counterparties.ts";
@@ -28,6 +28,7 @@ export function reportEntries(
   from: string,
   to: string,
   propertyId = "all",
+  today = financeToday(),
 ): ReportEntry[] {
   const entries: ReportEntry[] = [];
   const originals = new Map(payments.map((p) => [p.id, p]));
@@ -49,7 +50,7 @@ export function reportEntries(
           ? (p.accrual_date ?? p.planned_date)
           : (p.paid_at ?? p.planned_date)
     ).slice(0, 10);
-    const amount = basis === "cash" ? paidAmount(p) : p.amount;
+    const amount = basis === "cash" ? paidAmount(p, today) : p.amount;
     if (!amount || date < from || date > to) continue;
     const category =
       catalog.categories.find((c) => c.id === article?.category_id)?.name ?? "Без категории";

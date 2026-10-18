@@ -1,3 +1,8 @@
+import { FinanceObjectFlowSelector } from "./FinanceObjectFlowSelector";
+import { useFinanceObjectFlow } from "@/hooks/use-finance-object-flow";
+import { useFinanceToday } from "@/hooks/use-finance-today";
+import { objectFlowPayments, objectFlowSummary, objectFlowNotes } from "@/lib/finance-object-flow";
+import { fetchOwnerSettlements } from "@/lib/finance-owner-settlements";
 import { signedUrls } from "@/lib/properties";
 import { fetchFinanceObjectProperties, fetchFinanceRentals } from "@/lib/finance-rentals";
 import { financeToday, rentalForProperty, rentalMonthPlan } from "@/lib/finance-rental-model";
@@ -8,16 +13,15 @@ import { useQuery } from "@tanstack/react-query";
 import { FinanceTabs } from "./FinanceTabs";
 import { fetchPayments, financePropertyLabel, monthBounds, formatAdeskMoney } from "@/lib/finance";
 import { fetchFinanceCatalog } from "@/lib/finance-articles";
-import { fetchObligations } from "@/lib/finance-counterparties";
 import { fetchFinanceObjectClasses, fetchFinanceObjectAssignments } from "@/lib/finance-objects";
-import { filterFinanceObjects, objectFinanceSummary } from "@/lib/finance-object-model";
+import { filterFinanceObjects } from "@/lib/finance-object-model";
 import "./finance-analytics.css";
 export function FinanceObjectsPage() {
-  const now = new Date(),
-    bounds = monthBounds(now.getFullYear(), now.getMonth());
+  const today = useFinanceToday();
+  const [flow, setFlow] = useFinanceObjectFlow();
   const [classification, setClassification] = useState("all"),
     [search, setSearch] = useState("");
-  const [month, setMonth] = useState(bounds.monthKey);
+  const [month, setMonth] = useState(today.slice(0, 7));
   const selected = monthBounds(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1);
   const properties = useQuery({
     queryKey: ["finance-object-properties", "active"],
@@ -38,9 +42,9 @@ export function FinanceObjectsPage() {
     queryFn: () => fetchPayments(),
   });
   const catalog = useQuery({ queryKey: ["finance-catalog"], queryFn: fetchFinanceCatalog });
-  const obligations = useQuery({
-    queryKey: ["finance-obligations", "analytics"],
-    queryFn: () => fetchObligations(),
+  const settlements = useQuery({
+    queryKey: ["finance-owner-settlements"],
+    queryFn: () => fetchOwnerSettlements(),
   });
   const groups = useQuery({
     queryKey: ["finance-object-classes"],
@@ -50,10 +54,10 @@ export function FinanceObjectsPage() {
     queryKey: ["finance-object-settings"],
     queryFn: fetchFinanceObjectAssignments,
   });
-  const error = [properties, payments, catalog, obligations, groups, assignments, rentals].find(
+  const error = [properties, payments, catalog, settlements, groups, assignments, rentals].find(
     (q) => q.error,
   )?.error;
-  const loading = [properties, payments, catalog, obligations, groups, assignments, rentals].some(
+  const loading = [properties, payments, catalog, settlements, groups, assignments, rentals].some(
     (q) => q.isPending,
   );
   const rows = useMemo(
@@ -65,13 +69,19 @@ export function FinanceObjectsPage() {
         search,
       ).map((property) => ({
         property,
-        summary: objectFinanceSummary(
-          property.id,
-          payments.data ?? [],
-          obligations.data ?? [],
+        summary: objectFlowSummary(
+          objectFlowPayments(
+            property.id,
+            payments.data ?? [],
+            catalog.data ?? { articles: [], categories: [] },
+            flow,
+            assignments.data ?? [],
+            settlements.data ?? [],
+          ),
           catalog.data ?? { articles: [], categories: [] },
           selected.from,
           selected.to,
+          today,
         ),
       })),
     [
@@ -80,7 +90,9 @@ export function FinanceObjectsPage() {
       classification,
       search,
       payments.data,
-      obligations.data,
+      settlements.data,
+      flow,
+      today,
       catalog.data,
       selected.from,
       selected.to,
@@ -90,6 +102,9 @@ export function FinanceObjectsPage() {
     <div className="finance-ui">
       <h1>Объекты</h1>
       <FinanceTabs active="objects" />
+      <div className="fa-toolbar finance-object-flow-toolbar">
+        <FinanceObjectFlowSelector value={flow} onChange={setFlow} />
+      </div>
       <div className="fa-toolbar">
         <input
           aria-label="Поиск финансового объекта"
@@ -124,7 +139,8 @@ export function FinanceObjectsPage() {
         </Link>
       </div>
       <p className="fa-note">
-        Условия аренды — из договоров РМ ОС. Доходы и расходы — по операциям за выбранный месяц.
+        {objectFlowNotes[flow]} Приход и расход — факт за выбранный месяц; остаток учитывает всю
+        историю объекта.
       </p>
       {error ? (
         <p role="alert" className="fa-error">
@@ -142,11 +158,11 @@ export function FinanceObjectsPage() {
                   <th>Классификация</th>
                   <th>Аренда в месяц</th>
                   <th>Комиссия компании</th>
-                  <th>Доходы</th>
+                  <th>Приход</th>
                   <th>Расходы</th>
-                  <th>Прибыль</th>
-                  <th>Рентабельность</th>
-                  <th>Обязательства, сальдо</th>
+                  <th>Движение за месяц</th>
+                  <th>Остаток по операциям</th>
+                  <th>Прогноз на конец месяца</th>
                 </tr>
               </thead>
               <tbody>
@@ -224,8 +240,8 @@ export function FinanceObjectsPage() {
                       <td className={s.net < 0 ? "fa-negative" : "fa-positive"}>
                         {formatAdeskMoney(s.net)}
                       </td>
-                      <td>{s.margin === null ? "—" : `${s.margin.toFixed(1)} %`}</td>
-                      <td>{formatAdeskMoney(s.debtBalance)}</td>
+                      <td>{formatAdeskMoney(s.actualBalance)}</td>
+                      <td>{formatAdeskMoney(s.forecastBalance)}</td>
                     </tr>
                   );
                 })}

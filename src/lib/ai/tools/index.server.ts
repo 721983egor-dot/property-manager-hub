@@ -1,3 +1,4 @@
+// Потоки объекта: getFinanceObjectFlow (company/owner/total), тот же расчёт факта и прогноза, что в интерфейсе. Только чтение администратора.
 // Lease documents: getLeaseContext; proposePrepareLease, proposeSaveClientPassport, proposeLeaseCompany, proposeLeaseTemplate; encrypted confirmed executors.
 // Единая бронь → финансы: getRentalContract; подтверждённые proposeUpdateRentalContract → updateRentalContract и proposeCancelRentalContract → cancelRentalContract, аудит брони/графика/платежей.
 // Статьи компании: getFinanceAnalytics/getFinanceObjects выделяют комиссию из аренды; listFinanceCatalog + подтверждённый proposeSaveFinanceArticle → saveFinanceArticle, аудит существующих таблиц.

@@ -2376,6 +2376,26 @@ export function createReadTools(ctx: AssistantToolContext) {
         })};
       },
     }),
+    getFinanceObjectFlow: tool({
+      description:"Движение денег объекта по потоку company (комиссия и расходы компании), owner (аренда после комиссии и КУ минус выплаты), total (все движения с депозитом). Остаток по полной истории, факт за месяц и прогноз с будущими выплатами собственнику. Не прибыль по начислениям. amount — доля выбранного потока, sourceAmount — полная сумма исходного платежа: долю нельзя менять отдельной операцией. Только администратор.",
+      inputSchema:z.object({propertyId:z.string().uuid(),month:z.string().regex(/^\d{4}-\d{2}$/),flow:z.enum(["company","owner","total"])}),
+      execute:async ({propertyId,month,flow})=>{
+        const {crmAccess}=await import("@/lib/crm-results.server");const {db}=await crmAccess();
+        const [payments,categories,articles,settings,settlements]=await Promise.all([
+          allFinancePages((from,to)=>db.from("payments").select("*").eq("property_id",propertyId).order("id").range(from,to)),
+          db.from("finance_article_categories").select("*"),db.from("finance_articles").select("*"),
+          db.from("finance_object_settings").select("property_id,classification_id,owner_counterparty_id,payout_day").eq("property_id",propertyId).maybeSingle(),
+          allFinancePages((from,to)=>db.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic").eq("property_id",propertyId).order("id").range(from,to)),
+        ]);
+        const error=payments.error??categories.error??articles.error??settings.error??settlements.error;if(error)return {error:error.message};
+        const {objectFlowPayments,objectFlowSummary,objectFlowNotes,objectFlowSourceId}=await import("@/lib/finance-object-flow");
+        const catalog={categories:categories.data??[],articles:articles.data??[]};
+        const rows=objectFlowPayments(propertyId,(payments.data??[]) as unknown as Payment[],catalog,flow,settings.data?[settings.data]:[],settlements.data??[]);
+        const from=month+"-01",to=new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7)),0)).toISOString().slice(0,10);
+        const {entries,...summary}=objectFlowSummary(rows,catalog,from,to,financeToday());
+        return {propertyId,month,flow,explanation:objectFlowNotes[flow],...summary,movements:rows.filter(p=>p.planned_date>=from&&p.planned_date<=to).map(p=>({sourcePaymentId:p.id.startsWith("owner-forecast:")?null:objectFlowSourceId(p.id),forecastOnly:p.id.startsWith("owner-forecast:"),isAllocation:/^(company|owner):/.test(p.id),sourceAmount:(payments.data??[]).find(row=>row.id===objectFlowSourceId(p.id))?.amount??null,date:p.planned_date,amount:p.amount,direction:p.direction,article:p.article?.name??p.kind,status:effectivePaymentStatus(p)}))};
+      },
+    }),
     getFinanceObjects: tool({
       description: "Финансовые карточки существующих объектов РМ ОС: классификации, прибыль/денежный поток за период, текущие обязательства. Только финансовые данные; без характеристик и фотографий недвижимости. При propertyId возвращает также операции и обязательства для корректировки.",
       inputSchema: z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),propertyId:z.string().uuid().optional(),classificationId:z.string().optional(),query:z.string().optional(),basis:z.enum(["cash","profit"]).default("profit")}),

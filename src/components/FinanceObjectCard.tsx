@@ -1,8 +1,20 @@
+import { FinanceObjectFlowSelector } from "./FinanceObjectFlowSelector";
+import { useFinanceObjectFlow } from "@/hooks/use-finance-object-flow";
+import { useFinanceToday } from "@/hooks/use-finance-today";
+import {
+  objectFlowPayments,
+  objectFlowSummary,
+  objectFlowLabels,
+  objectFlowNotes,
+  objectFlowSourceId,
+} from "@/lib/finance-object-flow";
+import { fetchOwnerSettlements } from "@/lib/finance-owner-settlements";
+import { effectivePaymentStatus } from "@/lib/finance-payment-status";
 import { RentalFinancePanel } from "./RentalFinancePanel";
 import { fetchFinanceObjectProperties, fetchFinanceRentals } from "@/lib/finance-rentals";
 import { financeToday, rentalForProperty, rentalMonthPlan } from "@/lib/finance-rental-model";
 import { OwnerSettlementsPanel } from "./OwnerSettlementsPanel";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -46,10 +58,17 @@ import { csvText } from "@/lib/finance-analytics";
 import "./finance-analytics.css";
 export function FinanceObjectCard({ id }: { id: string }) {
   const qc = useQueryClient(),
-    now = new Date(),
-    today = new Intl.DateTimeFormat("en-CA").format(now);
-  const [month, setMonth] = useState(monthBounds(now.getFullYear(), now.getMonth()).monthKey);
-  const [basis, setBasis] = useState<"profit" | "cash">("profit"),
+    today = useFinanceToday();
+  const [flow, setFlow] = useFinanceObjectFlow();
+  const ownerDetails = useRef<HTMLDetailsElement>(null);
+  const openOwnerDetails = () => {
+    if (ownerDetails.current) {
+      ownerDetails.current.open = true;
+      ownerDetails.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+  const [month, setMonth] = useState(today.slice(0, 7));
+  const [basis, setBasis] = useState<"profit" | "cash">("cash"),
     [tab, setTab] = useState<"money" | "obligations">("money"),
     [direction, setDirection] = useState<"all" | PaymentDirection>("all"),
     [party, setParty] = useState("all");
@@ -84,6 +103,10 @@ export function FinanceObjectCard({ id }: { id: string }) {
     queryKey: ["finance-object-settings"],
     queryFn: fetchFinanceObjectAssignments,
   });
+  const settlements = useQuery({
+    queryKey: ["finance-owner-settlements", id],
+    queryFn: () => fetchOwnerSettlements(id),
+  });
   const rentalProperty = properties.data?.find((p) => p.id === id);
   const managementRate = rentalProperty?.management_fee_value ?? null;
   const rentalPlan = rental.booking
@@ -114,6 +137,7 @@ export function FinanceObjectCard({ id }: { id: string }) {
     assignments,
     parties,
     rentals,
+    settlements,
   ].find((q) => q.error)?.error;
   const loading = [
     properties,
@@ -124,8 +148,33 @@ export function FinanceObjectCard({ id }: { id: string }) {
     assignments,
     parties,
     rentals,
+    settlements,
   ].some((q) => q.isPending);
-  const summary = useMemo(
+  const flowPayments = useMemo(
+    () =>
+      objectFlowPayments(
+        id,
+        payments.data ?? [],
+        catalog.data ?? { articles: [], categories: [] },
+        flow,
+        assignments.data ?? [],
+        settlements.data ?? [],
+      ),
+    [id, payments.data, catalog.data, flow, assignments.data, settlements.data],
+  );
+  const effectiveBasis = flow === "company" ? basis : "cash";
+  const cashSummary = useMemo(
+    () =>
+      objectFlowSummary(
+        flowPayments,
+        catalog.data ?? { articles: [], categories: [] },
+        bounds.from,
+        bounds.to,
+        today,
+      ),
+    [flowPayments, catalog.data, bounds.from, bounds.to, today],
+  );
+  const profitSummary = useMemo(
     () =>
       objectFinanceSummary(
         id,
@@ -134,33 +183,43 @@ export function FinanceObjectCard({ id }: { id: string }) {
         catalog.data ?? { articles: [], categories: [] },
         bounds.from,
         bounds.to,
-        basis,
+        "profit",
       ),
-    [id, payments.data, obligations.data, catalog.data, bounds.from, bounds.to, basis],
+    [id, payments.data, obligations.data, catalog.data, bounds.from, bounds.to],
   );
-  const series = useMemo(
-    () =>
-      objectFinanceSeries(
-        id,
-        payments.data ?? [],
-        catalog.data ?? { articles: [], categories: [] },
-        bounds.from,
-        bounds.to,
-        basis,
-        today,
-      ),
-    [id, payments.data, catalog.data, bounds.from, bounds.to, basis, today],
-  );
+  const summary = effectiveBasis === "cash" ? cashSummary : profitSummary;
+  const series =
+    effectiveBasis === "cash"
+      ? cashSummary.series
+      : objectFinanceSeries(
+          id,
+          payments.data ?? [],
+          catalog.data ?? { articles: [], categories: [] },
+          bounds.from,
+          bounds.to,
+          "profit",
+          today,
+        );
+  const openPayment = (p: Payment) => {
+    if (p.rental_component === "owner_plan") {
+      openOwnerDetails();
+      return;
+    }
+    const original = payments.data?.find((row) => row.id === objectFlowSourceId(p.id));
+    if (original) setPaymentForm({ payment: original, direction: original.direction });
+  };
   const partyFilter = (partyId: string | null) =>
     party === "all" || (party === "none" ? !partyId : partyId === party);
-  const visiblePayments = (payments.data ?? []).filter(
-    (p) =>
-      p.property_id === id &&
-      p.planned_date >= bounds.from &&
-      p.planned_date <= bounds.to &&
-      (direction === "all" || p.direction === direction) &&
-      partyFilter(p.counterparty_id),
-  );
+  const visiblePayments = flowPayments
+    .filter(
+      (p) =>
+        p.property_id === id &&
+        p.planned_date >= bounds.from &&
+        p.planned_date <= bounds.to &&
+        (direction === "all" || p.direction === direction) &&
+        partyFilter(p.counterparty_id),
+    )
+    .sort((a, b) => a.planned_date.localeCompare(b.planned_date));
   const visibleObligations = (obligations.data ?? []).filter(
     (o) => o.property_id === id && partyFilter(o.counterparty_id),
   );
@@ -175,7 +234,7 @@ export function FinanceObjectCard({ id }: { id: string }) {
               p.direction === "out" ? p.amount : 0,
               paymentArticleLabel(p, catalog.data?.articles),
               p.counterparty_name,
-              statusLabel(p.status),
+              statusLabel(effectivePaymentStatus(p, today)),
             ]),
           ]
         : [
@@ -193,7 +252,7 @@ export function FinanceObjectCard({ id }: { id: string }) {
     const url = URL.createObjectURL(new Blob([csvText(rows)], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `rm-os-object-${id}-${tab}-${month}.csv`;
+    a.download = `rm-os-object-${id}-${flow}-${tab}-${month}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -234,24 +293,8 @@ export function FinanceObjectCard({ id }: { id: string }) {
           <div className="finance-object-overview">
             <span>Обзор</span>
           </div>
-          <RentalFinancePanel
-            propertyId={id}
-            booking={rental.booking}
-            conflict={rental.conflict}
-            month={month}
-            percent={managementRate}
-            feeType={rentalProperty?.management_fee_type ?? "percent"}
-            payments={payments.data ?? []}
-          />
-          <div className="fa-toolbar">
-            <div className="finance-segments">
-              <button aria-pressed={basis === "profit"} onClick={() => setBasis("profit")}>
-                Прибыль
-              </button>
-              <button aria-pressed={basis === "cash"} onClick={() => setBasis("cash")}>
-                Денежный поток
-              </button>
-            </div>
+          <div className="fa-toolbar finance-object-flow-toolbar">
+            <FinanceObjectFlowSelector value={flow} onChange={setFlow} />
             <input
               aria-label="Месяц объекта"
               type="month"
@@ -261,33 +304,58 @@ export function FinanceObjectCard({ id }: { id: string }) {
               }}
             />
           </div>
+          <p className="fa-note">{objectFlowNotes[flow]}</p>
+          {flow === "company" && (
+            <div className="fa-toolbar">
+              <div className="finance-segments">
+                <button aria-pressed={basis === "cash"} onClick={() => setBasis("cash")}>
+                  Денежный поток
+                </button>
+                <button aria-pressed={basis === "profit"} onClick={() => setBasis("profit")}>
+                  Прибыль по начислениям
+                </button>
+              </div>
+            </div>
+          )}
           <section className="fa-panel">
+            <h2 className="finance-object-flow-heading">
+              {effectiveBasis === "profit" ? "Прибыль" : "Движение денег"} ·{" "}
+              {objectFlowLabels[flow]}
+            </h2>
             <div className="finance-object-summary">
               <div>
-                <small>{basis === "profit" ? "Прибыль" : "Денежный поток"}</small>
+                <small>{effectiveBasis === "profit" ? "Прибыль" : "Денежный поток"}</small>
                 <strong className={summary.net < 0 ? "fa-negative" : ""}>
                   {formatAdeskMoney(summary.net)}
                 </strong>
               </div>
               <div>
-                <small>{basis === "profit" ? "Доходы" : "Приход"}</small>
+                <small>{effectiveBasis === "profit" ? "Доходы" : "Приход"}</small>
                 <strong>{formatAdeskMoney(summary.income)}</strong>
               </div>
               <div>
-                <small>Расходы</small>
+                <small>{flow === "owner" ? "Перечислено собственнику" : "Расходы"}</small>
                 <strong>{formatAdeskMoney(summary.expense)}</strong>
               </div>
               <div>
-                <small>Рентабельность</small>
+                <small>
+                  {effectiveBasis === "profit" ? "Рентабельность" : "Остаток по операциям"}
+                </small>
                 <strong>
-                  {basis === "profit" && summary.margin !== null
-                    ? `${summary.margin.toFixed(1)} %`
-                    : "—"}
+                  {effectiveBasis === "profit"
+                    ? summary.margin == null
+                      ? "—"
+                      : `${summary.margin.toFixed(1)} %`
+                    : formatAdeskMoney(cashSummary.actualBalance)}
                 </strong>
               </div>
               <div>
-                <small>Баланс по обязательствам</small>
-                <strong>{formatAdeskMoney(summary.debtBalance)}</strong>
+                <small>
+                  {effectiveBasis === "profit"
+                    ? "Денежный прогноз на конец месяца"
+                    : "Прогноз на конец месяца"}
+                </small>
+                <strong>{formatAdeskMoney(cashSummary.forecastBalance)}</strong>
               </div>
             </div>
             <div className="finance-object-chart">
@@ -313,17 +381,23 @@ export function FinanceObjectCard({ id }: { id: string }) {
                     />
                   )}
                   <Line
+                    type="monotone"
                     dataKey="actual"
-                    name={basis === "profit" ? "Прибыль" : "Денежный поток"}
-                    stroke="#2782ec"
+                    name={effectiveBasis === "profit" ? "Прибыль" : "Денежный поток"}
+                    stroke={
+                      flow === "company" ? "#168b71" : flow === "owner" ? "#9b6cce" : "#2782ec"
+                    }
                     strokeWidth={2}
                     dot={false}
                     isAnimationActive={false}
                   />
                   <Line
+                    type="monotone"
                     dataKey="forecast"
                     name="Прогноз"
-                    stroke="#2782ec"
+                    stroke={
+                      flow === "company" ? "#168b71" : flow === "owner" ? "#9b6cce" : "#2782ec"
+                    }
                     strokeWidth={2}
                     strokeDasharray="4 3"
                     dot={false}
@@ -333,25 +407,39 @@ export function FinanceObjectCard({ id }: { id: string }) {
               </ResponsiveContainer>
             </div>
             <p className="fa-note">
-              {basis === "profit"
+              {effectiveBasis === "profit"
                 ? "Прибыль нарастающим итогом по начислениям. Будущие начисления показаны пунктиром."
-                : "Накопленный денежный поток за месяц. Пунктир — прогноз с учётом неоплаченного остатка будущих операций."}{" "}
-              Обязательства — текущий остаток: нам должны {formatAdeskMoney(summary.receivable)}, мы
-              должны {formatAdeskMoney(summary.payable)}.
+                : "Остаток по всей истории операций объекта. Сплошная линия — факт; пунктир — прогноз с учётом неполученных платежей и выплат собственнику."}{" "}
+              Депозит учитывается только в потоке «Всего».
             </p>
           </section>
 
-          <OwnerSettlementsPanel
-            propertyId={id}
-            suggestedAmount={
-              rentalPlan?.scheduled && !rental.conflict ? rentalPlan.ownerBeforeExpenses : null
-            }
-            month={month}
-            settings={assignments.data?.find((a) => a.property_id === id)}
-            parties={parties.data ?? []}
-            obligations={obligations.data ?? []}
-            payments={payments.data ?? []}
-          />
+          <details className="finance-object-details">
+            <summary>Условия аренды и комиссия</summary>
+            <RentalFinancePanel
+              propertyId={id}
+              booking={rental.booking}
+              conflict={rental.conflict}
+              month={month}
+              percent={managementRate}
+              feeType={rentalProperty?.management_fee_type ?? "percent"}
+              payments={payments.data ?? []}
+            />
+          </details>
+          <details className="finance-object-details" ref={ownerDetails}>
+            <summary>Расчёты и выплаты собственнику</summary>
+            <OwnerSettlementsPanel
+              propertyId={id}
+              suggestedAmount={
+                rentalPlan?.scheduled && !rental.conflict ? rentalPlan.ownerBeforeExpenses : null
+              }
+              month={month}
+              settings={assignments.data?.find((a) => a.property_id === id)}
+              parties={parties.data ?? []}
+              obligations={obligations.data ?? []}
+              payments={payments.data ?? []}
+            />
+          </details>
           <section className="fa-panel" style={{ marginTop: 16 }}>
             <div className="fa-tabs" role="tablist" aria-label="Финансы объекта">
               <button role="tab" aria-selected={tab === "money"} onClick={() => setTab("money")}>
@@ -368,18 +456,26 @@ export function FinanceObjectCard({ id }: { id: string }) {
             <div className="fa-toolbar">
               {tab === "money" ? (
                 <>
-                  <button
-                    className="finance-primary-button"
-                    onClick={() => setPaymentForm({ payment: null, direction: "in" })}
-                  >
-                    + Приход
-                  </button>
-                  <button
-                    className="finance-primary-button"
-                    onClick={() => setPaymentForm({ payment: null, direction: "out" })}
-                  >
-                    − Расход
-                  </button>
+                  {flow === "owner" ? (
+                    <button className="fa-button" onClick={openOwnerDetails}>
+                      Расчёты с собственником
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="finance-primary-button"
+                        onClick={() => setPaymentForm({ payment: null, direction: "in" })}
+                      >
+                        + Приход
+                      </button>
+                      <button
+                        className="finance-primary-button"
+                        onClick={() => setPaymentForm({ payment: null, direction: "out" })}
+                      >
+                        − Расход
+                      </button>
+                    </>
+                  )}
                   <div className="finance-segments">
                     {(["in", "out", "all"] as const).map((d) => (
                       <button
@@ -419,8 +515,8 @@ export function FinanceObjectCard({ id }: { id: string }) {
             </div>
             <p className="fa-note">
               {tab === "money"
-                ? "Операции по плановой дате за выбранный месяц, включая ожидаемые. Нажмите на строку для корректировки."
-                : "Все обязательства объекта, независимо от выбранного месяца. Нажмите на строку для корректировки."}
+                ? "Операции выбранного потока по плановой дате. Нажмите, чтобы открыть исходный платёж; доля комиссии или собственника отдельно не редактируется."
+                : "Все обязательства объекта, независимо от выбранного потока и месяца. Нажмите на строку для корректировки."}
             </p>
             <div className="fa-table-wrap">
               <table className="fa-table finance-operation-table">
@@ -437,14 +533,11 @@ export function FinanceObjectCard({ id }: { id: string }) {
                 <tbody>
                   {tab === "money"
                     ? visiblePayments.map((p) => (
-                        <tr
-                          key={p.id}
-                          onClick={() => setPaymentForm({ payment: p, direction: p.direction })}
-                        >
+                        <tr key={p.id} onClick={() => openPayment(p)}>
                           <td>
                             <button
-                              aria-label={`Изменить операцию ${p.planned_date} ${p.amount}`}
-                              onClick={() => setPaymentForm({ payment: p, direction: p.direction })}
+                              aria-label={`${p.rental_component === "owner_plan" ? "Открыть расчёт выплаты" : "Изменить операцию"} ${p.planned_date} ${p.amount}`}
+                              onClick={() => openPayment(p)}
                             >
                               {p.planned_date}
                             </button>
@@ -455,9 +548,7 @@ export function FinanceObjectCard({ id }: { id: string }) {
                               "Без контрагента"}
                           </td>
                           <td>
-                            <button
-                              onClick={() => setPaymentForm({ payment: p, direction: p.direction })}
-                            >
+                            <button onClick={() => openPayment(p)}>
                               {paymentArticleLabel(p, catalog.data?.articles)}
                             </button>
                             <small style={{ display: "block", color: "#999" }}>{p.comment}</small>
@@ -466,7 +557,7 @@ export function FinanceObjectCard({ id }: { id: string }) {
                             {p.direction === "in" ? "+" : "−"}
                             {formatAdeskMoney(p.amount)}
                           </td>
-                          <td>{statusLabel(p.status)}</td>
+                          <td>{statusLabel(effectivePaymentStatus(p, today))}</td>
                         </tr>
                       ))
                     : visibleObligations.map((o) => (
@@ -519,6 +610,7 @@ export function FinanceObjectCard({ id }: { id: string }) {
         onOpenChange={(open) => !open && setPaymentForm(null)}
         payment={paymentForm?.payment ?? null}
         defaultPropertyId={id}
+        defaultCompany={flow === "company"}
         defaultDirection={paymentForm?.direction}
       />
       {obligationForm && (
