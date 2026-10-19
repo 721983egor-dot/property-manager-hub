@@ -927,6 +927,7 @@ export function PropertyForm({ initial, onSubmit, submitting, maintenanceMode }:
                   </SelectContent>
                 </Select>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">Будущие неоплаченные платежи аренды и расчёт собственнику пересчитаются автоматически. Цену действующей аренды меняйте в разделе «Текущая аренда» карточки объекта.</p>
             </Field>
           ) : null}
 

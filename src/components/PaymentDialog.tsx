@@ -1,3 +1,4 @@
+import { RentalTermsButton } from "./RentalTermsButton";
 import { fetchFinanceClientRentals } from "@/lib/finance-workspace";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fetchFinanceAccounts, FINANCE_ACCOUNT_TYPES } from "@/lib/finance-accounts";
@@ -505,10 +506,18 @@ export function PaymentDialog({
         </SheetHeader>
 
         {payment?.rental_schedule && (
-          <p className="rounded-md border p-3 text-sm text-muted-foreground">
-            Платёж создан из условий аренды. Для изменения суммы, даты или отмены откройте «Условия
-            аренды и график» в карточке клиента. Здесь можно подтвердить получение денег.
-          </p>
+          <div className="rounded-md border p-3 text-sm text-muted-foreground space-y-3">
+            <p>
+              Платёж создан из условий аренды. Изменение цены или комиссии пересчитает будущие
+              неоплаченные платежи. Здесь можно подтвердить получение денег.
+            </p>
+            {payment.booking_id && (
+              <RentalTermsButton
+                bookingId={payment.booking_id}
+                onSaved={() => onOpenChange(false)}
+              />
+            )}
+          </div>
         )}
         {payment?.rental_installment_id && (
           <p className="rounded border bg-muted p-3 text-sm">

@@ -1109,7 +1109,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       inputSchema:z.object({propertyId:z.string().uuid(),value:z.number().nonnegative().max(100000000),type:z.enum(["percent","amount"])}),execute:async input=>{
         const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
         const p=await ctx.admin.from("properties").select("title,internal_name").eq("id",input.propertyId).eq("portfolio","rm").maybeSingle();if(!p.data)return {error:"Объект РМ ОС не найден"};
-        const summary=`Комиссия за управление «${p.data.internal_name||p.data.title}»: ${input.value} (${input.type}) от договорной аренды до расходов`;ctx.propose({tool:"saveManagementFee",summary,input});return {proposed:true,summary};
+        const summary=`Комиссия за управление «${p.data.internal_name||p.data.title}»: ${input.value} (${input.type}) от договорной аренды до расходов. Будущие неоплаченные платежи и прогноз собственнику пересчитаются автоматически; полученные суммы и предоплаты сохранятся.`;ctx.propose({tool:"saveManagementFee",summary,input});return {proposed:true,summary};
       },
     }),
     proposeManagementFeePayment: tool({
@@ -1144,8 +1144,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
     proposeUpdateRentalContract: tool({
-      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты и счёт. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. Для периодической цены передай полный список periods и priceType=periodic. Арендные месяцы отсчитываются от заезда; день оплаты — отдельный срок, цена складывается по всем дням периода, неполный месяц пропорционален. Только администратор.",
-      inputSchema:z.object({bookingId:z.string().uuid(),startDate:z.string().optional(),endDate:z.string().optional(),priceType:z.enum(["fixed","periodic"]).optional(),priceMonth:z.number().positive().optional(),paymentDay:z.number().int().min(1).max(31).optional(),deposit:z.number().nonnegative().optional(),accountId:z.string().uuid().optional(),comment:z.string().optional(),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional()}),
+      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты, счёт и комиссию за управление объектом (managementFeeType/managementFeeValue). Комиссия общая для объекта, обновляет будущие платежи активных договоров. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. Для периодической цены передай полный список periods и priceType=periodic. Арендные месяцы отсчитываются от заезда; день оплаты — отдельный срок, цена складывается по всем дням периода, неполный месяц пропорционален. Только администратор.",
+      inputSchema:z.object({bookingId:z.string().uuid(),startDate:z.string().optional(),endDate:z.string().optional(),priceType:z.enum(["fixed","periodic"]).optional(),priceMonth:z.number().positive().optional(),managementFeeType:z.enum(["percent","amount"]).optional(),managementFeeValue:z.number().nonnegative().optional(),paymentDay:z.number().int().min(1).max(31).optional(),deposit:z.number().nonnegative().optional(),accountId:z.string().uuid().optional(),comment:z.string().optional(),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional()}),
       execute:async input=>{
         const {crmAccess}=await import("@/lib/crm-results.server");await crmAccess();
         const changes=Object.entries(input).filter(([key])=>key!=="bookingId").map(([key,value])=>`${key}: ${JSON.stringify(value)}`).join("; ");

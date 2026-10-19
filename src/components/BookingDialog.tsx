@@ -1,3 +1,4 @@
+import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { RentalPricePreview } from "./RentalPricePreview";
 import {
   bookingPriceProblem,
@@ -65,6 +66,8 @@ type Props = {
   booking?: Booking | null;
   defaultPropertyId?: string;
   defaultClientId?: string;
+  initialMode?: "view" | "edit";
+  onSaved?: (() => void) | undefined;
 };
 
 type FormState = {
@@ -123,6 +126,8 @@ export function BookingDialog({
   booking,
   defaultPropertyId,
   defaultClientId,
+  initialMode,
+  onSaved,
 }: Props) {
   const qc = useQueryClient();
   const { isAdmin } = useAccess();
@@ -136,11 +141,16 @@ export function BookingDialog({
   const [clientSearch, setClientSearch] = useState("");
   const [assignRoomId, setAssignRoomId] = useState("");
   const [financeAccount, setFinanceAccount] = useState("");
+  const [managementFee, setManagementFee] = useState<{
+    type: "percent" | "amount";
+    value: string;
+  } | null>(null);
   const assignRoomFn = useServerFn(assignHotelBookingRoom);
 
   useEffect(() => {
     if (!open) return;
-    setMode(booking ? "view" : "edit");
+    setMode(initialMode ?? (booking ? "view" : "edit"));
+    setManagementFee(null);
     setForm(booking ? fromBooking(booking) : emptyForm(defaultPropertyId, defaultClientId));
     setNewClient(false);
     setClientName("");
@@ -148,7 +158,7 @@ export function BookingDialog({
     setClientSearch("");
     setAssignRoomId("");
     setFinanceAccount("");
-  }, [open, booking?.id, defaultPropertyId, defaultClientId]);
+  }, [open, booking?.id, defaultPropertyId, defaultClientId, initialMode]);
 
   const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
@@ -205,6 +215,14 @@ export function BookingDialog({
       )
         throw new Error("Дата окончания аренды должна быть позже даты начала");
       if (seasonalProblem) throw new Error(seasonalProblem);
+      if (
+        managementFee &&
+        (!managementFee.value.trim() ||
+          !Number.isFinite(Number(managementFee.value)) ||
+          Number(managementFee.value) < 0 ||
+          (managementFee.type === "percent" && Number(managementFee.value) > 100))
+      )
+        throw new Error("Укажите корректную комиссию за управление");
       const selected = properties.find((p) => p.id === form.property_id);
       const hotel = selected?.portfolio === "n11";
       if (isAdmin && selected?.portfolio === "rm" && !financeAccount)
@@ -225,6 +243,12 @@ export function BookingDialog({
 
       const bookingId = await saveBooking(booking?.id ?? null, {
         ...(isAdmin && selected?.portfolio === "rm" ? { finance_account_id: financeAccount } : {}),
+        ...(isAdmin && selected?.portfolio === "rm" && managementFee
+          ? {
+              management_fee_type: managementFee.type,
+              management_fee_value: Number(managementFee.value),
+            }
+          : {}),
         property_id: form.property_id,
         client_id: clientId,
         start_date: form.start_date,
@@ -246,6 +270,7 @@ export function BookingDialog({
       return bookingId;
     },
     onSuccess: async () => {
+      await invalidateRentalFinance(qc);
       await qc.invalidateQueries({ queryKey: ["bookings"] });
       await qc.invalidateQueries({ queryKey: ["clients"] });
       await qc.invalidateQueries({ queryKey: ["current-booking"] });
@@ -253,6 +278,9 @@ export function BookingDialog({
       await qc.invalidateQueries({ queryKey: ["crm-bookings"] });
       await qc.invalidateQueries({ queryKey: ["client-bookings"] });
       for (const key of [
+        "finance-object-properties",
+        "finance-object-assignments",
+        "rental-booking-editor",
         "payments",
         "crm-commission-payments",
         "finance-rentals",
@@ -265,6 +293,7 @@ export function BookingDialog({
         await qc.invalidateQueries({ queryKey: [key] });
       toast.success(booking ? "Бронирование обновлено" : "Бронирование создано");
       onOpenChange(false);
+      onSaved?.();
     },
     onError: (e: unknown) => {
       const message = bookingErrorMessage(e);
@@ -278,11 +307,15 @@ export function BookingDialog({
       await deleteBooking(booking.id);
     },
     onSuccess: async () => {
+      await invalidateRentalFinance(qc);
       await qc.invalidateQueries({ queryKey: ["bookings"] });
       await qc.invalidateQueries({ queryKey: ["current-booking"] });
       await qc.invalidateQueries({ queryKey: ["crm-bookings"] });
       await qc.invalidateQueries({ queryKey: ["client-bookings"] });
       for (const key of [
+        "finance-object-properties",
+        "finance-object-assignments",
+        "rental-booking-editor",
         "payments",
         "crm-commission-payments",
         "finance-rentals",
@@ -305,7 +338,7 @@ export function BookingDialog({
     },
   });
 
-  const property = properties.find((p) => p.id === (booking?.property_id ?? form.property_id));
+  const property = properties.find((p) => p.id === form.property_id);
   const needsRoomAssignment = Boolean(property?.is_unassigned_lane && booking);
   const assignCandidates = useMemo(() => {
     if (!property?.is_unassigned_lane) return [];
@@ -384,6 +417,16 @@ export function BookingDialog({
                 label="Стоимость в месяц"
                 value={formatMoney(priceOn(booking, toISODate(new Date())))}
               />
+              {isAdmin && isRm && (
+                <Field
+                  label="Комиссия за управление"
+                  value={
+                    property?.management_fee_value == null
+                      ? "Не задана"
+                      : `${property.management_fee_value}${property.management_fee_type === "amount" ? " ₽ в месяц" : "%"}`
+                  }
+                />
+              )}
               <Field label="День оплаты" value={`${booking.payment_day} число`} />
               <Field label="Страховой депозит" value={formatMoney(booking.deposit)} />
               <Field label="Источник" value={sourceLabel(booking.source)} />
@@ -484,7 +527,10 @@ export function BookingDialog({
                 <Label>Объект</Label>
                 <Select
                   value={form.property_id}
-                  onValueChange={(v) => setForm((f) => ({ ...f, property_id: v }))}
+                  onValueChange={(v) => {
+                    setManagementFee(null);
+                    setForm((f) => ({ ...f, property_id: v }));
+                  }}
                 >
                   <SelectTrigger className="mt-1.5">
                     <SelectValue placeholder="Выберите объект" />
@@ -750,6 +796,58 @@ export function BookingDialog({
 
             {isAdmin && isRm && (
               <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+                <Label>Комиссия за управление объектом</Label>
+                <div className="flex gap-2">
+                  <Input
+                    aria-label="Комиссия за управление"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    max={
+                      (managementFee?.type ?? property?.management_fee_type) === "percent"
+                        ? 100
+                        : undefined
+                    }
+                    value={
+                      managementFee?.value ??
+                      (property?.management_fee_value == null
+                        ? ""
+                        : String(property.management_fee_value))
+                    }
+                    onChange={(e) =>
+                      setManagementFee({
+                        type: managementFee?.type ?? property?.management_fee_type ?? "percent",
+                        value: e.target.value,
+                      })
+                    }
+                  />
+                  <Select
+                    value={managementFee?.type ?? property?.management_fee_type ?? "percent"}
+                    onValueChange={(v) =>
+                      setManagementFee({
+                        type: v as "percent" | "amount",
+                        value:
+                          managementFee?.value ??
+                          (property?.management_fee_value == null
+                            ? ""
+                            : String(property.management_fee_value)),
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-36" aria-label="Тип комиссии">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percent">% от аренды</SelectItem>
+                      <SelectItem value="amount">₽ в месяц</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Общая комиссия объекта. После сохранения пересчитаются будущие неоплаченные
+                  платежи, доход компании и прогноз собственнику. Полученные суммы и согласованные
+                  предоплаты сохранятся.
+                </p>
                 <Label>Счёт для оплаты аренды</Label>
                 <Select value={financeAccount} onValueChange={setFinanceAccount}>
                   <SelectTrigger aria-label="Счёт графика аренды">
@@ -767,9 +865,7 @@ export function BookingDialog({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  После сохранения будущие платежи аренды, комиссия и прогноз выплат собственнику
-                  обновятся автоматически. Цены по периодам и день оплаты меняйте здесь. Полученные
-                  суммы и отдельные графики предоплат сохраняются.
+                  Счёт используется для будущих платежей графика аренды.
                 </p>
                 {(accounts.error || financeConfig.error) && (
                   <p className="text-xs text-destructive">

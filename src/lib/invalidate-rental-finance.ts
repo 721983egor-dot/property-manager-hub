@@ -1,0 +1,24 @@
+import type { QueryClient } from "@tanstack/react-query";
+export async function invalidateRentalFinance(qc: QueryClient) {
+  await Promise.all(
+    [
+      "properties",
+      "property",
+      "bookings",
+      "current-booking",
+      "client-bookings",
+      "crm-bookings",
+      "finance-object-properties",
+      "finance-object-settings",
+      "finance-rentals",
+      "finance-client-rentals",
+      "finance-owner-settlements",
+      "finance-obligations",
+      "payments",
+      "deals",
+      "crm-commission-payments",
+      "rental-booking-editor",
+      "booking-finance-account",
+    ].map((key) => qc.invalidateQueries({ queryKey: [key] })),
+  );
+}

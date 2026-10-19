@@ -1,3 +1,4 @@
+import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,7 +31,9 @@ export const Route = createFileRoute("/_authenticated/objects/$id/edit")({
       {error.message}
     </div>
   ),
-  notFoundComponent: () => <div className="p-10 text-sm text-muted-foreground">Объект не найден</div>,
+  notFoundComponent: () => (
+    <div className="p-10 text-sm text-muted-foreground">Объект не найден</div>
+  ),
 });
 
 function EditObjectPage() {
@@ -47,8 +50,8 @@ function EditObjectPage() {
     mutationFn: async (input: PropertyInput) => {
       await updateProperty(id, input);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["properties"] });
+    onSuccess: async () => {
+      await invalidateRentalFinance(queryClient);
       toast.success("Изменения сохранены");
       navigate({ to: "/objects/$id", params: { id } });
     },
@@ -64,7 +67,9 @@ function EditObjectPage() {
         <ChevronLeft className="size-4" />
         Объекты
       </Link>
-      <h1 className="mb-6 mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Редактирование объекта</h1>
+      <h1 className="mb-6 mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+        Редактирование объекта
+      </h1>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Загрузка...</p>

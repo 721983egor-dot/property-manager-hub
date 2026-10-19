@@ -1,3 +1,5 @@
+import { RentalTermsButton } from "./RentalTermsButton";
+import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -29,9 +31,9 @@ export function RentalFinancePanel({
   useEffect(() => setRate(percent == null ? "" : String(percent)), [percent, propertyId]);
   const save = useMutation({
     mutationFn: () => saveManagementFee(propertyId, Number(rate), type),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["finance-object-properties"] });
-      toast.success("Комиссия за управление сохранена");
+    onSuccess: async () => {
+      await invalidateRentalFinance(qc);
+      toast.success("Комиссия сохранена, будущие платежи пересчитаны");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -60,6 +62,7 @@ export function RentalFinancePanel({
               Открыть объект
             </Link>
           </p>
+          <RentalTermsButton bookingId={booking.id} />
           {conflict && (
             <p role="alert" className="fa-error">
               Есть пересекающиеся договоры. Проверьте сроки аренды перед начислением.

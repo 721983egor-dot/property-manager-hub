@@ -21,6 +21,8 @@ export async function updateRentalContract(input: Record<string, unknown>) {
     status: "status",
     comment: "comment",
     periods: "periods",
+    managementFeeType: "management_fee_type",
+    managementFeeValue: "management_fee_value",
   })) {
     if (input[key] !== undefined) patch[column] = input[key];
   }

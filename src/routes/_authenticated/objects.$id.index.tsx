@@ -42,7 +42,10 @@ export const Route = createFileRoute("/_authenticated/objects/$id/")({
   head: () => ({
     meta: [
       { title: "Карточка объекта — RM OS" },
-      { name: "description", content: "Полная информация об объекте аренды: параметры, стоимость, адрес и фотографии." },
+      {
+        name: "description",
+        content: "Полная информация об объекте аренды: параметры, стоимость, адрес и фотографии.",
+      },
       { property: "og:title", content: "Карточка объекта — RM OS" },
       {
         property: "og:description",
@@ -81,8 +84,7 @@ function ObjectViewPage() {
     enabled: Boolean(complexId),
   });
 
-  const videoPath =
-    storedVideoPath(data?.video_file_path) || storedVideoPath(data?.video_url);
+  const videoPath = storedVideoPath(data?.video_file_path) || storedVideoPath(data?.video_url);
   const complexMain = complex ? mainPhotoPath(complex) : null;
   const paths = [
     ...(data?.photos ?? []).map((p) => p.path),
@@ -106,7 +108,8 @@ function ObjectViewPage() {
       if (result.errors.length) toast.error(result.errors.join("; "), { duration: 20_000 });
       else toast.success("Видео выложено на YouTube и VK");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Не удалось выгрузить видео"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Не удалось выгрузить видео"),
   });
 
   return (
@@ -154,7 +157,14 @@ function ObjectViewPage() {
           </header>
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
-            <h2 className="text-base font-semibold">Текущая аренда</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-semibold">Текущая аренда</h2>
+              {isAdmin && data.portfolio === "rm" && currentBooking && (
+                <Button variant="outline" onClick={() => setBookingOpen(true)}>
+                  Изменить цену и комиссию
+                </Button>
+              )}
+            </div>
             {currentBooking && currentBooking.status !== "cancelled" ? (
               <button
                 type="button"
@@ -190,6 +200,7 @@ function ObjectViewPage() {
             open={bookingOpen}
             onOpenChange={setBookingOpen}
             booking={currentBooking}
+            initialMode={isAdmin && data.portfolio === "rm" ? "edit" : "view"}
           />
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
@@ -198,11 +209,7 @@ function ObjectViewPage() {
               <p className="text-sm">{data.address || "Адрес не указан"}</p>
               {data.address ? (
                 <Button asChild variant="outline">
-                  <a
-                    href={yandexMapsUrl(data.address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a href={yandexMapsUrl(data.address)} target="_blank" rel="noopener noreferrer">
                     <MapPin className="size-4" />
                     Открыть в Яндекс.Картах
                   </a>
@@ -293,7 +300,6 @@ function ObjectViewPage() {
             </section>
           ) : null}
 
-
           {(() => {
             const outdoor = labelsFor(OUTDOOR_OPTIONS, data.outdoor_spaces);
             const appliances = labelsFor(APPLIANCE_OPTIONS, data.appliances);
@@ -310,7 +316,6 @@ function ObjectViewPage() {
               </section>
             );
           })()}
-
 
           <section className="mt-6 rounded-xl border border-border bg-card p-6">
             <h2 className="text-base font-semibold">Стоимость</h2>
@@ -329,7 +334,11 @@ function ObjectViewPage() {
               <Item
                 label="Комиссия"
                 value={
-                  data.commission == null ? "—" : data.commission === 0 ? "Без комиссии" : `${data.commission}%`
+                  data.commission == null
+                    ? "—"
+                    : data.commission === 0
+                      ? "Без комиссии"
+                      : `${data.commission}%`
                 }
               />
               <Item label="Коммунальные в месяц" value={formatMoney(data.utilities_month)} />
@@ -405,7 +414,8 @@ function ObjectViewPage() {
                 ) : null}
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                {data.video_publish_status === "publishing" || data.video_publish_status === "pending"
+                {data.video_publish_status === "publishing" ||
+                data.video_publish_status === "pending"
                   ? "Идёт выкладка на YouTube и VK"
                   : "На YouTube и VK ролик уходит только по кнопке «Выложить»."}
               </p>
