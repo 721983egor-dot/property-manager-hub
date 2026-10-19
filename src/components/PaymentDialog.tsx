@@ -246,7 +246,13 @@ export function PaymentDialog({
         : form.rental_component === "deposit"
           ? "deposit_in"
           : null;
-  const rentalArticle = articleList.find((a) => a.code === rentalArticleCode);
+  const rentalArticle = rentalArticleCode
+    ? articleList.find((a) => a.code === rentalArticleCode)
+    : undefined;
+  const selectedArticleId = rentalArticle?.id ?? form.article_id;
+  const selectedArticleName =
+    articleList.find((a) => a.id === selectedArticleId)?.name ??
+    (payment?.article?.id === selectedArticleId ? payment.article.name : undefined);
   const categoryList = useMemo(() => categories ?? [], [categories]);
   const { data: counterparties = [] } = useQuery({
     queryKey: ["finance-counterparties"],
@@ -376,6 +382,18 @@ export function PaymentDialog({
     void queryClient.invalidateQueries({ queryKey: ["finance-owner-expenses"] });
   };
 
+  const directionLocked = Boolean(
+    form.rental_component ||
+    defaultRentalComponent ||
+    defaultObligationId ||
+    payment?.rental_schedule ||
+    payment?.rental_installment_id ||
+    payment?.rental_component ||
+    payment?.obligation_id ||
+    payment?.crm_charge ||
+    payment?.management_period ||
+    (payment && ["owner_payout", "deposit_in", "deposit_out"].includes(payment.kind)),
+  );
   const expenseEligible =
     form.direction === "out" &&
     !form.rental_component &&
@@ -392,7 +410,12 @@ export function PaymentDialog({
     mutationFn: async () => {
       if (accountsQuery.error || !selectedAccountValid)
         throw new Error("Выберите действующий счёт в настройках финансов");
-      if (!payment && form.direction === "in" && !form.rental_component && !form.article_id)
+      if (
+        (!payment || payment.direction !== form.direction) &&
+        form.direction === "in" &&
+        !form.rental_component &&
+        !form.article_id
+      )
         throw new Error("Выберите статью разового дохода компании");
       if (payment?.rental_component === "owner_plan")
         throw new Error("Подтвердите выплату в разделе Собственники");
@@ -539,35 +562,38 @@ export function PaymentDialog({
       >
         <SheetHeader className="finance-payment-header">
           <SheetTitle className="finance-payment-title">
-            {payment ? (
-              "Изменить операцию"
-            ) : (
-              <>
-                Добавить операцию{" "}
-                <Select
-                  value={form.direction}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      direction: value as PaymentDirection,
-                      article_id: "",
-                      kind: value === "in" ? "other" : "agency_cost",
-                      rental_component: "",
-                      booking_id: "",
-                    }))
-                  }
-                >
-                  <SelectTrigger className="finance-direction-trigger" aria-label="Тип операции">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="out">расхода</SelectItem>
-                    <SelectItem value="in">прихода</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            )}
+            {payment ? "Изменить операцию" : "Добавить операцию"}
+            <Select
+              value={form.direction}
+              disabled={directionLocked}
+              onValueChange={(value) => {
+                if (value === form.direction) return;
+                setForm((prev) => ({
+                  ...prev,
+                  direction: value as PaymentDirection,
+                  article_id: "",
+                  kind: value === "in" ? "other" : "agency_cost",
+                  rental_component: "",
+                  booking_id: "",
+                  expense_bearer: "company",
+                  countInObligations: false,
+                }));
+              }}
+            >
+              <SelectTrigger className="finance-direction-trigger" aria-label="Тип операции">
+                <SelectValue>{form.direction === "out" ? "Расход" : "Доход"}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="out">Расход</SelectItem>
+                <SelectItem value="in">Доход</SelectItem>
+              </SelectContent>
+            </Select>
           </SheetTitle>
+          {directionLocked && (
+            <p className="text-xs text-muted-foreground">
+              Тип связанного платежа задаётся в брони или расчёте.
+            </p>
+          )}
         </SheetHeader>
 
         {payment?.rental_schedule && (
@@ -667,10 +693,14 @@ export function PaymentDialog({
           </Field>
           <Field
             label="Статья"
-            required={!payment && form.direction === "in" && !form.rental_component}
+            required={
+              (!payment || payment.direction !== form.direction) &&
+              form.direction === "in" &&
+              !form.rental_component
+            }
           >
             <Select
-              value={rentalArticle?.id ?? (form.article_id || "")}
+              value={selectedArticleId || ""}
               disabled={!!form.rental_component}
               onValueChange={(v) => {
                 if (v === "__none__") {
@@ -686,12 +716,12 @@ export function PaymentDialog({
               }}
             >
               <SelectTrigger className="finance-field-select" aria-label="Статья">
-                <SelectValue placeholder="Выберите статью…" />
+                <SelectValue placeholder="Выберите статью…">{selectedArticleName}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {(!!payment || form.direction === "out" || !!form.rental_component) && (
-                  <SelectItem value="__none__">Без статьи</SelectItem>
-                )}
+                {((!!payment && payment.direction === form.direction) ||
+                  form.direction === "out" ||
+                  !!form.rental_component) && <SelectItem value="__none__">Без статьи</SelectItem>}
                 {articleGroups.map((group) => (
                   <SelectGroup key={group.category?.id ?? "none"}>
                     <SelectLabel>{group.category?.name ?? "Без категории"}</SelectLabel>

@@ -1387,6 +1387,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         "Предложить изменение платежа Финансов (частичный патч: дата, сумма, статус, объект, комментарий…). Требует подтверждения.",
       inputSchema: z.object({
         paymentId: z.string(),
+        articleId: z.string().uuid().nullable().optional().describe("Выбранная статья. При смене доход/расхода выберите статью нового типа; null очищает выбор."),
         plannedDate: z.string().optional(),
         expenseBearer: z.enum(["company", "owner"]).optional(),
         amount: z.number().optional(),
@@ -1416,10 +1417,17 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async (input) => {
         const { data: payment } = await ctx.admin
           .from("payments")
-          .select("id, planned_date, amount, kind, status")
+          .select("id, planned_date, amount, kind, status, direction")
           .eq("id", input.paymentId)
           .maybeSingle();
         if (!payment) return { error: "Платёж не найден" };
+        let selectedArticleName = "";
+        if (input.articleId) {
+          const article = await ctx.admin.from("finance_articles").select("name,direction").eq("id", input.articleId).single();
+          if (article.error || !article.data) return { error: "Статья не найдена" };
+          if (article.data.direction !== (input.direction ?? payment.direction)) return { error: "Выберите статью для нового типа операции" };
+          selectedArticleName = article.data.name;
+        }
         let propertyId: string | null | undefined;
         let propertyText = "";
         if (input.clearProperty) propertyId = null;
@@ -1449,6 +1457,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (input.plannedDate) parts.push(`дата → ${input.plannedDate}`);
         if (input.expenseBearer) parts.push(`за счёт → ${input.expenseBearer === "owner" ? "собственника, удержать из выплаты" : "компании"}`);
         if (input.amount != null) parts.push(`сумма → ${money(input.amount)}`);
+        if (input.direction) parts.push(`тип → ${input.direction === "out" ? "расход" : "доход"}`);
+        if (input.articleId !== undefined) parts.push(input.articleId ? `статья → ${selectedArticleName}` : "очистить статью");
         if (input.status) parts.push(`статус → ${input.status}`);
         if (propertyText) parts.push(`объект → ${propertyText}`);
         if (clientName) parts.push(`клиент → ${clientName}`);
@@ -1460,6 +1470,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
           input: {
             expenseBearer: input.expenseBearer,
             paymentId: input.paymentId,
+            articleId: input.articleId,
             plannedDate: input.plannedDate ?? null,
             amount: input.amount ?? null,
             direction: input.direction ?? null,

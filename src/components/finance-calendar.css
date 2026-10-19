@@ -726,4 +726,26 @@
   text-align: left;
 }
 
-.finance-day { cursor: pointer; }
+.finance-day {
+  cursor: pointer;
+}
+
+.finance-payment-sheet .finance-payment-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding-right: 20px;
+}
+.finance-payment-sheet .finance-direction-trigger {
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid #e2e5e9;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 22px;
+  text-decoration: none;
+}
+.finance-payment-sheet .finance-direction-trigger > svg {
+  display: block;
+}

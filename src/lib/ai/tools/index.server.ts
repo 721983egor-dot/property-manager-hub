@@ -46,3 +46,5 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
 
 // Расход: proposeCreatePayment/proposeUpdatePayment поддерживают expenseBearer company/owner.
 // Владелец определяется по объекту; getCounterparty и getOwnerSettlements показывают расходы и удержания.
+
+// Изменение типа обычной операции и статьи: proposeUpdatePayment(direction, articleId). Связанные платежи сохраняют тип.

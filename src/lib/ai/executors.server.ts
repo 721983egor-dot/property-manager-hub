@@ -1387,6 +1387,24 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (patch["status"] === "paid" && patch["paid_at"] == null) {
       patch["paid_at"] = new Date().toISOString().slice(0, 10);
     }
+    if (input["direction"] != null || input["articleId"] !== undefined) {
+      const currentResult = await supabaseAdmin.from("payments").select("*").eq("id", paymentId).single();
+      if (currentResult.error) throw new Error(currentResult.error.message);
+      const current = currentResult.data as unknown as Record<string, unknown>;
+      const direction = input["direction"] ?? current["direction"];
+      if (direction !== current["direction"]) {
+        if (current["rental_component"] || current["rental_schedule"] || current["rental_installment_id"] || current["obligation_id"] || current["crm_charge"] || current["management_period"] || ["owner_payout", "deposit_in", "deposit_out"].includes(String(current["kind"])))
+          throw new Error("Тип связанного платежа задаётся в брони или расчёте");
+        if (input["articleId"] === undefined) patch["article_id"] = null;
+        if (input["kind"] == null) patch["kind"] = direction === "out" ? "agency_cost" : "other";
+        if (direction === "in") { patch["expense_bearer"] = null; patch["expense_owner_id"] = null; }
+      }
+      if (input["articleId"]) {
+        const article = await supabaseAdmin.from("finance_articles").select("direction,code").eq("id", String(input["articleId"])).single();
+        if (article.error || article.data?.direction !== direction) throw new Error("Выберите статью для нового типа операции");
+        patch["kind"] = ["rent_in","deposit_in","deposit_out","owner_payout","contractor","agency_cost","other"].includes(article.data.code ?? "") ? article.data.code : "other";
+      }
+    }
     if (!Object.keys(patch).length) throw new Error("Нет полей для обновления платежа");
     const { error } = await supabaseAdmin.from("payments").update(patch as never).eq("id", paymentId);
     if (error) throw new Error(error.message);
