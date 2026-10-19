@@ -1,3 +1,8 @@
+import {
+  bookingPriceProblem,
+  nextBookingPricePeriod,
+  bookingErrorMessage,
+} from "@/lib/booking-price-validation";
 import { LeaseDocumentsButton } from "@/components/LeaseDocuments";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -183,8 +188,26 @@ export function BookingDialog({
     return clients.find((c) => normalizePhone(c.phone) === digits) ?? null;
   }, [clients, clientPhone]);
 
+  const seasonalProblem =
+    form.price_type === "periodic"
+      ? bookingPriceProblem(form.periods, form.start_date, form.end_date, Number(form.payment_day))
+      : null;
+
   const save = useMutation({
     mutationFn: async () => {
+      if (!form.property_id) throw new Error("Выберите объект");
+      if (
+        !form.start_date ||
+        !form.end_date ||
+        form.end_date < form.start_date ||
+        (isRm && form.end_date === form.start_date)
+      )
+        throw new Error("Дата окончания аренды должна быть позже даты начала");
+      if (seasonalProblem) throw new Error(seasonalProblem);
+      const selected = properties.find((p) => p.id === form.property_id);
+      const hotel = selected?.portfolio === "n11";
+      if (isAdmin && selected?.portfolio === "rm" && !financeAccount)
+        throw new Error("Выберите счёт для графика аренды");
       let clientId = form.client_id;
       if (newClient) {
         if (!clientName.trim()) throw new Error("Укажите ФИО клиента");
@@ -193,14 +216,11 @@ export function BookingDialog({
           phone: clientPhone.trim(),
         });
         clientId = created.id;
+        setForm((f) => ({ ...f, client_id: created.id }));
+        setNewClient(false);
+        void qc.invalidateQueries({ queryKey: ["clients"] });
       }
-      if (!form.property_id) throw new Error("Выберите объект");
       if (!clientId) throw new Error("Выберите клиента");
-      if (form.end_date < form.start_date) throw new Error("Дата окончания раньше даты начала");
-      const selected = properties.find((p) => p.id === form.property_id);
-      const hotel = selected?.portfolio === "n11";
-      if (isAdmin && selected?.portfolio === "rm" && !financeAccount)
-        throw new Error("Выберите счёт для графика аренды");
 
       const bookingId = await saveBooking(booking?.id ?? null, {
         ...(isAdmin && selected?.portfolio === "rm" ? { finance_account_id: financeAccount } : {}),
@@ -217,7 +237,7 @@ export function BookingDialog({
         status: form.status,
         comment: form.comment,
         stay_kind: hotel ? "short_stay" : "long_term",
-        periods: form.periods.filter((p) => p.start_date && p.end_date),
+        periods: form.price_type === "periodic" ? form.periods : [],
       });
       if (form.status === "active") {
         await markPropertyRented(form.property_id);
@@ -246,7 +266,7 @@ export function BookingDialog({
       onOpenChange(false);
     },
     onError: (e: unknown) => {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = bookingErrorMessage(e);
       toast.error(message);
     },
   });
@@ -279,7 +299,7 @@ export function BookingDialog({
       onOpenChange(false);
     },
     onError: (e: unknown) => {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = bookingErrorMessage(e);
       toast.error(message);
     },
   });
@@ -335,7 +355,9 @@ export function BookingDialog({
               : "Выберите объект и клиента"}
           </DialogDescription>
         </DialogHeader>
-        {booking && isAdmin && booking.stay_kind === "long_term" && <LeaseDocumentsButton bookingId={booking.id} />}
+        {booking && isAdmin && booking.stay_kind === "long_term" && (
+          <LeaseDocumentsButton bookingId={booking.id} />
+        )}
 
         {mode === "view" && booking ? (
           <div className="space-y-4">
@@ -613,6 +635,15 @@ export function BookingDialog({
                 </div>
               ) : (
                 <div className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Даты «С» и «По» включаются в период. Например: до 31 мая включительно, следующий
+                    период — с 1 июня. На каждую дату оплаты должна быть задана одна цена.
+                  </p>
+                  {seasonalProblem && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {seasonalProblem}
+                    </p>
+                  )}
                   {form.periods.map((p, i) => (
                     <div key={i} className="flex flex-wrap items-end gap-2">
                       <div>
@@ -632,7 +663,7 @@ export function BookingDialog({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">По</Label>
+                        <Label className="text-xs">По включительно</Label>
                         <Input
                           type="date"
                           className="mt-1 w-[150px]"
@@ -687,7 +718,7 @@ export function BookingDialog({
                         ...f,
                         periods: [
                           ...f.periods,
-                          { start_date: f.start_date, end_date: f.end_date, price_month: 0 },
+                          nextBookingPricePeriod(f.periods, f.start_date, f.end_date),
                         ],
                       }))
                     }

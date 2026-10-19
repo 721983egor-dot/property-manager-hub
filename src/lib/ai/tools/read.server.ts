@@ -2371,6 +2371,16 @@ export function createReadTools(ctx: AssistantToolContext) {
         return error ? { error: error.message } : { id, usage: data };
       },
     }),
+    checkBookingPricePeriods: tool({
+      description: "Проверить сезонные периоды стоимости брони перед сохранением. Обе даты включаются в период; даты не должны пересекаться, цены положительные, на каждую будущую дату оплаты нужна одна цена. Ничего не сохраняет. Только администратор.",
+      inputSchema: z.object({start:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),end:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),paymentDay:z.number().int().min(1).max(31),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number()})).max(100)}),
+      execute: async ({start,end,paymentDay,periods}) => {
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server"); await ownerFinanceAdminClient();
+        const {bookingPriceProblem}=await import("@/lib/booking-price-validation");
+        const problem=bookingPriceProblem(periods,start,end,paymentDay);
+        return {valid:problem===null,problem};
+      },
+    }),
     getFinanceRentalTerms: tool({
       description: "Договорная аренда объектов РМ ОС для финансов: сроки, день оплаты, цена из договора/периодов, отдельная комиссия за управление, доход компании и собственнику до расходов. Это план, не полученные деньги. Только администратор. Не использовать комиссию из объявления.",
       inputSchema: z.object({month:z.string().regex(/^\d{4}-\d{2}$/),propertyId:z.string().uuid().optional()}),
