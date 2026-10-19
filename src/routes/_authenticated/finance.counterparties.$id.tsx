@@ -334,7 +334,7 @@ export function CounterpartyCardPage({ id }: { id: string }) {
                   >
                     {p ? financePropertyLabel(p) : "Объект"}
                     <span className="block text-xs text-muted-foreground">
-                      {a.payout_day ? `Выплата ${a.payout_day}-го числа` : "День выплаты не задан"}
+                      Срок выплаты — в брони
                     </span>
                   </Link>
                 );

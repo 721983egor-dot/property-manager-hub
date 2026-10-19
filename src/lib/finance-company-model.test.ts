@@ -343,3 +343,153 @@ test("derived owner forecasts and company allocations never inherit the prepayme
   assert.equal(forecast.rental_installment_id, null);
   assert.equal(companyPayments([receipt])[0]?.rental_stage, null);
 });
+
+test("owner payout day belongs to the booking receipt, not the object default", async () => {
+  const { ownerForecastPayments } = await import("./finance-company-model.ts");
+  const rent = p("future-contract", 100000, {
+    status: "expected",
+    planned_date: "2027-02-21",
+    rental_period: "2027-02-01",
+    rental_component: "rent",
+    company_fee: 10000,
+    owner_payout_day: 24,
+  });
+  const result = ownerForecastPayments(
+    [rent],
+    [{ property_id: "o", owner_counterparty_id: "owner", payout_day: 10 }],
+    [],
+  );
+  assert.equal(result[0]?.planned_date, "2027-02-24");
+  assert.equal(result[0]?.amount, 90000);
+});
+test("booking payout date works without an object date and clamps short months", async () => {
+  const { ownerForecastPayments } = await import("./finance-company-model.ts");
+  const rent = p("future-contract", 100000, {
+    status: "expected",
+    planned_date: "2027-02-21",
+    rental_period: "2027-02-01",
+    rental_component: "rent",
+    company_fee: 10000,
+    owner_payout_day: 31,
+  });
+  const result = ownerForecastPayments(
+    [rent],
+    [{ property_id: "o", owner_counterparty_id: "owner", payout_day: null }],
+    [],
+  );
+  assert.equal(result[0]?.planned_date, "2027-02-28");
+  assert.equal(paymentFactAmount(result[0]!, "2027-02-28"), 0);
+});
+test("missing payout date on a new booking never inherits another tenant's object date", async () => {
+  const { ownerForecastPayments } = await import("./finance-company-model.ts");
+  const rent = p("future-contract", 100000, {
+    status: "expected",
+    planned_date: "2027-02-21",
+    rental_period: "2027-02-01",
+    rental_component: "rent",
+    company_fee: 10000,
+    owner_payout_day: null,
+  });
+  assert.deepEqual(
+    ownerForecastPayments(
+      [rent],
+      [{ property_id: "o", owner_counterparty_id: "owner", payout_day: 10 }],
+      [],
+    ),
+    [],
+  );
+});
+
+test("one-time commission without management is company income without an owner reserve", () => {
+  const oneoff = p("oneoff", 50000, {
+    article: {
+      id: "commission",
+      name: "Разовая комиссия за аренду",
+      code: "rental_commission",
+      category_id: null,
+      category_name: null,
+      affects_profit: true,
+    },
+  });
+  const summary = companySummary([...rows, oneoff], "2026-10-01", "2026-10-31", "2026-10-16");
+  assert.equal(summary.income, 60000);
+  assert.equal(summary.profit, 57000);
+  assert.equal(summary.ownerReserve, 92500);
+});
+
+test("handover bookings in the same month keep independent owner forecast dates and balances", async () => {
+  const { ownerForecastPayments } = await import("./finance-company-model.ts");
+  const a = p("tenant-a", 100000, {
+    booking_id: "a",
+    status: "partial",
+    paid_amount: 55555.56,
+    rental_component: "rent",
+    company_fee: 10000,
+    owner_payout_day: 20,
+  });
+  const b = p("tenant-b", 200000, {
+    booking_id: "b",
+    status: "expected",
+    rental_component: "rent",
+    company_fee: 20000,
+    owner_payout_day: 28,
+  });
+  const represented = p("owner-a", 50000, {
+    booking_id: "a",
+    direction: "out",
+    kind: "owner_payout",
+    rental_component: "owner_plan",
+    company_fee: null,
+    status: "partial",
+    paid_amount: 0,
+    obligation_id: "ob-a",
+  });
+  const result = ownerForecastPayments(
+    [a, b, represented],
+    [{ property_id: "o", owner_counterparty_id: "owner" }],
+    [
+      {
+        booking_id: "a",
+        property_id: "o",
+        period: "2026-10-01",
+        obligation_id: "ob-a",
+        automatic: true,
+      },
+    ],
+  );
+  assert.equal(result.length, 2);
+  assert.equal(result.find((x) => x.planned_date === "2026-10-20")?.amount, 40000);
+  assert.equal(result.find((x) => x.planned_date === "2026-10-28")?.amount, 180000);
+});
+test("an ambiguous historical owner aggregate is preserved as one forecast scope", async () => {
+  const { ownerForecastPayments } = await import("./finance-company-model.ts");
+  const a = p("tenant-a", 100000, {
+    booking_id: "a",
+    status: "expected",
+    rental_component: "rent",
+    company_fee: 10000,
+    owner_payout_day: 20,
+  });
+  const b = p("tenant-b", 200000, {
+    booking_id: "b",
+    status: "expected",
+    rental_component: "rent",
+    company_fee: 20000,
+    owner_payout_day: 28,
+  });
+  const result = ownerForecastPayments(
+    [a, b],
+    [{ property_id: "o", owner_counterparty_id: "owner" }],
+    [
+      {
+        booking_id: null,
+        property_id: "o",
+        period: "2026-10-01",
+        obligation_id: "old-ob",
+        automatic: true,
+      },
+    ],
+  );
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.amount, 270000);
+});

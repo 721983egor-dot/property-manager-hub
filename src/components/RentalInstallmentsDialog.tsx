@@ -11,20 +11,28 @@ import { formatAdeskMoney as money } from "@/lib/finance";
 export function RentalInstallmentsDialog({
   booking,
   onClose,
+  period,
+  defaultTotal,
+  defaultFee,
+  defaultAccount,
 }: {
   booking: FinanceClientRental;
   onClose: () => void;
+  period?: string | undefined;
+  defaultTotal?: number | undefined;
+  defaultFee?: number | undefined;
+  defaultAccount?: string | undefined;
 }) {
   const today = financeToday();
   const qc = useQueryClient();
-  const [total, setTotal] = useState(String(booking.price_month ?? ""));
-  const [fee, setFee] = useState("");
+  const [total, setTotal] = useState(String(defaultTotal ?? booking.price_month ?? ""));
+  const [fee, setFee] = useState(defaultFee == null ? "" : String(defaultFee));
   const [advance, setAdvance] = useState("");
   const [advanceDate, setAdvanceDate] = useState(today);
   const [balanceDate, setBalanceDate] = useState(
     booking.start_date > today ? booking.start_date : today,
   );
-  const [account, setAccount] = useState("");
+  const [account, setAccount] = useState(defaultAccount ?? "");
   const [requestId] = useState(() => crypto.randomUUID());
   const accounts = useQuery({ queryKey: ["finance-accounts"], queryFn: fetchFinanceAccounts });
   const valid =
@@ -40,7 +48,7 @@ export function RentalInstallmentsDialog({
     mutationFn: () =>
       createRentalInstallments({
         bookingId: booking.id,
-        period: balanceDate.slice(0, 7),
+        period: period ?? balanceDate.slice(0, 7),
         total: Number(total),
         fee: Number(fee),
         advance: Number(advance),
@@ -68,7 +76,7 @@ export function RentalInstallmentsDialog({
         <DialogHeader>
           <DialogTitle>Предоплата и остаток</DialogTitle>
           <DialogDescription>
-            {booking.clients?.full_name} · одна аренда, два платежа
+            {booking.clients?.full_name} · одна аренда, два платежа {period ? `· ${period}` : ""}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -79,7 +87,7 @@ export function RentalInstallmentsDialog({
           }}
         >
           <label>
-            Аренда за месяц, ₽
+            Аренда за расчётный период, ₽
             <input
               className="block w-full rounded border p-2"
               aria-label="Общая аренда"
@@ -92,7 +100,7 @@ export function RentalInstallmentsDialog({
             />
           </label>
           <label>
-            Комиссия компании за весь месяц, ₽
+            Комиссия компании за расчётный период, ₽
             <input
               className="block w-full rounded border p-2"
               aria-label="Фиксированная комиссия"

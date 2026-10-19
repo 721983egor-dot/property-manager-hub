@@ -147,6 +147,7 @@ export function ownerForecastPayments(
     payout_day?: number | null;
   }[],
   settlements: {
+    booking_id?: string | null;
     property_id: string;
     period: string;
     obligation_id: string;
@@ -158,16 +159,39 @@ export function ownerForecastPayments(
   for (const p of rows) {
     if (!["rent", "utilities"].includes(p.rental_component ?? "") || p.company_fee == null)
       continue;
-    const key = `${p.property_id}:${paymentPeriod(p)}`;
+    const legacy =
+      settlements.some(
+        (s) =>
+          s.property_id === p.property_id && s.period.startsWith(paymentPeriod(p)) && !s.booking_id,
+      ) ||
+      rows.some(
+        (x) =>
+          x.kind === "owner_payout" &&
+          !x.obligation_id &&
+          x.property_id === p.property_id &&
+          paymentPeriod(x) === paymentPeriod(p),
+      );
+    const key = [
+      p.property_id,
+      paymentPeriod(p),
+      legacy ? "legacy" : (p.booking_id ?? "unlinked"),
+    ].join(":");
     groups.set(key, [...(groups.get(key) ?? []), p]);
   }
   for (const [key, receipts] of groups) {
     const first = receipts[0]!,
       month = paymentPeriod(first),
       cfg = settings.find((s) => s.property_id === first.property_id);
-    if (!cfg?.owner_counterparty_id || !cfg.payout_day) continue;
+    const dates = receipts
+      .map((p) => (p.owner_payout_day === undefined ? cfg?.payout_day : p.owner_payout_day))
+      .filter((v): v is number => v != null && Number.isInteger(v) && v >= 1 && v <= 31);
+    const payoutDay = dates.length ? Math.min(...dates) : null;
+    if (!cfg?.owner_counterparty_id || !payoutDay) continue;
     const existing = settlements.find(
-      (s) => s.property_id === first.property_id && s.period.startsWith(month),
+      (s) =>
+        s.property_id === first.property_id &&
+        s.period.startsWith(month) &&
+        (!s.booking_id || s.booking_id === first.booking_id),
     );
     if (existing && !existing.automatic) continue;
     const total = receipts.reduce((sum, p) => sum + p.amount - (p.company_fee ?? 0), 0);
@@ -177,7 +201,10 @@ export function ownerForecastPayments(
           p.kind === "owner_payout" &&
           (existing
             ? p.obligation_id === existing.obligation_id
-            : p.property_id === first.property_id && paymentPeriod(p) === month),
+            : p.property_id === first.property_id &&
+              paymentPeriod(p) === month &&
+              !p.obligation_id &&
+              (!p.booking_id || p.booking_id === first.booking_id)),
       )
       .reduce(
         (sum, p) => sum + (p.rental_component === "owner_plan" ? p.amount : paymentFactAmount(p)),
@@ -186,7 +213,7 @@ export function ownerForecastPayments(
     const remaining = money(total - represented);
     if (remaining <= 0) continue;
     const day = Math.min(
-      cfg.payout_day,
+      payoutDay,
       new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate(),
     );
     result.push({

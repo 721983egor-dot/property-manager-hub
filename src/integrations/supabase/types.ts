@@ -192,6 +192,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          owner_payout_day: number | null
           stay_kind: "long_term" | "short_stay"
           client_id: string
           comment: string
@@ -209,6 +210,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          owner_payout_day?: number | null
           stay_kind?: "long_term" | "short_stay"
           client_id: string
           comment?: string
@@ -226,6 +228,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          owner_payout_day?: number | null
           stay_kind?: "long_term" | "short_stay"
           client_id?: string
           comment?: string
@@ -786,9 +789,9 @@ export type Database = {
         Relationships: [];
       };
       finance_owner_settlements: {
-        Row: { id:string; property_id:string; period:string; obligation_id:string; automatic:boolean; created_at:string };
-        Insert: { property_id:string; period:string; obligation_id:string };
-        Update: { property_id?:string; period?:string; obligation_id?:string };
+        Row: { booking_id:string|null; id:string; property_id:string; period:string; obligation_id:string; automatic:boolean; created_at:string };
+        Insert: { booking_id?:string|null; property_id:string; period:string; obligation_id:string };
+        Update: { booking_id?:string|null; property_id?:string; period?:string; obligation_id?:string };
         Relationships: [];
       };
       finance_accounts: {
@@ -1108,6 +1111,7 @@ export type Database = {
       }
       payments: {
         Row: {
+          owner_payout_day: number | null
           id: string
           planned_date: string
           amount: number
@@ -1138,6 +1142,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          owner_payout_day?: number | null
           id?: string
           planned_date: string
           amount: number
@@ -1168,6 +1173,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          owner_payout_day?: number | null
           id?: string
           planned_date?: string
           amount?: number

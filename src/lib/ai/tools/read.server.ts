@@ -2282,7 +2282,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           let q = client
             .from("bookings")
             .select(
-              "id,client_id,property_id,start_date,end_date,price_month,payment_day,status,clients(id,full_name,phone)",
+              "id,client_id,property_id,start_date,end_date,price_month,payment_day,owner_payout_day,status,clients(id,full_name,phone)",
             )
             .order("id")
             .range(from, to);
@@ -2300,7 +2300,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const [categories, articles, settings, settlements] = await Promise.all([
           client.from("finance_article_categories").select("*"), client.from("finance_articles").select("*"),
           allFinancePages((from,to)=>client.from("finance_object_settings").select("property_id,classification_id,owner_counterparty_id,payout_day").order("property_id").range(from,to)),
-          allFinancePages((from,to)=>client.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic").order("id").range(from,to)),
+          allFinancePages((from,to)=>client.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id").order("id").range(from,to)),
         ]);
         const overviewError=categories.error??articles.error??settings.error??settlements.error;
         if(overviewError)return {error:overviewError.message};
@@ -2339,7 +2339,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       description:"Расчёты с собственниками: доход от полученной аренды после комиссии (без КУ, до прочих расходов), КУ отдельно, дата выплаты, выплачено, остаток долга, просрочка. Только администратору в РМ ОС.",
       inputSchema:z.object({propertyId:z.string().uuid().optional()}),execute:async({propertyId})=>{
         const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();
-        let query=client.from("finance_owner_settlements").select("id,property_id,period,obligation_id").order("period",{ascending:false});if(propertyId)query=query.eq("property_id",propertyId);
+        let query=client.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id").order("period",{ascending:false});if(propertyId)query=query.eq("property_id",propertyId);
         const settlements=await allFinancePages((start,end)=>query.range(start,end));if(settlements.error)return {error:settlements.error.message};
         const obligations=await allFinancePages((start,end)=>client.from("finance_obligations").select("*").order("id").range(start,end));
         const payments=await allFinancePages((start,end)=>client.from("payments").select("*").order("id").range(start,end));
@@ -2382,14 +2382,14 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getFinanceRentalTerms: tool({
-      description: "Договорная аренда объектов РМ ОС для финансов: сроки, день оплаты, цена из договора/периодов, отдельная комиссия за управление, доход компании и собственнику до расходов. План включает разбивку по дням: арендный месяц от даты заезда, день оплаты — отдельный срок; при смене цены части суммируются, последний неполный период пропорционален полному арендному месяцу, выезд исключён. Это план, не полученные деньги. Только администратор. Не использовать комиссию из объявления.",
+      description: "Договорная аренда объектов РМ ОС для финансов: сроки, день оплаты, цена из договора/периодов, день выплаты собственнику owner_payout_day из брони, отдельная комиссия за управление, доход компании и собственнику до расходов. План включает разбивку по дням: арендный месяц от даты заезда, день оплаты — отдельный срок; при смене цены части суммируются, последний неполный период пропорционален полному арендному месяцу, выезд исключён. Это план, не полученные деньги. Только администратор. Не использовать комиссию из объявления.",
       inputSchema: z.object({month:z.string().regex(/^\d{4}-\d{2}$/),propertyId:z.string().uuid().optional()}),
       execute:async ({month,propertyId})=>{
         const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
         const {rentalForProperty,rentalMonthPlan,financeToday}=await import("@/lib/finance-rental-model");
         const [properties,bookings]=await Promise.all([
           allFinancePages((start,end)=>admin.from("properties").select("id,title,internal_name,status,management_fee_type,management_fee_value").eq("portfolio","rm").neq("status","archived").order("id").range(start,end)),
-          allFinancePages((start,end)=>admin.from("bookings").select("id,property_id,start_date,end_date,price_type,price_month,payment_day,status,stay_kind,booking_price_periods(start_date,end_date,price_month)").eq("status","active").eq("stay_kind","long_term").order("id").range(start,end))]);
+          allFinancePages((start,end)=>admin.from("bookings").select("id,property_id,start_date,end_date,price_type,price_month,payment_day,owner_payout_day,status,stay_kind,booking_price_periods(start_date,end_date,price_month)").eq("status","active").eq("stay_kind","long_term").order("id").range(start,end))]);
         const error=properties.error??bookings.error;if(error)return {error:error.message};
         return {month,objects:(properties.data??[]).filter(p=>!propertyId||p.id===propertyId).map(p=>{
           const rental=rentalForProperty(bookings.data as unknown as import("@/lib/finance-rental-model").FinanceRental[],p.id,financeToday());
@@ -2407,7 +2407,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           allFinancePages((from,to)=>db.from("payments").select("*").order("id").range(from,to)),
           db.from("finance_article_categories").select("*"),db.from("finance_articles").select("*"),
           allFinancePages((from,to)=>db.from("finance_object_settings").select("property_id,classification_id,owner_counterparty_id,payout_day").order("property_id").range(from,to)),
-          allFinancePages((from,to)=>db.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic").order("id").range(from,to)),
+          allFinancePages((from,to)=>db.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id").order("id").range(from,to)),
         ]);
         const error=payments.error??categories.error??articles.error??settings.error??settlements.error;if(error)return {error:error.message};
         const {objectFlowPayments,objectFlowSummary,objectFlowNotes,objectFlowSourceId}=await import("@/lib/finance-object-flow");

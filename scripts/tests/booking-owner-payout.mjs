@@ -1,0 +1,73 @@
+// Booking payout day and migration compatibility against isolated real PostgreSQL functions.
+import fs from 'node:fs/promises';
+process.env.PGLITE_MODULE=import.meta.resolve(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+const original=await fs.readFile('scripts/tests/crm-commission.mjs','utf8');
+const setup=original.slice(0,original.indexOf('const terms='));
+const financeTest=await fs.readFile('scripts/tests/booking-finance-sync.mjs','utf8');
+const scaffold=financeTest.slice(financeTest.indexOf('const scenarios=`')+'const scenarios=`'.length,financeTest.indexOf('const year='));
+const scenarios=String.raw`
+for(const file of ['20261019120000_daily_rental_period_prices.sql','20261019140000_rental_terms_auto_sync.sql'])await db.exec(await fs.readFile('supabase/migrations/'+file,'utf8'));
+const year=Number((await db.query('SELECT extract(year FROM now()) y')).rows[0].y)+1;
+await db.query("INSERT INTO finance_counterparties(id,name,kind) VALUES($1,'Test owner','owner')",[id(800)]);
+await db.query('INSERT INTO finance_object_settings(property_id,owner_counterparty_id,payout_day) VALUES($1,$2,10)',[id(20),id(800)]);
+const terms={property_id:id(20),client_id:id(30),start_date:year+'-01-19',end_date:year+'-04-22',price_type:'fixed',price_month:100000,payment_day:21,deposit:100000,source:'website',status:'active',comment:'',stay_kind:'long_term',periods:[]};
+const bookingId=(await db.query('SELECT finance_save_booking(NULL,$1,$2) id',[terms,id(90)])).rows[0].id;
+const receipts=async()=>(await db.query('SELECT *,planned_date::text date FROM payments WHERE booking_id=$1 AND rental_schedule ORDER BY planned_date',[bookingId])).rows;
+const initial=await receipts();
+await db.query("UPDATE payments SET status='paid',paid_at=planned_date,paid_amount=amount WHERE id=$1",[initial[0].id]);
+const firstOb=(await db.query('SELECT obligation_id FROM finance_owner_settlements WHERE property_id=$1 AND period=$2',[id(20),year+'-01-01'])).rows[0].obligation_id;
+const today=(await db.query('SELECT current_date::text date')).rows[0].date;
+await db.query('SELECT pay_owner_settlement($1,$2,$3,$4,$5)',[firstOb,1000,'Карта',today,id(850)]);
+const oldLiabilities=(await db.query('SELECT id,counterparty_id,planned_date,amount,status FROM finance_obligations ORDER BY id')).rows;
+const before=await db.query('SELECT id,planned_date,amount,status,paid_amount,company_fee FROM payments ORDER BY id');
+await db.exec(await fs.readFile('supabase/migrations/20261019180000_booking_owner_payout_day.sql','utf8'));
+assert.deepEqual((await db.query('SELECT id,counterparty_id,planned_date,amount,status FROM finance_obligations ORDER BY id')).rows,oldLiabilities,'migration does not alter existing debt or payout deadlines');
+assert.deepEqual((await db.query('SELECT id,planned_date,amount,status,paid_amount,company_fee FROM payments ORDER BY id')).rows,before.rows,'migration only adds scheduling metadata; no money/date changes');
+assert.equal((await db.query('SELECT owner_payout_day FROM bookings WHERE id=$1',[bookingId])).rows[0].owner_payout_day,10,'legacy payout day retained in booking');
+assert.ok((await receipts()).every(p=>p.owner_payout_day===10));
+const update=async(day)=>db.query('SELECT finance_save_booking($1,$2,$3)',[bookingId,{...terms,owner_payout_day:day},id(90)]);
+await update(24);
+let rows=await receipts();assert.equal(rows[0].owner_payout_day,10,'received rent keeps historical payout terms');assert.ok(rows.slice(1).every(p=>p.owner_payout_day===24),'future receipts use booking day');
+assert.equal((await db.query('SELECT payout_day FROM finance_object_settings WHERE property_id=$1',[id(20)])).rows[0].payout_day,10,'booking changes do not write object default');
+await db.query("UPDATE payments SET status='paid',paid_at=planned_date,paid_amount=amount WHERE id=$1",[rows[1].id]);
+let due=(await db.query('SELECT o.planned_date::text date FROM finance_owner_settlements s JOIN finance_obligations o ON o.id=s.obligation_id WHERE s.property_id=$1 AND s.period=$2',[id(20),year+'-02-01'])).rows[0].date;
+assert.equal(due,year+'-02-24','liability follows booked payout day');
+await update(27);rows=await receipts();assert.equal(rows[1].owner_payout_day,27);assert.equal(rows[2].owner_payout_day,27);
+assert.equal((await db.query('SELECT o.planned_date::text date FROM finance_owner_settlements s JOIN finance_obligations o ON o.id=s.obligation_id WHERE s.property_id=$1 AND s.period=$2',[id(20),year+'-02-01'])).rows[0].date,year+'-02-27','future unpaid owner liability follows the changed booking even after rent receipt');
+const secondOb=(await db.query('SELECT obligation_id FROM finance_owner_settlements WHERE property_id=$1 AND period=$2',[id(20),year+'-02-01'])).rows[0].obligation_id;
+await db.query('SELECT pay_owner_settlement($1,$2,$3,$4,$5)',[secondOb,1000,'Карта',today,id(851)]);
+await update(28);rows=await receipts();assert.equal(rows[1].owner_payout_day,27,'already transferred owner money keeps its agreed date');assert.equal(rows[2].owner_payout_day,28);
+await assert.rejects(update(32),/1 до 31|check constraint/);
+assert.equal((await db.query('SELECT owner_payout_day FROM bookings WHERE id=$1',[bookingId])).rows[0].owner_payout_day,28,'invalid date rolls back');
+// Another tenant may agree a different day on the same object.
+const next={...terms,start_date:year+'-05-19',end_date:year+'-07-19',owner_payout_day:31};
+const nextId=(await db.query('SELECT finance_save_booking(NULL,$1,$2) id',[next,id(90)])).rows[0].id;
+assert.ok((await db.query('SELECT owner_payout_day FROM payments WHERE booking_id=$1 AND rental_schedule',[nextId])).rows.every(p=>p.owner_payout_day===31));
+assert.equal((await db.query('SELECT finance_owner_month_day($1,$2) AS payout_day',[id(20),year+'-06-01'])).rows[0].payout_day,31);
+const juneRent=(await db.query('SELECT id FROM payments WHERE booking_id=$1 AND rental_period=$2 AND rental_schedule',[nextId,year+'-06-01'])).rows[0].id;
+await db.query("UPDATE payments SET status='paid',paid_at=planned_date,paid_amount=amount WHERE id=$1",[juneRent]);
+assert.equal((await db.query('SELECT o.planned_date::text date FROM finance_owner_settlements s JOIN finance_obligations o ON o.id=s.obligation_id WHERE s.property_id=$1 AND s.period=$2',[id(20),year+'-06-01'])).rows[0].date,year+'-06-30','31 clamps to the last day in June');
+await assert.rejects(db.query('SELECT finance_save_booking(NULL,$1,$2)',[{...terms,start_date:(year+1)+'-01-19',end_date:(year+1)+'-02-19'},id(90)]),/день выплаты/,'new managed booking requires explicit payout terms');
+// Advance/balance replaces a generated receipt and keeps the booking's payout day.
+await db.query('SELECT finance_create_rental_installments($1,$2,$3,$4,$5,$6,$7,$8,$9)',[bookingId,year+'-03-01',100000,10000,30000,year+'-03-14',year+'-03-21','Карта',id(700)]);
+const pair=(await db.query('SELECT * FROM payments WHERE rental_installment_id=$1 ORDER BY id',[id(700)])).rows;
+assert.equal(pair.length,2);assert.ok(pair.every(p=>p.owner_payout_day===28));
+assert.equal((await db.query('SELECT count(*) n FROM payments WHERE booking_id=$1 AND rental_period=$2 AND rental_component=$3',[bookingId,year+'-03-01','rent'])).rows[0].n,2,'no full invoice left beside the advance pair');
+// Two tenants in one calendar month keep separate owner liabilities and dates.
+const handoverA={...terms,start_date:year+'-09-01',end_date:year+'-09-15',owner_payout_day:20};
+const handoverB={...terms,start_date:year+'-09-15',end_date:year+'-10-15',owner_payout_day:28};
+const aId=(await db.query('SELECT finance_save_booking(NULL,$1,$2) id',[handoverA,id(90)])).rows[0].id;
+const bId=(await db.query('SELECT finance_save_booking(NULL,$1,$2) id',[handoverB,id(90)])).rows[0].id;
+await db.query("UPDATE payments SET status='paid',paid_at=planned_date,paid_amount=amount WHERE booking_id IN ($1,$2) AND rental_period=$3 AND rental_schedule",[aId,bId,year+'-09-01']);
+const split=(await db.query('SELECT s.booking_id,o.id,o.planned_date::text date,o.amount FROM finance_owner_settlements s JOIN finance_obligations o ON o.id=s.obligation_id WHERE s.property_id=$1 AND s.period=$2 ORDER BY o.planned_date',[id(20),year+'-09-01'])).rows;
+assert.equal(split.length,2);assert.equal(split[0].date,year+'-09-20');assert.equal(split[1].date,year+'-09-28');
+assert.equal(Number(split[0].amount)+Number(split[1].amount),132000,'handover revenue allocated once to two schedules');
+await db.query('SELECT pay_owner_settlement($1,$2,$3,$4,$5)',[split[0].id,1000,'Карта',today,id(852)]);
+await db.query('SELECT finance_save_booking($1,$2,$3)',[bId,{...handoverB,owner_payout_day:30},id(90)]);
+assert.equal((await db.query('SELECT planned_date::text date FROM finance_obligations WHERE id=$1',[split[1].id])).rows[0].date,year+'-09-30','payment for the previous tenant does not lock the new tenant date');
+await db.query("SELECT set_config('test.user',$1,false)",[id(2)]);await assert.rejects(update(25),/администратор/);
+await assert.rejects(db.query('UPDATE bookings SET owner_payout_day=23 WHERE id=$1',[bookingId]),/администратор/,'direct writes also enforce finance access');
+console.log('PASS: legacy migration preserves money/dates, per-booking payout day, future edits, received history, liability due date, separate tenant terms, advance pair, validation, admin access');
+await db.close();
+`;
+try{const decoded=Function('return `'+scaffold+'`')();await import('data:text/javascript;base64,'+Buffer.from(setup+decoded+scenarios).toString('base64'));}catch(error){console.error(error.message,error.detail??'',error.where??'',error.query??'');process.exitCode=1;}

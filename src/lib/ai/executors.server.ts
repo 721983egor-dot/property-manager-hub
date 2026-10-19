@@ -225,6 +225,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const isRm=property.data.portfolio==="rm";
     if(isRm && !input["accountId"]) throw new Error("Укажите счёт графика аренды через accountId");
     const access=isRm ? await (await import("@/lib/crm-results.server")).crmAccess(input) : null;
+    if(access&&!input["ownerPayoutDay"]){const link=await access.db.from("finance_object_settings").select("owner_counterparty_id").eq("property_id",propertyId).maybeSingle();if(link.error)throw link.error;if(link.data?.owner_counterparty_id)throw new Error("Укажите конкретное число выплаты собственнику в брони через ownerPayoutDay");}
     const fullName = must(input["clientName"] as string, "Не указан клиент");
     const phone = (input["clientPhone"] as string) ?? "";
     let clientId: string | null = null;
@@ -246,7 +247,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     }
     const priceMonth = (input["priceMonth"] as number) ?? null;
     if(access) {
-      const result=await access.db.rpc("finance_save_booking",{p_booking:null,p_account:input["accountId"],p_actor:access.actor,p_input:{property_id:propertyId,client_id:clientId,start_date:input["startDate"],end_date:input["endDate"],price_type:"fixed",price_month:priceMonth,payment_day:input["paymentDay"]??1,deposit:input["deposit"]??null,source:input["source"]??null,status:"active",comment:input["comment"]??"",stay_kind:"long_term",periods:[]}});
+      const result=await access.db.rpc("finance_save_booking",{p_booking:null,p_account:input["accountId"],p_actor:access.actor,p_input:{property_id:propertyId,client_id:clientId,start_date:input["startDate"],end_date:input["endDate"],price_type:"fixed",price_month:priceMonth,payment_day:input["paymentDay"]??1,...(input["ownerPayoutDay"]!==undefined?{owner_payout_day:input["ownerPayoutDay"]}:{}),deposit:input["deposit"]??null,source:input["source"]??null,status:"active",comment:input["comment"]??"",stay_kind:"long_term",periods:[]}});
       if(result.error) throw result.error;
       return "Бронь создана; будущие платежи аренды добавлены автоматически";
     }
@@ -1223,25 +1224,11 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if(!Number.isFinite(percent)||percent<0||(type==="percent"&&percent>100)||!["percent","amount"].includes(String(type)))throw new Error("Комиссия от 0 до 100%");
     const {error}=await client.from("properties").update({management_fee_value:percent,management_fee_type:type as "percent"|"amount"}).eq("id",String(input["propertyId"])).eq("portfolio","rm").select("id").single();if(error)throw new Error(error.message);return "Комиссия за управление сохранена";
   },
-  createManagementFeePayment:async input=>{
-    const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const {error}=await client.rpc("create_management_fee_payment",{p_booking_id:String(input["bookingId"]),p_period:String(input["month"])+"-01",p_expected_amount:Number(input["amount"])});if(error)throw new Error(error.message);return "Плановый доход компании добавлен в финансы";
-  },
-  saveOwnerPayoutSettings:async input=>{
-    const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();const day=Number(input["day"]);if(!Number.isInteger(day)||day<1||day>31)throw new Error("День от 1 до 31");const {error}=await client.from("finance_object_settings").upsert({property_id:String(input["propertyId"]),owner_counterparty_id:String(input["ownerId"]),payout_day:day},{onConflict:"property_id"});if(error)throw new Error(error.message);return "Условия выплаты сохранены";
-  },
-  saveRentalOwnerSettings: async (input) => {
-    const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
-    const client = await ownerFinanceAdminClient();
-    const { error } = await client.rpc("finance_save_rental_settings", {
-      p_property: String(input["propertyId"]),
-      p_owner: String(input["ownerId"]),
-      p_day: Number(input["day"]),
-      p_fee: Number(input["fee"]),
-      p_fee_type: String(input["feeType"]),
-    });
-    if (error) throw new Error(error.message);
-    return "Условия комиссии и выплаты сохранены";
-  },
+  createManagementFeePayment:async()=>{throw new Error("Комиссия по управлению выделяется из аренды автоматически. Отдельный приход не нужен");},
+  saveOwnerPayoutSettings: async () => {throw new Error("День выплаты собственнику изменяется в брони. Используйте изменение условий аренды");},
+
+  saveRentalOwnerSettings: async () => {throw new Error("День выплаты собственнику изменяется в брони. Используйте изменение условий аренды");},
+
   createRentalSchedule: async (input) => {
     const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
     const client = await ownerFinanceAdminClient();

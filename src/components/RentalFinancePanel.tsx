@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { type FinanceRental, rentalMonthPlan, financeToday } from "@/lib/finance-rental-model";
-import { saveManagementFee, createManagementFeePayment } from "@/lib/finance-rentals";
+import { saveManagementFee } from "@/lib/finance-rentals";
 import { formatAdeskMoney, type Payment } from "@/lib/finance";
 export function RentalFinancePanel({
   propertyId,
@@ -14,7 +14,6 @@ export function RentalFinancePanel({
   month,
   percent,
   feeType,
-  payments,
 }: {
   propertyId: string;
   booking: FinanceRental | null;
@@ -37,18 +36,7 @@ export function RentalFinancePanel({
     },
     onError: (e: Error) => toast.error(e.message),
   });
-  const add = useMutation({
-    mutationFn: () => createManagementFeePayment(booking!.id, month, plan!.fee!),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["payments"] });
-      toast.success("Плановый доход компании добавлен в финансы");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
   const plan = booking ? rentalMonthPlan(booking, month, percent, feeType) : null;
-  const existing = payments.some(
-    (p) => p.booking_id === booking?.id && p.management_period === month + "-01",
-  );
   return (
     <section className="fa-panel finance-rental-panel">
       <h2>Аренда и комиссия компании</h2>
@@ -57,7 +45,8 @@ export function RentalFinancePanel({
         <>
           <p>
             {booking.start_date > financeToday() ? "Запланирована аренда" : "Действующая аренда"}:{" "}
-            {booking.start_date} — {booking.end_date} · оплата {booking.payment_day}-го числа.{" "}
+            {booking.start_date} — {booking.end_date} · оплата {booking.payment_day}-го числа.
+            Выплата собственнику: {booking.owner_payout_day ?? "укажите в брони"}.{" "}
             <Link to="/objects/$id" params={{ id: propertyId }} className="fa-debt-link">
               Открыть объект
             </Link>
@@ -155,22 +144,10 @@ export function RentalFinancePanel({
         >
           Сохранить
         </button>
-        {plan?.scheduled && plan.fee != null && plan.fee > 0 && !conflict && (
-          <button
-            type="button"
-            className="finance-primary-button"
-            disabled={add.isPending || existing}
-            onClick={() => add.mutate()}
-          >
-            {existing
-              ? "Комиссия уже в финансах"
-              : `Добавить доход компании: ${formatAdeskMoney(plan.fee)}`}
-          </button>
-        )}
       </form>
       <p className="fa-note">
-        Комиссия считается от договорной аренды до расходов. В финансы добавляется ожидаемый доход
-        компании за выбранный месяц; получение денег отмечается в операции. Сумма собственнику
+        Комиссия считается от договорной аренды до расходов. Доход компании выделяется из платежа
+        аренды автоматически; получение денег отмечается в существующей операции. Сумма собственнику
         уточняется с учётом расходов в расчёте ниже.
       </p>
     </section>

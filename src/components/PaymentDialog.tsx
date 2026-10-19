@@ -65,6 +65,8 @@ type Props = {
   defaultAmount?: number | undefined;
   defaultBookingId?: string | undefined;
   defaultCompany?: boolean | undefined;
+  defaultAccount?: string | undefined;
+  defaultRentalPeriod?: string | undefined;
   defaultRentalComponent?: "rent" | "utilities" | "deposit" | undefined;
 };
 
@@ -177,6 +179,8 @@ export function PaymentDialog({
   defaultAmount,
   defaultBookingId,
   defaultCompany,
+  defaultAccount,
+  defaultRentalPeriod,
   defaultRentalComponent,
 }: Props) {
   const queryClient = useQueryClient();
@@ -256,6 +260,7 @@ export function PaymentDialog({
               defaultCounterpartyName,
             ),
             booking_id: defaultBookingId ?? "",
+            accrual_date: defaultRentalPeriod ? `${defaultRentalPeriod}-01` : "",
             rental_component: defaultRentalComponent ?? "",
             kind:
               defaultRentalComponent === "deposit"
@@ -284,6 +289,7 @@ export function PaymentDialog({
     defaultBookingId,
     defaultRentalComponent,
     defaultCompany,
+    defaultRentalPeriod,
   ]);
 
   useEffect(() => {
@@ -296,14 +302,36 @@ export function PaymentDialog({
       setForm((p) => ({ ...p, account: accountOptions[0]?.name ?? "" }));
   }, [open, payment, accountsQuery.data, form.account, accountOptions]);
 
+  useEffect(() => {
+    if (open && !payment && !form.account && defaultAccount)
+      setForm((f) => ({ ...f, account: defaultAccount }));
+  }, [open, payment, form.account, defaultAccount]);
+
   const propertyOptions = useMemo(
     () => properties.map((p) => ({ id: p.id, label: financePropertyLabel(p) })),
     [properties],
   );
 
   const articleGroups = useMemo(
-    () => groupArticlesByCategory(categoryList, articleList, form.direction),
-    [categoryList, articleList, form.direction],
+    () =>
+      groupArticlesByCategory(
+        categoryList,
+        articleList.filter(
+          (a) =>
+            form.direction !== "in" ||
+            !!form.rental_component ||
+            a.id === payment?.article_id ||
+            ![
+              "rent_in",
+              "utilities_in",
+              "deposit_in",
+              "management_fee",
+              "company_commission",
+            ].includes(a.code ?? ""),
+        ),
+        form.direction,
+      ).filter((group) => group.articles.length > 0),
+    [categoryList, articleList, form.direction, form.rental_component, payment?.article_id],
   );
 
   const seriesDates = useMemo(() => {
@@ -342,6 +370,8 @@ export function PaymentDialog({
     mutationFn: async () => {
       if (accountsQuery.error || !selectedAccountValid)
         throw new Error("Выберите действующий счёт в настройках финансов");
+      if (!payment && form.direction === "in" && !form.rental_component && !form.article_id)
+        throw new Error("Выберите статью разового дохода компании");
       if (payment?.rental_component === "owner_plan")
         throw new Error("Подтвердите выплату в разделе Собственники");
       const rental = rentals.data?.find((b) => b.id === form.booking_id);
@@ -538,77 +568,26 @@ export function PaymentDialog({
           </p>
         )}
         {form.direction === "in" && (
-          <div className="grid gap-3 px-5 py-3 border-b">
-            <label className="text-sm">
-              Назначение поступления
-              <select
-                aria-label="Назначение поступления"
-                disabled={!!payment?.rental_schedule}
-                className="block w-full border rounded p-2 mt-1"
-                value={form.rental_component}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    rental_component: e.target.value as FormState["rental_component"],
-                    repeat: false,
-                    countInObligations: false,
-                    kind:
-                      e.target.value === "deposit"
-                        ? "deposit_in"
-                        : e.target.value === "rent"
-                          ? "rent_in"
-                          : "other",
-                    article_id: "",
-                  }))
-                }
-              >
-                <option value="">Доход компании</option>
-                <option value="rent">Арендная плата клиента</option>
-                <option value="utilities">КУ клиента · собственнику</option>
-                <option value="deposit">Страховой депозит клиента · не доход</option>
-              </select>
-            </label>
-            {form.rental_component && (
-              <label className="text-sm">
-                Аренда клиента
-                <select
-                  aria-label="Аренда клиента"
-                  disabled={!!payment?.rental_schedule}
-                  className="block w-full border rounded p-2 mt-1"
-                  value={form.booking_id}
-                  onChange={(e) => {
-                    const b = rentals.data?.find((x) => x.id === e.target.value);
-                    setForm((p) => ({
-                      ...p,
-                      booking_id: e.target.value,
-                      property_id: b?.property_id ?? p.property_id,
-                      counterparty_name: b?.clients?.full_name ?? p.counterparty_name,
-                    }));
-                  }}
-                >
-                  <option value="">Выберите договор аренды</option>
-                  {rentals.data
-                    ?.filter((b) => b.status === "active" || b.id === form.booking_id)
-                    .map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.clients?.full_name ?? "Клиент"} ·{" "}
-                        {properties.find((p) => p.id === b.property_id)?.internal_name ||
-                          properties.find((p) => p.id === b.property_id)?.title ||
-                          "Объект"}{" "}
-                        · {b.start_date} — {b.end_date}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            )}
-            {rentals.error && form.rental_component && (
-              <p role="alert">Не удалось загрузить договоры аренды</p>
-            )}
-            {form.rental_component && (
-              <p className="text-xs text-muted-foreground">
-                {form.rental_component === "deposit"
-                  ? "Страховой депозит хранится отдельно от дохода компании и денег собственника. Связан с выбранной бронью."
-                  : "Аренда распределяется на комиссию компании и выплату собственнику. КУ перечисляются собственнику полностью. Период расчёта — месяц даты начисления, а без неё — месяц операции."}
+          <div className="px-5 py-3 border-b text-sm text-muted-foreground">
+            {form.rental_component ? (
+              <>
+                <p>
+                  {form.rental_component === "deposit"
+                    ? "Страховой депозит по брони"
+                    : form.rental_component === "utilities"
+                      ? "КУ по брони · собственнику"
+                      : "Аренда по брони"}
+                </p>
+                <p>
+                  {rentals.data?.find((b) => b.id === form.booking_id)?.clients?.full_name ??
+                    "Клиент"}{" "}
+                  · связанная бронь. Статья и распределение денег определяются автоматически.
+                </p>
+              </>
+            ) : (
+              <p>
+                Разовые доходы компании добавляйте по статье. Аренду, предоплату, КУ и депозит
+                оформляйте в связанной брони — без повторного поступления.
               </p>
             )}
           </div>
@@ -651,7 +630,10 @@ export function PaymentDialog({
               <small>Добавьте счёт в настройках финансов</small>
             )}
           </Field>
-          <Field label="Статья">
+          <Field
+            label="Статья"
+            required={!payment && form.direction === "in" && !form.rental_component}
+          >
             <Select
               value={rentalArticle?.id ?? (form.article_id || "")}
               disabled={!!form.rental_component}
@@ -672,7 +654,9 @@ export function PaymentDialog({
                 <SelectValue placeholder="Выберите статью…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Без статьи</SelectItem>
+                {(!!payment || form.direction === "out" || !!form.rental_component) && (
+                  <SelectItem value="__none__">Без статьи</SelectItem>
+                )}
                 {articleGroups.map((group) => (
                   <SelectGroup key={group.category?.id ?? "none"}>
                     <SelectLabel>{group.category?.name ?? "Без категории"}</SelectLabel>

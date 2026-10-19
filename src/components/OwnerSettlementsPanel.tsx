@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -11,7 +11,6 @@ import type { FinanceCounterparty, FinanceObligation } from "@/lib/finance-count
 import type { FinanceObjectAssignment } from "@/lib/finance-objects";
 import {
   fetchOwnerSettlements,
-  saveOwnerPayoutSettings,
   createOwnerSettlement,
   payOwnerSettlement,
 } from "@/lib/finance-owner-settlements";
@@ -41,8 +40,6 @@ export function OwnerSettlementsPanel({
   payments: Payment[];
 }) {
   const qc = useQueryClient();
-  const [owner, setOwner] = useState(settings?.owner_counterparty_id ?? "");
-  const [day, setDay] = useState(String(settings?.payout_day ?? 5));
   const [amount, setAmount] = useState(""),
     [entity, setEntity] = useState("");
   const [pay, setPay] = useState<{
@@ -52,10 +49,6 @@ export function OwnerSettlementsPanel({
     date: string;
     requestId: string;
   } | null>(null);
-  useEffect(() => {
-    setOwner(settings?.owner_counterparty_id ?? "");
-    setDay(String(settings?.payout_day ?? 5));
-  }, [settings?.owner_counterparty_id, settings?.payout_day]);
   const settlements = useQuery({
     queryKey: ["finance-owner-settlements", propertyId],
     queryFn: () => fetchOwnerSettlements(propertyId),
@@ -70,14 +63,6 @@ export function OwnerSettlementsPanel({
     ])
       void qc.invalidateQueries({ queryKey: [key] });
   };
-  const save = useMutation({
-    mutationFn: () => saveOwnerPayoutSettings(propertyId, owner, Number(day)),
-    onSuccess: () => {
-      invalidate();
-      toast.success("Условия выплаты сохранены");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
   const create = useMutation({
     mutationFn: () => createOwnerSettlement(propertyId, month, Number(amount), entity),
     onSuccess: () => {
@@ -115,55 +100,14 @@ export function OwnerSettlementsPanel({
         долг; после даты выплаты он становится просроченным. Для 29–31 числа в коротком месяце
         используется последний день месяца.
       </p>
-      <form
-        className="flex flex-wrap items-end gap-3 mb-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          save.mutate();
-        }}
-      >
-        <label className="flex flex-col gap-1">
-          Собственник
-          <select
-            aria-label="Собственник для выплаты"
-            className="border p-2"
-            value={owner}
-            onChange={(e) => setOwner(e.target.value)}
-          >
-            <option value="">Выберите контрагента</option>
-            {parties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          День выплаты
-          <Input
-            aria-label="День выплаты собственнику"
-            type="number"
-            min={1}
-            max={31}
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-            className="w-28"
-          />
-        </label>
-        <Button
-          type="submit"
-          variant="outline"
-          disabled={
-            save.isPending ||
-            !owner ||
-            !Number.isInteger(Number(day)) ||
-            Number(day) < 1 ||
-            Number(day) > 31
-          }
-        >
-          Сохранить условия
-        </Button>
-      </form>
+      <p className="mb-5 text-sm text-muted-foreground">
+        Собственник:{" "}
+        {parties.find((p) => p.id === settings?.owner_counterparty_id)?.name ?? "не прикреплён"}.
+        Привязка — в контрагентах, день выплаты — в брони.{" "}
+        <Link to="/objects/$id" params={{ id: propertyId }} className="underline">
+          Открыть аренду объекта
+        </Link>
+      </p>
       <form
         className="flex flex-wrap items-end gap-3 mb-5"
         onSubmit={(e) => {
@@ -208,7 +152,7 @@ export function OwnerSettlementsPanel({
             !!settlements.error ||
             existing ||
             !settings?.owner_counterparty_id ||
-            !settings?.payout_day ||
+            !payments.some((p) => p.rental_period === month + "-01" && p.owner_payout_day) ||
             !Number.isFinite(Number(amount)) ||
             Number(amount) <= 0 ||
             !entity.trim()

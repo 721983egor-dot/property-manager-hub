@@ -11,7 +11,7 @@ export async function fetchFinanceClientRentals(): Promise<FinanceClientRental[]
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id,client_id,property_id,start_date,end_date,price_type,price_month,payment_day,status,stay_kind,deposit,clients(id,full_name,phone),booking_price_periods(start_date,end_date,price_month)",
+        "id,client_id,property_id,start_date,end_date,price_type,price_month,payment_day,owner_payout_day,status,stay_kind,deposit,clients(id,full_name,phone),booking_price_periods(start_date,end_date,price_month)",
       )
       .order("id")
       .range(offset, offset + 499);

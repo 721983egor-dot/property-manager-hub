@@ -1,3 +1,4 @@
+// Единая аренда: ownerPayoutDay в createBooking/updateRentalContract, getRentalContract/getFinanceRentalTerms; сроки выплат и платежи в брони. Старые настройки дня на объекте больше не предлагаются.
 // Собственники контрагентов: getCounterpartyObjects; подтверждённый proposeCounterpartyObjects → saveCounterpartyObjects, общие finance_object_settings и аудит.
 // checkBookingPricePeriods: предварительная проверка сезонных цен брони без записи.
 // getFinanceWorkspace: обзор компании, остатки по потокам, прогноз и ближайшие платежи; без локальных остатков браузера.

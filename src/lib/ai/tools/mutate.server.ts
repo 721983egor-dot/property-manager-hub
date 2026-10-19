@@ -266,7 +266,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeBooking: tool({
       description:
-        "Предложить бронь в календаре: объект, клиент, даты, цена, день оплаты, депозит. Для РМ обязательно accountId из listFinanceAccounts: бронь автоматически создаёт полный график аренды. Требует подтверждения администратора.",
+        "Предложить бронь в календаре: объект, клиент, даты, цена, день оплаты, конкретное число выплаты собственнику ownerPayoutDay (1–31), депозит. Для РМ обязательно accountId из listFinanceAccounts: бронь автоматически создаёт полный график аренды. Требует подтверждения администратора.",
       inputSchema: z.object({
         ref: z.string(),
         clientName: z.string(),
@@ -275,7 +275,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
         startDate: z.string(),
         endDate: z.string(),
         priceMonth: z.number().optional(),
-        paymentDay: z.number().optional(),
+        paymentDay: z.number().int().min(1).max(31).optional(),
+        ownerPayoutDay:z.number().int().min(1).max(31).optional(),
         deposit: z.number().optional(),
         source: z.enum(["avito", "cian", "website", "social", "referral"]).optional(),
         comment: z.string().optional(),
@@ -283,7 +284,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async ({ ref, ...rest }) => {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
-        const summary = `Добавить бронь «${p.text}» для ${rest.clientName}: ${rest.startDate} — ${rest.endDate}${rest.priceMonth ? `, ${money(rest.priceMonth)}/мес` : ""}${rest.accountId ? `; счёт ${rest.accountId}, будущие платежи аренды создадутся автоматически` : ""}`;
+        const summary = `Добавить бронь «${p.text}» для ${rest.clientName}: ${rest.startDate} — ${rest.endDate}${rest.priceMonth ? `, ${money(rest.priceMonth)}/мес` : ""}${rest.ownerPayoutDay ? `; выплата собственнику ${rest.ownerPayoutDay}-го числа` : ""}${rest.accountId ? `; счёт ${rest.accountId}, будущие платежи аренды создадутся автоматически` : ""}`;
         ctx.propose({ tool: "createBooking", summary, input: { propertyId: p.id, ...rest } });
         return { proposed: true, summary };
       },
@@ -1112,40 +1113,16 @@ export function createMutateTools(ctx: AssistantToolContext) {
         const summary=`Комиссия за управление «${p.data.internal_name||p.data.title}»: ${input.value} (${input.type}) от договорной аренды до расходов. Будущие неоплаченные платежи и прогноз собственнику пересчитаются автоматически; полученные суммы и предоплаты сохранятся.`;ctx.propose({tool:"saveManagementFee",summary,input});return {proposed:true,summary};
       },
     }),
-    proposeManagementFeePayment: tool({
-      description:"Предложить ожидаемый доход компании за месяц по договору аренды и комиссии за управление. Не отмечает деньги полученными, не начисляет всю аренду в доход компании. Повтор не создаёт дубль. Требует подтверждения администратора в РМ ОС.",
-      inputSchema:z.object({bookingId:z.string().uuid(),month:z.string().regex(/^\d{4}-\d{2}$/)}),execute:async input=>{
-        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
-        const b=await ctx.admin.from("bookings").select("id,property_id,start_date,end_date,price_type,price_month,payment_day,status,stay_kind,booking_price_periods(start_date,end_date,price_month)").eq("id",input.bookingId).maybeSingle();if(!b.data)return {error:"Договор не найден"};
-        const settings=await ctx.admin.from("properties").select("management_fee_type,management_fee_value").eq("id",b.data.property_id).eq("portfolio","rm").maybeSingle();
-        const {rentalMonthPlan}=await import("@/lib/finance-rental-model");const plan=rentalMonthPlan(b.data,input.month,settings.data?.management_fee_value??null,settings.data?.management_fee_type);
-        if(!plan.scheduled||plan.fee==null||plan.fee<=0)return {error:"Нет планового платежа или не задана комиссия"};
-        const summary=`Доход компании за ${input.month}: ${money(plan.fee)}, ожидается ${plan.due}. Фактическая оплата не отмечается.`;ctx.propose({tool:"createManagementFeePayment",summary,input:{...input,amount:plan.fee}});return {proposed:true,summary};
-      },
-    }),
+    proposeManagementFeePayment: tool({description:"Комиссия по аренде уже выделяется из платежа автоматически; отдельный приход создаёт дубль. Для разового дохода использовать статью разовой комиссии.",inputSchema:z.object({}),execute:async()=>({error:"Не добавляйте отдельный приход комиссии по управлению. Измените условия брони или отметьте оплату существующего платежа. Разовая комиссия без управления оформляется обычной статьёй дохода."})}),
+
     proposeRentalOwnerSettings: tool({
-      description:
-        "Предложить атомарно задать собственника, день выплаты и комиссию компании по объекту. Сохранённые комиссии проведённых платежей не переписываются. Только с подтверждением администратора.",
-      inputSchema: z.object({
-        propertyId: z.string().uuid(),
-        ownerId: z.string().uuid(),
-        day: z.number().int().min(1).max(31),
-        fee: z.number().nonnegative().max(100000000),
-        feeType: z.enum(["percent", "amount"]),
-      }),
-      execute: async (input) => {
-        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
-        await ownerFinanceAdminClient();
-        if (input.feeType === "percent" && input.fee > 100)
-          return { error: "Процент не выше 100" };
-        const summary = `Объект ${input.propertyId}: собственник ${input.ownerId}, выплата ${input.day}-го, комиссия ${input.fee} ${input.feeType === "percent" ? "%" : "₽"}.`;
-        ctx.propose({ tool: "saveRentalOwnerSettings", summary, input });
-        return { proposed: true, summary };
-      },
+      description:"Устаревшее действие: день выплаты собственнику теперь задаётся в конкретной брони. Использовать proposeUpdateRentalContract(ownerPayoutDay), для собственника — proposeCounterpartyObjects.",
+      inputSchema:z.object({}),execute:async()=>({error:"День выплаты задаётся в брони через proposeUpdateRentalContract(ownerPayoutDay). Собственник и объекты связываются через proposeCounterpartyObjects."}),
     }),
+
     proposeUpdateRentalContract: tool({
-      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты, счёт и комиссию за управление объектом (managementFeeType/managementFeeValue). Комиссия общая для объекта, обновляет будущие платежи активных договоров. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. Для периодической цены передай полный список periods и priceType=periodic. Арендные месяцы отсчитываются от заезда; день оплаты — отдельный срок, цена складывается по всем дням периода, неполный месяц пропорционален. Только администратор.",
-      inputSchema:z.object({bookingId:z.string().uuid(),startDate:z.string().optional(),endDate:z.string().optional(),priceType:z.enum(["fixed","periodic"]).optional(),priceMonth:z.number().positive().optional(),managementFeeType:z.enum(["percent","amount"]).optional(),managementFeeValue:z.number().nonnegative().optional(),paymentDay:z.number().int().min(1).max(31).optional(),deposit:z.number().nonnegative().optional(),accountId:z.string().uuid().optional(),comment:z.string().optional(),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional()}),
+      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты, счёт, ownerPayoutDay (конкретное число выплаты собственнику для этой брони, 1–31) и комиссию за управление объектом (managementFeeType/managementFeeValue). Комиссия общая для объекта, обновляет будущие платежи активных договоров. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. Для периодической цены передай полный список periods и priceType=periodic. Арендные месяцы отсчитываются от заезда; день оплаты — отдельный срок, цена складывается по всем дням периода, неполный месяц пропорционален. Только администратор.",
+      inputSchema:z.object({bookingId:z.string().uuid(),startDate:z.string().optional(),endDate:z.string().optional(),priceType:z.enum(["fixed","periodic"]).optional(),priceMonth:z.number().positive().optional(),managementFeeType:z.enum(["percent","amount"]).optional(),managementFeeValue:z.number().nonnegative().optional(),paymentDay:z.number().int().min(1).max(31).optional(),ownerPayoutDay:z.number().int().min(1).max(31).optional(),deposit:z.number().nonnegative().optional(),accountId:z.string().uuid().optional(),comment:z.string().optional(),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional()}),
       execute:async input=>{
         const {crmAccess}=await import("@/lib/crm-results.server");await crmAccess();
         const changes=Object.entries(input).filter(([key])=>key!=="bookingId").map(([key,value])=>`${key}: ${JSON.stringify(value)}`).join("; ");
@@ -1220,13 +1197,10 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
     proposeOwnerPayoutSettings: tool({
-      description:"Предложить установить собственника и ежемесячный день выплаты для объекта. Только администратору в РМ ОС, с подтверждением.",
-      inputSchema:z.object({propertyId:z.string().uuid(),ownerId:z.string().uuid(),day:z.number().int().min(1).max(31)}),execute:async input=>{
-        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
-        const p=await ctx.admin.from("properties").select("title,internal_name").eq("id",input.propertyId).maybeSingle();const owner=await ctx.admin.from("finance_counterparties").select("name").eq("id",input.ownerId).maybeSingle();if(!p.data||!owner.data)return {error:"Объект или собственник не найден"};
-        const summary=`Объект «${p.data.internal_name||p.data.title}»: собственник ${owner.data.name}, день выплаты ${input.day}`;ctx.propose({tool:"saveOwnerPayoutSettings",summary,input});return {proposed:true,summary};
-      },
+      description:"Устаревшее действие: день выплаты собственнику теперь задаётся в конкретной брони. Использовать proposeUpdateRentalContract(ownerPayoutDay), для собственника — proposeCounterpartyObjects.",
+      inputSchema:z.object({}),execute:async()=>({error:"День выплаты задаётся в брони через proposeUpdateRentalContract(ownerPayoutDay). Собственник и объекты связываются через proposeCounterpartyObjects."}),
     }),
+
     proposeCreateOwnerSettlement: tool({
       description:"Предложить создать месячный расчёт с собственником: подтверждённая сумма после комиссии и расходов. Создаёт долг, деньги не списывает. Требует подтверждения администратора.",
       inputSchema:z.object({propertyId:z.string().uuid(),month:z.string().regex(/^\d{4}-\d{2}$/),amount:z.number().positive(),legalEntity:z.string().trim().min(1)}),execute:async input=>{

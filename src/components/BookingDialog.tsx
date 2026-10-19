@@ -1,3 +1,6 @@
+import { BookingFinanceActions } from "./BookingFinanceActions";
+import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
+import { fetchCounterparties } from "@/lib/finance-counterparties";
 import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { RentalPricePreview } from "./RentalPricePreview";
 import {
@@ -44,6 +47,7 @@ import {
   createClient,
   deleteBooking,
   fetchClients,
+  fetchBooking,
   markPropertyRented,
   normalizePhone,
   priceOn,
@@ -78,6 +82,7 @@ type FormState = {
   price_type: BookingPriceType;
   price_month: string;
   payment_day: string;
+  owner_payout_day: string;
   deposit: string;
   source: BookingSource | "";
   status: BookingStatus;
@@ -95,6 +100,7 @@ function emptyForm(propertyId = "", clientId = ""): FormState {
     price_type: "fixed",
     price_month: "",
     payment_day: "1",
+    owner_payout_day: "",
     deposit: "",
     source: "",
     status: "active",
@@ -112,6 +118,7 @@ function fromBooking(b: Booking): FormState {
     price_type: b.price_type,
     price_month: b.price_month == null ? "" : String(b.price_month),
     payment_day: String(b.payment_day),
+    owner_payout_day: b.owner_payout_day == null ? "" : String(b.owner_payout_day),
     deposit: b.deposit == null ? "" : String(b.deposit),
     source: b.source ?? "",
     status: b.status,
@@ -123,12 +130,17 @@ function fromBooking(b: Booking): FormState {
 export function BookingDialog({
   open,
   onOpenChange,
-  booking,
+  booking: providedBooking,
   defaultPropertyId,
   defaultClientId,
   initialMode,
   onSaved,
 }: Props) {
+  const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
+  const booking = providedBooking ?? createdBooking;
+  useEffect(() => {
+    if (!open) setCreatedBooking(null);
+  }, [open]);
   const qc = useQueryClient();
   const { isAdmin } = useAccess();
   const [mode, setMode] = useState<"view" | "edit">(booking ? "view" : "edit");
@@ -149,7 +161,7 @@ export function BookingDialog({
 
   useEffect(() => {
     if (!open) return;
-    setMode(initialMode ?? (booking ? "view" : "edit"));
+    setMode(createdBooking ? "view" : (initialMode ?? (booking ? "view" : "edit")));
     setManagementFee(null);
     setForm(booking ? fromBooking(booking) : emptyForm(defaultPropertyId, defaultClientId));
     setNewClient(false);
@@ -158,7 +170,7 @@ export function BookingDialog({
     setClientSearch("");
     setAssignRoomId("");
     setFinanceAccount("");
-  }, [open, booking?.id, defaultPropertyId, defaultClientId, initialMode]);
+  }, [open, booking?.id, defaultPropertyId, defaultClientId, initialMode, createdBooking]);
 
   const { data: properties = [] } = useQuery({
     queryKey: ["properties"],
@@ -166,6 +178,20 @@ export function BookingDialog({
   });
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: fetchClients });
   const isRm = properties.find((p) => p.id === form.property_id)?.portfolio === "rm";
+  const ownerLinks = useQuery({
+    queryKey: ["finance-object-settings"],
+    queryFn: fetchFinanceObjectAssignments,
+    enabled: open && isAdmin && isRm,
+  });
+  const owners = useQuery({
+    queryKey: ["finance-counterparties"],
+    queryFn: () => fetchCounterparties(),
+    enabled: open && isAdmin && isRm,
+  });
+  const ownerId = ownerLinks.data?.find(
+    (s) => s.property_id === form.property_id,
+  )?.owner_counterparty_id;
+  const ownerName = owners.data?.find((o) => o.id === ownerId)?.name;
   const accounts = useQuery({
     queryKey: ["finance-accounts"],
     queryFn: fetchFinanceAccounts,
@@ -215,6 +241,18 @@ export function BookingDialog({
       )
         throw new Error("Дата окончания аренды должна быть позже даты начала");
       if (seasonalProblem) throw new Error(seasonalProblem);
+      if (isAdmin && isRm && (!ownerLinks.isSuccess || !owners.isSuccess))
+        throw new Error("Дождитесь загрузки собственника объекта");
+      if (
+        isAdmin &&
+        isRm &&
+        ((ownerId && !form.owner_payout_day) ||
+          (form.owner_payout_day &&
+            (!Number.isInteger(Number(form.owner_payout_day)) ||
+              Number(form.owner_payout_day) < 1 ||
+              Number(form.owner_payout_day) > 31)))
+      )
+        throw new Error("Укажите день выплаты собственнику от 1 до 31");
       if (
         managementFee &&
         (!managementFee.value.trim() ||
@@ -242,7 +280,12 @@ export function BookingDialog({
       if (!clientId) throw new Error("Выберите клиента");
 
       const bookingId = await saveBooking(booking?.id ?? null, {
-        ...(isAdmin && selected?.portfolio === "rm" ? { finance_account_id: financeAccount } : {}),
+        ...(isAdmin && selected?.portfolio === "rm"
+          ? {
+              finance_account_id: financeAccount,
+              owner_payout_day: form.owner_payout_day ? Number(form.owner_payout_day) : null,
+            }
+          : {}),
         ...(isAdmin && selected?.portfolio === "rm" && managementFee
           ? {
               management_fee_type: managementFee.type,
@@ -269,7 +312,7 @@ export function BookingDialog({
       }
       return bookingId;
     },
-    onSuccess: async () => {
+    onSuccess: async (savedId) => {
       await invalidateRentalFinance(qc);
       await qc.invalidateQueries({ queryKey: ["bookings"] });
       await qc.invalidateQueries({ queryKey: ["clients"] });
@@ -292,7 +335,15 @@ export function BookingDialog({
       ])
         await qc.invalidateQueries({ queryKey: [key] });
       toast.success(booking ? "Бронирование обновлено" : "Бронирование создано");
-      onOpenChange(false);
+      if (isAdmin && isRm && !providedBooking) {
+        try {
+          setCreatedBooking(await fetchBooking(savedId));
+          setMode("view");
+        } catch {
+          onOpenChange(false);
+          toast.info("Бронь сохранена. Откройте её в календаре для работы с платежами");
+        }
+      } else onOpenChange(false);
       onSaved?.();
     },
     onError: (e: unknown) => {
@@ -427,6 +478,14 @@ export function BookingDialog({
                   }
                 />
               )}
+              {isAdmin && isRm && (
+                <Field
+                  label="Выплата собственнику"
+                  value={
+                    booking.owner_payout_day ? `${booking.owner_payout_day}-го числа` : "Не задана"
+                  }
+                />
+              )}
               <Field label="День оплаты" value={`${booking.payment_day} число`} />
               <Field label="Страховой депозит" value={formatMoney(booking.deposit)} />
               <Field label="Источник" value={sourceLabel(booking.source)} />
@@ -490,6 +549,14 @@ export function BookingDialog({
               <RentalPricePreview terms={{ ...booking, booking_price_periods: booking.periods }} />
             )}
 
+            {isAdmin && isRm && (
+              <BookingFinanceActions
+                booking={booking}
+                fee={property?.management_fee_value ?? null}
+                feeType={property?.management_fee_type ?? "percent"}
+                account={accounts.data?.find((a) => a.id === financeAccount)?.name}
+              />
+            )}
             <DialogFooter className="gap-2 sm:justify-between">
               {isAdmin ? (
                 <Button
@@ -529,7 +596,7 @@ export function BookingDialog({
                   value={form.property_id}
                   onValueChange={(v) => {
                     setManagementFee(null);
-                    setForm((f) => ({ ...f, property_id: v }));
+                    setForm((f) => ({ ...f, property_id: v, owner_payout_day: "" }));
                   }}
                 >
                   <SelectTrigger className="mt-1.5">
@@ -796,6 +863,30 @@ export function BookingDialog({
 
             {isAdmin && isRm && (
               <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+                <Label>Собственник объекта</Label>
+                <p className="text-sm">
+                  {ownerName ?? (ownerLinks.isPending ? "Загрузка…" : "Не прикреплён")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Собственник и его объекты связываются в контрагентах. День выплаты задаётся для
+                  этой брони.
+                </p>
+                <Label htmlFor="booking-owner-payout">День выплаты собственнику</Label>
+                <Input
+                  id="booking-owner-payout"
+                  aria-label="День выплаты собственнику"
+                  type="number"
+                  min={1}
+                  max={31}
+                  step={1}
+                  value={form.owner_payout_day}
+                  placeholder="Например, 24"
+                  onChange={(e) => setForm((f) => ({ ...f, owner_payout_day: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Конкретное число каждого месяца. Для 29–31-го в коротком месяце — последний день.
+                  Изменение обновит будущий прогноз; проведённые выплаты сохранятся.
+                </p>
                 <Label>Комиссия за управление объектом</Label>
                 <div className="flex gap-2">
                   <Input

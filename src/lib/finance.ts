@@ -43,6 +43,7 @@ export const PAYMENT_KINDS: { value: PaymentKind; label: string; direction: Paym
 export const PAYMENT_ACCOUNTS = ["Основной", "Касса"] as const;
 
 export type Payment = {
+  owner_payout_day?: number | null;
   rental_schedule?: boolean;
   rental_installment_id?: string | null;
   rental_stage?: "prepayment" | "balance" | null;
@@ -113,9 +114,9 @@ export type PaymentInput = {
 };
 
 const PAYMENT_SELECT =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
 const PAYMENT_SELECT_LEGACY =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -174,6 +175,7 @@ function mapPayment(row: Record<string, unknown>): Payment {
     booking_id: (row["booking_id"] as string | null) ?? null,
     management_period: (row["management_period"] as string | null) ?? null,
     rental_schedule: row["rental_schedule"] === true,
+    owner_payout_day: row["owner_payout_day"] == null ? null : Number(row["owner_payout_day"]),
     rental_installment_id: (row["rental_installment_id"] as string | null) ?? null,
     rental_stage: (row["rental_stage"] as Payment["rental_stage"]) ?? null,
     rental_component: (row["rental_component"] as Payment["rental_component"]) ?? null,
@@ -227,6 +229,7 @@ export function counterpartyLabel(payment: Payment) {
 }
 
 export type FetchPaymentsOpts = {
+  bookingId?: string;
   from?: string;
   to?: string;
   propertyId?: string | null;
@@ -250,6 +253,7 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
       .range(offset, offset + 499);
     if (opts.from) query = query.gte("planned_date", opts.from);
     if (opts.to) query = query.lte("planned_date", opts.to);
+    if (opts.bookingId) query = query.eq("booking_id", opts.bookingId);
     if (opts.propertyId) query = query.eq("property_id", opts.propertyId);
     if (opts.counterpartyId) query = query.eq("counterparty_id", opts.counterpartyId);
     if (opts.direction && opts.direction !== "all") query = query.eq("direction", opts.direction);

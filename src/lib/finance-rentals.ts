@@ -30,7 +30,7 @@ export async function fetchFinanceRentals(): Promise<FinanceRental[]> {
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id,property_id,start_date,end_date,price_type,price_month,payment_day,status,stay_kind,booking_price_periods(start_date,end_date,price_month)",
+        "id,property_id,start_date,end_date,price_type,price_month,payment_day,owner_payout_day,status,stay_kind,booking_price_periods(start_date,end_date,price_month)",
       )
       .eq("status", "active")
       .eq("stay_kind", "long_term")

@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { FinanceTabs } from "./FinanceTabs";
 import { Button } from "./ui/button";
 import { PaymentDialog } from "./PaymentDialog";
-import { RentalInstallmentsDialog } from "./RentalInstallmentsDialog";
 import { BookingDialog } from "./BookingDialog";
 import { fetchBooking } from "@/lib/bookings";
 import { OwnerPayoutDialog } from "./OwnerPayoutDialog";
@@ -34,13 +33,8 @@ import {
 import { fetchCounterparties, fetchObligations } from "@/lib/finance-counterparties";
 import { fetchOwnerSettlements } from "@/lib/finance-owner-settlements";
 import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
-import {
-  fetchFinanceClientRentals,
-  refreshRentalSettlements,
-  saveRentalOwnerSettings,
-} from "@/lib/finance-workspace";
+import { fetchFinanceClientRentals, refreshRentalSettlements } from "@/lib/finance-workspace";
 import { ownerSettlementState } from "@/lib/finance-owner-model";
-import { fetchFinanceObjectProperties } from "@/lib/finance-rentals";
 import { useFinanceToday } from "@/hooks/use-finance-today";
 import "./finance-workspace.css";
 
@@ -143,7 +137,6 @@ export function FinanceWorkspacePage({
   useEffect(() => {
     if (!embedded) refreshRef.current();
   }, [today, embedded]);
-  const [installmentsBooking, setInstallmentsBooking] = useState<string | null>(null);
   const rows = payments.data ?? [],
     books = rentals.data ?? [],
     props = properties.data ?? [],
@@ -621,12 +614,11 @@ export function FinanceWorkspacePage({
                   историю в разделе «Все движения» и ранее созданные расчёты в карточке объекта.
                 </div>
               )}
-              <RentalOwnerSettings
-                properties={props}
-                parties={owners}
-                settings={cfg}
-                onSaved={invalidate}
-              />
+              <div className="fw-notice">
+                Собственника и его объекты указывайте в{" "}
+                <Link to="/finance/counterparties">контрагентах</Link>. День выплаты и условия
+                конкретной аренды задаются в брони календаря или карточки объекта.
+              </div>
             </>
           )}
           {mode === "clients" && !clientId && (
@@ -774,6 +766,10 @@ export function FinanceWorkspacePage({
                             </b>
                           </div>
                           <div>
+                            <small>День выплаты собственнику</small>
+                            <b>{b.owner_payout_day ?? "Укажите в брони"}</b>
+                          </div>
+                          <div>
                             <small>Собственник</small>
                             <b>
                               {owners.find(
@@ -781,13 +777,13 @@ export function FinanceWorkspacePage({
                                   o.id ===
                                   cfg.find((c) => c.property_id === b.property_id)
                                     ?.owner_counterparty_id,
-                              )?.name ?? "Укажите в расчётах с собственниками"}
+                              )?.name ?? "Прикрепите в контрагентах"}
                             </b>
                           </div>
                         </div>
                         <div className="fw-actions">
                           <Button variant="outline" onClick={() => setContractId(b.id)}>
-                            Условия аренды и график
+                            Условия и платежи брони
                           </Button>
                           <Button
                             variant="outline"
@@ -796,38 +792,19 @@ export function FinanceWorkspacePage({
                                 .filter(
                                   (p) =>
                                     p.booking_id === b.id &&
-                                    p.rental_schedule &&
                                     p.rental_component === "rent" &&
                                     paymentFactAmount(p, today) < p.amount,
                                 )
                                 .sort((a, b) => a.planned_date.localeCompare(b.planned_date))[0];
                               if (planned) setEditing(planned);
-                              else setAdding({ booking: b.id, component: "rent", direction: "in" });
+                              else {
+                                setContractId(b.id);
+                                toast.info("Нет неоплаченных платежей. Проверьте график в брони");
+                              }
                             }}
                           >
                             Оплата аренды
                           </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              setAdding({ booking: b.id, component: "utilities", direction: "in" })
-                            }
-                          >
-                            + КУ
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              setAdding({ booking: b.id, component: "deposit", direction: "in" })
-                            }
-                          >
-                            + Страховой депозит
-                          </Button>
-                          {b.status === "active" && (
-                            <Button variant="outline" onClick={() => setInstallmentsBooking(b.id)}>
-                              Предоплата и остаток
-                            </Button>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -915,12 +892,6 @@ export function FinanceWorkspacePage({
             </>
           )}
         </>
-      )}
-      {installmentsBooking && books.find((b) => b.id === installmentsBooking) && (
-        <RentalInstallmentsDialog
-          booking={books.find((b) => b.id === installmentsBooking)!}
-          onClose={() => setInstallmentsBooking(null)}
-        />
       )}
       {contractId && contract.data && (
         <BookingDialog
@@ -1068,159 +1039,6 @@ function PaymentTable({
           ))}
         </tbody>
       </table>
-    </div>
-  );
-}
-function RentalOwnerSettings({
-  properties,
-  parties,
-  settings,
-  onSaved,
-}: {
-  properties: Awaited<ReturnType<typeof fetchFinancePropertyOptions>>;
-  parties: Awaited<ReturnType<typeof fetchCounterparties>>;
-  settings: Awaited<ReturnType<typeof fetchFinanceObjectAssignments>>;
-  onSaved: () => void;
-}) {
-  const [property, setProperty] = useState(""),
-    [owner, setOwner] = useState(""),
-    [day, setDay] = useState("10"),
-    [fee, setFee] = useState(""),
-    [feeType, setFeeType] = useState<"percent" | "amount">("percent"),
-    [newOwner, setNewOwner] = useState("");
-  const feeProperties = useQuery({
-    queryKey: ["finance-object-properties"],
-    queryFn: () => fetchFinanceObjectProperties(),
-  });
-  const [newOwnerId, setNewOwnerId] = useState(() => crypto.randomUUID());
-  const save = useMutation({
-    mutationFn: async () => {
-      await saveRentalOwnerSettings({
-        propertyId: property,
-        ownerId: owner === "new" ? newOwnerId : owner,
-        day: Number(day),
-        fee: Number(fee),
-        feeType,
-        ...(owner === "new" ? { ownerName: newOwner } : {}),
-      });
-    },
-    onSuccess: () => {
-      onSaved();
-      if (owner === "new") {
-        setOwner(newOwnerId);
-        setNewOwnerId(crypto.randomUUID());
-        setNewOwner("");
-      }
-      toast.success("Условия сохранены");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  return (
-    <div className="fw-panel">
-      <h2>Условия расчётов по объекту</h2>
-      <p>
-        Собственник, день выплаты и комиссия компании. Если комиссия уже установлена при заключении
-        договора, для него действует договорная комиссия.
-      </p>
-      <div className="fw-tools">
-        <select
-          aria-label="Объект условий выплаты"
-          value={property}
-          onChange={(e) => {
-            setProperty(e.target.value);
-            const cfg = settings.find((s) => s.property_id === e.target.value),
-              p = feeProperties.data?.find((p) => p.id === e.target.value);
-            setOwner(cfg?.owner_counterparty_id ?? "");
-            setDay(String(cfg?.payout_day ?? 10));
-            setFee(p?.management_fee_value == null ? "" : String(p.management_fee_value));
-            setFeeType(p?.management_fee_type ?? "percent");
-          }}
-        >
-          <option value="">Выберите объект</option>
-          {properties.map((p) => (
-            <option key={p.id} value={p.id}>
-              {financePropertyLabel(p)}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Собственник для выплаты"
-          value={owner}
-          onChange={(e) => setOwner(e.target.value)}
-        >
-          <option value="">Выберите собственника</option>
-          {parties
-            .filter((p) => p.kind === "owner" || p.id === owner)
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          <option value="new">+ Новый собственник</option>
-        </select>
-        {owner === "new" && (
-          <input
-            aria-label="Имя собственника"
-            placeholder="Имя собственника"
-            value={newOwner}
-            onChange={(e) => setNewOwner(e.target.value)}
-          />
-        )}
-        <label className="text-sm">
-          День выплаты{" "}
-          <input
-            aria-label="День выплаты собственнику"
-            className="w-20"
-            type="number"
-            min="1"
-            max="31"
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-          />
-        </label>
-        <label className="text-sm">
-          Комиссия{" "}
-          <input
-            aria-label="Комиссия компании"
-            className="w-24"
-            type="number"
-            min="0"
-            step="0.01"
-            value={fee}
-            onChange={(e) => setFee(e.target.value)}
-          />
-        </label>
-        <select
-          aria-label="Тип комиссии"
-          value={feeType}
-          onChange={(e) => setFeeType(e.target.value as "percent" | "amount")}
-        >
-          <option value="percent">% от аренды</option>
-          <option value="amount">₽ в месяц</option>
-        </select>
-        <Button
-          disabled={
-            save.isPending ||
-            !property ||
-            !owner ||
-            (owner === "new" && !newOwner.trim()) ||
-            !fee.trim() ||
-            !Number.isFinite(Number(fee)) ||
-            Number(fee) < 0 ||
-            (feeType === "percent" && Number(fee) > 100) ||
-            !Number.isInteger(Number(day)) ||
-            Number(day) < 1 ||
-            Number(day) > 31
-          }
-          onClick={() => save.mutate()}
-        >
-          Сохранить условия
-        </Button>
-      </div>
-      <p>
-        Для 29–31 числа в коротком месяце используется последний день месяца. Сохранённая комиссия
-        проведённых платежей не меняется задним числом.
-      </p>
     </div>
   );
 }

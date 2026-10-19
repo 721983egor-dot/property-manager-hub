@@ -43,6 +43,7 @@ export type Booking = {
   price_type: BookingPriceType;
   price_month: number | null;
   payment_day: number;
+  owner_payout_day?: number | null;
   deposit: number | null;
   source: BookingSource | null;
   status: BookingStatus;
@@ -106,7 +107,7 @@ export function priceOn(booking: Booking, iso: string): number | null {
 }
 
 const SELECT =
-  "id, property_id, client_id, start_date, end_date, price_type, price_month, price_night, payment_day, deposit, source, status, comment, stay_kind, bnovo_id, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
+  "id, property_id, client_id, start_date, end_date, price_type, price_month, price_night, payment_day, owner_payout_day, deposit, source, status, comment, stay_kind, bnovo_id, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
 
 function normalize(row: Record<string, unknown>): Booking {
   const client = (row["clients"] ?? null) as Client | null;
@@ -207,6 +208,7 @@ export type BookingInput = {
   price_type: BookingPriceType;
   price_month: number | null;
   payment_day: number;
+  owner_payout_day?: number | null;
   deposit: number | null;
   source: BookingSource | null;
   status: BookingStatus;

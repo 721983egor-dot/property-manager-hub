@@ -7,6 +7,7 @@ export type FinanceRental = {
   price_type: string;
   price_month: number | null;
   payment_day: number;
+  owner_payout_day?: number | null;
   status: string;
   stay_kind: string;
   booking_price_periods: { start_date: string; end_date: string; price_month: number }[];
