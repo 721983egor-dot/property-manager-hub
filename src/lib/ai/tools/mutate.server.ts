@@ -1144,7 +1144,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
     proposeUpdateRentalContract: tool({
-      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты и счёт. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. Для периодической цены передай полный список periods и priceType=periodic. Только администратор.",
+      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты и счёт. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. Для периодической цены передай полный список periods и priceType=periodic. Арендные месяцы отсчитываются от заезда; день оплаты — отдельный срок, цена складывается по всем дням периода, неполный месяц пропорционален. Только администратор.",
       inputSchema:z.object({bookingId:z.string().uuid(),startDate:z.string().optional(),endDate:z.string().optional(),priceType:z.enum(["fixed","periodic"]).optional(),priceMonth:z.number().positive().optional(),paymentDay:z.number().int().min(1).max(31).optional(),deposit:z.number().nonnegative().optional(),accountId:z.string().uuid().optional(),comment:z.string().optional(),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional()}),
       execute:async input=>{
         const {crmAccess}=await import("@/lib/crm-results.server");await crmAccess();

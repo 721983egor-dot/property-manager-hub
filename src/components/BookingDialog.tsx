@@ -1,3 +1,4 @@
+import { RentalPricePreview } from "./RentalPricePreview";
 import {
   bookingPriceProblem,
   nextBookingPricePeriod,
@@ -442,6 +443,10 @@ export function BookingDialog({
               </div>
             ) : null}
 
+            {isRm && (
+              <RentalPricePreview terms={{ ...booking, booking_price_periods: booking.periods }} />
+            )}
+
             <DialogFooter className="gap-2 sm:justify-between">
               {isAdmin ? (
                 <Button
@@ -637,7 +642,7 @@ export function BookingDialog({
                 <div className="mt-3 space-y-3">
                   <p className="text-xs text-muted-foreground">
                     Даты «С» и «По» включаются в период. Например: до 31 мая включительно, следующий
-                    период — с 1 июня. На каждую дату оплаты должна быть задана одна цена.
+                    период — с 1 июня. Цена должна быть задана на каждый день проживания.
                   </p>
                   {seasonalProblem && (
                     <p role="alert" className="text-sm text-destructive">
@@ -730,6 +735,19 @@ export function BookingDialog({
               )}
             </div>
 
+            {isRm && (
+              <RentalPricePreview
+                terms={{
+                  start_date: form.start_date,
+                  end_date: form.end_date,
+                  payment_day: Number(form.payment_day) || 1,
+                  price_type: form.price_type,
+                  price_month: form.price_month === "" ? null : Number(form.price_month),
+                  booking_price_periods: form.periods,
+                }}
+              />
+            )}
+
             {isAdmin && isRm && (
               <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
                 <Label>Счёт для оплаты аренды</Label>
@@ -772,7 +790,8 @@ export function BookingDialog({
                   onChange={(e) => setForm((f) => ({ ...f, payment_day: e.target.value }))}
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Если числа нет в месяце — оплата в последний день месяца.
+                  Срок оплаты не меняет арендный период: он отсчитывается от даты заезда. Если числа
+                  нет в месяце — срок оплаты в последний день месяца.
                 </p>
               </div>
               <div>

@@ -1,3 +1,4 @@
+import { rentalPeriodPrice } from "./rental-period-price.ts";
 export type FinanceRental = {
   id: string;
   property_id: string;
@@ -16,26 +17,13 @@ export function rentalMonthPlan(
   rate: number | null,
   feeType: "percent" | "amount" = "percent",
 ) {
-  const year = Number(month.slice(0, 4)),
-    m = Number(month.slice(5, 7));
-  const day = Math.min(booking.payment_day, new Date(Date.UTC(year, m, 0)).getUTCDate());
-  const due = `${month}-${String(day).padStart(2, "0")}`;
+  const calculation = rentalPeriodPrice(booking, month);
+  const due = calculation.due;
+  const rent = calculation.amount;
   const scheduled =
     booking.status === "active" &&
     booking.stay_kind === "long_term" &&
-    due >= booking.start_date &&
-    due < booking.end_date;
-  const periods = booking.booking_price_periods.filter(
-    (p) => p.start_date <= due && p.end_date >= due,
-  );
-  const rent =
-    booking.price_type === "periodic"
-      ? periods.length === 1
-        ? Number(periods[0]!.price_month)
-        : null
-      : booking.price_month == null
-        ? null
-        : Number(booking.price_month);
+    calculation.occupiedDays > 0;
   const valid = rent !== null && Number.isFinite(rent) && rent > 0;
   const percent =
     rate != null && Number.isFinite(rate) && rate >= 0 && (feeType === "amount" || rate <= 100)
@@ -44,11 +32,12 @@ export function rentalMonthPlan(
   const calculatedFee =
     valid && percent !== null
       ? feeType === "amount"
-        ? Math.round(percent * 100) / 100
+        ? Math.round(((percent * calculation.occupiedDays) / calculation.cycleDays) * 100) / 100
         : Math.round(rent! * percent) / 100
       : null;
   const fee = calculatedFee !== null && calculatedFee <= rent! ? calculatedFee : null;
   return {
+    ...calculation,
     due,
     scheduled,
     rent: valid ? rent : null,

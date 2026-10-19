@@ -14,13 +14,12 @@ const booking: FinanceRental = {
   booking_price_periods: [],
 };
 test("VIP23 uses contract rent, splits company and owner, excludes end-date payment", () => {
-  assert.deepEqual(rentalMonthPlan(booking, "2026-10", 10), {
-    due: "2026-10-07",
-    scheduled: true,
-    rent: 150000,
-    fee: 15000,
-    ownerBeforeExpenses: 135000,
-  });
+  const plan = rentalMonthPlan(booking, "2026-10", 10);
+  assert.equal(plan.due, "2026-10-07");
+  assert.equal(plan.scheduled, true);
+  assert.equal(plan.rent, 150000);
+  assert.equal(plan.fee, 15000);
+  assert.equal(plan.ownerBeforeExpenses, 135000);
   assert.equal(rentalMonthPlan(booking, "2027-05", 10).scheduled, false);
   assert.equal(
     rentalMonthPlan({ ...booking, status: "cancelled" }, "2026-10", 10).scheduled,
@@ -33,7 +32,7 @@ test("31st clamps to February; periodic prices require exactly one matching peri
     payment_day: 31,
     price_type: "periodic",
     booking_price_periods: [
-      { start_date: "2027-02-01", end_date: "2027-02-28", price_month: 100000 },
+      { start_date: "2027-02-01", end_date: "2027-03-06", price_month: 100000 },
     ],
   };
   assert.equal(rentalMonthPlan(periodic, "2027-02", 10).due, "2027-02-28");
@@ -69,4 +68,11 @@ test("current contract preferred over future; overlapping contracts flagged; end
     rentalForProperty([booking, { ...booking, id: "duplicate" }], "p", "2026-10-08").conflict,
     true,
   );
+});
+
+test("fixed monthly company fee is prorated for the last partial period", () => {
+  const plan = rentalMonthPlan({ ...booking, end_date: "2027-05-10" }, "2027-05", 5000, "amount");
+  assert.equal(plan.rent, 14516.13);
+  assert.equal(plan.fee, 483.87);
+  assert.equal(plan.ownerBeforeExpenses, 14032.26);
 });

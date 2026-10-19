@@ -67,7 +67,7 @@ export function RentalFinancePanel({
           )}
           <div className="finance-rental-figures">
             <div>
-              <small>Аренда в месяц</small>
+              <small>Аренда за расчётный период</small>
               <strong>
                 {plan?.rent != null ? formatAdeskMoney(plan.rent) : "Уточните цену в договоре"}
               </strong>
@@ -88,6 +88,20 @@ export function RentalFinancePanel({
               </strong>
             </div>
           </div>
+          {plan?.scheduled && (
+            <div className="fa-note">
+              <p>
+                Период {plan.from} — {plan.to}, день выезда не включён. {plan.occupiedDays}/
+                {plan.cycleDays} дней · оплата до {plan.due}.
+              </p>
+              {plan.parts.map((part) => (
+                <p key={part.from}>
+                  {formatAdeskMoney(part.monthlyRate)} × {part.days}/{plan.cycleDays} ={" "}
+                  {formatAdeskMoney(part.amount)}
+                </p>
+              ))}
+            </div>
+          )}
           {!plan?.scheduled && (
             <p className="fa-note">
               В выбранном месяце нет плановой даты оплаты в пределах договора.

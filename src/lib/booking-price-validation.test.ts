@@ -34,7 +34,7 @@ test("coverage checks payment dates and clamps 31 to the actual month length", (
       31,
       "2026-10-19",
     )!,
-    /28.02.2027/,
+    /2027-02-28/,
   );
   assert.equal(
     bookingPriceProblem(

@@ -1,3 +1,4 @@
+import { rentalPeriodPrice } from "./rental-period-price.ts";
 import { financeToday } from "./finance-payment-status.ts";
 type Period = { start_date: string; end_date: string; price_month: number };
 const ru = (date: string) => date.split("-").reverse().join(".");
@@ -33,21 +34,29 @@ export function bookingPriceProblem(
       return `Периоды ${previous.row} и ${p.row} пересекаются. Дата «По» включается в период: следующий период должен начинаться после ${ru(previous.end_date)}.`;
   }
   const first = start > today ? start : today;
-  const day = Math.min(31, Math.max(1, paymentDay || 1));
+  const final = new Date(start + "T12:00:00Z");
+  final.setUTCFullYear(final.getUTCFullYear() + 20);
+  if (end > final.toISOString().slice(0, 10)) return "Срок аренды — не более 20 лет.";
+  const terms = {
+    start_date: start,
+    end_date: end,
+    payment_day: paymentDay,
+    price_type: "periodic",
+    price_month: null,
+    booking_price_periods: periods,
+  };
   for (
-    let year = Number(first.slice(0, 4)), month = Number(first.slice(5, 7)) - 1;
-    `${year}-${String(month + 1).padStart(2, "0")}-01` < end;
-    month++
+    let y = Number(first.slice(0, 4)), m = Number(first.slice(5, 7)) - 1;
+    `${y}-${String(m + 1).padStart(2, "0")}-01` < end;
+    m++
   ) {
-    if (month === 12) {
-      year++;
-      month = 0;
+    if (m === 12) {
+      y++;
+      m = 0;
     }
-    const due = `${year}-${String(month + 1).padStart(2, "0")}-${String(Math.min(day, new Date(Date.UTC(year, month + 1, 0)).getUTCDate())).padStart(2, "0")}`;
-    if (due >= end) break;
-    if (due < first) continue;
-    if (!periods.some((p) => p.start_date <= due && p.end_date >= due))
-      return `На дату платежа ${ru(due)} не задана стоимость. Продлите период или добавьте недостающий.`;
+    const calculation = rentalPeriodPrice(terms, `${y}-${String(m + 1).padStart(2, "0")}`);
+    if (calculation.due < today) continue;
+    if (calculation.problem) return calculation.problem;
   }
   return null;
 }
