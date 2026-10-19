@@ -2526,6 +2526,15 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getCounterpartyObjects: tool({
+      description:"Объекты, прикреплённые к собственнику в финансах. Общая привязка с карточкой объекта и прогнозом выплат, включая день выплаты. Не список исторических операций. Только администратор.",
+      inputSchema:z.object({counterpartyId:z.string().uuid()}),
+      execute:async ({counterpartyId})=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
+        const {data,error}=await admin.from("finance_object_settings").select("property_id,payout_day,properties(id,title,internal_name,ref_id,status)").eq("owner_counterparty_id",counterpartyId).order("property_id");
+        if(error)return {error:error.message};return {counterpartyId,objects:data??[]};
+      },
+    }),
     listCounterparties: tool({
       description:
         "Список контрагентов блока «Финансы»: арендатор, собственник, подрядчик, сотрудник, депозит, прочее. Фильтр по типу.",

@@ -1,9 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
-export type CounterpartyClassification = { id: string; name: string };
+export type CounterpartyClassification = { id: string; name: string; legacy_kind?: string | null };
 export async function fetchCounterpartyClassifications(): Promise<CounterpartyClassification[]> {
   const { data, error } = await supabase
     .from("finance_counterparty_classes")
-    .select("id, name")
+    .select("id, name, legacy_kind")
     .order("name");
   if (error) throw error;
   return (data ?? []) as unknown as CounterpartyClassification[];

@@ -1,3 +1,7 @@
+import { OwnerPropertyPicker } from "@/components/OwnerPropertyPicker";
+import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
+import { fetchFinanceObjectProperties } from "@/lib/finance-rentals";
+import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -82,6 +86,16 @@ export function CounterpartyCardPage({ id }: { id: string }) {
   const [editName, setEditName] = useState("");
   const [editClass, setEditClass] = useState("__none__");
   const [editRequisites, setEditRequisites] = useState("");
+  const [editProperties, setEditProperties] = useState<string[]>([]);
+  const [expectedProperties, setExpectedProperties] = useState<string[]>([]);
+  const objectAssignments = useQuery({
+    queryKey: ["finance-object-settings"],
+    queryFn: fetchFinanceObjectAssignments,
+  });
+  const objectProperties = useQuery({
+    queryKey: ["finance-object-properties", "all"],
+    queryFn: () => fetchFinanceObjectProperties(true),
+  });
   const [period, setPeriod] = useState("all");
   const [settlingObligation, setSettlingObligation] = useState<FinanceObligation | null>(null);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
@@ -152,7 +166,20 @@ export function CounterpartyCardPage({ id }: { id: string }) {
   );
   const overview = summarizeCounterparty(visiblePayments, visibleObligations, payments);
   const allOverview = summarizeCounterparty(payments, obligations);
+  const ownedProperties = (objectAssignments.data ?? []).filter(
+    (a) => a.owner_counterparty_id === id,
+  );
+  const selectedClass = classifications.find((c) => c.id === editClass);
+  const editOwner =
+    selectedClass?.legacy_kind === "owner" ||
+    (!selectedClass?.legacy_kind && party?.kind === "owner");
   const openPartyEditor = () => {
+    if (!objectAssignments.isSuccess || !objectProperties.isSuccess) {
+      toast.error("Дождитесь загрузки привязок объектов или обновите страницу");
+      return;
+    }
+    setEditProperties(ownedProperties.map((a) => a.property_id));
+    setExpectedProperties(ownedProperties.map((a) => a.property_id));
     setEditName(party?.name ?? "");
     setEditClass(party?.classification_id ?? "__none__");
     setEditRequisites(party?.requisites ?? "");
@@ -165,8 +192,11 @@ export function CounterpartyCardPage({ id }: { id: string }) {
         kind: party?.kind ?? "other",
         classification_id: editClass === "__none__" ? null : editClass,
         requisites: editRequisites,
+        owner_property_ids: editOwner ? editProperties : [],
+        expected_owner_property_ids: expectedProperties,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
+      await invalidateRentalFinance(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["finance-counterparties"] });
       setKindOpen(false);
       toast.success("Карточка обновлена");
@@ -267,6 +297,54 @@ export function CounterpartyCardPage({ id }: { id: string }) {
           Редактировать карточку
         </Button>
       </div>
+      {(party.kind === "owner" ||
+        classifications.find((c) => c.id === party.classification_id)?.legacy_kind === "owner" ||
+        ownedProperties.length > 0) && (
+        <section className="mt-5 rounded-xl border bg-white p-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-semibold">Объекты собственника</h2>
+            <Button variant="outline" onClick={openPartyEditor}>
+              Изменить объекты
+            </Button>
+          </div>
+          {objectAssignments.error || objectProperties.error ? (
+            <p role="alert">
+              Не удалось загрузить привязки объектов.{" "}
+              <button
+                onClick={() => {
+                  void objectAssignments.refetch();
+                  void objectProperties.refetch();
+                }}
+              >
+                Повторить
+              </button>
+            </p>
+          ) : objectAssignments.isPending || objectProperties.isPending ? (
+            <p>Загрузка…</p>
+          ) : ownedProperties.length ? (
+            <div className="flex flex-wrap gap-2">
+              {ownedProperties.map((a) => {
+                const p = objectProperties.data?.find((p) => p.id === a.property_id);
+                return (
+                  <Link
+                    key={a.property_id}
+                    to="/finance/objects/$id"
+                    params={{ id: a.property_id }}
+                    className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    {p ? financePropertyLabel(p) : "Объект"}
+                    <span className="block text-xs text-muted-foreground">
+                      {a.payout_day ? `Выплата ${a.payout_day}-го числа` : "День выплаты не задан"}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Объекты ещё не прикреплены</p>
+          )}
+        </section>
+      )}
       <div className="mt-6">
         <Select value={period} onValueChange={setPeriod}>
           <SelectTrigger className="w-[220px]">
@@ -625,6 +703,22 @@ export function CounterpartyCardPage({ id }: { id: string }) {
           <Link to="/finance/settings" className="text-sm text-blue-600">
             Настроить классификации
           </Link>
+          {editOwner ? (
+            <OwnerPropertyPicker
+              properties={objectProperties.data ?? []}
+              assignments={objectAssignments.data ?? []}
+              ownerId={id}
+              selected={editProperties}
+              onChange={setEditProperties}
+            />
+          ) : (
+            expectedProperties.length > 0 && (
+              <p className="text-sm text-amber-800">
+                После смены классификации привязки объектов будут сняты. История выплат и
+                задолженности сохранится.
+              </p>
+            )
+          )}
           <Label htmlFor="party-requisites">Реквизиты</Label>
           <Textarea
             id="party-requisites"
@@ -635,7 +729,13 @@ export function CounterpartyCardPage({ id }: { id: string }) {
           />
           <DialogFooter>
             <Button
-              disabled={!editName.trim() || kindMutation.isPending}
+              disabled={
+                !editName.trim() ||
+                kindMutation.isPending ||
+                (editOwner && !editProperties.length) ||
+                !objectAssignments.isSuccess ||
+                !objectProperties.isSuccess
+              }
               onClick={() => kindMutation.mutate()}
             >
               Сохранить

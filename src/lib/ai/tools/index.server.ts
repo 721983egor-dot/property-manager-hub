@@ -1,3 +1,4 @@
+// Собственники контрагентов: getCounterpartyObjects; подтверждённый proposeCounterpartyObjects → saveCounterpartyObjects, общие finance_object_settings и аудит.
 // checkBookingPricePeriods: предварительная проверка сезонных цен брони без записи.
 // getFinanceWorkspace: обзор компании, остатки по потокам, прогноз и ближайшие платежи; без локальных остатков браузера.
 // Календарь «Все движения» и потоки объекта: getFinanceObjectFlow (company/owner/total), тот же расчёт факта и прогноза, что в интерфейсе. Только чтение администратора.

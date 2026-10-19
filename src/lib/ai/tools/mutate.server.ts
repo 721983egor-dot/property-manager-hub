@@ -1535,16 +1535,19 @@ export function createMutateTools(ctx: AssistantToolContext) {
           .enum(["tenant", "owner", "contractor", "employee", "deposit", "other"])
           .optional(),
         comment: z.string().optional(),
+        propertyIds:z.array(z.string().uuid()).min(1).max(500).optional().describe("Объекты собственника"),
       }),
-      execute: async ({ name, kind, comment }) => {
+      execute: async ({ name, kind, comment, propertyIds }) => {
         const trimmed = name.trim();
         if (!trimmed) return { error: "Укажите имя контрагента" };
         const type = kind ?? "other";
-        const summary = `Создать контрагента «${trimmed}» (${type})`;
+        if(type==="owner" && !propertyIds?.length)return {error:"Для собственника укажите объекты propertyIds"};
+        if(propertyIds?.length && type!=="owner")return {error:"Объекты можно прикрепить только собственнику"};
+        const summary = `Создать контрагента «${trimmed}» (${type})${propertyIds?.length ? `, объектов: ${propertyIds.length}` : ""}`;
         ctx.propose({
           tool: "createCounterparty",
           summary,
-          input: { name: trimmed, kind: type, comment: comment ?? "" },
+          input: { name: trimmed, kind: type, comment: comment ?? "",...(propertyIds ? {propertyIds}: {}) },
         });
         return { proposed: true, summary };
       },
@@ -1643,6 +1646,22 @@ export function createMutateTools(ctx: AssistantToolContext) {
         const summary = `Удалить классификацию «${(data as { name: string }).name}»; контрагенты останутся без классификации`;
         ctx.propose({ tool: "deleteCounterpartyClassification", summary, input });
         return { proposed: true, summary };
+      },
+    }),
+    proposeCounterpartyObjects: tool({
+      description:"Предложить полный список объектов собственника. Один собственник может иметь несколько объектов, у объекта один текущий собственник. Чужая привязка не заменяется. Сохраняются день выплаты, классификация объекта и вся финансовая история. Только подтверждённое действие администратора.",
+      inputSchema:z.object({counterpartyId:z.string().uuid(),propertyIds:z.array(z.string().uuid()).min(1).max(500)}),
+      execute:async input=>{
+        const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
+        const [party,links,properties]=await Promise.all([
+          ctx.admin.from("finance_counterparties").select("name,kind").eq("id",input.counterpartyId).single(),
+          ctx.admin.from("finance_object_settings").select("property_id").eq("owner_counterparty_id",input.counterpartyId),
+          ctx.admin.from("properties").select("id,title,internal_name").in("id",input.propertyIds).eq("portfolio","rm")]);
+        if(party.error||links.error||properties.error)return {error:party.error?.message??links.error?.message??properties.error?.message};
+        if(party.data.kind!=="owner")return {error:"Выберите контрагента-собственника"};
+        if(properties.data.length!==new Set(input.propertyIds).size)return {error:"Выберите существующие объекты РМ"};
+        const summary=`Объекты собственника «${party.data.name}»: ${properties.data.map(p=>p.internal_name||p.title).join(", ")}. Полный список заменит прежние привязки; история выплат сохранится.`;
+        ctx.propose({tool:"saveCounterpartyObjects",summary,input:{...input,expectedPropertyIds:links.data.map(p=>p.property_id)}});return {proposed:true,summary};
       },
     }),
     proposeUpdateCounterpartyCard: tool({

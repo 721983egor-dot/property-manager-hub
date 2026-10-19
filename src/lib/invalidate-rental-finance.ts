@@ -8,6 +8,7 @@ export async function invalidateRentalFinance(qc: QueryClient) {
       "current-booking",
       "client-bookings",
       "crm-bookings",
+      "finance-counterparties",
       "finance-object-properties",
       "finance-object-settings",
       "finance-rentals",

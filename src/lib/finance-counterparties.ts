@@ -133,6 +133,8 @@ export async function saveCounterparty(
     comment?: string;
     classification_id?: string | null;
     requisites?: string;
+    owner_property_ids?: string[];
+    expected_owner_property_ids?: string[];
   },
 ) {
   const name = input.name.trim();
@@ -147,6 +149,17 @@ export async function saveCounterparty(
       : {}),
     ...(input.requisites !== undefined ? { requisites: input.requisites.trim() } : {}),
   };
+  if (input.owner_property_ids !== undefined) {
+    const { crmDb } = await import("./crm-results");
+    const { data, error } = await crmDb.rpc("finance_save_counterparty", {
+      p_id: id,
+      p_input: row,
+      p_properties: input.owner_property_ids,
+      p_expected: input.expected_owner_property_ids ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return String(data);
+  }
   if (id) {
     const { error } = await supabase
       .from("finance_counterparties")

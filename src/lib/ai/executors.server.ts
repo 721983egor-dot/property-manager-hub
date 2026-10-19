@@ -1430,6 +1430,11 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const name = String(input["name"] ?? "").trim();
     if (!name) throw new Error("Не указано имя контрагента");
     const kind = String(input["kind"] ?? "other");
+    if(input["propertyIds"]!==undefined){
+      const {db,actor}=await (await import("@/lib/crm-results.server")).crmAccess(input);
+      const result=await db.rpc("finance_save_counterparty",{p_id:null,p_input:{name,kind,comment:String(input["comment"]??"")},p_properties:input["propertyIds"],p_expected:[],p_actor:actor});
+      if(result.error)throw new Error(result.error.message);return `Контрагент создан и объекты прикреплены: ${result.data}`;
+    }
     const { error } = await supabaseAdmin.from("finance_counterparties").insert({
       name,
       kind,
@@ -1476,8 +1481,19 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (error) throw new Error(error.message);
     return "Классификация удалена; история контрагентов сохранена";
   },
+  saveCounterpartyObjects: async input => {
+    const {db,actor}=await (await import("@/lib/crm-results.server")).crmAccess(input);
+    const current=await db.from("finance_counterparties").select("name,kind,classification_id,requisites,comment,client_id").eq("id",input["counterpartyId"]).single();
+    if(current.error)throw new Error(current.error.message);
+    if(current.data.kind!=="owner")throw new Error("Выберите контрагента-собственника");
+    const result=await db.rpc("finance_save_counterparty",{p_id:input["counterpartyId"],p_input:current.data,p_properties:input["propertyIds"],p_expected:input["expectedPropertyIds"]??null,p_actor:actor});
+    if(result.error)throw new Error(result.error.message);return "Объекты собственника сохранены; прежние выплаты и задолженности сохранены";
+  },
   updateCounterpartyCard: async (input) => {
     const id = must(input["counterpartyId"] as string, "Не указан контрагент");
+    const {db,actor}=await (await import("@/lib/crm-results.server")).crmAccess(input);
+    const current=await db.from("finance_counterparties").select("name,kind,classification_id,requisites,comment,client_id").eq("id",id).single();
+    if(current.error)throw new Error(current.error.message);
     const patch: Record<string, unknown> = {};
     if (input["name"] !== undefined) {
       const name = String(input["name"]).trim();
@@ -1487,11 +1503,8 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (input["classificationId"] !== undefined)
       patch["classification_id"] = input["classificationId"];
     if (input["requisites"] !== undefined) patch["requisites"] = String(input["requisites"]).trim();
-    const { error } = await supabaseAdmin
-      .from("finance_counterparties")
-      .update(patch as never)
-      .eq("id", id);
-    if (error) throw new Error(error.message);
+    const {error}=await db.rpc("finance_save_counterparty",{p_id:id,p_input:{...current.data,...patch},p_actor:actor});
+    if(error)throw new Error(error.message);
     return "Карточка контрагента обновлена";
   },
 

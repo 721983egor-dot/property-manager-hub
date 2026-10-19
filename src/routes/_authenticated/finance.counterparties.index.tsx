@@ -1,3 +1,7 @@
+import { OwnerPropertyPicker } from "@/components/OwnerPropertyPicker";
+import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
+import { fetchFinanceObjectProperties } from "@/lib/finance-rentals";
+import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -29,7 +33,7 @@ import {
   type FinanceCounterparty,
 } from "@/lib/finance-counterparties";
 import { fetchCounterpartyClassifications } from "@/lib/finance-classifications";
-import { fetchPayments, formatAdeskMoney } from "@/lib/finance";
+import { fetchPayments, formatAdeskMoney, financePropertyLabel } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/finance/counterparties/")({
@@ -59,6 +63,15 @@ export function FinanceCounterpartiesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [newKind, setNewKind] = useState("__none__");
+  const [ownerProperties, setOwnerProperties] = useState<string[]>([]);
+  const objectAssignments = useQuery({
+    queryKey: ["finance-object-settings"],
+    queryFn: fetchFinanceObjectAssignments,
+  });
+  const objectProperties = useQuery({
+    queryKey: ["finance-object-properties", "all"],
+    queryFn: () => fetchFinanceObjectProperties(true),
+  });
 
   const { data: classifications = [], error: classificationError } = useQuery({
     queryKey: ["finance-counterparty-classes"],
@@ -95,17 +108,24 @@ export function FinanceCounterpartiesPage() {
     return map;
   }, [payments]);
 
+  const ownerSelected = classifications.find((c) => c.id === newKind)?.legacy_kind === "owner";
   const createMutation = useMutation({
     mutationFn: () =>
       saveCounterparty(null, {
         name,
         kind: "other",
         classification_id: newKind === "__none__" ? null : newKind,
+        ...(ownerSelected
+          ? { owner_property_ids: ownerProperties, expected_owner_property_ids: [] }
+          : {}),
       }),
-    onSuccess: (id) => {
+    onSuccess: async (id) => {
+      await invalidateRentalFinance(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["finance-counterparties"] });
       setCreateOpen(false);
       setName("");
+      setNewKind("__none__");
+      setOwnerProperties([]);
       toast.success("Контрагент создан");
       void navigate({ to: "/finance/counterparties/$id", params: { id } });
     },
@@ -168,6 +188,12 @@ export function FinanceCounterpartiesPage() {
               "Без классификации"
             }
             openAmount={openById.get(item.id) ?? 0}
+            objectNames={(objectAssignments.data ?? [])
+              .filter((a) => a.owner_counterparty_id === item.id)
+              .map((a) => {
+                const p = objectProperties.data?.find((p) => p.id === a.property_id);
+                return p ? financePropertyLabel(p) : "Объект";
+              })}
           />
         ))}
       </div>
@@ -198,6 +224,33 @@ export function FinanceCounterpartiesPage() {
                 </SelectContent>
               </Select>
             </div>
+            {ownerSelected && (
+              <>
+                {objectAssignments.error || objectProperties.error ? (
+                  <p role="alert" className="text-sm text-red-600">
+                    Не удалось загрузить объекты.{" "}
+                    <button
+                      onClick={() => {
+                        void objectAssignments.refetch();
+                        void objectProperties.refetch();
+                      }}
+                    >
+                      Повторить
+                    </button>
+                  </p>
+                ) : objectAssignments.isPending || objectProperties.isPending ? (
+                  <p>Загрузка объектов…</p>
+                ) : (
+                  <OwnerPropertyPicker
+                    properties={objectProperties.data ?? []}
+                    assignments={objectAssignments.data ?? []}
+                    ownerId={null}
+                    selected={ownerProperties}
+                    onChange={setOwnerProperties}
+                  />
+                )}
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
@@ -205,7 +258,14 @@ export function FinanceCounterpartiesPage() {
             </Button>
             <Button
               type="button"
-              disabled={!name.trim() || createMutation.isPending}
+              disabled={
+                !name.trim() ||
+                createMutation.isPending ||
+                (ownerSelected &&
+                  (!ownerProperties.length ||
+                    !objectAssignments.isSuccess ||
+                    !objectProperties.isSuccess))
+              }
               onClick={() => createMutation.mutate()}
             >
               Сохранить
@@ -246,9 +306,11 @@ function CounterpartyRow({
   item,
   openAmount,
   classificationName,
+  objectNames,
 }: {
   item: FinanceCounterparty;
   classificationName: string;
+  objectNames: string[];
   openAmount: number;
 }) {
   return (
@@ -257,7 +319,12 @@ function CounterpartyRow({
       params={{ id: item.id }}
       className="grid gap-1 border-b border-border px-4 py-3 last:border-b-0 hover:bg-muted/30 sm:grid-cols-[1fr_10rem_8rem] sm:items-center sm:gap-3"
     >
-      <p className="font-medium">{item.name}</p>
+      <div>
+        <p className="font-medium">{item.name}</p>
+        {objectNames.length > 0 && (
+          <p className="mt-1 text-xs text-muted-foreground">Объекты: {objectNames.join(" · ")}</p>
+        )}
+      </div>
       <p className="text-sm">
         <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
           {classificationName}
