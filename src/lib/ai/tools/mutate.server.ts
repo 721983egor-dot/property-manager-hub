@@ -1267,6 +1267,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         "Для связанной аренды/КУ используйте proposeRentalReceipt. Предложить прочий платёж в календаре Финансов: дата, сумма, приход/расход, статья, объект, контрагент, статус. Требует подтверждения менеджера.",
       inputSchema: z.object({
         plannedDate: z.string().describe("ГГГГ-ММ-ДД"),
+        expenseBearer: z.enum(["company", "owner"]).optional().describe("За чей счёт расход. Для owner нужен объект с прикреплённым собственником; оплаченная сумма автоматически удерживается из выплат."),
         amount: z.number(),
         direction: z.enum(["in", "out"]).optional(),
         kind: z
@@ -1327,6 +1328,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
           kind === "agency_cost"
             ? "out"
             : "in");
+        if (input.expenseBearer === "owner" && direction !== "out") return { error: "За счёт собственника можно создать только расход" };
+        if (input.expenseBearer === "owner" && !input.propertyRef) return { error: "Укажите объект собственника" };
         const property = input.propertyRef ? await label(input.propertyRef) : null;
         if (input.propertyRef && !property) return { error: "Объект не найден" };
         let clientId: string | null = null;
@@ -1349,6 +1352,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
           input.plannedDate,
           articleName || kind,
         ];
+        if (input.expenseBearer) parts.push(`за счёт ${input.expenseBearer === "owner" ? "собственника, удержать из выплаты" : "компании"}`);
         if (property) parts.push(`объект ${property.text}`);
         if (clientName) parts.push(clientName);
         else if (input.counterpartyName) parts.push(input.counterpartyName);
@@ -1358,6 +1362,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
           tool: "createPayment",
           summary,
           input: {
+            expenseBearer: input.expenseBearer ?? null,
             plannedDate: input.plannedDate,
             amount: input.amount,
             direction,
@@ -1383,6 +1388,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       inputSchema: z.object({
         paymentId: z.string(),
         plannedDate: z.string().optional(),
+        expenseBearer: z.enum(["company", "owner"]).optional(),
         amount: z.number().optional(),
         direction: z.enum(["in", "out"]).optional(),
         kind: z
@@ -1441,6 +1447,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         }
         const parts: string[] = [`${payment.planned_date}, ${money(Number(payment.amount))}`];
         if (input.plannedDate) parts.push(`дата → ${input.plannedDate}`);
+        if (input.expenseBearer) parts.push(`за счёт → ${input.expenseBearer === "owner" ? "собственника, удержать из выплаты" : "компании"}`);
         if (input.amount != null) parts.push(`сумма → ${money(input.amount)}`);
         if (input.status) parts.push(`статус → ${input.status}`);
         if (propertyText) parts.push(`объект → ${propertyText}`);
@@ -1451,6 +1458,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
           tool: "updatePayment",
           summary,
           input: {
+            expenseBearer: input.expenseBearer,
             paymentId: input.paymentId,
             plannedDate: input.plannedDate ?? null,
             amount: input.amount ?? null,

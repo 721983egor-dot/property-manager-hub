@@ -1,0 +1,54 @@
+// Use the established isolated PostgreSQL booking/owner fixture, never live data.
+import fs from 'node:fs/promises';
+process.env.PGLITE_MODULE=import.meta.resolve(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+const source=await fs.readFile('scripts/tests/booking-owner-payout.mjs','utf8');
+const start=source.slice(0,source.indexOf('const scenarios=String.raw`'));
+const baseline=source.slice(source.indexOf('const scenarios=String.raw`')+'const scenarios=String.raw`'.length,source.indexOf("await db.query(\"SELECT set_config('test.user'"));
+const scenarios=String.raw`
+await db.query("INSERT INTO finance_articles(id,name,direction,code,affects_profit) VALUES($1,'Авито','out','test_avito',false)",[id(946)]);
+await db.query("INSERT INTO payments(id,planned_date,amount,direction,status,kind,account,article_id) VALUES($1,'2026-10-17',2000,'out','paid','contractor','Карта',$2)",[id(945),id(946)]);
+const moneyBeforeExpenses=(await db.query('SELECT id,amount,planned_date,status,paid_amount,company_fee FROM payments ORDER BY id')).rows;
+await db.exec(await fs.readFile('supabase/migrations/20261019200000_owner_expenses.sql','utf8'));
+assert.deepEqual((await db.query('SELECT id,amount,planned_date,status,paid_amount,company_fee FROM payments ORDER BY id')).rows,moneyBeforeExpenses,'migration preserves every historical payment');
+assert.equal((await db.query('SELECT affects_profit FROM finance_articles WHERE id=$1',[id(946)])).rows[0].affects_profit,true);
+assert.equal((await db.query('SELECT expense_bearer FROM payments WHERE id=$1',[id(945)])).rows[0].expense_bearer,'company','identified Avito cost assigned to company');
+const expense=id(950);
+const createExpense=async(paymentId,amount,property=id(20))=>db.query("INSERT INTO payments(id,planned_date,amount,direction,status,kind,property_id,account,comment,paid_at,paid_amount,expense_bearer) VALUES($1,$2,$3,'out','paid','contractor',$4,'Карта','Ремонт', $2,$3,'owner')",[paymentId,today,amount,property]);
+const liabilities=async()=>(await db.query('SELECT s.id,s.obligation_id,s.gross_amount,s.expense_amount,o.amount,o.planned_date::text date FROM finance_owner_settlements s JOIN finance_obligations o ON o.id=s.obligation_id WHERE s.property_id=$1 ORDER BY o.planned_date,s.id',[id(20)])).rows;
+const beforeExpenses=await liabilities();
+await createExpense(id(949),1234);
+await db.query('DELETE FROM payments WHERE id=$1',[id(949)]);
+assert.deepEqual((await liabilities()).map(s=>[s.obligation_id,s.amount]),beforeExpenses.map(s=>[s.obligation_id,s.amount]),'deleting a cost before any subsequent remittance restores the payout');
+await createExpense(expense,5000);
+let all=await liabilities();
+assert.equal((await db.query('SELECT expense_owner_id FROM payments WHERE id=$1',[expense])).rows[0].expense_owner_id,id(800));
+assert.equal(all.reduce((n,s)=>n+Number(s.expense_amount),0),5000,'cost allocated once');
+assert.equal(all.reduce((n,s)=>n+Number(s.amount),0),beforeExpenses.reduce((n,s)=>n+Number(s.amount),0)-5000,'liability reduced by cost');
+await db.query('SELECT finance_sync_owner_month($1,$2)',[id(20),year+'-01-01']);
+assert.equal((await liabilities()).reduce((n,s)=>n+Number(s.expense_amount),0),5000,'rental resync does not duplicate deduction');
+await db.query('UPDATE payments SET amount=6000,paid_amount=6000 WHERE id=$1',[expense]);
+assert.equal((await liabilities()).reduce((n,s)=>n+Number(s.expense_amount),0),6000,'editing cost recalculates once');
+const allocated=(await db.query('SELECT s.obligation_id FROM finance_owner_expense_allocations a JOIN finance_owner_settlements s ON s.id=a.settlement_id WHERE a.payment_id=$1 LIMIT 1',[expense])).rows[0].obligation_id;
+await assert.rejects(db.query('SELECT pay_owner_settlement($1,$2,$3,$4,$5)',[allocated,10000000,'Карта',today,id(958)]),/не превышать/);
+await db.query('SELECT pay_owner_settlement($1,$2,$3,$4,$5)',[allocated,1000,'Карта',today,id(951)]);
+await assert.rejects(db.query("UPDATE payments SET expense_bearer='company' WHERE id=$1",[expense]),/уже удержан/,'paid owner statement protected');
+await assert.rejects(db.query('DELETE FROM payments WHERE id=$1',[expense]),/уже удержан|foreign key/);
+await createExpense(id(952),1000000);
+all=await liabilities();
+assert.ok(all.every(s=>Number(s.amount)>=0),'large cost cannot produce negative payout');
+const facts=Number((await db.query("SELECT sum(finance_expense_fact(p)) n FROM payments p WHERE expense_bearer='owner'")).rows[0].n);
+const deducted=Number((await db.query('SELECT sum(amount) n FROM finance_owner_expense_allocations')).rows[0].n);
+assert.ok(facts>deducted,'unrecovered excess preserved');
+// A later rental receipt picks up outstanding costs.
+const more=(await db.query('SELECT id FROM payments WHERE booking_id=$1 AND rental_period=$2 AND rental_component=$3',[bookingId,year+'-04-01','rent'])).rows[0].id;
+await db.query("UPDATE payments SET status='paid',paid_amount=amount,paid_at=planned_date WHERE id=$1",[more]);
+assert.ok(Number((await db.query('SELECT sum(amount) n FROM finance_owner_expense_allocations')).rows[0].n)>deducted,'excess reaches next payout');
+// Other owners/properties never absorb this expense.
+await assert.rejects(createExpense(id(953),1000,id(21)),/Прикрепите собственника/);
+await db.query("SELECT set_config('test.user',$1,false)",[id(2)]);
+await assert.rejects(createExpense(id(954),1000),/администратору/);
+console.log('PASS owner expenses: explicit bearer, auto owner, net payout, idempotency, edits, paid statement protection, excess carry, scope and admin');
+await db.close();
+`;
+const tail="try{const decoded=Function('return `'+scaffold+'`')();await import('data:text/javascript;base64,'+Buffer.from(setup+decoded+scenarios).toString('base64'));}catch(error){console.error(error.message,error.detail??'',error.where??'',error.query??'');process.exitCode=1;}";
+await import('data:text/javascript;base64,'+Buffer.from(start+'const scenarios=String.raw`'+baseline+scenarios+'`;\n'+tail).toString('base64'));

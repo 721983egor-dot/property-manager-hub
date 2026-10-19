@@ -623,6 +623,13 @@ export function FinanceCalendarPage() {
                   >
                     <p className="truncate text-sm">
                       <span className="font-medium">{rentalPaymentLabel(payment)}</span>
+                      {payment.expense_bearer && (
+                        <span className="text-xs text-slate-500">
+                          {" "}
+                          · За счёт{" "}
+                          {payment.expense_bearer === "owner" ? "собственника" : "компании"}
+                        </span>
+                      )}
                       <span className="text-slate-500"> · {counterpartyLabel(payment)}</span>
                     </p>
                     <p className="truncate text-xs text-slate-400">{propertyTitle}</p>

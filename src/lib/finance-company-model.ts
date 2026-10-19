@@ -62,6 +62,7 @@ export function bankPayments(rows: Payment[]) {
 }
 export function companyPayments(rows: Payment[]): Payment[] {
   return bankPayments(rows).flatMap((p) => {
+    if (p.expense_bearer === "owner") return [];
     if (p.rental_component === "rent") {
       if (p.company_fee == null || p.company_fee <= 0) return [];
       const ratio = p.company_fee / p.amount;
@@ -85,7 +86,11 @@ export function companyPayments(rows: Payment[]): Payment[] {
       ["rent_in", "owner_payout", "deposit_in", "deposit_out"].includes(p.kind)
     )
       return [];
-    if (p.article?.affects_profit === false || p.article?.code === "utilities_out") return [];
+    if (
+      p.expense_bearer !== "company" &&
+      (p.article?.affects_profit === false || p.article?.code === "utilities_out")
+    )
+      return [];
     return [p];
   });
 }
@@ -112,7 +117,7 @@ export function companySummary(rows: Payment[], from: string, to: string, today 
         p.rental_component === "rent" && p.company_fee != null
           ? fact * (1 - p.company_fee / p.amount)
           : fact;
-    if (p.kind === "owner_payout") ownerReserve -= fact;
+    if (p.kind === "owner_payout" || p.expense_bearer === "owner") ownerReserve -= fact;
     if (p.kind === "deposit_in" || p.kind === "deposit_out") deposits += sign * fact;
   }
   return {
@@ -152,6 +157,7 @@ export function ownerForecastPayments(
     period: string;
     obligation_id: string;
     automatic?: boolean;
+    expense_amount?: number;
   }[],
 ): Payment[] {
   const result: Payment[] = [];
@@ -210,7 +216,7 @@ export function ownerForecastPayments(
         (sum, p) => sum + (p.rental_component === "owner_plan" ? p.amount : paymentFactAmount(p)),
         0,
       );
-    const remaining = money(total - represented);
+    const remaining = money(total - represented - (existing?.expense_amount ?? 0));
     if (remaining <= 0) continue;
     const day = Math.min(
       payoutDay,
@@ -243,6 +249,55 @@ export function ownerForecastPayments(
     });
   }
   return result;
+}
+
+/** Deduct each owner cost once from projected transfers; cash costs remain separate movements. */
+export function ownerCashPayments(
+  rows: Payment[],
+  settings: Parameters<typeof ownerForecastPayments>[1],
+  settlements: Parameters<typeof ownerForecastPayments>[2],
+): Payment[] {
+  const result = [...bankPayments(rows), ...ownerForecastPayments(rows, settings, settlements)].map(
+    (p) => ({ ...p }),
+  );
+  const allocated = new Map<string, number>();
+  for (const st of settlements) {
+    const owner =
+      rows.find((p) => p.obligation_id === st.obligation_id && p.kind === "owner_payout")
+        ?.counterparty_id ??
+      settings.find((c) => c.property_id === st.property_id)?.owner_counterparty_id;
+    const key = `${st.property_id}:${owner}`;
+    allocated.set(key, (allocated.get(key) ?? 0) + (st.expense_amount ?? 0));
+  }
+  const plans = result
+    .filter((p) => p.rental_component === "owner_plan")
+    .sort((a, b) => a.planned_date.localeCompare(b.planned_date) || a.id.localeCompare(b.id));
+  for (const cost of rows
+    .filter((p) => p.expense_bearer === "owner")
+    .sort(
+      (a, b) =>
+        (a.paid_at ?? a.planned_date).localeCompare(b.paid_at ?? b.planned_date) ||
+        a.id.localeCompare(b.id),
+    )) {
+    const key = `${cost.property_id}:${cost.expense_owner_id}`;
+    let amount = cost.status === "paid" ? paymentFactAmount(cost) : cost.amount;
+    const used = Math.min(amount, allocated.get(key) ?? 0);
+    allocated.set(key, (allocated.get(key) ?? 0) - used);
+    amount = money(amount - used);
+    for (const plan of plans) {
+      if (amount <= 0) break;
+      if (
+        plan.property_id !== cost.property_id ||
+        plan.counterparty_id !== cost.expense_owner_id ||
+        (paymentFactAmount(cost) === 0 && plan.planned_date < cost.planned_date)
+      )
+        continue;
+      const deduct = Math.min(amount, plan.amount);
+      plan.amount = money(plan.amount - deduct);
+      amount = money(amount - deduct);
+    }
+  }
+  return result.filter((p) => p.rental_component !== "owner_plan" || p.amount > 0);
 }
 
 /** The pair is one contract amount, never a third bank receipt. Read from full payment history. */

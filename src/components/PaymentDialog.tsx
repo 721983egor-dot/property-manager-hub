@@ -1,3 +1,4 @@
+import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import { RentalTermsButton } from "./RentalTermsButton";
 import { fetchFinanceClientRentals } from "@/lib/finance-workspace";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -71,6 +72,7 @@ type Props = {
 };
 
 type FormState = {
+  expense_bearer: "company" | "owner";
   booking_id: string;
   rental_component: "" | "rent" | "utilities" | "deposit";
   planned_date: string;
@@ -105,6 +107,7 @@ function emptyForm(
 ): FormState {
   const kind = direction === "out" ? "agency_cost" : "other";
   return {
+    expense_bearer: "company",
     booking_id: "",
     rental_component: "",
     planned_date: date || toISODate(new Date()),
@@ -133,6 +136,7 @@ function emptyForm(
 
 function fromPayment(payment: Payment): FormState {
   return {
+    expense_bearer: payment.expense_bearer === "owner" ? "owner" : "company",
     booking_id: payment.booking_id ?? "",
     rental_component:
       payment.rental_component === "rent" || payment.rental_component === "utilities"
@@ -187,6 +191,11 @@ export function PaymentDialog({
   const rentals = useQuery({
     queryKey: ["finance-client-rentals"],
     queryFn: fetchFinanceClientRentals,
+    enabled: open,
+  });
+  const objectSettings = useQuery({
+    queryKey: ["finance-object-settings"],
+    queryFn: fetchFinanceObjectAssignments,
     enabled: open,
   });
   const amountRef = useRef<HTMLInputElement>(null);
@@ -364,7 +373,20 @@ export function PaymentDialog({
     void queryClient.invalidateQueries({ queryKey: ["finance-counterparties"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-obligations"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-owner-settlements"] });
+    void queryClient.invalidateQueries({ queryKey: ["finance-owner-expenses"] });
   };
+
+  const expenseEligible =
+    form.direction === "out" &&
+    !form.rental_component &&
+    !["owner_payout", "deposit_out", "deposit_in"].includes(form.kind) &&
+    !payment?.obligation_id &&
+    !defaultObligationId;
+  const expenseOwnerId =
+    payment?.expense_bearer === "owner" && payment.property_id === form.property_id
+      ? payment.expense_owner_id
+      : objectSettings.data?.find((s) => s.property_id === form.property_id)?.owner_counterparty_id;
+  const expenseOwnerName = counterparties.find((c) => c.id === expenseOwnerId)?.name;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -374,6 +396,16 @@ export function PaymentDialog({
         throw new Error("Выберите статью разового дохода компании");
       if (payment?.rental_component === "owner_plan")
         throw new Error("Подтвердите выплату в разделе Собственники");
+      if (
+        expenseEligible &&
+        form.expense_bearer === "owner" &&
+        (!expenseOwnerId || objectSettings.error || objectSettings.isPending)
+      )
+        throw new Error("Выберите объект с прикреплённым собственником в контрагентах");
+      if (expenseEligible && form.expense_bearer === "owner" && form.countInObligations)
+        throw new Error(
+          "Расход собственника удерживается автоматически — отдельное обязательство не нужно",
+        );
       const rental = rentals.data?.find((b) => b.id === form.booking_id);
       if (form.rental_component && !rental) throw new Error("Выберите аренду клиента");
       const party = await ensureCounterparty({
@@ -388,6 +420,9 @@ export function PaymentDialog({
       });
       const selectedArticle = findArticle(articleList, form.article_id);
       const input = {
+        expense_bearer: expenseEligible ? form.expense_bearer : null,
+        expense_owner_id:
+          expenseEligible && form.expense_bearer === "owner" ? (expenseOwnerId ?? null) : null,
         planned_date: form.planned_date,
         amount: Number(form.amount),
         direction: form.direction,
@@ -686,6 +721,33 @@ export function PaymentDialog({
               className="finance-field-input"
             />
           </Field>
+          {expenseEligible && (
+            <Field label="За чей счёт">
+              <Select
+                value={form.expense_bearer}
+                onValueChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    expense_bearer: v as "company" | "owner",
+                    countInObligations: false,
+                  }))
+                }
+              >
+                <SelectTrigger className="finance-field-select" aria-label="За чей счёт">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="company">Компания</SelectItem>
+                  <SelectItem value="owner">Собственник</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {form.expense_bearer === "company"
+                  ? "Учитывается в расходах компании."
+                  : "Удерживается из ближайшей доступной выплаты собственнику после оплаты расхода."}
+              </p>
+            </Field>
+          )}
           <Field label="Объект">
             <Select
               disabled={Boolean(form.rental_component)}
@@ -707,7 +769,29 @@ export function PaymentDialog({
               </SelectContent>
             </Select>
           </Field>
-          <Field label={form.rental_component ? "Клиент" : "Контрагент"}>
+          {expenseEligible && form.expense_bearer === "owner" && (
+            <Field label="За счёт собственника">
+              <p className="py-2 font-medium">
+                {expenseOwnerName ??
+                  (objectSettings.isPending
+                    ? "Загрузка…"
+                    : "Выберите объект с прикреплённым собственником")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Расход появится в карточке собственника и уменьшит сумму к перечислению. Остаток
+                удержания переносится на следующие выплаты по этому объекту.
+              </p>
+            </Field>
+          )}
+          <Field
+            label={
+              form.rental_component
+                ? "Клиент"
+                : expenseEligible && form.expense_bearer === "owner"
+                  ? "Получатель денег / подрядчик"
+                  : "Контрагент"
+            }
+          >
             <Select
               disabled={Boolean(form.rental_component)}
               value={form.counterparty_id || ""}
@@ -761,7 +845,10 @@ export function PaymentDialog({
           <label className="finance-payment-option">
             <Checkbox
               disabled={Boolean(
-                form.rental_component || payment?.obligation_id || defaultObligationId,
+                form.rental_component ||
+                payment?.obligation_id ||
+                defaultObligationId ||
+                (expenseEligible && form.expense_bearer === "owner"),
               )}
               checked={form.countInObligations}
               onCheckedChange={(v) => setForm((p) => ({ ...p, countInObligations: v === true }))}

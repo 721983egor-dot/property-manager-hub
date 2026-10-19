@@ -43,3 +43,6 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
     ...createSocialTools(ctx),
   };
 }
+
+// Расход: proposeCreatePayment/proposeUpdatePayment поддерживают expenseBearer company/owner.
+// Владелец определяется по объекту; getCounterparty и getOwnerSettlements показывают расходы и удержания.

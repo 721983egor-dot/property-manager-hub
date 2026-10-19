@@ -2,7 +2,7 @@ import type { Payment } from "./finance.ts";
 import type { FinanceCatalog } from "./finance-articles-model.ts";
 import type { FinanceObjectAssignment } from "./finance-objects.ts";
 import type { OwnerSettlement } from "./finance-owner-settlements.ts";
-import { bankPayments, ownerForecastPayments } from "./finance-company-model.ts";
+import { ownerCashPayments } from "./finance-company-model.ts";
 import { reportPayments } from "./finance-report-payments.ts";
 import { buildFinanceCalendar } from "./finance-calendar-model.ts";
 import { entryTotals, reportEntries } from "./finance-analytics.ts";
@@ -13,7 +13,7 @@ export const objectFlowNotes = {
   company:
     "Комиссия и другие доходы компании за вычетом её расходов. Деньги собственника и депозит исключены.",
   owner:
-    "Аренда после комиссии и КУ — приход. Перечисления собственнику — расход. Остаток показывает его деньги у компании; депозит исключён.",
+    "Аренда после комиссии и КУ — приход. Выплаты и расходы за счёт собственника — расход. Остаток показывает его деньги у компании; депозит исключён.",
   total:
     "Все поступления и расходы по объекту, включая деньги компании, собственника и страховой депозит. Комиссия внутри аренды не дублируется.",
 };
@@ -35,10 +35,14 @@ export function objectFlowPayments(
       return article ? { ...p, article: { ...article, category_name: null } } : p;
     });
   if (flow === "company") return reportPayments(scoped, catalog, true);
-  const rows = [...bankPayments(scoped), ...ownerForecastPayments(scoped, settings, settlements)];
+  const rows = ownerCashPayments(scoped, settings, settlements);
   if (flow === "total") return reportPayments(rows, catalog, false);
   return rows.flatMap((p) => {
-    if (p.kind === "owner_payout" || (p.direction === "out" && p.article?.code === "utilities_out"))
+    if (
+      p.expense_bearer === "owner" ||
+      p.kind === "owner_payout" ||
+      (p.direction === "out" && p.article?.code === "utilities_out")
+    )
       return [p];
     if (p.rental_component === "utilities") return [p];
     if (p.rental_component !== "rent" || p.company_fee == null || p.amount <= 0) return [];

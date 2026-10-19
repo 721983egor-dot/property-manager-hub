@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 export type OwnerSettlement = {
+  gross_amount?: number | null;
+  expense_amount?: number;
   booking_id?: string | null;
   id: string;
   property_id: string;
@@ -10,7 +12,7 @@ export type OwnerSettlement = {
 export async function fetchOwnerSettlements(propertyId?: string) {
   let query = supabase
     .from("finance_owner_settlements")
-    .select("id,property_id,period,obligation_id,automatic,booking_id")
+    .select("id,property_id,period,obligation_id,automatic,booking_id,gross_amount,expense_amount")
     .order("period", { ascending: false });
   if (propertyId) query = query.eq("property_id", propertyId);
   const rows: OwnerSettlement[] = [];
@@ -63,4 +65,19 @@ export async function payOwnerSettlement(
   });
   if (error) throw error;
   return data;
+}
+
+export async function fetchOwnerExpenseAllocations() {
+  const rows: { payment_id: string; settlement_id: string; amount: number }[] = [];
+  for (let start = 0; ; start += 500) {
+    const { data, error } = await supabase
+      .from("finance_owner_expense_allocations")
+      .select("payment_id,settlement_id,amount")
+      .order("payment_id")
+      .order("settlement_id")
+      .range(start, start + 499);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if ((data?.length ?? 0) < 500) return rows;
+  }
 }

@@ -69,3 +69,15 @@ test("due planned settlements count as paid without a database status update", (
   assert.equal(obligationCash(obligation(), [due]).remaining, 0);
   assert.equal(summarizeCounterparty([due], [obligation()]).weTransferred, 100000);
 });
+
+test("cost recipient sees the cash, owner sees the cost separately from a remittance", () => {
+  const repair = payment({
+    direction: "out",
+    amount: 5000,
+    counterparty_id: "master",
+    expense_owner_id: "owner",
+    expense_bearer: "owner",
+  });
+  assert.equal(summarizeCounterparty([repair], [], [repair], "master").weTransferred, 5000);
+  assert.equal(summarizeCounterparty([repair], [], [repair], "owner").weTransferred, 0);
+});

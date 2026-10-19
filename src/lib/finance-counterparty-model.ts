@@ -14,6 +14,7 @@ export function summarizeCounterparty(
   payments: Payment[],
   obligations: FinanceObligation[],
   settlementPayments: Payment[] = payments,
+  counterpartyId?: string,
 ): CounterpartyOverview {
   let theyOweUs = 0;
   for (const item of obligations) {
@@ -26,6 +27,12 @@ export function summarizeCounterparty(
   let weTransferred = 0;
   const propertyIds: string[] = [];
   for (const payment of payments) {
+    if (
+      payment.expense_bearer === "owner" &&
+      payment.expense_owner_id === counterpartyId &&
+      payment.expense_owner_id !== payment.counterparty_id
+    )
+      continue;
     const status = effectivePaymentStatus(payment);
     const fact = paymentFactAmount(payment);
     if (status === "paid" || status === "partial") {

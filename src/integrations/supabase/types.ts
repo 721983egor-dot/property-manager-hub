@@ -789,9 +789,15 @@ export type Database = {
         Relationships: [];
       };
       finance_owner_settlements: {
-        Row: { booking_id:string|null; id:string; property_id:string; period:string; obligation_id:string; automatic:boolean; created_at:string };
+        Row: { gross_amount:number|null; expense_amount:number; booking_id:string|null; id:string; property_id:string; period:string; obligation_id:string; automatic:boolean; created_at:string };
         Insert: { booking_id?:string|null; property_id:string; period:string; obligation_id:string };
         Update: { booking_id?:string|null; property_id?:string; period?:string; obligation_id?:string };
+        Relationships: [];
+      };
+      finance_owner_expense_allocations: {
+        Row: { id:string; payment_id:string; settlement_id:string; amount:number; locked_amount:number };
+        Insert: { id?:string; payment_id:string; settlement_id:string; amount:number; locked_amount?:number };
+        Update: { amount?:number; locked_amount?:number };
         Relationships: [];
       };
       finance_accounts: {
@@ -1111,6 +1117,8 @@ export type Database = {
       }
       payments: {
         Row: {
+          expense_bearer: string | null
+          expense_owner_id: string | null
           owner_payout_day: number | null
           id: string
           planned_date: string
@@ -1142,6 +1150,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          expense_bearer?: string | null
+          expense_owner_id?: string | null
           owner_payout_day?: number | null
           id?: string
           planned_date: string
@@ -1173,6 +1183,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          expense_bearer?: string | null
+          expense_owner_id?: string | null
           owner_payout_day?: number | null
           id?: string
           planned_date?: string

@@ -56,6 +56,7 @@ export function OwnerSettlementsPanel({
   const accounts = useQuery({ queryKey: ["finance-accounts"], queryFn: fetchFinanceAccounts });
   const invalidate = () => {
     for (const key of [
+      "finance-owner-expenses",
       "finance-owner-settlements",
       "finance-object-settings",
       "finance-obligations",
@@ -96,9 +97,9 @@ export function OwnerSettlementsPanel({
     <section className="fa-panel mt-5">
       <h2>Расчёты с собственником</h2>
       <p className="mb-4 text-sm text-muted-foreground">
-        Подтвердите сумму за месяц после удержания комиссии и расходов собственника. Остаток — наш
-        долг; после даты выплаты он становится просроченным. Для 29–31 числа в коротком месяце
-        используется последний день месяца.
+        Начисление — после комиссии, до расходов собственника. Оплаченные расходы удерживаются
+        автоматически. Остаток — наш долг; после даты выплаты он становится просроченным. Для 29–31
+        числа в коротком месяце используется последний день месяца.
       </p>
       <p className="mb-5 text-sm text-muted-foreground">
         Собственник:{" "}
@@ -116,7 +117,7 @@ export function OwnerSettlementsPanel({
         }}
       >
         <label className="flex flex-col gap-1">
-          К выплате за {month}
+          Начислено до расходов за {month}
           <Input
             aria-label="Сумма собственнику за месяц"
             type="number"
@@ -172,7 +173,9 @@ export function OwnerSettlementsPanel({
               <th>Месяц</th>
               <th>Собственник</th>
               <th>Дата выплаты</th>
-              <th>Начислено</th>
+              <th>До расходов</th>
+              <th>Расходы собственника</th>
+              <th>К выплате</th>
               <th>Выплачено</th>
               <th>Осталось</th>
               <th>Статус</th>
@@ -185,7 +188,7 @@ export function OwnerSettlementsPanel({
               if (!o)
                 return (
                   <tr key={s.id}>
-                    <td colSpan={8}>Обновляется расчёт за {s.period.slice(0, 7)}…</td>
+                    <td colSpan={10}>Обновляется расчёт за {s.period.slice(0, 7)}…</td>
                   </tr>
                 );
               const state = ownerSettlementState(o, payments, today());
@@ -198,6 +201,8 @@ export function OwnerSettlementsPanel({
                     </Link>
                   </td>
                   <td>{o.planned_date}</td>
+                  <td>{formatAdeskMoney(s.gross_amount ?? o.amount)}</td>
+                  <td>{formatAdeskMoney(s.expense_amount ?? 0)}</td>
                   <td>{formatAdeskMoney(o.amount)}</td>
                   <td>{formatAdeskMoney(state.paid)}</td>
                   <td className={state.overdue ? "fa-negative" : ""}>

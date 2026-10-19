@@ -21,8 +21,7 @@ import {
 } from "@/lib/finance";
 import { financeToday, paymentFactAmount } from "@/lib/finance-payment-status";
 import {
-  bankPayments,
-  ownerForecastPayments,
+  ownerCashPayments,
   ownerRentalIncome,
   rentalInstallmentSummary,
   companyPayments,
@@ -147,10 +146,7 @@ export function FinanceWorkspacePage({
     .toISOString()
     .slice(0, 10);
   const company = companyPayments(source);
-  const bank = [
-    ...bankPayments(source),
-    ...ownerForecastPayments(source, cfg, settlements.data ?? []),
-  ];
+  const bank = ownerCashPayments(source, cfg, settlements.data ?? []);
   const visiblePayments = (detail === "company" ? company : bank).filter(
     (p) =>
       p.planned_date.startsWith(month) &&
@@ -177,7 +173,12 @@ export function FinanceWorkspacePage({
   const ownerIncome = ownerRentalIncome(source, month, undefined, today);
   const selected = ownerRows.find((s) => s.id === selectedSettlement) ?? ownerRows[0];
   const selectedIncome = selected
-    ? ownerRentalIncome(rows, selected.period.slice(0, 7), selected.property_id, today)
+    ? ownerRentalIncome(
+        selected.booking_id ? rows.filter((p) => p.booking_id === selected.booking_id) : rows,
+        selected.period.slice(0, 7),
+        selected.property_id,
+        today,
+      )
     : null;
   const clientBooks = books.filter(
     (b) => b.client_id === clientId && (property === "all" || b.property_id === property),
@@ -460,6 +461,7 @@ export function FinanceWorkspacePage({
                         <th>ОБЪЕКТ / ПЕРИОД</th>
                         <th className="fw-right">ДОХОД ОТ АРЕНДЫ</th>
                         <th className="fw-right">КУ</th>
+                        <th className="fw-right">РАСХОДЫ СОБСТВЕННИКА</th>
                         <th>ДАТА ВЫПЛАТЫ</th>
                         <th>СТАТУС</th>
                         <th className="fw-right">ОСТАЛОСЬ</th>
@@ -488,16 +490,29 @@ export function FinanceWorkspacePage({
                           </td>
                           <td className="fw-right">
                             {money(
-                              ownerRentalIncome(rows, r.period.slice(0, 7), r.property_id, today)
-                                .netRent,
+                              ownerRentalIncome(
+                                r.booking_id
+                                  ? rows.filter((p) => p.booking_id === r.booking_id)
+                                  : rows,
+                                r.period.slice(0, 7),
+                                r.property_id,
+                                today,
+                              ).netRent,
                             )}
                           </td>
                           <td className="fw-right">
                             {money(
-                              ownerRentalIncome(rows, r.period.slice(0, 7), r.property_id, today)
-                                .utilities,
+                              ownerRentalIncome(
+                                r.booking_id
+                                  ? rows.filter((p) => p.booking_id === r.booking_id)
+                                  : rows,
+                                r.period.slice(0, 7),
+                                r.property_id,
+                                today,
+                              ).utilities,
                             )}
                           </td>
+                          <td className="fw-right">{money(r.expense_amount ?? 0)}</td>
                           <td>{r.obligation.planned_date}</td>
                           <td>
                             <span className={`fw-badge ${r.state.overdue ? "overdue" : ""}`}>
@@ -558,15 +573,19 @@ export function FinanceWorkspacePage({
                         ней пока не определён.
                       </div>
                     )}
+                    <div className="fw-calc">
+                      <span>Расходы за счёт собственника</span>
+                      <b>−{money(selected.expense_amount ?? 0)}</b>
+                    </div>
                     <div className="fw-calc fw-total">
-                      <span>Начислено собственнику</span>
+                      <span>К перечислению после расходов</span>
                       <span>{money(selected.obligation.amount)}</span>
                     </div>
                     <p>
                       Доход показан по полученной аренде после комиссии, до прочих расходов
                       собственника. КУ перечисляются полностью и в доход не включены.
                       {!selected.automatic &&
-                        " Это ранее созданный ручной расчёт; автоматический пересчёт его не изменяет."}
+                        " Арендная сумма задана вручную; оплаченные расходы учитываются отдельно."}
                     </p>
                   </div>
                   <div className="fw-panel">

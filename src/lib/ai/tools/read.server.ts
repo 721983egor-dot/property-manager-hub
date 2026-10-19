@@ -2300,7 +2300,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const [categories, articles, settings, settlements] = await Promise.all([
           client.from("finance_article_categories").select("*"), client.from("finance_articles").select("*"),
           allFinancePages((from,to)=>client.from("finance_object_settings").select("property_id,classification_id,owner_counterparty_id,payout_day").order("property_id").range(from,to)),
-          allFinancePages((from,to)=>client.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id").order("id").range(from,to)),
+          allFinancePages((from,to)=>client.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id,gross_amount,expense_amount").order("id").range(from,to)),
         ]);
         const overviewError=categories.error??articles.error??settings.error??settlements.error;
         if(overviewError)return {error:overviewError.message};
@@ -2336,17 +2336,20 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getOwnerSettlements: tool({
-      description:"Расчёты с собственниками: доход от полученной аренды после комиссии (без КУ, до прочих расходов), КУ отдельно, дата выплаты, выплачено, остаток долга, просрочка. Только администратору в РМ ОС.",
+      description:"Расчёты с собственниками: доход от полученной аренды после комиссии (без КУ, до прочих расходов), КУ отдельно, дата выплаты, сумма до расходов gross_amount, удержанные расходы expense_amount, выплачено, остаток долга, просрочка. Только администратору в РМ ОС.",
       inputSchema:z.object({propertyId:z.string().uuid().optional()}),execute:async({propertyId})=>{
         const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");const client=await ownerFinanceAdminClient();
-        let query=client.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id").order("period",{ascending:false});if(propertyId)query=query.eq("property_id",propertyId);
+        let query=client.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id,gross_amount,expense_amount").order("period",{ascending:false});if(propertyId)query=query.eq("property_id",propertyId);
         const settlements=await allFinancePages((start,end)=>query.range(start,end));if(settlements.error)return {error:settlements.error.message};
         const obligations=await allFinancePages((start,end)=>client.from("finance_obligations").select("*").order("id").range(start,end));
         const payments=await allFinancePages((start,end)=>client.from("payments").select("*").order("id").range(start,end));
         if(obligations.error||payments.error)return {error:obligations.error?.message??payments.error?.message};
         const {ownerRentalIncome}=await import("@/lib/finance-company-model");
         const {ownerSettlementState}=await import("@/lib/finance-owner-model");const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Moscow"}).format(new Date());
-        return {settlements:settlements.data.map(s=>{const o=obligations.data.find(o=>o.id===s.obligation_id);return {...s,obligation:o,rentalIncome:ownerRentalIncome(payments.data as unknown as Payment[],s.period.slice(0,7),s.property_id,today),state:o?ownerSettlementState(o as unknown as FinanceObligation,payments.data as unknown as Payment[],today):null};})};
+        const expenses=payments.data.filter(p=>p.expense_bearer==="owner"&&(!propertyId||p.property_id===propertyId));
+        const allocations=await allFinancePages((start,end)=>client.from("finance_owner_expense_allocations").select("payment_id,settlement_id,amount").order("payment_id").order("settlement_id").range(start,end));
+        if(allocations.error)return {error:allocations.error.message};
+        return {expenses,expenseAllocations:allocations.data.filter(a=>expenses.some(p=>p.id===a.payment_id)),settlements:settlements.data.map(s=>{const o=obligations.data.find(o=>o.id===s.obligation_id);return {...s,obligation:o,rentalIncome:ownerRentalIncome(payments.data as unknown as Payment[],s.period.slice(0,7),s.property_id,today),state:o?ownerSettlementState(o as unknown as FinanceObligation,payments.data as unknown as Payment[],today):null};})};
       },
     }),
     listFinanceAccounts: tool({
@@ -2407,7 +2410,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           allFinancePages((from,to)=>db.from("payments").select("*").order("id").range(from,to)),
           db.from("finance_article_categories").select("*"),db.from("finance_articles").select("*"),
           allFinancePages((from,to)=>db.from("finance_object_settings").select("property_id,classification_id,owner_counterparty_id,payout_day").order("property_id").range(from,to)),
-          allFinancePages((from,to)=>db.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id").order("id").range(from,to)),
+          allFinancePages((from,to)=>db.from("finance_owner_settlements").select("id,property_id,period,obligation_id,automatic,booking_id,gross_amount,expense_amount").order("id").range(from,to)),
         ]);
         const error=payments.error??categories.error??articles.error??settings.error??settlements.error;if(error)return {error:error.message};
         const {objectFlowPayments,objectFlowSummary,objectFlowNotes,objectFlowSourceId}=await import("@/lib/finance-object-flow");
@@ -2608,9 +2611,9 @@ export function createReadTools(ctx: AssistantToolContext) {
               admin
                 .from("payments")
                 .select(
-                  "id, planned_date, amount, direction, status, kind, paid_amount, comment, property_id, obligation_id",
+                  "id, planned_date, amount, direction, status, kind, paid_amount, paid_at, counterparty_id, expense_bearer, expense_owner_id, comment, property_id, obligation_id",
                 )
-                .eq("counterparty_id", id)
+                .or(`counterparty_id.eq.${id},expense_owner_id.eq.${id}`)
                 .order("planned_date", { ascending: false })
                 .order("id")
                 .range(from, to),
@@ -2618,6 +2621,11 @@ export function createReadTools(ctx: AssistantToolContext) {
           ]);
         if (oblError) return { error: oblError.message };
         if (payError) return { error: payError.message };
+        const ownerExpenses=(payments??[]).filter(p=>p.expense_bearer==="owner"&&p.expense_owner_id===id);
+        const allocationResult=ownerExpenses.length?await allFinancePages((from,to)=>admin.from("finance_owner_expense_allocations").select("payment_id,settlement_id,amount").order("payment_id").order("settlement_id").range(from,to)):{data:[],error:null};
+        if(allocationResult.error)return {error:allocationResult.error.message};
+        const expenseAllocations=(allocationResult.data??[]).filter(a=>ownerExpenses.some(p=>p.id===a.payment_id));
+        const ownerExpenseCredit=Math.round(Math.max(0,ownerExpenses.reduce((n,p)=>n+paymentFactAmount(p),0)-expenseAllocations.reduce((n,a)=>n+Number(a.amount),0))*100)/100;
         let theyOweUs = 0;
         for (const item of obligations ?? []) {
           if (item.status !== "open") continue;
@@ -2636,14 +2644,17 @@ export function createReadTools(ctx: AssistantToolContext) {
           const remaining = Math.max(0, Number(item.amount) - settled);
           theyOweUs += item.direction === "receivable" ? remaining : -remaining;
         }
+        if(party["kind"]==="owner")theyOweUs+=ownerExpenseCredit;
         let transferredToUs = 0;
         let weTransferred = 0;
         for (const payment of payments ?? []) {
+          if (payment.expense_bearer === "owner" && payment.expense_owner_id === id && payment.expense_owner_id !== payment.counterparty_id) continue;
           const fact = paymentFactAmount(payment);
           if (payment.direction === "in") transferredToUs += fact;
           else weTransferred += fact;
         }
         return {
+          ownerExpenses,expenseAllocations,ownerExpenseCredit,
           counterparty: party,
           overview: {
             theyOweUs,

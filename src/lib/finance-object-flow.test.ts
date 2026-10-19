@@ -220,3 +220,117 @@ test("all movements retain account filters and canonical commission articles aft
   assert.equal(selected[0]?.amount, 10000);
   assert.equal(objectFlowSourceId(selected[0]!.id), "cash");
 });
+
+test("repair paid for owner reduces owner funds, while Avito stays a company cost", () => {
+  const paidRent = p("income", 100000);
+  const advert = p("avito", 2000, {
+    direction: "out",
+    kind: "agency_cost",
+    rental_component: null,
+    company_fee: null,
+    expense_bearer: "company",
+  });
+  const repair = p("repair", 5000, {
+    direction: "out",
+    kind: "contractor",
+    rental_component: null,
+    company_fee: null,
+    expense_bearer: "owner",
+    expense_owner_id: "owner",
+    counterparty_id: "master",
+  });
+  const base = [paidRent, advert, repair];
+  const sum = (flow: "company" | "owner" | "total") =>
+    objectFlowSummary(
+      objectFlowPayments(null, base, catalog, flow, settings),
+      catalog,
+      "2026-10-01",
+      "2026-10-31",
+      "2026-10-18",
+    );
+  assert.equal(sum("company").expense, 2000);
+  assert.equal(sum("company").actualBalance, 8000);
+  assert.equal(sum("owner").actualBalance, 85000);
+  assert.equal(sum("total").actualBalance, 93000);
+  assert.equal(
+    sum("company").actualBalance + sum("owner").actualBalance,
+    sum("total").actualBalance,
+  );
+});
+
+test("allocated repair is not added back as another owner forecast", () => {
+  const actualPlan = p("net-plan", 85000, {
+    kind: "owner_payout",
+    direction: "out",
+    status: "partial",
+    paid_amount: 0,
+    rental_component: "owner_plan",
+    company_fee: null,
+    obligation_id: "ob",
+    counterparty_id: "owner",
+    planned_date: "2026-10-26",
+  });
+  const repair = p("repair", 5000, {
+    direction: "out",
+    kind: "contractor",
+    rental_component: null,
+    company_fee: null,
+    expense_bearer: "owner",
+    expense_owner_id: "owner",
+  });
+  const settlement = {
+    id: "st",
+    property_id: "home",
+    period: "2026-10-01",
+    booking_id: "b",
+    obligation_id: "ob",
+    automatic: true,
+    gross_amount: 90000,
+    expense_amount: 5000,
+  };
+  const result = objectFlowPayments(
+    null,
+    [p("income", 100000), repair, actualPlan],
+    catalog,
+    "owner",
+    settings,
+    [settlement],
+  );
+  assert.equal(
+    result.filter((x) => x.rental_component === "owner_plan").reduce((n, x) => n + x.amount, 0),
+    85000,
+  );
+  assert.equal(
+    objectFlowSummary(result, catalog, "2026-10-01", "2026-10-31", "2026-10-18").forecastBalance,
+    0,
+  );
+});
+
+test("future owner repair reduces only a later projected remittance and leaves company profit intact", () => {
+  const repair = p("future-repair", 5000, {
+    direction: "out",
+    kind: "contractor",
+    rental_component: null,
+    company_fee: null,
+    expense_bearer: "owner",
+    expense_owner_id: "owner",
+    status: "expected",
+    planned_date: "2026-10-25",
+  });
+  const result = objectFlowPayments(
+    null,
+    [p("income", 100000), repair],
+    catalog,
+    "owner",
+    settings,
+  );
+  assert.equal(result.find((x) => x.id.startsWith("owner-forecast:"))?.amount, 85000);
+  const company = objectFlowPayments(
+    null,
+    [p("income", 100000), repair],
+    catalog,
+    "company",
+    settings,
+  );
+  assert.equal(company.filter((x) => x.direction === "out").length, 0);
+});

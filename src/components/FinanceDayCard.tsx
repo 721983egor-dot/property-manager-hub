@@ -118,6 +118,12 @@ export function FinanceDayCard({
                     >
                       <span>
                         <strong className="block">{rentalPaymentLabel(payment)}</strong>
+                        {payment.expense_bearer && (
+                          <span className="block text-xs text-muted-foreground">
+                            За счёт{" "}
+                            {payment.expense_bearer === "owner" ? "собственника" : "компании"}
+                          </span>
+                        )}
                         <span className="block text-sm text-muted-foreground">
                           {counterpartyLabel(payment)}
                         </span>

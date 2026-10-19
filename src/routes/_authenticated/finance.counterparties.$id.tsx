@@ -1,3 +1,6 @@
+import { fetchOwnerExpenseAllocations } from "@/lib/finance-owner-settlements";
+import { paymentFactAmount } from "@/lib/finance-payment-status";
+import { OwnerExpenseStatement } from "@/components/OwnerExpenseStatement";
 import { OwnerPropertyPicker } from "@/components/OwnerPropertyPicker";
 import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import { fetchFinanceObjectProperties } from "@/lib/finance-rentals";
@@ -134,6 +137,11 @@ export function CounterpartyCardPage({ id }: { id: string }) {
     queryFn: () => fetchPayments({ counterpartyId: id }),
     enabled: Boolean(id),
   });
+  const expenseAllocations = useQuery({
+    queryKey: ["finance-owner-expenses", id],
+    queryFn: fetchOwnerExpenseAllocations,
+    enabled: party?.kind === "owner",
+  });
   const { data: properties = [] } = useQuery({
     queryKey: ["finance-property-options"],
     queryFn: fetchFinancePropertyOptions,
@@ -164,8 +172,24 @@ export function CounterpartyCardPage({ id }: { id: string }) {
       (projectFilter === "all" || item.property_id === projectFilter) &&
       inPeriod(item.planned_date),
   );
-  const overview = summarizeCounterparty(visiblePayments, visibleObligations, payments);
-  const allOverview = summarizeCounterparty(payments, obligations);
+  const baseOverview = summarizeCounterparty(visiblePayments, visibleObligations, payments, id);
+  const ownerCosts = visiblePayments.filter(
+    (p) => p.expense_bearer === "owner" && p.expense_owner_id === id,
+  );
+  const expenseCredit = Math.max(
+    0,
+    ownerCosts.reduce((n, p) => n + paymentFactAmount(p), 0) -
+      (expenseAllocations.data ?? [])
+        .filter((a) => ownerCosts.some((p) => p.id === a.payment_id))
+        .reduce((n, a) => n + Number(a.amount), 0),
+  );
+  const overview = {
+    ...baseOverview,
+    theyOweUs:
+      Math.round((baseOverview.theyOweUs + (party?.kind === "owner" ? expenseCredit : 0)) * 100) /
+      100,
+  };
+  const allOverview = summarizeCounterparty(payments, obligations, payments, id);
   const ownedProperties = (objectAssignments.data ?? []).filter(
     (a) => a.owner_counterparty_id === id,
   );
@@ -357,7 +381,7 @@ export function CounterpartyCardPage({ id }: { id: string }) {
           </SelectContent>
         </Select>
       </div>
-      {(paymentError || obligationError || classError) && (
+      {(paymentError || obligationError || classError || expenseAllocations.error) && (
         <p role="alert" className="mt-4 text-red-600">
           Не удалось загрузить часть данных. Итоги могут быть неполными.
         </p>
@@ -429,6 +453,19 @@ export function CounterpartyCardPage({ id }: { id: string }) {
         </div>
       </div>
 
+      {party.kind === "owner" && (
+        <OwnerExpenseStatement
+          ownerId={id}
+          ownerName={party.name}
+          propertyId={projectFilter === "all" ? null : projectFilter}
+          from={periodFrom}
+          propertyLabel={propertyLabel}
+          onEdit={(p) => {
+            setEditingPayment(p);
+            setPayOpen(true);
+          }}
+        />
+      )}
       <div className="party-transactions mt-6 rounded-xl border border-border bg-white">
         <div className="flex gap-5 border-b border-border px-5">
           <button

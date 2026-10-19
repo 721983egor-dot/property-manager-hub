@@ -1334,6 +1334,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     if (!Number.isFinite(amount) || amount < 0) throw new Error("Некорректная сумма");
     const status = String(input["status"] ?? "expected");
     const row: Record<string, unknown> = {
+      expense_bearer: input["expenseBearer"] ?? null,
       planned_date: plannedDate,
       amount,
       direction: String(input["direction"] ?? "in"),
@@ -1369,6 +1370,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   updatePayment: async (input) => {
     const paymentId = must(input["paymentId"] as string, "Не указан платёж");
     const patch: Record<string, unknown> = {};
+    if (input["expenseBearer"] != null) patch["expense_bearer"] = input["expenseBearer"];
     if (input["account"] != null) patch["account"] = input["account"];
     if (input["plannedDate"] != null) patch["planned_date"] = input["plannedDate"];
     if (input["amount"] != null) patch["amount"] = Number(input["amount"]);

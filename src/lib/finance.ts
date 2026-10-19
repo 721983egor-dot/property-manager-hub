@@ -43,6 +43,8 @@ export const PAYMENT_KINDS: { value: PaymentKind; label: string; direction: Paym
 export const PAYMENT_ACCOUNTS = ["Основной", "Касса"] as const;
 
 export type Payment = {
+  expense_bearer?: "company" | "owner" | null;
+  expense_owner_id?: string | null;
   owner_payout_day?: number | null;
   rental_schedule?: boolean;
   rental_installment_id?: string | null;
@@ -91,6 +93,8 @@ export type Payment = {
 };
 
 export type PaymentInput = {
+  expense_bearer?: "company" | "owner" | null;
+  expense_owner_id?: string | null;
   planned_date: string;
   amount: number;
   direction: PaymentDirection;
@@ -114,9 +118,9 @@ export type PaymentInput = {
 };
 
 const PAYMENT_SELECT =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
 const PAYMENT_SELECT_LEGACY =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
+  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -164,6 +168,8 @@ function mapPayment(row: Record<string, unknown>): Payment {
     firstJoin(row["clients"] as Payment["client"] | Payment["client"][] | null) ?? null;
   const article = mapArticleJoin(row);
   return {
+    expense_bearer: (row["expense_bearer"] as Payment["expense_bearer"]) ?? null,
+    expense_owner_id: (row["expense_owner_id"] as string | null) ?? null,
     id: String(row["id"]),
     planned_date: String(row["planned_date"]),
     amount: Number(row["amount"] ?? 0),
@@ -255,7 +261,10 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
     if (opts.to) query = query.lte("planned_date", opts.to);
     if (opts.bookingId) query = query.eq("booking_id", opts.bookingId);
     if (opts.propertyId) query = query.eq("property_id", opts.propertyId);
-    if (opts.counterpartyId) query = query.eq("counterparty_id", opts.counterpartyId);
+    if (opts.counterpartyId)
+      query = query.or(
+        `counterparty_id.eq.${opts.counterpartyId},expense_owner_id.eq.${opts.counterpartyId}`,
+      );
     if (opts.direction && opts.direction !== "all") query = query.eq("direction", opts.direction);
     return query;
   };
@@ -346,6 +355,8 @@ function normalizeInput(input: PaymentInput) {
         ? (input.paid_amount ?? null)
         : (input.paid_amount ?? null);
   return {
+    ...(input.expense_bearer !== undefined ? { expense_bearer: input.expense_bearer } : {}),
+    ...(input.expense_owner_id !== undefined ? { expense_owner_id: input.expense_owner_id } : {}),
     planned_date: input.planned_date,
     amount,
     direction: asDirection(input.direction),
