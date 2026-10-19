@@ -738,14 +738,23 @@
   padding-right: 20px;
 }
 .finance-payment-sheet .finance-direction-trigger {
-  gap: 8px;
-  padding: 5px 10px;
-  border: 1px solid #e2e5e9;
-  border-radius: 6px;
-  font-size: 16px;
-  line-height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   text-decoration: none;
 }
-.finance-payment-sheet .finance-direction-trigger > svg {
-  display: block;
+.finance-payment-sheet .finance-direction-trigger[data-direction="out"] {
+  color: #c34b45;
+}
+.finance-payment-sheet .finance-direction-trigger[data-direction="in"] {
+  color: #179465;
+}
+.finance-payment-sheet .finance-direction-trigger:not(:disabled):hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.finance-payment-sheet .finance-direction-trigger:disabled {
+  opacity: 0.6;
+  cursor: default;
 }

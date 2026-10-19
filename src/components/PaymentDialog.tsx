@@ -563,31 +563,34 @@ export function PaymentDialog({
         <SheetHeader className="finance-payment-header">
           <SheetTitle className="finance-payment-title">
             {payment ? "Изменить операцию" : "Добавить операцию"}
-            <Select
-              value={form.direction}
+            <button
+              type="button"
+              className="finance-direction-trigger"
+              data-direction={form.direction}
               disabled={directionLocked}
-              onValueChange={(value) => {
-                if (value === form.direction) return;
+              aria-label={`Тип операции: ${form.direction === "out" ? "Расход" : "Доход"}`}
+              title={
+                directionLocked
+                  ? "Тип задан в брони или расчёте"
+                  : form.direction === "out"
+                    ? "Изменить на доход"
+                    : "Изменить на расход"
+              }
+              onClick={() =>
                 setForm((prev) => ({
                   ...prev,
-                  direction: value as PaymentDirection,
+                  direction: prev.direction === "out" ? "in" : "out",
                   article_id: "",
-                  kind: value === "in" ? "other" : "agency_cost",
+                  kind: prev.direction === "out" ? "other" : "agency_cost",
                   rental_component: "",
                   booking_id: "",
                   expense_bearer: "company",
                   countInObligations: false,
-                }));
-              }}
+                }))
+              }
             >
-              <SelectTrigger className="finance-direction-trigger" aria-label="Тип операции">
-                <SelectValue>{form.direction === "out" ? "Расход" : "Доход"}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="out">Расход</SelectItem>
-                <SelectItem value="in">Доход</SelectItem>
-              </SelectContent>
-            </Select>
+              {form.direction === "out" ? "Расход" : "Доход"}
+            </button>
           </SheetTitle>
           {directionLocked && (
             <p className="text-xs text-muted-foreground">
