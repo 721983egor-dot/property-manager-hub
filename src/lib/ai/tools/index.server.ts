@@ -52,3 +52,5 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
 // Индивидуальные денежные условия аренды: getRentalContract.cashTerms; proposeBookingCashTerms → setBookingCashTerms. Только подтверждённый администратор, аудит и пересчёт в одной транзакции.
 
 // Отдельный согласованный график: getRentalContract.cashTerms.collection_plan; proposeBookingCollectionPlan → setBookingCollectionPlan (admin, подтверждение, аудит).
+
+// Бронь с полными финансовыми условиями: proposeBooking / proposeUpdateRentalContract(financialTerms) → finance_save_booking, общий атомарный путь с редактором; getRentalContract.financialTerms.

@@ -18,6 +18,7 @@ export async function updateRentalContract(input: Record<string, unknown>) {
     priceMonth: "price_month",
     paymentDay: "payment_day",
     ownerPayoutDay: "owner_payout_day",
+    financialTerms: "financial_terms",
     deposit: "deposit",
     status: "status",
     comment: "comment",

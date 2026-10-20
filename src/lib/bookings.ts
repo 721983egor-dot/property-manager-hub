@@ -198,6 +198,7 @@ export async function createClient(input: { full_name: string; phone: string }) 
 }
 
 export type BookingInput = {
+  financial_terms?: import("./booking-finance-terms").BookingFinancialTerms;
   finance_account_id?: string | undefined;
   management_fee_type?: "percent" | "amount";
   management_fee_value?: number;

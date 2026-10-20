@@ -247,7 +247,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     }
     const priceMonth = (input["priceMonth"] as number) ?? null;
     if(access) {
-      const result=await access.db.rpc("finance_save_booking",{p_booking:null,p_account:input["accountId"],p_actor:access.actor,p_input:{property_id:propertyId,client_id:clientId,start_date:input["startDate"],end_date:input["endDate"],price_type:"fixed",price_month:priceMonth,payment_day:input["paymentDay"]??1,...(input["ownerPayoutDay"]!==undefined?{owner_payout_day:input["ownerPayoutDay"]}:{}),deposit:input["deposit"]??null,source:input["source"]??null,status:"active",comment:input["comment"]??"",stay_kind:"long_term",periods:[]}});
+      const result=await access.db.rpc("finance_save_booking",{p_booking:null,p_account:input["accountId"],p_actor:access.actor,p_input:{property_id:propertyId,client_id:clientId,start_date:input["startDate"],end_date:input["endDate"],price_type:input["priceType"]??"fixed",price_month:priceMonth,...(input["financialTerms"]!==undefined?{financial_terms:input["financialTerms"]}:{}),...(input["managementFeeType"]!==undefined?{management_fee_type:input["managementFeeType"],management_fee_value:input["managementFeeValue"]}:{}),payment_day:input["paymentDay"]??1,...(input["ownerPayoutDay"]!==undefined?{owner_payout_day:input["ownerPayoutDay"]}:{}),deposit:input["deposit"]??null,source:input["source"]??null,status:"active",comment:input["comment"]??"",stay_kind:"long_term",periods:input["periods"]??[]}});
       if(result.error) throw result.error;
       return "Бронь создана; будущие платежи аренды добавлены автоматически";
     }

@@ -15,9 +15,9 @@ export type Database = {
   public: {
     Tables: {
       finance_booking_cash_terms: {
-        Row: { id:string; receipts_from:string; owner_rates:Json; collection_plan:Json|null; updated_at:string };
-        Insert: { id:string; receipts_from:string; owner_rates?:Json; collection_plan?:Json|null; updated_at?:string };
-        Update: { receipts_from?:string; owner_rates?:Json; collection_plan?:Json|null; updated_at?:string };
+        Row: { id:string; receipts_from:string; owner_rates:Json; collection_plan:Json|null; collection_interval:number; updated_at:string };
+        Insert: { id:string; receipts_from:string; owner_rates?:Json; collection_plan?:Json|null; collection_interval?:number; updated_at?:string };
+        Update: { receipts_from?:string; owner_rates?:Json; collection_plan?:Json|null; collection_interval?:number; updated_at?:string };
         Relationships: [];
       };
       finance_booking_schedules: {

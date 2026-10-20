@@ -47,7 +47,7 @@ export function BookingFinanceActions({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("finance_booking_cash_terms")
-        .select("receipts_from,owner_rates,collection_plan")
+        .select("receipts_from,owner_rates,collection_plan,collection_interval")
         .eq("id", booking.id)
         .maybeSingle();
       if (error) throw error;
@@ -65,8 +65,9 @@ export function BookingFinanceActions({
     (p) =>
       p.direction === "in" && p.rental_component === "rent" && p.rental_period === `${period}-01`,
   );
-  const cashBlocked = !!cashTerms.data && !!plan.due && plan.due < cashTerms.data.receipts_from;
+  const cashBlocked = !!cashTerms.data && period < cashTerms.data.receipts_from.slice(0, 7);
   const separatePlan = cashTerms.data?.collection_plan != null;
+  const automaticGrouping = (cashTerms.data?.collection_interval ?? 1) > 1;
   const actualFee = cashBlocked
     ? 0
     : cashTerms.data && periodReceipts.length
@@ -82,9 +83,11 @@ export function BookingFinanceActions({
       {cashTerms.data && (
         <p className="text-sm">
           Первое новое поступление: {formatFinanceDate(cashTerms.data.receipts_from)}.
-          {separatePlan
-            ? " Действует отдельный согласованный график. Суммы поступлений и комиссии фиксированы; при изменении цены обновите этот график."
-            : " Индивидуальные суммы собственнику учтены в графике."}
+          {automaticGrouping
+            ? ` Оплата раз в ${cashTerms.data!.collection_interval} мес. Будущие платежи пересчитываются по условиям брони.`
+            : separatePlan
+              ? " Действует отдельный согласованный график. Суммы поступлений и комиссии фиксированы; при изменении цены обновите этот график."
+              : " Индивидуальные суммы собственнику учтены в графике."}
         </p>
       )}
       {cashTerms.error && (

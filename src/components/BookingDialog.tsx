@@ -1,3 +1,11 @@
+import { BookingFinancialTermsEditor } from "./BookingFinancialTermsEditor";
+import {
+  defaultBookingFinancialTerms,
+  bookingFinancialTermsProblem,
+  previewBookingCollections,
+  type BookingFinancialTerms,
+} from "@/lib/booking-finance-terms";
+import { fetchBookingFinancialTerms } from "@/lib/booking-finance-data";
 import { BookingFinanceActions } from "./BookingFinanceActions";
 import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import { fetchCounterparties } from "@/lib/finance-counterparties";
@@ -153,6 +161,7 @@ export function BookingDialog({
   const [clientSearch, setClientSearch] = useState("");
   const [assignRoomId, setAssignRoomId] = useState("");
   const [financeAccount, setFinanceAccount] = useState("");
+  const [financialTerms, setFinancialTerms] = useState<BookingFinancialTerms | null>(null);
   const [managementFee, setManagementFee] = useState<{
     type: "percent" | "amount";
     value: string;
@@ -170,6 +179,7 @@ export function BookingDialog({
     setClientSearch("");
     setAssignRoomId("");
     setFinanceAccount("");
+    setFinancialTerms(null);
   }, [open, booking?.id, defaultPropertyId, defaultClientId, initialMode, createdBooking]);
 
   const { data: properties = [] } = useQuery({
@@ -208,6 +218,22 @@ export function BookingDialog({
     else if (!booking && accounts.data?.filter((a) => !a.archived).length === 1)
       setFinanceAccount(accounts.data.filter((a) => !a.archived)[0]!.id);
   }, [open, isRm, financeConfig.data, financeAccount, accounts.data, booking]);
+
+  const savedFinancialTerms = useQuery({
+    queryKey: ["booking-financial-terms", booking?.id],
+    queryFn: () => fetchBookingFinancialTerms(booking!.id),
+    enabled: open && isAdmin && isRm && !!booking,
+  });
+  const priceTerms = {
+    start_date: form.start_date,
+    end_date: form.end_date,
+    payment_day: Number(form.payment_day) || 1,
+    price_type: form.price_type,
+    price_month: form.price_month === "" ? null : Number(form.price_month),
+    booking_price_periods: form.periods,
+  };
+  const effectiveFinancialTerms =
+    financialTerms ?? savedFinancialTerms.data ?? defaultBookingFinancialTerms(priceTerms);
 
   const filteredClients = useMemo(() => {
     const q = clientSearch.trim().toLowerCase();
@@ -261,6 +287,21 @@ export function BookingDialog({
           (managementFee.type === "percent" && Number(managementFee.value) > 100))
       )
         throw new Error("Укажите корректную комиссию за управление");
+      if (isAdmin && isRm) {
+        if (booking && !savedFinancialTerms.isSuccess)
+          throw new Error("Дождитесь загрузки условий поступлений и выплат");
+        const problem = bookingFinancialTermsProblem(effectiveFinancialTerms, priceTerms);
+        if (problem) throw new Error(problem);
+        const selectedProperty = properties.find((p) => p.id === form.property_id);
+        previewBookingCollections(
+          priceTerms,
+          effectiveFinancialTerms,
+          managementFee
+            ? Number(managementFee.value)
+            : (selectedProperty?.management_fee_value ?? null),
+          managementFee?.type ?? selectedProperty?.management_fee_type ?? "percent",
+        );
+      }
       const selected = properties.find((p) => p.id === form.property_id);
       const hotel = selected?.portfolio === "n11";
       if (isAdmin && selected?.portfolio === "rm" && !financeAccount)
@@ -283,6 +324,7 @@ export function BookingDialog({
         ...(isAdmin && selected?.portfolio === "rm"
           ? {
               finance_account_id: financeAccount,
+              financial_terms: effectiveFinancialTerms,
               owner_payout_day: form.owner_payout_day ? Number(form.owner_payout_day) : null,
             }
           : {}),
@@ -597,6 +639,7 @@ export function BookingDialog({
                   onValueChange={(v) => {
                     setManagementFee(null);
                     setForm((f) => ({ ...f, property_id: v, owner_payout_day: "" }));
+                    setFinancialTerms(null);
                   }}
                 >
                   <SelectTrigger className="mt-1.5">
@@ -1009,6 +1052,33 @@ export function BookingDialog({
                 </Select>
               </div>
             </div>
+
+            {isAdmin &&
+              isRm &&
+              (booking && savedFinancialTerms.isPending ? (
+                <p>Загрузка условий поступлений и выплат…</p>
+              ) : savedFinancialTerms.error ? (
+                <p role="alert" className="text-destructive">
+                  Не удалось загрузить условия.{" "}
+                  <button type="button" onClick={() => void savedFinancialTerms.refetch()}>
+                    Повторить
+                  </button>
+                </p>
+              ) : (
+                <BookingFinancialTermsEditor
+                  value={effectiveFinancialTerms}
+                  onChange={setFinancialTerms}
+                  terms={priceTerms}
+                  rate={
+                    managementFee
+                      ? Number(managementFee.value)
+                      : (property?.management_fee_value ?? null)
+                  }
+                  feeType={managementFee?.type ?? property?.management_fee_type ?? "percent"}
+                  ownerName={ownerName}
+                  payoutDay={form.owner_payout_day ? Number(form.owner_payout_day) : null}
+                />
+              ))}
 
             <div>
               <Label>Комментарий</Label>

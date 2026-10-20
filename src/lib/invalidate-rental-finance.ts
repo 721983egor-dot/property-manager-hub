@@ -20,6 +20,8 @@ export async function invalidateRentalFinance(qc: QueryClient) {
       "crm-commission-payments",
       "rental-booking-editor",
       "booking-finance-account",
+      "booking-financial-terms",
+      "finance-booking-cash-terms",
     ].map((key) => qc.invalidateQueries({ queryKey: [key] })),
   );
 }

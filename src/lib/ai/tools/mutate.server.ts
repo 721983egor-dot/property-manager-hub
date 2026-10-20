@@ -1,3 +1,5 @@
+import { bookingFinancialTermsSchema } from "@/lib/booking-finance-schema";
+import { bookingFinancialSummary } from "@/lib/booking-finance-terms";
 import { leaseMutateTools } from "@/lib/lease/tools.server";
 import { reminderSchema, validReminder, moscowTime, REPEAT_LABEL } from "@/lib/reminders/model";
 import { tool } from "ai";
@@ -266,7 +268,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
     proposeBooking: tool({
       description:
-        "Предложить бронь в календаре: объект, клиент, даты, цена, день оплаты, конкретное число выплаты собственнику ownerPayoutDay (1–31), депозит. Для РМ обязательно accountId из listFinanceAccounts: бронь автоматически создаёт полный график аренды. Требует подтверждения администратора.",
+        "Создать бронь с полными условиями одной операцией: клиент, объект, даты, обычные/сезонные цены, счёт, день оплаты и выплаты собственнику, комиссия, депозит. financialTerms: receipts_from — первое новое поступление после уже оплаченных месяцев; collection_interval=1 каждый месяц, 3 раз в квартал, 0 отдельные фиксированные суммы collection_plan. owner_rates — фиксированный доход собственника по датам; остальные даты — обычная комиссия. prepaid_owner_payouts — только выплаты за месяцы до receipts_from без повторного прихода и комиссии. При interval>1 сезонные и неполные месяцы рассчитываются по дням; для явно согласованного полного квартала использовать interval=0 и согласованные суммы. Деньги планируются, не считаются полученными или переведёнными. Недостающие условия уточни, собственника свяжи через контрагентов. Требует подтверждения администратора.",
       inputSchema: z.object({
         ref: z.string(),
         clientName: z.string(),
@@ -275,6 +277,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
         startDate: z.string(),
         endDate: z.string(),
         priceMonth: z.number().optional(),
+        priceType: z.enum(["fixed","periodic"]).optional(),
+        periods: z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional(),
+        managementFeeType:z.enum(["percent","amount"]).optional(),
+        managementFeeValue:z.number().nonnegative().optional(),
+        financialTerms:bookingFinancialTermsSchema.optional(),
         paymentDay: z.number().int().min(1).max(31).optional(),
         ownerPayoutDay:z.number().int().min(1).max(31).optional(),
         deposit: z.number().optional(),
@@ -285,8 +292,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
         const summary = `Добавить бронь «${p.text}» для ${rest.clientName}: ${rest.startDate} — ${rest.endDate}${rest.priceMonth ? `, ${money(rest.priceMonth)}/мес` : ""}${rest.ownerPayoutDay ? `; выплата собственнику ${rest.ownerPayoutDay}-го числа` : ""}${rest.accountId ? `; счёт ${rest.accountId}, будущие платежи аренды создадутся автоматически` : ""}`;
-        ctx.propose({ tool: "createBooking", summary, input: { propertyId: p.id, ...rest } });
-        return { proposed: true, summary };
+        if(rest.financialTerms) await (await import("@/lib/crm-results.server")).crmAccess();
+        const preview=rest.financialTerms ? await (await import("@/lib/booking-finance-proposal.server")).bookingFinanceProposal({propertyId:p.id,...rest}) : null;
+        const fullSummary=summary+(rest.financialTerms ? `\n${bookingFinancialSummary(rest.financialTerms)}\n${preview?.summary??""}` : "");
+        ctx.propose({ tool: "createBooking", summary:fullSummary, input: { propertyId: p.id, ...rest } });
+        return { proposed: true, summary:fullSummary };
       },
     }),
 
@@ -1131,13 +1141,14 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute:async input=>{await (await import("@/lib/finance-owner-access.server")).ownerFinanceAdminClient();const summary=`Первое поступление по аренде: ${input.receiptsFrom}; фиксированные суммы собственнику: ${input.ownerRates.map(r=>`${r.from}–${r.to}: ${money(r.owner_monthly)}/мес.`).join("; ")||"нет, обычная комиссия"}. Ранее проведённые платежи сохраняются`;ctx.propose({tool:"setBookingCashTerms",summary,input});return {proposed:true,summary};},
     }),
     proposeUpdateRentalContract: tool({
-      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты, счёт, ownerPayoutDay (конкретное число выплаты собственнику для этой брони, 1–31) и комиссию за управление объектом (managementFeeType/managementFeeValue). Комиссия общая для объекта, обновляет будущие платежи активных договоров. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. Для периодической цены передай полный список periods и priceType=periodic. Арендные месяцы отсчитываются от заезда; день оплаты — отдельный срок, цена складывается по всем дням периода, неполный месяц пропорционален. Только администратор.",
-      inputSchema:z.object({bookingId:z.string().uuid(),startDate:z.string().optional(),endDate:z.string().optional(),priceType:z.enum(["fixed","periodic"]).optional(),priceMonth:z.number().positive().optional(),managementFeeType:z.enum(["percent","amount"]).optional(),managementFeeValue:z.number().nonnegative().optional(),paymentDay:z.number().int().min(1).max(31).optional(),ownerPayoutDay:z.number().int().min(1).max(31).optional(),deposit:z.number().nonnegative().optional(),accountId:z.string().uuid().optional(),comment:z.string().optional(),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional()}),
+      description: "Предложить изменить единые условия брони РМ: сроки, обычную/сезонную цену, день оплаты, счёт, ownerPayoutDay (конкретное число выплаты собственнику для этой брони, 1–31) и комиссию за управление объектом (managementFeeType/managementFeeValue). Комиссия общая для объекта, обновляет будущие платежи активных договоров. После подтверждения автоматически обновляются CRM, календарь и будущие платежи. Проведённые, частичные и предоплаты не переписываются. financialTerms — полный комплект условий поступлений и выплат (как в proposeBooking), сначала прочитай getRentalContract.financialTerms и сохрани неизменяемые поля. Можно заполнить уже оплаченные месяцы, периодичность, фиксированные суммы собственнику и отдельные выплаты без нового прихода. Для периодической цены передай полный список periods и priceType=periodic. Арендные месяцы отсчитываются от заезда; день оплаты — отдельный срок, цена складывается по всем дням периода, неполный месяц пропорционален. Только администратор.",
+      inputSchema:z.object({bookingId:z.string().uuid(),financialTerms:bookingFinancialTermsSchema.optional(),startDate:z.string().optional(),endDate:z.string().optional(),priceType:z.enum(["fixed","periodic"]).optional(),priceMonth:z.number().positive().optional(),managementFeeType:z.enum(["percent","amount"]).optional(),managementFeeValue:z.number().nonnegative().optional(),paymentDay:z.number().int().min(1).max(31).optional(),ownerPayoutDay:z.number().int().min(1).max(31).optional(),deposit:z.number().nonnegative().optional(),accountId:z.string().uuid().optional(),comment:z.string().optional(),periods:z.array(z.object({start_date:z.string(),end_date:z.string(),price_month:z.number().positive()})).max(100).optional()}),
       execute:async input=>{
         const {crmAccess}=await import("@/lib/crm-results.server");await crmAccess();
-        const changes=Object.entries(input).filter(([key])=>key!=="bookingId").map(([key,value])=>`${key}: ${JSON.stringify(value)}`).join("; ");
+        const changes=Object.entries(input).filter(([key])=>key!=="bookingId").map(([key,value])=>key==="financialTerms" ? bookingFinancialSummary(input.financialTerms!) : `${key}: ${JSON.stringify(value)}`).join("; ");
         if(!changes)return {error:"Укажите изменения условий"};
-        const summary=`Изменить условия аренды ${input.bookingId}: ${changes}. Будущие платежи пересчитаются, полученные деньги и предоплаты сохранятся.`;
+        const preview=input.financialTerms ? await (await import("@/lib/booking-finance-proposal.server")).bookingFinanceProposal(input) : null;
+        const summary=`Изменить условия аренды ${input.bookingId}: ${changes}. Будущие платежи пересчитаются, полученные деньги и предоплаты сохранятся.${preview ? "\n"+preview.summary : ""}`;
         ctx.propose({tool:"updateRentalContract",summary,input});return {proposed:true,summary};
       },
     }),

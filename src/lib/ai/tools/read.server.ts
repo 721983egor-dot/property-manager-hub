@@ -2721,18 +2721,23 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getRentalContract: tool({
-      description:"Единые условия аренды РМ, сезонные цены, счёт автоматического графика и связанные платежи. Для последующего изменения через proposeUpdateRentalContract или отмены через proposeCancelRentalContract. Только администратор.",
+      description:"Единые условия аренды РМ, сезонные цены, счёт, связанные платежи и financialTerms (первое поступление, периодичность, фиксированный доход собственника, согласованные суммы, выплаты за уже оплаченную аренду). Для последующего изменения через proposeUpdateRentalContract или отмены через proposeCancelRentalContract. Только администратор.",
       inputSchema:z.object({bookingId:z.string().uuid()}),
       execute:async ({bookingId})=>{
         const {crmAccess}=await import("@/lib/crm-results.server");const {db}=await crmAccess();
-        const [booking,config,payments,cashTerms]=await Promise.all([
+        const [booking,config,payments,cashTerms,settlements]=await Promise.all([
           db.from("bookings").select("*,booking_price_periods(start_date,end_date,price_month)").eq("id",bookingId).single(),
           db.from("finance_booking_schedules").select("account_id,finance_accounts(name,archived)").eq("id",bookingId).maybeSingle(),
           allFinancePages((from,to)=>db.from("payments").select("id,planned_date,amount,status,paid_amount,paid_at,rental_schedule,rental_installment_id,rental_component,company_fee").eq("booking_id",bookingId).order("id").range(from,to)),
-          db.from("finance_booking_cash_terms").select("receipts_from,owner_rates,collection_plan").eq("id",bookingId).maybeSingle()
+          db.from("finance_booking_cash_terms").select("receipts_from,owner_rates,collection_plan,collection_interval").eq("id",bookingId).maybeSingle(),
+          db.from("finance_owner_settlements").select("period,obligation_id,gross_amount").eq("booking_id",bookingId).eq("automatic",false)
         ]);
-        const error=booking.error??config.error??payments.error??cashTerms.error;if(error)return {error:error.message};
-        return {cashTerms:cashTerms.data,booking:booking.data,schedule:config.data,payments:payments.data??[],policy:"Менять условия в брони. Будущие платежи автоматически обновляются; проведённые, частичные и предоплаты сохраняются."};
+        const error=booking.error??config.error??payments.error??cashTerms.error??settlements.error;if(error)return {error:error.message};
+        const ids=(settlements.data??[]).map(s=>s.obligation_id);
+        const obs=ids.length ? await db.from("finance_obligations").select("id,planned_date,amount").in("id",ids) : {data:[],error:null};
+        if(obs.error)return {error:obs.error.message};
+        const prepaid=(settlements.data??[]).map(s=>{const ob=obs.data?.find(o=>o.id===s.obligation_id);if(!ob)throw new Error("Не найден расчёт собственника");return {period:s.period,date:ob.planned_date,amount:Number(s.gross_amount??ob.amount)};});
+        return {financialTerms:cashTerms.data ? {...cashTerms.data,prepaid_owner_payouts:prepaid} : null,cashTerms:cashTerms.data,booking:booking.data,schedule:config.data,payments:payments.data??[],policy:"Менять условия в брони. Будущие платежи автоматически обновляются; проведённые, частичные и предоплаты сохраняются."};
       },
     }),
     listFinanceCatalog: tool({
