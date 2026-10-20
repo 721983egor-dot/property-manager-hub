@@ -47,7 +47,7 @@ export function BookingFinanceActions({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("finance_booking_cash_terms")
-        .select("receipts_from,owner_rates")
+        .select("receipts_from,owner_rates,collection_plan")
         .eq("id", booking.id)
         .maybeSingle();
       if (error) throw error;
@@ -66,6 +66,7 @@ export function BookingFinanceActions({
       p.direction === "in" && p.rental_component === "rent" && p.rental_period === `${period}-01`,
   );
   const cashBlocked = !!cashTerms.data && !!plan.due && plan.due < cashTerms.data.receipts_from;
+  const separatePlan = cashTerms.data?.collection_plan != null;
   const actualFee = cashBlocked
     ? 0
     : cashTerms.data && periodReceipts.length
@@ -81,7 +82,9 @@ export function BookingFinanceActions({
       {cashTerms.data && (
         <p className="text-sm">
           Первое новое поступление: {formatFinanceDate(cashTerms.data.receipts_from)}.
-          Индивидуальные суммы собственнику учтены в графике.
+          {separatePlan
+            ? " Действует отдельный согласованный график. Суммы поступлений и комиссии фиксированы; при изменении цены обновите этот график."
+            : " Индивидуальные суммы собственнику учтены в графике."}
         </p>
       )}
       {cashTerms.error && (
@@ -105,6 +108,12 @@ export function BookingFinanceActions({
         <p className="text-sm">
           Аренда оплачена ранее. Нового поступления и комиссии компании за этот период нет.
         </p>
+      ) : separatePlan ? (
+        <p className="text-sm">
+          {periodReceipts.length
+            ? `Поступление по графику: ${formatAdeskMoney(periodReceipts.reduce((n, p) => n + p.amount, 0))} · компания: ${formatAdeskMoney(actualFee ?? 0)}`
+            : "Отдельного поступления в этом месяце нет: оплата включена в согласованный график."}
+        </p>
       ) : (
         plan.scheduled && (
           <p className="text-sm">
@@ -118,6 +127,7 @@ export function BookingFinanceActions({
           <Button
             variant="outline"
             disabled={
+              separatePlan ||
               cashBlocked ||
               !!cashTerms.error ||
               !plan.scheduled ||

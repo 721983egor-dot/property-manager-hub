@@ -1120,6 +1120,11 @@ export function createMutateTools(ctx: AssistantToolContext) {
       inputSchema:z.object({}),execute:async()=>({error:"День выплаты задаётся в брони через proposeUpdateRentalContract(ownerPayoutDay). Собственник и объекты связываются через proposeCounterpartyObjects."}),
     }),
 
+    proposeBookingCollectionPlan: tool({
+      description:"Задать отдельный согласованный график поступлений (например, квартальный) вместо помесячного. Каждый платёж содержит месяц period, through (по какую дату), дату date, полную сумму amount и комиссию company_fee. Это фиксированные согласованные суммы, не пересчитываемые по дням или цене объекта. Все остальные будущие месячные поступления исключаются. Сначала установить receiptsFrom через proposeBookingCashTerms. null возвращает обычный месячный график. История оплат защищена. Требует подтверждения администратора.",
+      inputSchema:z.object({bookingId:z.string().uuid(),plan:z.array(z.object({period:z.string(),through:z.string(),date:z.string(),amount:z.number().positive(),company_fee:z.number().nonnegative()})).min(1).max(100).nullable()}),
+      execute:async input=>{await (await import("@/lib/finance-owner-access.server")).ownerFinanceAdminClient();const summary=input.plan ? `Отдельный график: ${input.plan.map(p=>`${p.date}: ${money(p.amount)}, комиссия ${money(p.company_fee)}, за ${p.period}–${p.through}`).join("; ")}. Остальные будущие месячные поступления исключаются; суммы фиксированы.` : "Вернуть обычный месячный график";ctx.propose({tool:"setBookingCollectionPlan",summary,input});return {proposed:true,summary};},
+    }),
     proposeBookingCashTerms: tool({
       description:"Настроить первое поступление по уже оплаченной аренде и фиксированный доход собственника по периодам. Будущие неоплаченные поступления до указанной даты исключаются, фактические сохраняются. Периоды без фиксированной суммы используют обычную комиссию. Требует подтверждения администратора.",
       inputSchema:z.object({bookingId:z.string().uuid(),receiptsFrom:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),ownerRates:z.array(z.object({from:z.string(),to:z.string(),owner_monthly:z.number().nonnegative()})).max(100)}),

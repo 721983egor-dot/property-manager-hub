@@ -50,3 +50,5 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
 // Изменение типа обычной операции и статьи: proposeUpdatePayment(direction, articleId). Связанные платежи сохраняют тип.
 
 // Индивидуальные денежные условия аренды: getRentalContract.cashTerms; proposeBookingCashTerms → setBookingCashTerms. Только подтверждённый администратор, аудит и пересчёт в одной транзакции.
+
+// Отдельный согласованный график: getRentalContract.cashTerms.collection_plan; proposeBookingCollectionPlan → setBookingCollectionPlan (admin, подтверждение, аудит).

@@ -493,3 +493,26 @@ test("an ambiguous historical owner aggregate is preserved as one forecast scope
   assert.equal(result.length, 1);
   assert.equal(result[0]?.amount, 270000);
 });
+
+test("quarterly collection forecasts one owner payout and company commission only", async () => {
+  const { ownerForecastPayments } = await import("./finance-company-model.ts");
+  const rent = p("quarter", 1350000, {
+    status: "expected",
+    planned_date: "2026-12-01",
+    rental_period: "2026-12-01",
+    rental_component: "rent",
+    company_fee: 150000,
+    owner_payout_day: 5,
+  });
+  const forecast = ownerForecastPayments(
+    [rent],
+    [{ property_id: "o", owner_counterparty_id: "owner" }],
+    [],
+  );
+  assert.equal(forecast.length, 1);
+  assert.equal(forecast[0]?.planned_date, "2026-12-05");
+  assert.equal(forecast[0]?.amount, 1200000);
+  assert.equal(companyPayments([rent])[0]?.amount, 150000);
+  assert.equal(paymentFactAmount(rent, "2026-10-20"), 0);
+  assert.equal(paymentFactAmount(forecast[0]!, "2026-12-05"), 0);
+});

@@ -2729,7 +2729,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           db.from("bookings").select("*,booking_price_periods(start_date,end_date,price_month)").eq("id",bookingId).single(),
           db.from("finance_booking_schedules").select("account_id,finance_accounts(name,archived)").eq("id",bookingId).maybeSingle(),
           allFinancePages((from,to)=>db.from("payments").select("id,planned_date,amount,status,paid_amount,paid_at,rental_schedule,rental_installment_id,rental_component,company_fee").eq("booking_id",bookingId).order("id").range(from,to)),
-          db.from("finance_booking_cash_terms").select("receipts_from,owner_rates").eq("id",bookingId).maybeSingle()
+          db.from("finance_booking_cash_terms").select("receipts_from,owner_rates,collection_plan").eq("id",bookingId).maybeSingle()
         ]);
         const error=booking.error??config.error??payments.error??cashTerms.error;if(error)return {error:error.message};
         return {cashTerms:cashTerms.data,booking:booking.data,schedule:config.data,payments:payments.data??[],policy:"Менять условия в брони. Будущие платежи автоматически обновляются; проведённые, частичные и предоплаты сохраняются."};

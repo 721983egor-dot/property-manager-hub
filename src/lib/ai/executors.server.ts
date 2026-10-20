@@ -268,6 +268,12 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Бронь добавлена";
   },
 
+  setBookingCollectionPlan: async input => {
+    const {db,actor}=await (await import("@/lib/crm-results.server")).crmAccess(input);
+    const result=await db.rpc("finance_set_booking_collection_plan",{p_booking:must(input["bookingId"] as string,"Выберите бронь"),p_plan:input["plan"] as never,p_actor:actor});
+    if(result.error)throw new Error(result.error.message);
+    return "Отдельный график поступлений сохранён";
+  },
   setBookingCashTerms: async input => {
     const {db,actor}=await (await import("@/lib/crm-results.server")).crmAccess(input);
     const result=await db.rpc("finance_set_booking_cash_terms",{p_booking:must(input["bookingId"] as string,"Выберите бронь"),p_receipts_from:must(input["receiptsFrom"] as string,"Укажите первое поступление"),p_owner_rates:input["ownerRates"] as never,p_actor:actor});
