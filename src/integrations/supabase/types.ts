@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      finance_booking_cash_terms: {
+        Row: { id:string; receipts_from:string; owner_rates:Json; updated_at:string };
+        Insert: { id:string; receipts_from:string; owner_rates?:Json; updated_at?:string };
+        Update: { receipts_from?:string; owner_rates?:Json; updated_at?:string };
+        Relationships: [];
+      };
       finance_booking_schedules: {
         Row: {id:string; account_id:string; created_at:string};
         Insert: {id:string; account_id:string; created_at?:string};
@@ -2555,6 +2561,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finance_set_booking_cash_terms: {Args:{p_booking:string;p_receipts_from:string;p_owner_rates?:Json;p_actor?:string|null};Returns:undefined};
       finance_save_booking: {Args:{p_booking:string|null;p_input:Json;p_account?:string|null;p_actor?:string|null};Returns:string};
       finance_cancel_booking: {Args:{p_booking:string;p_actor?:string|null};Returns:undefined};
       finance_save_rental_settings: { Args: { p_property: string; p_owner: string; p_day: number; p_fee: number; p_fee_type: string; p_owner_name?: string | null }; Returns: undefined };

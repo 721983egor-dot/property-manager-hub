@@ -48,3 +48,5 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
 // Владелец определяется по объекту; getCounterparty и getOwnerSettlements показывают расходы и удержания.
 
 // Изменение типа обычной операции и статьи: proposeUpdatePayment(direction, articleId). Связанные платежи сохраняют тип.
+
+// Индивидуальные денежные условия аренды: getRentalContract.cashTerms; proposeBookingCashTerms → setBookingCashTerms. Только подтверждённый администратор, аудит и пересчёт в одной транзакции.

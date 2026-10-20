@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Booking } from "@/lib/bookings";
@@ -41,6 +42,18 @@ export function BookingFinanceActions({
     queryKey: ["payments", "booking", booking.id],
     queryFn: () => fetchPayments({ bookingId: booking.id }),
   });
+  const cashTerms = useQuery({
+    queryKey: ["finance-booking-cash-terms", booking.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("finance_booking_cash_terms")
+        .select("receipts_from,owner_rates")
+        .eq("id", booking.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
   const rental = {
     ...booking,
     booking_price_periods: booking.periods,
@@ -48,6 +61,16 @@ export function BookingFinanceActions({
     deposit: booking.deposit ?? 0,
   };
   const plan = rentalMonthPlan(rental, period, fee, feeType);
+  const periodReceipts = (payments.data ?? []).filter(
+    (p) =>
+      p.direction === "in" && p.rental_component === "rent" && p.rental_period === `${period}-01`,
+  );
+  const cashBlocked = !!cashTerms.data && !!plan.due && plan.due < cashTerms.data.receipts_from;
+  const actualFee = cashBlocked
+    ? 0
+    : cashTerms.data && periodReceipts.length
+      ? periodReceipts.reduce((n, p) => n + (p.company_fee ?? 0), 0)
+      : plan.fee;
   return (
     <section className="rounded-lg border p-4 space-y-3">
       <h3 className="font-medium">Платежи по брони</h3>
@@ -55,6 +78,17 @@ export function BookingFinanceActions({
         График аренды создаётся из условий брони. Получение денег отмечайте в существующем платеже.
         Предоплата и остаток заменяют один платёж графика, без второго прихода.
       </p>
+      {cashTerms.data && (
+        <p className="text-sm">
+          Первое новое поступление: {formatFinanceDate(cashTerms.data.receipts_from)}.
+          Индивидуальные суммы собственнику учтены в графике.
+        </p>
+      )}
+      {cashTerms.error && (
+        <p role="alert" className="text-sm">
+          Не удалось проверить индивидуальные условия брони.
+        </p>
+      )}
       <label className="text-sm block">
         Месяц арендного периода{" "}
         <input
@@ -67,17 +101,29 @@ export function BookingFinanceActions({
           className="ml-2 rounded border p-1"
         />
       </label>
-      {plan.scheduled && (
+      {cashBlocked ? (
         <p className="text-sm">
-          Аренда: {plan.rent == null ? "уточните цену" : formatAdeskMoney(plan.rent)} · компания:{" "}
-          {plan.fee == null ? "уточните комиссию" : formatAdeskMoney(plan.fee)}
+          Аренда оплачена ранее. Нового поступления и комиссии компании за этот период нет.
         </p>
+      ) : (
+        plan.scheduled && (
+          <p className="text-sm">
+            Аренда: {plan.rent == null ? "уточните цену" : formatAdeskMoney(plan.rent)} · компания:{" "}
+            {actualFee == null ? "уточните комиссию" : formatAdeskMoney(actualFee)}
+          </p>
+        )
       )}
       {booking.status === "active" && (
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            disabled={!plan.scheduled || plan.rent == null || plan.fee == null}
+            disabled={
+              cashBlocked ||
+              !!cashTerms.error ||
+              !plan.scheduled ||
+              plan.rent == null ||
+              actualFee == null
+            }
             onClick={() => setInstallments(true)}
           >
             Предоплата и остаток
@@ -129,7 +175,7 @@ export function BookingFinanceActions({
           onClose={() => setInstallments(false)}
           period={period}
           defaultTotal={plan.rent ?? undefined}
-          defaultFee={plan.fee ?? undefined}
+          defaultFee={actualFee ?? undefined}
           defaultAccount={account}
         />
       )}
