@@ -43,6 +43,7 @@ export const PAYMENT_KINDS: { value: PaymentKind; label: string; direction: Paym
 export const PAYMENT_ACCOUNTS = ["Основной", "Касса"] as const;
 
 export type Payment = {
+  owner_payout_on_request?: boolean;
   expense_bearer?: "company" | "owner" | null;
   expense_owner_id?: string | null;
   owner_payout_day?: number | null;
@@ -168,6 +169,7 @@ export function mapPayment(row: Record<string, unknown>): Payment {
     firstJoin(row["clients"] as Payment["client"] | Payment["client"][] | null) ?? null;
   const article = mapArticleJoin(row);
   return {
+    owner_payout_on_request: row["owner_payout_on_request"] === true,
     expense_bearer: (row["expense_bearer"] as Payment["expense_bearer"]) ?? null,
     expense_owner_id: (row["expense_owner_id"] as string | null) ?? null,
     id: String(row["id"]),

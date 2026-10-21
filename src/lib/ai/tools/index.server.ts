@@ -57,3 +57,5 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
 // Бронь с полными финансовыми условиями: proposeBooking / proposeUpdateRentalContract(financialTerms) → finance_save_booking, общий атомарный путь с редактором; getRentalContract.financialTerms.
 
 // Связанные финансовые задачи: getFinanceTasks → proposeConfirmFinanceTask → подтверждённый confirmFinanceTask; общий проектор с блоком Задачи, аудит в платежах.
+
+// Выплаты по запросу: ownerPayoutMode=on_request через proposeBooking / proposeUpdateRentalContract; getRentalContract.ownerPayoutMode, getOwnerExpenseStatement — долг и хранение без просрочки.

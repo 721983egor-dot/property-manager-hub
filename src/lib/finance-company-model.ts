@@ -53,6 +53,7 @@ export function bankPayments(rows: Payment[]) {
   );
   return rows.filter(
     (p) =>
+      !(p.rental_component === "owner_plan" && p.owner_payout_on_request) &&
       !(
         p.booking_id &&
         (p.management_period || p.crm_charge?.startsWith("month:")) &&
@@ -163,6 +164,7 @@ export function ownerForecastPayments(
   const result: Payment[] = [];
   const groups = new Map<string, Payment[]>();
   for (const p of rows) {
+    if (p.owner_payout_on_request) continue;
     if (!["rent", "utilities"].includes(p.rental_component ?? "") || p.company_fee == null)
       continue;
     const legacy =
@@ -297,7 +299,9 @@ export function ownerCashPayments(
       amount = money(amount - deduct);
     }
   }
-  return result.filter((p) => p.rental_component !== "owner_plan" || p.amount > 0);
+  return result.filter(
+    (p) => p.rental_component !== "owner_plan" || (p.amount > 0 && !p.owner_payout_on_request),
+  );
 }
 
 /** The pair is one contract amount, never a third bank receipt. Read from full payment history. */

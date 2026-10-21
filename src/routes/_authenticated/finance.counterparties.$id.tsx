@@ -178,10 +178,11 @@ export function CounterpartyCardPage({ id }: { id: string }) {
   const visibleObligations = obligations.filter(
     (item) =>
       (projectFilter === "all" || item.property_id === projectFilter) &&
-      inPeriod(item.planned_date),
+      (item.on_request || inPeriod(item.planned_date)),
   );
   const visiblePayments = payments.filter(
     (item) =>
+      !(item.rental_component === "owner_plan" && item.owner_payout_on_request) &&
       (projectFilter === "all" || item.property_id === projectFilter) &&
       inPeriod(item.planned_date),
   );
@@ -649,7 +650,11 @@ export function CounterpartyCardPage({ id }: { id: string }) {
               return (
                 <div key={item.id} className="border-b border-border px-5 py-3 last:border-0">
                   <div className="grid items-start gap-1 sm:grid-cols-[7rem_12rem_1fr_16rem] sm:items-center">
-                    <p className="tabular-nums text-sm">{formatFinanceDate(item.planned_date)}</p>
+                    <p className="tabular-nums text-sm">
+                      {item.on_request
+                        ? "По запросу · хранится у нас"
+                        : formatFinanceDate(item.planned_date)}
+                    </p>
                     <div>
                       <p
                         className={cn(
@@ -937,10 +942,12 @@ export function CounterpartyCardPage({ id }: { id: string }) {
               </div>
               <div className="obligation-field">
                 <label htmlFor="obligation-date">
-                  Дата <span>*</span>
+                  {editingObligation?.on_request ? "Расчётный месяц (без срока выплаты)" : "Дата"}{" "}
+                  <span>*</span>
                 </label>
                 <input
                   id="obligation-date"
+                  readOnly={editingObligation?.on_request === true}
                   type="date"
                   required
                   value={oblDate}

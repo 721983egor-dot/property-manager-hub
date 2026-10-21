@@ -1,3 +1,4 @@
+import { OwnerPayoutTerms } from "./OwnerPayoutTerms";
 import { BookingFinancialTermsEditor } from "./BookingFinancialTermsEditor";
 import {
   defaultBookingFinancialTerms,
@@ -91,6 +92,7 @@ type FormState = {
   price_month: string;
   payment_day: string;
   owner_payout_day: string;
+  owner_payout_mode: "scheduled" | "on_request";
   deposit: string;
   source: BookingSource | "";
   status: BookingStatus;
@@ -109,6 +111,7 @@ function emptyForm(propertyId = "", clientId = ""): FormState {
     price_month: "",
     payment_day: "1",
     owner_payout_day: "",
+    owner_payout_mode: "scheduled",
     deposit: "",
     source: "",
     status: "active",
@@ -127,6 +130,7 @@ function fromBooking(b: Booking): FormState {
     price_month: b.price_month == null ? "" : String(b.price_month),
     payment_day: String(b.payment_day),
     owner_payout_day: b.owner_payout_day == null ? "" : String(b.owner_payout_day),
+    owner_payout_mode: b.owner_payout_day == null ? "on_request" : "scheduled",
     deposit: b.deposit == null ? "" : String(b.deposit),
     source: b.source ?? "",
     status: b.status,
@@ -272,6 +276,7 @@ export function BookingDialog({
       if (
         isAdmin &&
         isRm &&
+        form.owner_payout_mode === "scheduled" &&
         ((ownerId && !form.owner_payout_day) ||
           (form.owner_payout_day &&
             (!Number.isInteger(Number(form.owner_payout_day)) ||
@@ -325,7 +330,11 @@ export function BookingDialog({
           ? {
               finance_account_id: financeAccount,
               financial_terms: effectiveFinancialTerms,
-              owner_payout_day: form.owner_payout_day ? Number(form.owner_payout_day) : null,
+              owner_payout_mode: form.owner_payout_mode,
+              owner_payout_day:
+                form.owner_payout_mode === "scheduled" && form.owner_payout_day
+                  ? Number(form.owner_payout_day)
+                  : null,
             }
           : {}),
         ...(isAdmin && selected?.portfolio === "rm" && managementFee
@@ -524,7 +533,9 @@ export function BookingDialog({
                 <Field
                   label="Выплата собственнику"
                   value={
-                    booking.owner_payout_day ? `${booking.owner_payout_day}-го числа` : "Не задана"
+                    booking.owner_payout_day
+                      ? `${booking.owner_payout_day}-го числа`
+                      : "По запросу · деньги хранятся у нас"
                   }
                 />
               )}
@@ -911,25 +922,15 @@ export function BookingDialog({
                   {ownerName ?? (ownerLinks.isPending ? "Загрузка…" : "Не прикреплён")}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Собственник и его объекты связываются в контрагентах. День выплаты задаётся для
+                  Собственник и его объекты связываются в контрагентах. Режим выплаты задаётся для
                   этой брони.
                 </p>
-                <Label htmlFor="booking-owner-payout">День выплаты собственнику</Label>
-                <Input
-                  id="booking-owner-payout"
-                  aria-label="День выплаты собственнику"
-                  type="number"
-                  min={1}
-                  max={31}
-                  step={1}
-                  value={form.owner_payout_day}
-                  placeholder="Например, 24"
-                  onChange={(e) => setForm((f) => ({ ...f, owner_payout_day: e.target.value }))}
+                <OwnerPayoutTerms
+                  mode={form.owner_payout_mode}
+                  day={form.owner_payout_day}
+                  onMode={(mode) => setForm((f) => ({ ...f, owner_payout_mode: mode }))}
+                  onDay={(day) => setForm((f) => ({ ...f, owner_payout_day: day }))}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Конкретное число каждого месяца. Для 29–31-го в коротком месяце — последний день.
-                  Изменение обновит будущий прогноз; проведённые выплаты сохранятся.
-                </p>
                 <Label>Комиссия за управление объектом</Label>
                 <div className="flex gap-2">
                   <Input
@@ -1076,7 +1077,11 @@ export function BookingDialog({
                   }
                   feeType={managementFee?.type ?? property?.management_fee_type ?? "percent"}
                   ownerName={ownerName}
-                  payoutDay={form.owner_payout_day ? Number(form.owner_payout_day) : null}
+                  payoutDay={
+                    form.owner_payout_mode === "scheduled" && form.owner_payout_day
+                      ? Number(form.owner_payout_day)
+                      : null
+                  }
                 />
               ))}
 

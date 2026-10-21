@@ -17,10 +17,13 @@ export function effectivePaymentStatus(
     planned_date: string;
     kind?: string;
     rental_component?: string | null;
+    owner_payout_on_request?: boolean;
   },
   today = financeToday(),
 ): PaymentStatus {
   if (payment.status === "paid") return "paid";
+  if (payment.rental_component === "owner_plan" && payment.owner_payout_on_request)
+    return "expected";
   // Явно введённая частичная оплата не означает получения всей суммы.
   if (payment.kind === "owner_payout" && payment.rental_component === "owner_plan")
     return payment.planned_date < today ? "overdue" : "expected";

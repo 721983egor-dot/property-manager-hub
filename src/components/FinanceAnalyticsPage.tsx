@@ -342,7 +342,7 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
                   {parties.data?.find((p) => p.id === d.counterparty_id)?.name ?? "Контрагент"}
                 </Link>
               </td>
-              <td>{d.planned_date}</td>
+              <td>{d.on_request ? "По запросу" : d.planned_date}</td>
               <td>{d.property?.internal_name || d.property?.title || "Без объекта"}</td>
               <td className="fa-positive">
                 {d.direction === "receivable" ? money(d.remaining) : "—"}

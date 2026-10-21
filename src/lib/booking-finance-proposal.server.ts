@@ -46,7 +46,10 @@ export async function bookingFinanceProposal(input: Record<string, unknown>) {
       "percent" | "amount",
   );
   const money = (v: number) => v.toLocaleString("ru-RU") + " ₽";
-  const day = Number(input["ownerPayoutDay"] ?? b?.owner_payout_day);
+  const day =
+    input["ownerPayoutMode"] === "on_request"
+      ? 0
+      : Number(input["ownerPayoutDay"] ?? b?.owner_payout_day);
   const summary = rows
     .slice(0, 24)
     .map((p) => {
@@ -55,7 +58,7 @@ export async function bookingFinanceProposal(input: Record<string, unknown>) {
       ).getUTCDate();
       const payout = day
         ? `${p.period.slice(0, 7)}-${String(Math.min(day, last)).padStart(2, "0")}`
-        : "уточнить день";
+        : "по запросу · деньги хранятся у нас, без срока выплаты";
       return `${p.date}: приход ${money(p.amount)}, компания ${money(p.company_fee)}, собственнику ${money(p.amount - p.company_fee)} (${payout})`;
     })
     .join("\n");

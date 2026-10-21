@@ -2391,7 +2391,7 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
     getFinanceRentalTerms: tool({
-      description: "Договорная аренда объектов РМ ОС для финансов: сроки, день оплаты, цена из договора/периодов, день выплаты собственнику owner_payout_day из брони, отдельная комиссия за управление, доход компании и собственнику до расходов. План включает разбивку по дням: арендный месяц от даты заезда, день оплаты — отдельный срок; при смене цены части суммируются, последний неполный период пропорционален полному арендному месяцу, выезд исключён. Это план, не полученные деньги. Только администратор. Не использовать комиссию из объявления.",
+      description: "Договорная аренда объектов РМ ОС для финансов: сроки, день оплаты, цена из договора/периодов, режим выплаты: owner_payout_day=null — по запросу, деньги хранятся у нас без срока и просрочки; число owner_payout_day — ежемесячная выплата из брони, отдельная комиссия за управление, доход компании и собственнику до расходов. План включает разбивку по дням: арендный месяц от даты заезда, день оплаты — отдельный срок; при смене цены части суммируются, последний неполный период пропорционален полному арендному месяцу, выезд исключён. Это план, не полученные деньги. Только администратор. Не использовать комиссию из объявления.",
       inputSchema: z.object({month:z.string().regex(/^\d{4}-\d{2}$/),propertyId:z.string().uuid().optional()}),
       execute:async ({month,propertyId})=>{
         const {ownerFinanceAdminClient}=await import("@/lib/finance-owner-access.server");await ownerFinanceAdminClient();
@@ -2627,7 +2627,7 @@ export function createReadTools(ctx: AssistantToolContext) {
             allFinancePages((from, to) =>
               admin
                 .from("finance_obligations")
-                .select("id, planned_date, amount, direction, description, legal_entity, property_id, status")
+                .select("id, planned_date, on_request, amount, direction, description, legal_entity, property_id, status")
                 .eq("counterparty_id", id)
                 .order("planned_date", { ascending: false })
                 .order("id")
@@ -2717,7 +2717,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         let q = admin
           .from("finance_obligations")
           .select(
-            "id, counterparty_id, planned_date, amount, direction, description, legal_entity, property_id, status, created_at",
+            "id, counterparty_id, planned_date, on_request, amount, direction, description, legal_entity, property_id, status, created_at",
           )
           .order("planned_date", { ascending: false })
           .limit(200);
@@ -2741,6 +2741,8 @@ export function createReadTools(ctx: AssistantToolContext) {
           obligations: (data ?? []).map((row) => ({
             ...row,
             counterparty: names.get(row.counterparty_id) ?? row.counterparty_id,
+            dueDate: row.on_request ? null : row.planned_date,
+            payoutMode: row.on_request ? "on_request" : "scheduled",
           })),
         };
       },
@@ -2763,7 +2765,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const obs=ids.length ? await db.from("finance_obligations").select("id,planned_date,amount").in("id",ids) : {data:[],error:null};
         if(obs.error)return {error:obs.error.message};
         const prepaid=(settlements.data??[]).map(s=>{const ob=obs.data?.find(o=>o.id===s.obligation_id);if(!ob)throw new Error("Не найден расчёт собственника");return {period:s.period,date:ob.planned_date,amount:Number(s.gross_amount??ob.amount)};});
-        return {financialTerms:cashTerms.data ? {...cashTerms.data,prepaid_owner_payouts:prepaid} : null,cashTerms:cashTerms.data,booking:booking.data,schedule:config.data,payments:payments.data??[],policy:"Менять условия в брони. Будущие платежи автоматически обновляются; проведённые, частичные и предоплаты сохраняются."};
+        return {ownerPayoutMode:booking.data?.owner_payout_day == null ? "on_request" : "scheduled",financialTerms:cashTerms.data ? {...cashTerms.data,prepaid_owner_payouts:prepaid} : null,cashTerms:cashTerms.data,booking:booking.data,schedule:config.data,payments:payments.data??[],policy:"Менять условия в брони. Будущие платежи автоматически обновляются; проведённые, частичные и предоплаты сохраняются."};
       },
     }),
     listFinanceCatalog: tool({

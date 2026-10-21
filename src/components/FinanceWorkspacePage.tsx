@@ -785,8 +785,8 @@ export function FinanceWorkspacePage({
                             </b>
                           </div>
                           <div>
-                            <small>День выплаты собственнику</small>
-                            <b>{b.owner_payout_day ?? "Укажите в брони"}</b>
+                            <small>Выплата собственнику</small>
+                            <b>{b.owner_payout_day ?? "По запросу · хранится у нас"}</b>
                           </div>
                           <div>
                             <small>Собственник</small>

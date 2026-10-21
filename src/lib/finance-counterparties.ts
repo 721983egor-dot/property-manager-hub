@@ -41,6 +41,7 @@ export type FinanceCounterparty = {
 };
 
 export type FinanceObligation = {
+  on_request?: boolean;
   id: string;
   counterparty_id: string;
   planned_date: string;
@@ -84,6 +85,7 @@ function mapObligation(row: Record<string, unknown>): FinanceObligation {
       row["properties"] as FinanceObligation["property"] | FinanceObligation["property"][] | null,
     ) ?? null;
   return {
+    on_request: row["on_request"] === true,
     id: String(row["id"]),
     counterparty_id: String(row["counterparty_id"]),
     planned_date: String(row["planned_date"]),
@@ -218,9 +220,7 @@ export async function fetchObligations(
 ) {
   let query = supabase
     .from("finance_obligations")
-    .select(
-      "id, counterparty_id, planned_date, amount, direction, description, legal_entity, property_id, status, created_at, properties(id, title, internal_name, ref_id)",
-    )
+    .select("*, properties(id, title, internal_name, ref_id)")
     .order("planned_date", { ascending: false })
     .order("id", { ascending: true });
   if (opts.counterpartyId) query = query.eq("counterparty_id", opts.counterpartyId);

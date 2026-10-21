@@ -11,6 +11,8 @@ import { fetchObligations } from "@/lib/finance-counterparties";
 import { paymentFactAmount } from "@/lib/finance-payment-status";
 import { ownerSettlementState } from "@/lib/finance-owner-model";
 import { financeToday } from "@/lib/finance-payment-status";
+import { useState } from "react";
+import { OwnerPayoutDialog } from "./OwnerPayoutDialog";
 
 export function OwnerExpenseStatement({
   ownerId,
@@ -28,6 +30,7 @@ export function OwnerExpenseStatement({
   onEdit: (payment: Payment) => void;
 }) {
   const qc = useQueryClient();
+  const [payout, setPayout] = useState<{ id: string; amount: number } | null>(null);
   const refreshed = useQuery({
     queryKey: ["finance-owner-refresh", financeToday()],
     queryFn: async () => {
@@ -78,7 +81,11 @@ export function OwnerExpenseStatement({
   const visibleCosts = expenses.filter((p) => !from || p.planned_date >= from);
   const scope = (settlements.data ?? []).flatMap((s) => {
     const o = obligations.data?.find((x) => x.id === s.obligation_id);
-    if (!o || (propertyId && s.property_id !== propertyId) || (from && o.planned_date < from))
+    if (
+      !o ||
+      (propertyId && s.property_id !== propertyId) ||
+      (from && o.planned_date < from && !o.on_request)
+    )
       return [];
     const receipts = rows.filter(
       (p) =>
@@ -137,6 +144,33 @@ export function OwnerExpenseStatement({
         Аренда и КУ минус комиссия и оплаченные расходы. Расход удерживается один раз. Непокрытая
         сумма переносится на следующие выплаты по тому же объекту.
       </p>
+      {scope.some(({ o, state }) => o.on_request && o.status === "open" && state.remaining > 0) && (
+        <div className="mb-4 rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">
+            Деньги собственника хранятся у нас до запроса
+          </p>
+          <p className="text-xl font-semibold">
+            {formatAdeskMoney(
+              scope.reduce(
+                (n, { o, state }) =>
+                  n + (o.on_request && o.status === "open" ? state.remaining : 0),
+                0,
+              ),
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            После комиссии и расходов. Это резерв собственника, без просрочки и плановой даты
+            расхода.
+          </p>
+        </div>
+      )}
+      {payout && (
+        <OwnerPayoutDialog
+          obligationId={payout.id}
+          remaining={payout.amount}
+          onClose={() => setPayout(null)}
+        />
+      )}
       <div className="fa-table-scroll">
         <table className="fa-table">
           <thead>
@@ -163,7 +197,24 @@ export function OwnerExpenseStatement({
                 <td>{formatAdeskMoney(utilities)}</td>
                 <td>{formatAdeskMoney(s.expense_amount ?? 0)}</td>
                 <td>{formatAdeskMoney(state.paid)}</td>
-                <td>{formatAdeskMoney(o.status === "closed" ? 0 : state.remaining)}</td>
+                <td>
+                  {formatAdeskMoney(o.status === "closed" ? 0 : state.remaining)}
+                  {o.on_request && state.remaining > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Хранится у нас · без даты выплаты
+                    </p>
+                  )}
+                  {o.status === "open" && state.remaining > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setPayout({ id: o.id, amount: state.remaining })}
+                    >
+                      Выплатить
+                    </Button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

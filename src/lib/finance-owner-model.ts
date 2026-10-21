@@ -12,14 +12,20 @@ export function ownerSettlementState(
       ? "Закрыт вручную"
       : cash.remaining <= 0
         ? "Выплачено"
-        : obligation.planned_date < today
-          ? "Просрочено"
-          : cash.paid > 0
-            ? "Частично выплачено"
-            : "К выплате";
+        : obligation.on_request
+          ? "Хранится у нас · по запросу"
+          : obligation.planned_date < today
+            ? "Просрочено"
+            : cash.paid > 0
+              ? "Частично выплачено"
+              : "К выплате";
   return {
     ...cash,
     label,
-    overdue: obligation.status === "open" && cash.remaining > 0 && obligation.planned_date < today,
+    overdue:
+      !obligation.on_request &&
+      obligation.status === "open" &&
+      cash.remaining > 0 &&
+      obligation.planned_date < today,
   };
 }

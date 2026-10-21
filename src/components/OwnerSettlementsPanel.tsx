@@ -56,6 +56,7 @@ export function OwnerSettlementsPanel({
   const accounts = useQuery({ queryKey: ["finance-accounts"], queryFn: fetchFinanceAccounts });
   const invalidate = () => {
     for (const key of [
+      "finance-tasks",
       "finance-owner-expenses",
       "finance-owner-settlements",
       "finance-object-settings",
@@ -98,13 +99,14 @@ export function OwnerSettlementsPanel({
       <h2>Расчёты с собственником</h2>
       <p className="mb-4 text-sm text-muted-foreground">
         Начисление — после комиссии, до расходов собственника. Оплаченные расходы удерживаются
-        автоматически. Остаток — наш долг; после даты выплаты он становится просроченным. Для 29–31
-        числа в коротком месяце используется последний день месяца.
+        автоматически. Остаток — наш долг. По запросу деньги хранятся у нас без просрочки. При
+        заданном сроке долг становится просроченным после даты выплаты. Для 29–31 числа в коротком
+        месяце используется последний день месяца.
       </p>
       <p className="mb-5 text-sm text-muted-foreground">
         Собственник:{" "}
         {parties.find((p) => p.id === settings?.owner_counterparty_id)?.name ?? "не прикреплён"}.
-        Привязка — в контрагентах, день выплаты — в брони.{" "}
+        Привязка — в контрагентах, срок или выплата по запросу — в брони.{" "}
         <Link to="/objects/$id" params={{ id: propertyId }} className="underline">
           Открыть аренду объекта
         </Link>
@@ -200,7 +202,7 @@ export function OwnerSettlementsPanel({
                       {parties.find((p) => p.id === o.counterparty_id)?.name ?? "Собственник"}
                     </Link>
                   </td>
-                  <td>{o.planned_date}</td>
+                  <td>{o.on_request ? "По запросу" : o.planned_date}</td>
                   <td>{formatAdeskMoney(s.gross_amount ?? o.amount)}</td>
                   <td>{formatAdeskMoney(s.expense_amount ?? 0)}</td>
                   <td>{formatAdeskMoney(o.amount)}</td>

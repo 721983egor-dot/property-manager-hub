@@ -281,7 +281,7 @@ export function BookingFinancialTermsEditor({
             patch({
               owner_rates: [
                 ...value.owner_rates,
-                { from: terms.start_date, to: terms.end_date, owner_monthly: 0 },
+                { from: terms.start_date, to: terms.end_date, owner_monthly: NaN },
               ],
             })
           }
@@ -289,6 +289,12 @@ export function BookingFinancialTermsEditor({
           <Plus className="size-4" />
           Задать сумму собственнику
         </Button>
+        {value.owner_rates.some((r) => r.owner_monthly === 0) && (
+          <p role="alert" className="text-sm text-destructive">
+            Собственнику задано 0 ₽: вся аренда за этот период станет доходом компании, независимо
+            от процента комиссии. Чтобы действовал процент объекта, уберите этот особый период.
+          </p>
+        )}
       </details>
       <details open={value.prepaid_owner_payouts.length > 0} className="space-y-3">
         <summary className="text-sm font-medium cursor-pointer">

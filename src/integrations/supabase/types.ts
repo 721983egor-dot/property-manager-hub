@@ -930,6 +930,7 @@ export type Database = {
       }
       finance_obligations: {
         Row: {
+          on_request: boolean
           id: string
           counterparty_id: string
           planned_date: string
@@ -943,6 +944,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          on_request?: boolean
           id?: string
           counterparty_id: string
           planned_date: string
@@ -956,6 +958,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          on_request?: boolean
           id?: string
           counterparty_id?: string
           planned_date?: string
@@ -1123,6 +1126,7 @@ export type Database = {
       }
       payments: {
         Row: {
+          owner_payout_on_request: boolean
           expense_bearer: string | null
           expense_owner_id: string | null
           owner_payout_day: number | null
@@ -1156,6 +1160,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          owner_payout_on_request?: boolean
           expense_bearer?: string | null
           expense_owner_id?: string | null
           owner_payout_day?: number | null
@@ -1189,6 +1194,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          owner_payout_on_request?: boolean
           expense_bearer?: string | null
           expense_owner_id?: string | null
           owner_payout_day?: number | null
