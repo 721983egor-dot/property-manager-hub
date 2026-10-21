@@ -1,3 +1,4 @@
+import { InlineCounterpartyCreate } from "./InlineCounterpartyCreate";
 import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import { RentalTermsButton } from "./RentalTermsButton";
 import { fetchFinanceClientRentals } from "@/lib/finance-workspace";
@@ -199,6 +200,7 @@ export function PaymentDialog({
     enabled: open,
   });
   const amountRef = useRef<HTMLInputElement>(null);
+  const [counterpartyCreating, setCounterpartyCreating] = useState(false);
   const [form, setForm] = useState<FormState>(() =>
     emptyForm(
       defaultPropertyId,
@@ -817,6 +819,8 @@ export function PaymentDialog({
             </Field>
           )}
           <Field
+            grow
+            wide={counterpartyCreating}
             label={
               form.rental_component
                 ? "Клиент"
@@ -830,7 +834,7 @@ export function PaymentDialog({
               value={form.counterparty_id || ""}
               onValueChange={(v) => {
                 if (v === "__none__") {
-                  setForm((p) => ({ ...p, counterparty_id: "" }));
+                  setForm((p) => ({ ...p, counterparty_id: "", counterparty_name: "" }));
                   return;
                 }
                 const found = counterparties.find((c) => c.id === v);
@@ -852,7 +856,7 @@ export function PaymentDialog({
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Новый / без карточки</SelectItem>
+                <SelectItem value="__none__">Без контрагента</SelectItem>
                 {counterparties.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
@@ -860,6 +864,23 @@ export function PaymentDialog({
                 ))}
               </SelectContent>
             </Select>
+            {!form.rental_component && (
+              <InlineCounterpartyCreate
+                initialName={form.counterparty_id ? "" : form.counterparty_name}
+                onEditingChange={setCounterpartyCreating}
+                onCreated={(party) =>
+                  setForm((previous) =>
+                    previous.rental_component
+                      ? previous
+                      : {
+                          ...previous,
+                          counterparty_id: party.id,
+                          counterparty_name: party.name,
+                        },
+                  )
+                }
+              />
+            )}
           </Field>
           <div className="finance-description-field">
             <p className="finance-description-label">Описание</p>
@@ -1011,6 +1032,7 @@ export function PaymentDialog({
             type="button"
             className="finance-save-button"
             disabled={
+              counterpartyCreating ||
               !selectedAccountValid ||
               accountsQuery.isPending ||
               !!accountsQuery.error ||
@@ -1128,13 +1150,22 @@ function Field({
   label,
   required,
   children,
+  grow,
+  wide,
 }: {
   label: string;
   required?: boolean;
   children: ReactNode;
+  grow?: boolean;
+  wide?: boolean;
 }) {
   return (
-    <div className="finance-payment-field" role="group" aria-label={label}>
+    <div
+      className="finance-payment-field"
+      style={{ ...(grow ? { height: "auto" } : {}), ...(wide ? { gridColumn: "span 2" } : {}) }}
+      role="group"
+      aria-label={label}
+    >
       <label>
         {label}
         {required ? <span className="finance-field-required">*</span> : null}
