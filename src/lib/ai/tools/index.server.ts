@@ -1,3 +1,4 @@
+// Остатки всех счетов: getFinanceAccountBalances. Отмена подтверждения: getPaymentConfirmation → proposeReversePaymentConfirmation → reversePaymentConfirmation; атомарный RPC, администратор, аудит.
 // Прибыльность домов и квартир: getObjectProfitability, общий расчёт с отчётом, только чтение администратора.
 // Единая аренда: ownerPayoutDay в createBooking/updateRentalContract, getRentalContract/getFinanceRentalTerms; сроки выплат и платежи в брони. Старые настройки дня на объекте больше не предлагаются.
 // Собственники контрагентов: getCounterpartyObjects; подтверждённый proposeCounterpartyObjects → saveCounterpartyObjects, общие finance_object_settings и аудит.

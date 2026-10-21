@@ -2353,6 +2353,33 @@ export function createReadTools(ctx: AssistantToolContext) {
         return {expenses,expenseAllocations:allocations.data.filter(a=>expenses.some(p=>p.id===a.payment_id)),settlements:settlements.data.map(s=>{const o=obligations.data.find(o=>o.id===s.obligation_id);return {...s,obligation:o,rentalIncome:ownerRentalIncome(payments.data as unknown as Payment[],s.period.slice(0,7),s.property_id,today),state:o?ownerSettlementState(o as unknown as FinanceObligation,payments.data as unknown as Payment[],today):null};})};
       },
     }),
+    getFinanceAccountBalances: tool({
+      description: "Текущие фактические остатки действующих счетов и общий итог, как в компактном окне всех страниц Финансов. Учитывает отдельные части поступлений; планы и будущие суммы не включаются. Только администратор.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const db = await ownerFinanceAdminClient();
+        const [accounts, payments] = await Promise.all([
+          db.from("finance_accounts").select("id,name,type,archived").order("name"),
+          allFinancePages((from, to) => db.from("payments").select("*").order("id").range(from, to)),
+        ]);
+        if (accounts.error) throw new Error(accounts.error.message);
+        if (payments.error) throw new Error(payments.error.message);
+        const { financeAccountBalances } = await import("@/lib/finance-account-balances");
+        return financeAccountBalances(accounts.data as import("@/lib/finance-accounts").FinanceAccount[], payments.data as unknown as Payment[]);
+      },
+    }),
+    getPaymentConfirmation: tool({
+      description: "Прочитать исходный платёж и его части перед отменой ошибочного подтверждения. paymentId — UUID исходного платежа из listPayments. Только администратор.",
+      inputSchema: z.object({ paymentId: z.string().uuid() }),
+      execute: async ({ paymentId }) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const db = await ownerFinanceAdminClient();
+        const { data, error } = await db.from("payments").select("*").eq("id", paymentId).single();
+        if (error) throw new Error(error.message);
+        return { payment: data, canReverse: data.rental_component !== "owner_plan" && (data.status === "paid" || Number(data.paid_amount) > 0 || effectivePaymentStatus(data) === "paid") };
+      },
+    }),
     listFinanceAccounts: tool({
       description: "Действующие счета финансов. Архив скрыт по умолчанию; includeArchived=true показывает архив для восстановления или удаления.",
       inputSchema: z.object({ includeArchived: z.boolean().optional() }),

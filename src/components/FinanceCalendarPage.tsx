@@ -657,6 +657,7 @@ export function FinanceCalendarPage() {
                   </span>
                   <div className="sm:justify-self-end">
                     <PaymentCompletion
+                      payment={payment}
                       status={status}
                       label={rentalPaymentLabel(payment)}
                       disabled={

@@ -14,6 +14,7 @@ export function financeToday(now = new Date()): string {
 export function effectivePaymentStatus(
   payment: {
     requires_confirmation?: boolean;
+    paid_amount?: number | null;
     status: string;
     planned_date: string;
     kind?: string;
@@ -27,6 +28,8 @@ export function effectivePaymentStatus(
     return "expected";
   // Явно введённая частичная оплата не означает получения всей суммы.
   if (payment.kind === "owner_payout" && payment.rental_component === "owner_plan")
+    return payment.planned_date < today ? "overdue" : "expected";
+  if (payment.status === "partial" && payment.paid_amount === 0 && payment.requires_confirmation)
     return payment.planned_date < today ? "overdue" : "expected";
   if (payment.status === "partial") return "partial";
   if (payment.requires_confirmation) return payment.planned_date < today ? "overdue" : "expected";

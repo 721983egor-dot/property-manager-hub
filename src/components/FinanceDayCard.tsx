@@ -179,6 +179,7 @@ export function FinanceDayCard({
                       </strong>
                     </button>
                     <PaymentCompletion
+                      payment={payment}
                       status={effectivePaymentStatus(payment, today)}
                       label={rentalPaymentLabel(payment)}
                       disabled={markPaid.isPending || payment.id.startsWith("owner-forecast:")}

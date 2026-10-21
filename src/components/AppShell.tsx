@@ -1,3 +1,4 @@
+import { FinanceAccountBalances } from "@/components/FinanceAccountBalances";
 import { fetchTasks } from "@/lib/tasks";
 import { fetchFinanceTasks } from "@/lib/finance-tasks-data";
 import { useFinanceToday } from "@/hooks/use-finance-today";
@@ -342,7 +343,7 @@ function CrmShell({ children }: { children: ReactNode }) {
   const loadThreads = useServerFn(fetchThreads);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
-  const { isOwner, loading } = useAccess();
+  const { isOwner, isAdmin, loading } = useAccess();
   const { data } = useQuery({
     queryKey: ["chat-threads"],
     queryFn: () => loadThreads({ data: undefined }),
@@ -412,6 +413,9 @@ function CrmShell({ children }: { children: ReactNode }) {
             )}
           </header>
           <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+            {isAdmin && (pathname === "/finance" || pathname.startsWith("/finance/")) && (
+              <div className="flex justify-end px-4 pt-4 sm:px-6"><FinanceAccountBalances /></div>
+            )}
             {children}
           </main>
           <CrmMobileNav unread={unread} />

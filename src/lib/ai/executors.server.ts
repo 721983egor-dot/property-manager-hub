@@ -1426,6 +1426,13 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     return "Платёж обновлён";
   },
 
+  reversePaymentConfirmation: async (input) => {
+    const { db, actor } = await (await import("@/lib/crm-results.server")).crmAccess(input);
+    const { error } = await db.rpc("finance_reverse_confirmation", { p_payment: input["paymentId"], p_receipt: input["receiptId"] ?? null, p_expected: input["expected"], p_request_id: input["requestId"], p_actor: actor });
+    if (error) throw new Error(error.message);
+    return "Подтверждение отменено. Остатки и связанные задачи пересчитаны";
+  },
+
   markPaymentPaid: async (input) => {
     const paymentId = must(input["paymentId"] as string, "Не указан платёж");
     const { data: current, error: loadError } = await supabaseAdmin

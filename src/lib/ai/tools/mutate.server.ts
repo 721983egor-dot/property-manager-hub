@@ -1531,6 +1531,23 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeReversePaymentConfirmation: tool({
+      description: "Предложить отмену ошибочного подтверждения поступления/выплаты. Не переводит деньги. Сохраняет другие части, возвращает остаток и задачи. receiptId — конкретная часть из getPaymentConfirmation, без него отменяется последняя часть. Только после подтверждения администратора.",
+      inputSchema: z.object({ paymentId: z.string().uuid(), receiptId: z.string().uuid().optional() }),
+      execute: async ({ paymentId, receiptId }) => {
+        const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+        const db = await ownerFinanceAdminClient();
+        const { data, error } = await db.from("payments").select("*").eq("id", paymentId).single();
+        if (error) throw new Error(error.message);
+        if (data.rental_component === "owner_plan") throw new Error("Это план выплаты, подтверждения ещё нет");
+        const events = (data.cash_receipts ?? []) as { id: string; amount: number; account: string }[];
+        const event = receiptId ? events.find(e => e.id === receiptId) : events.at(-1);
+        if (receiptId && !event) throw new Error("Часть поступления не найдена");
+        const summary = `Отменить подтверждение ${money(event?.amount ?? data.paid_amount ?? data.amount)} · ${event?.account ?? data.account}. Остатки и задачи будут пересчитаны; реальные переводы не выполняются`;
+        ctx.propose({ tool: "reversePaymentConfirmation", summary, input: { paymentId, receiptId: receiptId ?? null, expected: data, requestId: crypto.randomUUID() } });
+        return { proposed: true, summary };
+      },
+    }),
     proposeMarkPaymentPaid: tool({
       description: "Предложить провести операцию, в том числе будущую, вручную. Сегодняшние и прошедшие операции проводятся автоматически, кроме явно частичных оплат. Требует подтверждения.",
       inputSchema: z.object({

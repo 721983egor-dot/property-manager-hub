@@ -616,6 +616,7 @@ export function CounterpartyCardPage({ id }: { id: string }) {
                     <div className="flex w-36 shrink-0 items-center justify-end gap-2">
                       <span className="text-xs text-muted-foreground">{statusLabel(status)}</span>
                       <PaymentCompletion
+                      payment={payment}
                         status={status}
                         label={payment.comment || payment.article?.name || kindLabel(payment.kind)}
                         disabled={markPaid.isPending || payment.id.startsWith("owner-forecast:")}
