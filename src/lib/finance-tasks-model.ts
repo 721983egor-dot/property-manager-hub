@@ -1,3 +1,4 @@
+import { effectivePaymentStatus } from "./finance-payment-status.ts";
 import { ownerCashPayments } from "./finance-company-model.ts";
 import type { Payment } from "./finance.ts";
 import type { StaffTask } from "./tasks.ts";
@@ -11,8 +12,9 @@ export type FinanceTaskBooking = {
   propertyName: string;
 };
 export type FinanceTaskInfo = {
-  kind: "receipt" | "owner_payout";
-  bookingId: string;
+  kind: "receipt" | "owner_payout" | "payment";
+  direction?: "in" | "out";
+  bookingId: string | null;
   paymentId: string | null;
   period: string;
   amount: number;
@@ -38,6 +40,7 @@ export type FinanceTaskSources = {
   settlements: OwnerSettlement[];
   parties: { id: string; name: string }[];
   articles: { id: string; name: string; code: string | null }[];
+  cancelledBookingIds?: string[];
   assigneeId: string | null;
 };
 const money = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -59,7 +62,9 @@ function base(
   const title =
     meta.kind === "receipt"
       ? `Получить оплату · ${b.clientName}`
-      : `Выплатить собственнику · ${meta.partyName}`;
+      : meta.kind === "owner_payout"
+        ? `Выплатить собственнику · ${meta.partyName}`
+        : `${meta.direction === "in" ? "Получить" : "Оплатить"} · ${meta.articleName}${meta.partyName === "Без контрагента" ? "" : " · " + meta.partyName}`;
   const amount = (done ? meta.amount : meta.remaining).toLocaleString("ru-RU") + " ₽";
   return {
     id,
@@ -71,8 +76,8 @@ function base(
     due_end: "",
     assignee_id: s.assigneeId,
     created_by: null,
-    property_id: b.property_id,
-    deal_id: null,
+    property_id: b.property_id || null,
+    deal_id: p?.deal_id ?? null,
     task_type_id: null,
     maintenance_service_item_id: null,
     is_recurring: false,
@@ -115,6 +120,7 @@ export function buildFinanceTasks(s: FinanceTaskSources): FinanceTask[] {
       );
     const meta: FinanceTaskInfo = {
       kind: "receipt",
+      direction: "in",
       bookingId: b.id,
       paymentId: p.id,
       period: p.rental_period ?? p.planned_date.slice(0, 7) + "-01",
@@ -215,6 +221,7 @@ export function buildFinanceTasks(s: FinanceTaskSources): FinanceTask[] {
       "Собственник";
     const meta: FinanceTaskInfo = {
       kind: "owner_payout",
+      direction: "out",
       bookingId: g.booking.id,
       paymentId: physical?.id ?? null,
       period: g.period,
@@ -232,6 +239,137 @@ export function buildFinanceTasks(s: FinanceTaskSources): FinanceTask[] {
     result.push(
       base("finance:owner:" + key, g.booking, first.planned_date, remaining <= 0, meta, s, first),
     );
+  }
+  // Booking receipts and owner settlement groups are already represented above.
+  const handled = new Set(result.map((t) => t.finance.paymentId).filter(Boolean));
+  const ownerObligations = new Set(
+    result
+      .filter((t) => t.finance.kind === "owner_payout")
+      .map((t) => t.finance.obligationId)
+      .filter(Boolean),
+  );
+  const ownerGroups = new Map<string, Payment[]>();
+  for (const p of s.payments) {
+    if (p.kind === "owner_payout" && p.obligation_id && !ownerObligations.has(p.obligation_id))
+      ownerGroups.set(p.obligation_id, [...(ownerGroups.get(p.obligation_id) ?? []), p]);
+  }
+  for (const [obligation, rows] of ownerGroups) {
+    const plan = rows.find((p) => p.rental_component === "owner_plan");
+    if (plan?.owner_payout_on_request || !rows.some(relevant)) continue;
+    const remaining = money(plan?.amount ?? 0);
+    const actual = money(
+      rows.filter((p) => p.rental_component !== "owner_plan").reduce((n, p) => n + paid(p), 0),
+    );
+    if (remaining <= 0 && actual <= 0) continue;
+    const first = plan ?? rows[0]!;
+    const b = bookings.get(first.booking_id ?? "");
+    if (
+      b?.status === "cancelled" ||
+      (first.booking_id && s.cancelledBookingIds?.includes(first.booking_id))
+    )
+      continue;
+    const party =
+      s.parties.find((c) => c.id === first.counterparty_id)?.name ||
+      first.counterparty_name ||
+      "Собственник";
+    const article =
+      s.articles.find((a) => a.id === first.article_id) ??
+      s.articles.find((a) => a.code === "owner_payout");
+    const context = b ?? {
+      id: "",
+      property_id: first.property_id || "",
+      status: "active",
+      clientName: party,
+      propertyName: first.property?.internal_name || first.property?.title || "Без объекта",
+    };
+    result.push(
+      base(
+        `finance:obligation:${obligation}`,
+        context,
+        first.task_expected_date || first.planned_date,
+        remaining <= 0,
+        {
+          kind: "owner_payout",
+          direction: "out",
+          bookingId: b?.id ?? null,
+          paymentId: plan?.id ?? null,
+          period: first.rental_period || first.planned_date.slice(0, 7) + "-01",
+          amount: money(remaining + actual),
+          remaining,
+          articleId: article?.id ?? null,
+          articleName: article?.name || "Выплата собственнику",
+          partyName: party,
+          obligationId: obligation,
+          payableNow: remaining,
+          account: first.account,
+          contractDate: first.planned_date,
+        },
+        s,
+        first,
+      ),
+    );
+  }
+  for (const p of s.payments) {
+    if (
+      handled.has(p.id) ||
+      (p.kind === "owner_payout" && p.obligation_id) ||
+      p.rental_component === "owner_plan" ||
+      (p.owner_payout_on_request && p.kind === "owner_payout")
+    )
+      continue;
+    const b = bookings.get(p.booking_id ?? "");
+    if ((p.booking_id || p.rental_schedule || p.rental_installment_id) && !b) continue;
+    if (
+      b?.status === "cancelled" ||
+      (p.booking_id && s.cancelledBookingIds?.includes(p.booking_id))
+    )
+      continue;
+    // Explicit pending operations persist after their due date. Legacy automatic facts stay historical.
+    if (effectivePaymentStatus(p) === "paid" && p.status !== "paid") continue;
+    if (p.status === "paid" && !p.cash_receipts?.length && !p.requires_confirmation) continue;
+    const remaining = money(Math.max(0, p.amount - paid(p)));
+    const party =
+      s.parties.find((c) => c.id === p.counterparty_id)?.name ||
+      p.counterparty_name ||
+      p.client?.full_name ||
+      b?.clientName ||
+      "Без контрагента";
+    const article = s.articles.find((a) => a.id === p.article_id);
+    const context = b ?? {
+      id: "",
+      property_id: p.property_id || "",
+      status: "active",
+      clientName: party,
+      propertyName: p.property?.internal_name || p.property?.title || "Без объекта",
+    };
+    const task = base(
+      `finance:payment:${p.id}`,
+      context,
+      p.task_expected_date || p.planned_date,
+      remaining <= 0,
+      {
+        kind: "payment",
+        direction: p.direction,
+        bookingId: p.booking_id,
+        paymentId: p.id,
+        period: p.rental_period || p.planned_date.slice(0, 7) + "-01",
+        amount: p.amount,
+        remaining,
+        articleId: p.article_id,
+        articleName:
+          article?.name || p.article?.name || (p.direction === "in" ? "Приход" : "Расход"),
+        partyName: party,
+        obligationId: p.obligation_id,
+        payableNow: remaining,
+        account: p.account,
+        contractDate: p.planned_date,
+        receipts: p.cash_receipts,
+      },
+      s,
+      p,
+    );
+    task.description = `${context.propertyName}\n${task.finance.articleName} · ${party}\n${p.comment || "Плановый платёж из финансов"}\nИзменение ожидания относится только к этой операции.`;
+    result.push(task);
   }
   return result.sort(
     (a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? "") || a.id.localeCompare(b.id),

@@ -1,3 +1,4 @@
+import { confirmScheduledPayment } from "./finance-task-payment";
 import { crmAccess } from "./crm-results.server";
 import { loadFinanceTasks } from "./finance-tasks-data";
 import type { supabase } from "@/integrations/supabase/client";
@@ -62,10 +63,20 @@ export async function confirmFinanceTask(input: Record<string, unknown>) {
     f.account !== input["expectedAccount"]
   )
     throw new Error("Условия изменились. Проверьте задачу и подтвердите актуальную сумму");
-  if (f.kind === "receipt") {
+  if (f.kind === "payment") {
+    await confirmScheduledPayment(
+      db as typeof supabase,
+      task,
+      Number(input["amount"]),
+      String(input["date"]),
+      String(input["account"] || f.account),
+      String(input["requestId"]),
+      actor,
+    );
+  } else if (f.kind === "receipt") {
     await confirmTaskReceipt(db as typeof supabase, {
       p_payment: f.paymentId!,
-      p_booking: f.bookingId,
+      p_booking: f.bookingId!,
       p_expected_amount: f.amount,
       p_expected_paid: Math.round((f.amount - f.remaining) * 100) / 100,
       p_expected_date: task.due_date!,

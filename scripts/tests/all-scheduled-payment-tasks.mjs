@@ -1,0 +1,37 @@
+// Reuse the real rental/owner SQL scaffold, then test standalone incoming and outgoing plans.
+import fs from 'node:fs/promises';
+process.env.PGLITE_MODULE=import.meta.resolve(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+let source=await fs.readFile('scripts/tests/finance-task-installments.mjs','utf8');
+const cases=String.raw`
+await db.exec(await fs.readFile('supabase/migrations/20261022140000_all_scheduled_payment_tasks.sql','utf8'));
+const future=(await db.query("SELECT ((now() AT TIME ZONE 'Europe/Moscow')::date+10)::text d")).rows[0].d;
+const receiptAccount=part.account;
+await db.query("INSERT INTO payments(id,planned_date,amount,direction,status,kind,account) VALUES($1,$2,10000,'out','expected','other',$3),($4,$2,20000,'in','expected','other',$3)",[id(8001),future,receiptAccount,id(8002)]);
+assert.equal((await db.query('SELECT requires_confirmation FROM payments WHERE id=$1',[id(8001)])).rows[0].requires_confirmation,true,'all new pending expenses require explicit confirmation');
+const beforeOther=(await db.query('SELECT to_jsonb(p) data FROM payments p WHERE id=$1',[id(8002)])).rows;
+await db.query('SELECT finance_record_scheduled_payment($1,10000,0,$2,$3,4000,$4,$3,$5)',[id(8001),future,receiptAccount,actualToday,id(8003)]);
+await db.query('SELECT finance_record_scheduled_payment($1,10000,0,$2,$3,4000,$4,$3,$5)',[id(8001),future,receiptAccount,actualToday,id(8003)]);
+let expense=(await db.query('SELECT * FROM payments WHERE id=$1',[id(8001)])).rows[0];
+assert.equal(expense.status,'partial');assert.equal(Number(expense.paid_amount),4000);assert.equal(expense.cash_receipts.length,1,'retry never doubles expense');
+await db.query('SELECT finance_reschedule_payment($1,$2,$3)',[id(8001),future,later]);
+assert.equal((await db.query('SELECT planned_date::text d FROM payments WHERE id=$1',[id(8001)])).rows[0].d,future,'original schedule retained');
+await assert.rejects(db.query('SELECT finance_record_scheduled_payment($1,10000,4000,$2,$3,10000,$4,$3,$5)',[id(8001),future,receiptAccount,actualToday,id(8004)]),/изменился/);
+await db.query('SELECT finance_record_scheduled_payment($1,10000,4000,$2,$3,10000,$4,$5,$6)',[id(8001),later,receiptAccount,actualToday,'Наличные переименованы',id(8004)]);
+expense=(await db.query('SELECT * FROM payments WHERE id=$1',[id(8001)])).rows[0];
+assert.equal(expense.status,'paid');assert.deepEqual(expense.cash_receipts.map(e=>[e.amount,e.account]),[[4000,receiptAccount],[6000,'Наличные переименованы']]);
+assert.deepEqual((await db.query('SELECT to_jsonb(p) data FROM payments p WHERE id=$1',[id(8002)])).rows,beforeOther,'one payment move never edits another scheduled occurrence');
+await db.query('SELECT finance_record_scheduled_payment($1,20000,0,$2,$3,20000,$4,$3,$5)',[id(8002),future,receiptAccount,actualToday,id(8005)]);
+assert.equal((await db.query('SELECT status FROM payments WHERE id=$1',[id(8002)])).rows[0].status,'paid','standalone income can be fully confirmed');
+await db.query("SELECT set_config('test.user',$1,false)",[id(2)]);
+await assert.rejects(db.query('SELECT finance_reschedule_payment($1,$2,$3)',[legacy.id,legacy.date,later]),/администратор/);
+await assert.rejects(db.query('SELECT finance_record_scheduled_payment($1,10000,0,$2,$3,4000,$4,$3,$5)',[id(8001),future,receiptAccount,actualToday,id(8006)]),/администратор/);
+await db.query("SELECT set_config('test.user',$1,false)",[id(1)]);
+const ownerPlan=(await db.query("SELECT id,amount,account,planned_date::text d FROM payments WHERE rental_component='owner_plan' AND NOT owner_payout_on_request AND amount>0 LIMIT 1")).rows[0];
+assert.ok(ownerPlan);
+await assert.rejects(db.query('SELECT finance_record_scheduled_payment($1,$2,0,$3,$4,1,$5,$4,$6)',[ownerPlan.id,ownerPlan.amount,ownerPlan.d,ownerPlan.account,actualToday,id(8007)]),/через расчёт собственника/);
+await db.query('SELECT finance_reschedule_payment($1,$2,$3)',[ownerPlan.id,ownerPlan.d,later]);
+assert.equal((await db.query('SELECT task_expected_date::text d FROM payments WHERE id=$1',[ownerPlan.id])).rows[0].d,later,'manual owner plan expectation can move without editing protected terms');
+console.log('PASS: standalone income/expense, split actual accounts, partial/full, retry, stale snapshot, original date preserved, other occurrences unchanged, administrator only');
+`;
+source=source.replace('await db.close();', cases+'\nawait db.close();');
+await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));

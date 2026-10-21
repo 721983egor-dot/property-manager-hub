@@ -279,3 +279,123 @@ test("owner expectation overrides only matching booking/period, preserving contr
     "2027-01-05",
   );
 });
+
+test("standalone future income and expenses produce one task each without booking", () => {
+  const tasks = buildFinanceTasks(
+    source([
+      p("service", {
+        booking_id: null,
+        rental_component: null,
+        direction: "in",
+        kind: "other",
+        amount: 12000,
+        company_fee: null,
+        planned_date: "2099-01-07",
+        requires_confirmation: true,
+      }),
+      p("ads", {
+        booking_id: null,
+        property_id: null,
+        rental_component: null,
+        direction: "out",
+        kind: "agency_cost",
+        amount: 4000,
+        company_fee: null,
+        planned_date: "2099-01-08",
+        requires_confirmation: true,
+      }),
+    ]),
+  );
+  assert.equal(tasks.length, 2);
+  assert.equal(tasks[0]!.id, "finance:payment:service");
+  assert.equal(tasks[0]!.finance.bookingId, null);
+  assert.equal(tasks[0]!.finance.direction, "in");
+  assert.equal(tasks[1]!.finance.direction, "out");
+  assert.equal(tasks[1]!.property_id, null);
+  assert.match(tasks[1]!.title, /^Оплатить/);
+});
+test("part-paid ordinary expense persists overdue and keeps actual history, paid legacy facts stay out", () => {
+  const tasks = buildFinanceTasks(
+    source([
+      p("partial-cost", {
+        booking_id: null,
+        rental_component: null,
+        direction: "out",
+        kind: "other",
+        amount: 10000,
+        paid_amount: 4000,
+        status: "partial",
+        planned_date: "2020-01-01",
+        task_expected_date: "2099-02-01",
+        requires_confirmation: true,
+      }),
+      p("old-auto", {
+        booking_id: null,
+        rental_component: null,
+        planned_date: "2020-01-01",
+        status: "expected",
+      }),
+      p("already-paid", {
+        booking_id: null,
+        rental_component: null,
+        planned_date: "2099-01-01",
+        status: "paid",
+      }),
+    ]),
+  );
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0]!.finance.remaining, 6000);
+  assert.equal(tasks[0]!.due_date, "2099-02-01");
+  assert.equal(tasks[0]!.finance.contractDate, "2020-01-01");
+});
+test("standalone dated owner obligation is one grouped task; undated balance is excluded", () => {
+  const rows = [
+    p("owner-plan", {
+      booking_id: null,
+      direction: "out",
+      kind: "owner_payout",
+      rental_component: "owner_plan",
+      obligation_id: "ob",
+      amount: 7000,
+      status: "partial",
+      paid_amount: 0,
+    }),
+    p("owner-paid", {
+      booking_id: null,
+      direction: "out",
+      kind: "owner_payout",
+      rental_component: null,
+      obligation_id: "ob",
+      amount: 3000,
+      status: "paid",
+      paid_amount: 3000,
+    }),
+  ];
+  const tasks = buildFinanceTasks(source(rows));
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0]!.id, "finance:obligation:ob");
+  assert.equal(tasks[0]!.finance.remaining, 7000);
+  assert.equal(tasks[0]!.finance.amount, 10000);
+  assert.equal(tasks[0]!.finance.bookingId, null);
+  assert.equal(
+    buildFinanceTasks(source([{ ...rows[0]!, owner_payout_on_request: true }, rows[1]!])).length,
+    0,
+  );
+});
+test("booking receipts and owner payouts never gain duplicate generic tasks", () => {
+  const tasks = buildFinanceTasks(source());
+  assert.equal(tasks.length, 2);
+  assert.ok(tasks.every((t) => t.finance.kind !== "payment"));
+});
+test("cancelled booking payments stay excluded from generic tasks", () => {
+  const s = source([
+    p("cancelled-service", {
+      booking_id: "cancelled",
+      rental_component: null,
+      planned_date: "2099-01-01",
+      requires_confirmation: true,
+    }),
+  ]);
+  s.cancelledBookingIds = ["cancelled"];
+  assert.equal(buildFinanceTasks(s).length, 0);
+});

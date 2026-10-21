@@ -23,7 +23,13 @@ export async function loadFinanceTasks(db: typeof supabase = supabase) {
     }
   }
   const [raw, bs, settings, sts, parties, articles, admins] = await Promise.all([
-    pages((a, b) => db.from("payments").select("*").order("id").range(a, b)),
+    pages((a, b) =>
+      db
+        .from("payments")
+        .select("*,properties(id,title,internal_name,ref_id),clients(id,full_name,phone)")
+        .order("id")
+        .range(a, b),
+    ),
     pages((a, b) =>
       db
         .from("bookings")
@@ -68,6 +74,7 @@ export async function loadFinanceTasks(db: typeof supabase = supabase) {
     }));
   const sources: FinanceTaskSources = {
     payments: raw.map(mapPayment),
+    cancelledBookingIds: bs.filter((b) => b["status"] === "cancelled").map((b) => String(b["id"])),
     bookings,
     settings: settings as unknown as FinanceTaskSources["settings"],
     settlements: sts as unknown as OwnerSettlement[],

@@ -64,3 +64,5 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
 // Выплаты по запросу: ownerPayoutMode=on_request через proposeBooking / proposeUpdateRentalContract; getRentalContract.ownerPayoutMode, getOwnerExpenseStatement — долг и хранение без просрочки.
 
 // Financial task rescheduling: getFinanceTasks → proposeRescheduleFinanceTask → confirmed rescheduleFinanceTask; payment audit preserves contract dates.
+
+// getFinanceTasks / proposeConfirmFinanceTask / proposeRescheduleFinanceTask also cover all standalone scheduled income and expenses, with existing confirmation and audit.

@@ -1,3 +1,5 @@
+import { confirmScheduledPayment } from "@/lib/finance-task-payment";
+import { PaymentDialog } from "./PaymentDialog";
 import { fetchFinanceAccounts } from "@/lib/finance-accounts";
 import { rescheduleFinanceTask } from "@/lib/finance-task-schedule";
 import { useState } from "react";
@@ -5,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchBooking } from "@/lib/bookings";
-import { formatAdeskMoney, formatFinanceDate } from "@/lib/finance";
+import { fetchPayment, formatAdeskMoney, formatFinanceDate } from "@/lib/finance";
 import { financeToday } from "@/lib/finance-payment-status";
 import { confirmTaskReceipt } from "@/lib/finance-task-receipt";
 import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
@@ -27,6 +29,9 @@ export function FinanceTaskDialog({
   const qc = useQueryClient();
   const [snapshot] = useState(task);
   const f = snapshot.finance!;
+  const incoming = f.kind === "receipt" || (f.kind === "payment" && f.direction === "in");
+  const ordinary = f.kind === "payment";
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [amount, setAmount] = useState(String(f.remaining));
   const [account, setAccount] = useState(f.account);
   const [requestId] = useState(() => crypto.randomUUID());
@@ -42,8 +47,13 @@ export function FinanceTaskDialog({
   const [payoutOpen, setPayoutOpen] = useState(false);
   const booking = useQuery({
     queryKey: ["finance-task-booking", f.bookingId],
-    queryFn: () => fetchBooking(f.bookingId),
-    enabled: open && bookingOpen,
+    queryFn: () => fetchBooking(f.bookingId!),
+    enabled: open && bookingOpen && !!f.bookingId,
+  });
+  const payment = useQuery({
+    queryKey: ["payments", "task-editor", f.paymentId],
+    queryFn: () => fetchPayment(f.paymentId!),
+    enabled: open && paymentOpen && !!f.paymentId,
   });
   const changed =
     task.due_date !== snapshot.due_date ||
@@ -62,10 +72,14 @@ export function FinanceTaskDialog({
       if (changed) throw new Error("Условия изменились. Закройте задачу и откройте её заново");
       const n = Number(amount);
       if (!Number.isFinite(n) || n <= 0 || n > f.remaining)
-        throw new Error("Укажите полученную сумму в пределах остатка");
+        throw new Error("Укажите сумму в пределах остатка");
+      if (ordinary) {
+        await confirmScheduledPayment(supabase, snapshot, n, date, account, requestId);
+        return;
+      }
       await confirmTaskReceipt(supabase, {
         p_payment: f.paymentId!,
-        p_booking: f.bookingId,
+        p_booking: f.bookingId!,
         p_expected_amount: f.amount,
         p_expected_paid: Math.round((f.amount - f.remaining) * 100) / 100,
         p_expected_date: snapshot.due_date!,
@@ -79,7 +93,9 @@ export function FinanceTaskDialog({
     onSuccess: async () => {
       await refresh();
       onOpenChange(false);
-      toast.success("Поступление записано. Остаток задачи пересчитан");
+      toast.success(
+        `${incoming ? "Поступление записано" : "Оплата записана"}. Остаток задачи пересчитан`,
+      );
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось записать поступление"),
   });
@@ -88,14 +104,18 @@ export function FinanceTaskDialog({
     onSuccess: async () => {
       await refresh();
       onOpenChange(false);
-      toast.success("Ожидаемая дата изменена. График брони сохранён");
+      toast.success(
+        ordinary
+          ? "Ожидаемая дата изменена. Другие операции сохранены"
+          : "Ожидаемая дата изменена. График брони сохранён",
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
   return (
     <>
       <Dialog
-        open={open && !bookingOpen && !payoutOpen}
+        open={open && !bookingOpen && !payoutOpen && !paymentOpen}
         onOpenChange={(v) => {
           if (!confirm.isPending && !reschedule.isPending) onOpenChange(v);
         }}
@@ -104,8 +124,8 @@ export function FinanceTaskDialog({
           <DialogHeader>
             <DialogTitle>{task.title}</DialogTitle>
             <DialogDescription>
-              Задача связана с платежом брони. Части оплаты сохраняются отдельно, задача закрывается
-              после полной оплаты.
+              Задача связана с операцией в финансах. Части оплаты сохраняются отдельно, задача
+              закрывается после полной оплаты.
             </DialogDescription>
           </DialogHeader>
           <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -115,7 +135,7 @@ export function FinanceTaskDialog({
             </div>
             <div>
               <dt className="text-muted-foreground">
-                Осталось {f.kind === "receipt" ? "получить" : "выплатить"}
+                Осталось {incoming ? "получить" : "оплатить"}
               </dt>
               <dd className="font-semibold">{formatAdeskMoney(f.remaining)}</dd>
             </div>
@@ -125,13 +145,13 @@ export function FinanceTaskDialog({
             </div>
             <div>
               <dt className="text-muted-foreground">
-                {f.kind === "receipt" ? "Клиент" : "Собственник"}
+                {ordinary ? "Контрагент" : incoming ? "Клиент" : "Собственник"}
               </dt>
               <dd>{f.partyName}</dd>
             </div>
           </dl>
           <p className="text-sm">
-            Всего: {formatAdeskMoney(f.amount)} · {f.kind === "receipt" ? "Получено" : "Выплачено"}:{" "}
+            Всего: {formatAdeskMoney(f.amount)} · {incoming ? "Получено" : "Оплачено"}:{" "}
             {formatAdeskMoney(f.amount - f.remaining)}
           </p>
           {f.contractDate && (
@@ -142,7 +162,8 @@ export function FinanceTaskDialog({
                   : "text-sm text-muted-foreground"
               }
             >
-              Срок по договору: {formatFinanceDate(f.contractDate)}
+              {ordinary ? "Первоначальная дата" : "Срок по договору"}:{" "}
+              {formatFinanceDate(f.contractDate)}
               {f.remaining > 0 && f.contractDate < financeToday() ? " · Просрочено" : ""}
             </p>
           )}
@@ -192,23 +213,34 @@ export function FinanceTaskDialog({
               Условия изменились. Откройте задачу заново, чтобы подтвердить актуальную сумму.
             </p>
           )}
-          <Button variant="outline" onClick={() => setBookingOpen(true)}>
-            Открыть бронь и условия
-          </Button>
+          {f.bookingId && (
+            <Button variant="outline" onClick={() => setBookingOpen(true)}>
+              Открыть бронь и условия
+            </Button>
+          )}
+          {ordinary && (
+            <Button
+              variant="outline"
+              disabled={confirm.isPending || reschedule.isPending}
+              onClick={() => setPaymentOpen(true)}
+            >
+              Изменить платёж
+            </Button>
+          )}
           {task.status === "done" ? (
             <p className="text-sm">
               Оплата подтверждена. Изменение фактической операции доступно в финансах.
             </p>
-          ) : f.kind === "receipt" ? (
+          ) : incoming || ordinary ? (
             <div className="space-y-3 border-t pt-3">
               <p className="text-sm">
-                Запишите сумму, полученную сейчас. Для каждой части сохраняются дата и фактический
-                счёт.
+                Запишите сумму, {incoming ? "полученную" : "оплаченную"} сейчас. Для каждой части
+                сохраняются дата и фактический счёт.
               </p>
               <label className="text-sm block">
                 Фактический счёт
                 <select
-                  aria-label="Счёт поступления"
+                  aria-label={incoming ? "Счёт поступления" : "Счёт оплаты"}
                   className="block w-full border rounded p-2"
                   value={account}
                   onChange={(e) => setAccount(e.target.value)}
@@ -227,9 +259,9 @@ export function FinanceTaskDialog({
                 </p>
               )}
               <label className="text-sm block">
-                Получено сейчас, ₽
+                {incoming ? "Получено" : "Оплачено"} сейчас, ₽
                 <Input
-                  aria-label="Получено сейчас"
+                  aria-label={incoming ? "Получено сейчас" : "Оплачено сейчас"}
                   type="number"
                   min="0.01"
                   step="0.01"
@@ -241,7 +273,7 @@ export function FinanceTaskDialog({
               <label className="text-sm block">
                 Фактическая дата
                 <Input
-                  aria-label="Дата поступления"
+                  aria-label={incoming ? "Дата поступления" : "Дата оплаты"}
                   type="date"
                   max={financeToday()}
                   value={date}
@@ -257,7 +289,11 @@ export function FinanceTaskDialog({
                 }
                 onClick={() => confirm.mutate()}
               >
-                {confirm.isPending ? "Сохранение…" : "Подтвердить поступление"}
+                {confirm.isPending
+                  ? "Сохранение…"
+                  : incoming
+                    ? "Подтвердить поступление"
+                    : "Подтвердить оплату"}
               </Button>
             </div>
           ) : (
@@ -282,6 +318,29 @@ export function FinanceTaskDialog({
           )}
         </DialogContent>
       </Dialog>
+      {paymentOpen && !payment.data && (
+        <Dialog open onOpenChange={() => setPaymentOpen(false)}>
+          <DialogContent>
+            <DialogTitle>
+              {payment.error ? "Не удалось загрузить платёж" : "Загрузка платежа…"}
+            </DialogTitle>
+            {payment.error && <Button onClick={() => void payment.refetch()}>Повторить</Button>}
+          </DialogContent>
+        </Dialog>
+      )}
+      {paymentOpen && payment.data && (
+        <PaymentDialog
+          open
+          payment={payment.data}
+          onOpenChange={(v) => {
+            setPaymentOpen(v);
+            if (!v) {
+              void refresh();
+              onOpenChange(false);
+            }
+          }}
+        />
+      )}
       {bookingOpen && booking.isPending && (
         <Dialog open onOpenChange={() => setBookingOpen(false)}>
           <DialogContent>

@@ -499,7 +499,9 @@ function TasksPage() {
                           )}
                           {task.finance && task.finance.amount > task.finance.remaining && (
                             <p className="mt-1 text-xs text-emerald-700">
-                              {task.finance.kind === "receipt" ? "Получено" : "Выплачено"}{" "}
+                              {task.finance.kind === "receipt" || task.finance.direction === "in"
+                                ? "Получено"
+                                : "Оплачено"}{" "}
                               {(task.finance.amount - task.finance.remaining).toLocaleString(
                                 "ru-RU",
                               )}{" "}
@@ -510,8 +512,10 @@ function TasksPage() {
                             task.finance.remaining > 0 &&
                             task.finance.contractDate < today && (
                               <p className="mt-1 text-xs text-destructive">
-                                Срок по договору {formatDateRu(task.finance.contractDate)} ·
-                                просрочено
+                                {task.finance.kind === "payment"
+                                  ? "Первоначальный срок"
+                                  : "Срок по договору"}{" "}
+                                {formatDateRu(task.finance.contractDate)} · просрочено
                               </p>
                             )}
                           {task.is_recurring ? (

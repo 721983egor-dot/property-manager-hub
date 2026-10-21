@@ -2588,6 +2588,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finance_record_scheduled_payment: {Args:{p_payment:string;p_expected_amount:number;p_expected_paid:number;p_expected_date:string;p_expected_account:string;p_paid_total:number;p_paid_date:string;p_received_account:string;p_request_id:string;p_actor?:string|null};Returns:undefined};
+      finance_reschedule_payment: {Args:{p_payment:string;p_expected_date:string;p_date:string;p_actor?:string|null};Returns:undefined};
       finance_record_task_receipt: {Args:{p_payment:string;p_booking:string;p_expected_amount:number;p_expected_paid:number;p_expected_date:string;p_expected_account:string;p_paid_total:number;p_paid_date:string;p_received_account:string;p_request_id:string;p_actor?:string|null};Returns:undefined};
       finance_reschedule_task: {Args:{p_booking:string;p_payment:string|null;p_period:string;p_kind:string;p_expected_date:string|null;p_date:string;p_actor?:string|null};Returns:undefined};
       finance_confirm_task_receipt: {Args:{p_payment:string;p_booking:string;p_expected_amount:number;p_expected_paid:number;p_expected_date:string;p_expected_account:string;p_paid_total:number;p_paid_date:string;p_actor?:string|null};Returns:undefined};
