@@ -27,7 +27,7 @@ export function OwnerPayoutDialog({
   const save = useMutation({
     mutationFn: () => payOwnerSettlement(obligationId, Number(amount), account, date, requestId),
     onSuccess: () => {
-      for (const key of ["payments", "finance-obligations", "finance-owner-settlements"])
+      for (const key of ["payments", "finance-obligations", "finance-owner-settlements", "finance-tasks"])
         void qc.invalidateQueries({ queryKey: [key] });
       onClose();
       toast.success("Выплата записана, задолженность уменьшена");

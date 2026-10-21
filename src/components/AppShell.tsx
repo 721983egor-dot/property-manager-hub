@@ -1,3 +1,6 @@
+import { fetchTasks } from "@/lib/tasks";
+import { fetchFinanceTasks } from "@/lib/finance-tasks-data";
+import { useFinanceToday } from "@/hooks/use-finance-today";
 import { Link, Navigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -40,7 +43,6 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteCartBar } from "@/components/site/SiteCartBar";
 import { SiteChatWidget } from "@/components/site/SiteChatWidget";
 import { PreviewBanner } from "@/components/PreviewBanner";
-
 
 /** Префиксы внутренних разделов RM OS — всё остальное рендерится как публичный сайт. */
 const CRM_PREFIXES = [
@@ -160,7 +162,13 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         </>
       )}
 
-      <Link to={isAdmin ? "/crm/deals" : "/crm/clients"} onClick={onNavigate} className={NAV_LINK_CLASS}>
+      <TasksNavLink onNavigate={onNavigate} />
+
+      <Link
+        to={isAdmin ? "/crm/deals" : "/crm/clients"}
+        onClick={onNavigate}
+        className={NAV_LINK_CLASS}
+      >
         <Handshake className="size-4 shrink-0" /> CRM
       </Link>
 
@@ -208,7 +216,6 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
   );
 }
 
-
 function SignOutButton() {
   return (
     <button
@@ -251,7 +258,6 @@ type NavItem = {
   socialOnly?: boolean;
 };
 
-
 const MOBILE_NAV: NavItem[] = [
   { to: "/objects", label: "Объекты", icon: Building2 },
   { to: "/calendar", label: "Календарь", icon: CalendarDays, managerOnly: true },
@@ -262,7 +268,6 @@ const MOBILE_NAV: NavItem[] = [
   { to: "/crm/clients", label: "Клиенты", icon: Users, managerOnly: true },
   { to: "/promo", label: "Публикации", icon: Megaphone, adminOnly: true },
 ];
-
 
 function CrmMobileNav({ unread }: { unread: number }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -276,11 +281,8 @@ function CrmMobileNav({ unread }: { unread: number }) {
           (!item.socialOnly || isSocialOwner),
       );
 
-
   return (
-    <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_-6px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden"
-    >
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_-6px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
       <div
         className="grid h-16 items-center px-1"
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
@@ -299,9 +301,7 @@ function CrmMobileNav({ unread }: { unread: number }) {
                 <span className="ai-glow-ring grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform group-active:scale-95">
                   <Sparkles className="ai-glow size-5" />
                 </span>
-                <span className="text-[10px] font-semibold text-primary">
-                  {item.label}
-                </span>
+                <span className="text-[10px] font-semibold text-primary">{item.label}</span>
               </Link>
             );
           }
@@ -363,58 +363,95 @@ function CrmShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
       <PreviewBanner />
       <div className="flex min-h-0 min-w-0 flex-1">
-      <CrmShellNotifications />
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
-        <div className="flex h-16 items-center gap-2.5 px-5">
-          <img src={logoNavy} alt="Резиденция&Море" className="h-7 w-auto shrink-0" />
-        </div>
-        <CrmNav unread={unread} />
-        <div className="mt-auto p-3">
-          <SignOutButton />
-        </div>
-      </aside>
-
-      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent side="left" className="w-[17rem] bg-sidebar p-0 lg:hidden">
-          <SheetTitle className="flex h-14 items-center gap-2.5 px-5 text-[15px] font-semibold">
-            <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
-          </SheetTitle>
-
-          <div className="flex h-[calc(100%-3.5rem)] flex-col overflow-y-auto">
-            <CrmNav unread={unread} onNavigate={() => setMenuOpen(false)} />
-            <div className="mt-auto p-3">
-              <SignOutButton />
-            </div>
+        <CrmShellNotifications />
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
+          <div className="flex h-16 items-center gap-2.5 px-5">
+            <img src={logoNavy} alt="Резиденция&Море" className="h-7 w-auto shrink-0" />
           </div>
-        </SheetContent>
-      </Sheet>
+          <CrmNav unread={unread} />
+          <div className="mt-auto p-3">
+            <SignOutButton />
+          </div>
+        </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur lg:hidden">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Меню"
-            className="grid size-9 shrink-0 place-items-center rounded-md border border-border"
-          >
-            <Menu className="size-5" />
-          </button>
-          <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+          <SheetContent side="left" className="w-[17rem] bg-sidebar p-0 lg:hidden">
+            <SheetTitle className="flex h-14 items-center gap-2.5 px-5 text-[15px] font-semibold">
+              <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
+            </SheetTitle>
 
-          {unread > 0 && (
-            <Link
-              to="/chats"
-              className="ml-auto flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-[12px] font-semibold text-primary-foreground"
+            <div className="flex h-[calc(100%-3.5rem)] flex-col overflow-y-auto">
+              <CrmNav unread={unread} onNavigate={() => setMenuOpen(false)} />
+              <div className="mt-auto p-3">
+                <SignOutButton />
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Меню"
+              className="grid size-9 shrink-0 place-items-center rounded-md border border-border"
             >
-              <MessagesSquare className="size-3.5" />
-              {unread}
-            </Link>
-          )}
-        </header>
-        <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
-        <CrmMobileNav unread={unread} />
-      </div>
+              <Menu className="size-5" />
+            </button>
+            <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
+
+            {unread > 0 && (
+              <Link
+                to="/chats"
+                className="ml-auto flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-[12px] font-semibold text-primary-foreground"
+              >
+                <MessagesSquare className="size-3.5" />
+                {unread}
+              </Link>
+            )}
+          </header>
+          <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+            {children}
+          </main>
+          <CrmMobileNav unread={unread} />
+        </div>
       </div>
     </div>
+  );
+}
+
+function TasksNavLink({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
+  const { isAdmin } = useAccess();
+  const regular = useQuery({
+    queryKey: ["tasks"],
+    queryFn: fetchTasks,
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+  const finance = useQuery({
+    queryKey: ["finance-tasks"],
+    queryFn: fetchFinanceTasks,
+    enabled: isAdmin,
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+  const today = useFinanceToday();
+  const count = [...(regular.data ?? []), ...(isAdmin ? (finance.data ?? []) : [])].filter(
+    (t) => t.status === "open" && t.due_date && t.due_date <= today,
+  ).length;
+  return (
+    <Link to="/crm/tasks" onClick={onNavigate} className={NAV_LINK_CLASS}>
+      <ListTodo className="size-4 shrink-0" />
+      Задачи
+      {count > 0 && (
+        <span
+          title="На сегодня и просроченные"
+          className="ml-auto rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground"
+        >
+          {count}
+        </span>
+      )}
+    </Link>
   );
 }

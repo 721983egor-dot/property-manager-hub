@@ -377,6 +377,7 @@ export function PaymentDialog({
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["payments"] });
+    void queryClient.invalidateQueries({ queryKey: ["finance-tasks"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-counterparties"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-obligations"] });

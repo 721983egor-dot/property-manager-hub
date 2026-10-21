@@ -2561,6 +2561,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finance_confirm_task_receipt: {Args:{p_payment:string;p_booking:string;p_expected_amount:number;p_expected_paid:number;p_expected_date:string;p_expected_account:string;p_paid_total:number;p_paid_date:string;p_actor?:string|null};Returns:undefined};
       finance_set_booking_collection_plan: {Args:{p_booking:string;p_plan:Json|null;p_actor?:string|null};Returns:undefined};
       finance_set_booking_cash_terms: {Args:{p_booking:string;p_receipts_from:string;p_owner_rates?:Json;p_actor?:string|null};Returns:undefined};
       finance_save_booking: {Args:{p_booking:string|null;p_input:Json;p_account?:string|null;p_actor?:string|null};Returns:string};

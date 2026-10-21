@@ -161,7 +161,7 @@ function mapArticleJoin(row: Record<string, unknown>): Payment["article"] {
   };
 }
 
-function mapPayment(row: Record<string, unknown>): Payment {
+export function mapPayment(row: Record<string, unknown>): Payment {
   const property =
     firstJoin(row["properties"] as Payment["property"] | Payment["property"][] | null) ?? null;
   const client =

@@ -30,15 +30,9 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
   const [anchor, setAnchor] = useState(() => new Date());
   const days = useMemo(() => weekDays(anchor), [anchor]);
   const todayIso = toISODate(new Date());
-  const typeColor = useMemo(
-    () => new Map(types.map((type) => [type.id, type.color])),
-    [types],
-  );
+  const typeColor = useMemo(() => new Map(types.map((type) => [type.id, type.color])), [types]);
 
-  const timed = useMemo(
-    () => tasks.filter(taskShowsOnCalendar),
-    [tasks],
-  );
+  const timed = useMemo(() => tasks.filter(taskShowsOnCalendar), [tasks]);
 
   const monthLabel = useMemo(() => {
     const mid = days[3] ?? anchor;
@@ -117,6 +111,36 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
         })}
       </div>
 
+      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-[#d2d2d7]">
+        <div className="p-1 text-[10px] text-muted-foreground border-r">В течение дня</div>
+        {days.map((day) => {
+          const iso = toISODate(day);
+          return (
+            <div key={iso} className="min-h-12 max-h-40 overflow-y-auto border-r p-1 space-y-1">
+              {tasks
+                .filter(
+                  (t) => t.due_date === iso && t.status !== "done" && (!t.due_start || !t.due_end),
+                )
+                .map((task) => (
+                  <button
+                    key={task.id}
+                    type="button"
+                    className="w-full rounded border p-1 text-left text-[11px] hover:bg-muted"
+                    onClick={() => onOpenTask(task)}
+                  >
+                    <span className="font-medium">{task.title}</span>
+                    {task.finance && (
+                      <span className="block">
+                        {task.finance.remaining.toLocaleString("ru-RU")} ₽
+                      </span>
+                    )}
+                  </button>
+                ))}
+            </div>
+          );
+        })}
+      </div>
+
       <div className="max-h-[min(70vh,760px)] overflow-auto">
         <div
           className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))]"
@@ -148,8 +172,10 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
                   if (!onCreateAt) return;
                   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
                   const y = event.clientY - rect.top;
-                  const minutesFromStart = Math.round((y / HOUR_HEIGHT) * 60 / 30) * 30;
-                  const startMin = HOUR_START * 60 + Math.max(0, Math.min(minutesFromStart, (HOUR_END - HOUR_START) * 60 - 30));
+                  const minutesFromStart = Math.round(((y / HOUR_HEIGHT) * 60) / 30) * 30;
+                  const startMin =
+                    HOUR_START * 60 +
+                    Math.max(0, Math.min(minutesFromStart, (HOUR_END - HOUR_START) * 60 - 30));
                   const endMin = Math.min(startMin + 60, HOUR_END * 60);
                   const start = `${String(Math.floor(startMin / 60)).padStart(2, "0")}:${String(startMin % 60).padStart(2, "0")}`;
                   const end = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
@@ -169,7 +195,8 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
                   const end = Math.max(timeToMinutes(task.due_end), start + 30);
                   const top = ((start - HOUR_START * 60) / 60) * HOUR_HEIGHT;
                   const height = Math.max(((end - start) / 60) * HOUR_HEIGHT, 22);
-                  const color = (task.task_type_id && typeColor.get(task.task_type_id)) || "#3b82f6";
+                  const color =
+                    (task.task_type_id && typeColor.get(task.task_type_id)) || "#3b82f6";
                   return (
                     <button
                       key={task.id}
@@ -183,7 +210,9 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
                       }}
                       title={`${task.title} (${task.due_start}–${task.due_end})`}
                     >
-                      <p className="truncate text-[12px] font-semibold leading-tight">{task.title || "Задача"}</p>
+                      <p className="truncate text-[12px] font-semibold leading-tight">
+                        {task.title || "Задача"}
+                      </p>
                       <p className="truncate text-[11px] leading-tight opacity-90">
                         {task.due_start}–{task.due_end}
                       </p>

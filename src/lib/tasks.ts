@@ -25,6 +25,7 @@ export type StaffTaskItem = {
 };
 
 export type StaffTask = {
+  finance?: import("./finance-tasks-model").FinanceTaskInfo;
   id: string;
   title: string;
   description: string;
@@ -374,6 +375,7 @@ export async function fetchStaffDirectory(): Promise<StaffDirectoryMember[]> {
 }
 
 export async function saveTask(id: string | null, input: TaskInput): Promise<string> {
+  if(id?.startsWith("finance:")) throw new Error("Условия финансовой задачи меняются в брони");
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -496,6 +498,7 @@ async function spawnNextRecurringTask(task: StaffTask) {
 }
 
 export async function completeTask(id: string) {
+  if(id.startsWith("finance:")) throw new Error("Изменяйте связанную бронь или подтвердите платёж в финансовой задаче");
   const tasks = await selectTasks(async (columns) =>
     supabase.from("tasks").select(columns).eq("id", id).limit(1),
   );
@@ -512,6 +515,7 @@ export async function completeTask(id: string) {
 }
 
 export async function reopenTask(id: string) {
+  if(id.startsWith("finance:")) throw new Error("Изменяйте связанную бронь или подтвердите платёж в финансовой задаче");
   const { error } = await supabase
     .from("tasks")
     .update({ status: "open", completed_at: null } as never)
@@ -520,6 +524,7 @@ export async function reopenTask(id: string) {
 }
 
 export async function postponeTask(id: string, dueDate: string | null) {
+  if(id.startsWith("finance:")) throw new Error("Изменяйте связанную бронь или подтвердите платёж в финансовой задаче");
   const patch: Record<string, unknown> = {
     due_date: dueDate,
     status: "open",
@@ -539,6 +544,7 @@ export async function moveTask(
   position: number,
   current: Pick<StaffTask, "due_start" | "due_end">,
 ) {
+  if(id.startsWith("finance:")) throw new Error("Дату финансовой задачи меняйте в брони");
   const dueDate = dueDateForColumn(column);
   const { error } = await supabase
     .from("tasks")
@@ -555,6 +561,7 @@ export async function moveTask(
 }
 
 export async function deleteTask(id: string) {
+  if(id.startsWith("finance:")) throw new Error("Изменяйте связанную бронь или подтвердите платёж в финансовой задаче");
   const { error } = await supabase.from("tasks").delete().eq("id", id);
   if (error) throw error;
 }

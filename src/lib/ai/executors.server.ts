@@ -890,6 +890,8 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       : `Номер ${result.roomName} назначен в RM OS. ${result.bnovoMessage}`;
   },
 
+  confirmFinanceTask: async input => (await import("@/lib/finance-tasks.server")).confirmFinanceTask(input),
+
   upsertTask: async (input) => {
     const taskId = (input["taskId"] as string | null) || null;
     const patch: Record<string, unknown> = {};

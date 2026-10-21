@@ -1589,9 +1589,14 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getFinanceTasks: tool({
+      description:"Финансовые задачи из бронирований в существующем блоке Задачи. Добавляй к getTasks, когда спрашивают все задачи или задачи на сегодня. Только администратор. Сроки, суммы и статьи всегда берутся из платежей; подтверждение через proposeConfirmFinanceTask, изменения сроков/сумм через бронь. Не создавать копию обычной задачей. Поступления и выплаты собственнику, с учётом его расходов.",
+      inputSchema:z.object({bookingId:z.string().uuid().optional(),status:z.enum(["open","done","all"]).optional(),from:z.string().optional(),to:z.string().optional(),query:z.string().optional()}),
+      execute:async input=>{const rows=await (await import("@/lib/finance-tasks.server")).financeTasksForAssistant();const tasks=rows.filter(t=>(!input.bookingId||t.finance.bookingId===input.bookingId)&&((input.status??"open")==="all"||t.status===(input.status??"open"))&&(!input.from||(t.due_date??"")>=input.from)&&(!input.to||(t.due_date??"")<=input.to)&&(!input.query||(t.title+" "+t.description).toLowerCase().includes(input.query.toLowerCase())));return {count:tasks.length,source:"booking.payments.tasks",tasks:tasks.map(t=>({id:t.id,title:t.title,dueDate:t.due_date,status:t.status,...t.finance}))};},
+    }),
     getTasks: tool({
       description:
-        "Канбан и календарь задач RM OS: открытые и выполненные. Фильтры: текст, исполнитель, объект, сделка, тип, статус (open/done), колонка (overdue/today/this_week/next_week/later/none), регулярные (isRecurring). Задачи с датой и временем видны в календаре. Регулярные после выполнения порождают следующее повторение до recurrence_until.",
+        "Обычные задачи RM OS: открытые и выполненные. Финансовые задачи из бронирований прочитай дополнительно через getFinanceTasks. Фильтры: текст, исполнитель, объект, сделка, тип, статус (open/done), колонка (overdue/today/this_week/next_week/later/none), регулярные (isRecurring). Задачи с датой и временем видны в календаре. Регулярные после выполнения порождают следующее повторение до recurrence_until.",
       inputSchema: z.object({
         query: z.string().optional(),
         assigneeQuery: z.string().optional().describe("ФИО или почта сотрудника"),

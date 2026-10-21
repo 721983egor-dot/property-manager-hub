@@ -1,3 +1,4 @@
+import { FinanceTaskDialog } from "./FinanceTaskDialog";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -83,7 +84,19 @@ type Props = {
   lockTaskType?: boolean;
 };
 
-export function TaskDialog({
+export function TaskDialog(props: Props) {
+  if (props.task?.finance)
+    return props.open ? (
+      <FinanceTaskDialog
+        key={props.task.id}
+        task={props.task}
+        open={props.open}
+        onOpenChange={props.onOpenChange}
+      />
+    ) : null;
+  return <StaffTaskDialog {...props} />;
+}
+function StaffTaskDialog({
   open,
   onOpenChange,
   task,
@@ -99,8 +112,14 @@ export function TaskDialog({
 }: Props) {
   const queryClient = useQueryClient();
   const { profile, isAdmin } = useAccess();
-  const { data: properties = [] } = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
-  const { data: staff = [] } = useQuery({ queryKey: ["staff-directory"], queryFn: fetchStaffDirectory });
+  const { data: properties = [] } = useQuery({
+    queryKey: ["properties"],
+    queryFn: fetchProperties,
+  });
+  const { data: staff = [] } = useQuery({
+    queryKey: ["staff-directory"],
+    queryFn: fetchStaffDirectory,
+  });
   const { data: types = [] } = useQuery({ queryKey: ["task-types"], queryFn: fetchTaskTypes });
   const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: fetchDeals });
   const { data: serviceItems = [] } = useQuery({
@@ -133,7 +152,7 @@ export function TaskDialog({
     setDueDate(
       task?.due_date ??
         defaultDueDate ??
-        (defaultColumn ? dueDateForColumn(defaultColumn, new Date(), "create") ?? "" : ""),
+        (defaultColumn ? (dueDateForColumn(defaultColumn, new Date(), "create") ?? "") : ""),
     );
     setDueStart(task?.due_start || defaultDueStart || NONE);
     setDueEnd(task?.due_end || defaultDueEnd || NONE);
@@ -147,7 +166,18 @@ export function TaskDialog({
     setRecurrenceUntil(task?.recurrence_until ?? "");
     setDraftItems(task ? [] : [{ key: crypto.randomUUID(), title: "", done: false }]);
     setNewItem("");
-  }, [open, task?.id, defaultColumn, defaultDueDate, defaultDueStart, defaultDueEnd, defaultDealId, defaultPropertyId, defaultTaskTypeId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
+  }, [
+    open,
+    task?.id,
+    defaultColumn,
+    defaultDueDate,
+    defaultDueStart,
+    defaultDueEnd,
+    defaultDealId,
+    defaultPropertyId,
+    defaultTaskTypeId,
+    profile?.id,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps -- types только для стартового значения при открытии
 
   const selectedType = useMemo(
     () => types.find((type) => type.id === (typeId === NONE ? "" : typeId)) ?? null,
@@ -237,7 +267,8 @@ export function TaskDialog({
       onOpenChange(false);
       toast.success(task ? "Задача сохранена" : "Задача создана");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Не удалось сохранить"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Не удалось сохранить"),
   });
 
   const addItemMutation = useMutation({
@@ -246,7 +277,8 @@ export function TaskDialog({
       setNewItem("");
       invalidate();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Не удалось добавить пункт"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Не удалось добавить пункт"),
   });
 
   const toggleItemMutation = useMutation({
@@ -343,7 +375,10 @@ export function TaskDialog({
                     {types.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
                         <span className="inline-flex items-center gap-2">
-                          <span className="size-2.5 rounded-full" style={{ background: type.color }} />
+                          <span
+                            className="size-2.5 rounded-full"
+                            style={{ background: type.color }}
+                          />
                           {type.name}
                         </span>
                       </SelectItem>
@@ -354,7 +389,11 @@ export function TaskDialog({
             </div>
             <div className="grid gap-1.5">
               <Label>Дата</Label>
-              <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(event) => setDueDate(event.target.value)}
+              />
             </div>
             <div className="grid gap-1.5">
               <Label>Исполнитель</Label>
@@ -400,17 +439,23 @@ export function TaskDialog({
             </div>
             <div className="grid gap-1.5">
               <Label>Окончание</Label>
-              <Select value={dueEnd} onValueChange={setDueEnd} disabled={!dueDate || dueStart === NONE}>
+              <Select
+                value={dueEnd}
+                onValueChange={setDueEnd}
+                disabled={!dueDate || dueStart === NONE}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="До" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>—</SelectItem>
-                  {TASK_TIME_SLOTS.filter((slot) => dueStart === NONE || slot > dueStart).map((slot) => (
-                    <SelectItem key={slot} value={slot}>
-                      {slot}
-                    </SelectItem>
-                  ))}
+                  {TASK_TIME_SLOTS.filter((slot) => dueStart === NONE || slot > dueStart).map(
+                    (slot) => (
+                      <SelectItem key={slot} value={slot}>
+                        {slot}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -439,7 +484,10 @@ export function TaskDialog({
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label>Повтор</Label>
-                  <Select value={recurrence} onValueChange={(value) => setRecurrence(value as TaskRecurrence)}>
+                  <Select
+                    value={recurrence}
+                    onValueChange={(value) => setRecurrence(value as TaskRecurrence)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -460,78 +508,91 @@ export function TaskDialog({
                     min={dueDate || undefined}
                     onChange={(event) => setRecurrenceUntil(event.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">Срок жизни: до этой даты включительно.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Срок жизни: до этой даты включительно.
+                  </p>
                 </div>
               </div>
             ) : null}
           </div>
 
           {!isMaintenanceTask ? (
-          <div className="grid gap-1.5">
-            <Label>Сделка</Label>
-            <Popover open={dealOpen} onOpenChange={setDealOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="justify-between font-normal">
-                  <span className="truncate">
-                    {selectedDeal
-                      ? selectedDeal.title || "Без названия"
-                      : dealId !== NONE
-                        ? "Привязана к сделке"
-                        : "Не привязана"}
-                  </span>
-                  <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[min(28rem,90vw)] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Название сделки…" />
-                  <CommandList>
-                    <CommandEmpty>Ничего не найдено.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        value="Не привязана"
-                        onSelect={() => {
-                          setDealId(NONE);
-                          setDealOpen(false);
-                        }}
-                      >
-                        <Check className={cn("mr-2 size-4", dealId === NONE ? "opacity-100" : "opacity-0")} />
-                        Не привязана
-                      </CommandItem>
-                      {deals.map((deal) => (
+            <div className="grid gap-1.5">
+              <Label>Сделка</Label>
+              <Popover open={dealOpen} onOpenChange={setDealOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="justify-between font-normal">
+                    <span className="truncate">
+                      {selectedDeal
+                        ? selectedDeal.title || "Без названия"
+                        : dealId !== NONE
+                          ? "Привязана к сделке"
+                          : "Не привязана"}
+                    </span>
+                    <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[min(28rem,90vw)] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Название сделки…" />
+                    <CommandList>
+                      <CommandEmpty>Ничего не найдено.</CommandEmpty>
+                      <CommandGroup>
                         <CommandItem
-                          key={deal.id}
-                          value={deal.title || "Без названия"}
+                          value="Не привязана"
                           onSelect={() => {
-                            setDealId(deal.id);
-                            if (propertyId === NONE && deal.property_id) setPropertyId(deal.property_id);
+                            setDealId(NONE);
                             setDealOpen(false);
                           }}
                         >
                           <Check
-                            className={cn("mr-2 size-4", dealId === deal.id ? "opacity-100" : "opacity-0")}
+                            className={cn(
+                              "mr-2 size-4",
+                              dealId === NONE ? "opacity-100" : "opacity-0",
+                            )}
                           />
-                          {deal.title || "Без названия"}
+                          Не привязана
                         </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {selectedDeal && isAdmin ? (
-              <Link
-                to="/crm/deals/"
-                search={{ deal: selectedDeal.id }}
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                <Handshake className="size-3.5" />
-                Открыть сделку
-              </Link>
-            ) : (
-              <p className="text-xs text-muted-foreground">Задача появится в истории карточки сделки.</p>
-            )}
-          </div>
+                        {deals.map((deal) => (
+                          <CommandItem
+                            key={deal.id}
+                            value={deal.title || "Без названия"}
+                            onSelect={() => {
+                              setDealId(deal.id);
+                              if (propertyId === NONE && deal.property_id)
+                                setPropertyId(deal.property_id);
+                              setDealOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 size-4",
+                                dealId === deal.id ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            {deal.title || "Без названия"}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {selectedDeal && isAdmin ? (
+                <Link
+                  to="/crm/deals/"
+                  search={{ deal: selectedDeal.id }}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <Handshake className="size-3.5" />
+                  Открыть сделку
+                </Link>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Задача появится в истории карточки сделки.
+                </p>
+              )}
+            </div>
           ) : null}
 
           <div className="grid gap-1.5">
@@ -554,9 +615,7 @@ export function TaskDialog({
                   />
                   <CommandList>
                     <CommandEmpty>
-                      {isMaintenanceTask
-                        ? "Нет объектов обслуживания."
-                        : "Ничего не найдено."}
+                      {isMaintenanceTask ? "Нет объектов обслуживания." : "Ничего не найдено."}
                     </CommandEmpty>
                     <CommandGroup>
                       <CommandItem
@@ -566,7 +625,12 @@ export function TaskDialog({
                           setPropertyOpen(false);
                         }}
                       >
-                        <Check className={cn("mr-2 size-4", propertyId === NONE ? "opacity-100" : "opacity-0")} />
+                        <Check
+                          className={cn(
+                            "mr-2 size-4",
+                            propertyId === NONE ? "opacity-100" : "opacity-0",
+                          )}
+                        />
                         Не выбран
                       </CommandItem>
                       {selectableProperties.map((property) => (
@@ -579,7 +643,10 @@ export function TaskDialog({
                           }}
                         >
                           <Check
-                            className={cn("mr-2 size-4", propertyId === property.id ? "opacity-100" : "opacity-0")}
+                            className={cn(
+                              "mr-2 size-4",
+                              propertyId === property.id ? "opacity-100" : "opacity-0",
+                            )}
                           />
                           {internalTitle(property)}
                         </CommandItem>
@@ -679,7 +746,9 @@ export function TaskDialog({
                       value={item.title}
                       onChange={(event) =>
                         setDraftItems((current) =>
-                          current.map((row) => (row.key === item.key ? { ...row, title: event.target.value } : row)),
+                          current.map((row) =>
+                            row.key === item.key ? { ...row, title: event.target.value } : row,
+                          ),
                         )
                       }
                       placeholder="Пункт чеклиста"
@@ -689,7 +758,9 @@ export function TaskDialog({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => setDraftItems((current) => current.filter((row) => row.key !== item.key))}
+                        onClick={() =>
+                          setDraftItems((current) => current.filter((row) => row.key !== item.key))
+                        }
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -701,7 +772,10 @@ export function TaskDialog({
                   variant="ghost"
                   className="justify-start px-0 text-muted-foreground"
                   onClick={() =>
-                    setDraftItems((current) => [...current, { key: crypto.randomUUID(), title: "", done: false }])
+                    setDraftItems((current) => [
+                      ...current,
+                      { key: crypto.randomUUID(), title: "", done: false },
+                    ])
                   }
                 >
                   <Plus className="mr-1.5 size-4" /> Добавить пункт
@@ -770,7 +844,9 @@ function ChecklistRow({
       >
         {done ? <Check className="size-3" /> : null}
       </button>
-      <span className={cn("flex-1 text-sm", done && "text-muted-foreground line-through")}>{title}</span>
+      <span className={cn("flex-1 text-sm", done && "text-muted-foreground line-through")}>
+        {title}
+      </span>
       <Button type="button" variant="ghost" size="icon" onClick={onRemove}>
         <Trash2 className="size-4" />
       </Button>

@@ -54,3 +54,5 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
 // Отдельный согласованный график: getRentalContract.cashTerms.collection_plan; proposeBookingCollectionPlan → setBookingCollectionPlan (admin, подтверждение, аудит).
 
 // Бронь с полными финансовыми условиями: proposeBooking / proposeUpdateRentalContract(financialTerms) → finance_save_booking, общий атомарный путь с редактором; getRentalContract.financialTerms.
+
+// Связанные финансовые задачи: getFinanceTasks → proposeConfirmFinanceTask → подтверждённый confirmFinanceTask; общий проектор с блоком Задачи, аудит в платежах.
