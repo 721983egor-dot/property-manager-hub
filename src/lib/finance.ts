@@ -292,6 +292,7 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
 
 /** Лёгкий список объектов для фильтров Финансов — без select(*) и без server fn. */
 export type FinancePropertyOption = {
+  type?: string | undefined;
   id: string;
   title: string;
   internal_name: string | null;
@@ -308,7 +309,7 @@ export async function fetchFinanceReportPropertyOptions(
 ): Promise<FinancePropertyOption[]> {
   let query = supabase
     .from("properties")
-    .select("id, title, internal_name, ref_id, status")
+    .select("id, title, internal_name, ref_id, status, type")
     .order("title", { ascending: true });
   if (!includeArchived) query = query.neq("status", "archived");
   const { data, error } = await query;
@@ -319,6 +320,7 @@ export async function fetchFinanceReportPropertyOptions(
     internal_name: row.internal_name ?? null,
     ref_id: row.ref_id == null ? null : Number(row.ref_id),
     status: String(row.status ?? ""),
+    type: row.type,
   }));
   return rows.sort((a, b) => financePropertyLabel(a).localeCompare(financePropertyLabel(b), "ru"));
 }

@@ -1,3 +1,9 @@
+import { FinanceObjectProfitability } from "./FinanceObjectProfitability";
+import {
+  objectProfitability,
+  matchesObjectType,
+  type ObjectTypeFilter,
+} from "@/lib/finance-object-profitability";
 import { fetchFinanceObjectClasses, fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import { filterFinanceObjects } from "@/lib/finance-object-model";
 import { Fragment, useMemo, useState } from "react";
@@ -47,7 +53,7 @@ const views: { id: View; label: string }[] = [
   { id: "profit", label: "Прибыли и убытки" },
   { id: "plan", label: "План / факт" },
   { id: "expenses", label: "Анализ расходов" },
-  { id: "objects", label: "По объектам" },
+  { id: "objects", label: "Прибыльность объектов" },
   { id: "debts", label: "Задолженность" },
 ];
 const money = (v: number) => formatAdeskMoney(v);
@@ -55,11 +61,14 @@ const colors = ["#7555cf", "#4195e8", "#4fc2a6", "#f2b65a", "#e67777", "#91a5c4"
 export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolean }) {
   const now = new Date();
   const bounds = monthBounds(now.getFullYear(), now.getMonth());
+  const quarterStart = monthBounds(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3).from;
+  const quarterEnd = monthBounds(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 2).to;
   const [from, setFrom] = useState(bounds.from),
     [to, setTo] = useState(bounds.to),
     [propertyId, setProperty] = useState("all"),
     [classificationId, setClassification] = useState("all"),
-    [view, setView] = useState<View>("cash");
+    [view, setView] = useState<View>("objects"),
+    [objectType, setObjectType] = useState<ObjectTypeFilter>("all");
   const [detail, setDetail] = useState<{ title: string; entries: ReportEntry[] } | null>(null),
     [editing, setEditing] = useState<Payment | null>(null);
   const payments = useQuery({
@@ -91,14 +100,12 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
     const all = payments.data ?? [],
       cat = catalog.data ?? { articles: [], categories: [] };
     const allowed = new Set(
-      filterFinanceObjects(
-        properties.data ?? [],
-        objectAssignments.data ?? [],
-        classificationId,
-      ).map((p) => p.id),
+      filterFinanceObjects(properties.data ?? [], objectAssignments.data ?? [], classificationId)
+        .filter((p) => matchesObjectType(p.type, objectType))
+        .map((p) => p.id),
     );
     const selected =
-      classificationId === "all"
+      classificationId === "all" && objectType === "all"
         ? all
         : all.filter((p) => !!p.property_id && allowed.has(p.property_id));
     const cash = reportEntries(selected, cat, "cash", from, to, propertyId),
@@ -106,12 +113,23 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
       plan = reportEntries(selected, cat, "plan", from, to, propertyId);
     const debt = currentDebts(
       (obligations.data ?? []).filter(
-        (o) => classificationId === "all" || (!!o.property_id && allowed.has(o.property_id)),
+        (o) =>
+          (classificationId === "all" && objectType === "all") ||
+          (!!o.property_id && allowed.has(o.property_id)),
       ),
       all,
       propertyId,
     );
     return {
+      profitability: objectProfitability(
+        selected,
+        cat,
+        (properties.data ?? []).filter((p) => allowed.has(p.id)),
+        from,
+        to,
+        objectType,
+        propertyId,
+      ),
       cash,
       profit,
       plan,
@@ -128,6 +146,7 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
     to,
     propertyId,
     classificationId,
+    objectType,
     properties.data,
     objectAssignments.data,
   ]);
@@ -171,67 +190,103 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
   const show = (title: string, items: ReportEntry[]) => setDetail({ title, entries: items });
   const exportReport = () => {
     const rows: (string | number)[][] =
-      view === "debts"
+      view === "objects"
         ? [
-            ["Контрагент", "Направление", "Дата", "Объект", "Остаток"],
-            ...data.debt.map((d) => [
-              parties.data?.find((p) => p.id === d.counterparty_id)?.name ?? d.counterparty_id,
-              d.direction === "receivable" ? "Нам должны" : "Мы должны",
-              d.planned_date,
-              d.property?.internal_name || d.property?.title || "Без объекта",
-              d.remaining,
+            [
+              "Объект",
+              "Тип",
+              "Начислено гостям",
+              "Доля собственника (известная)",
+              "Выручка компании",
+              "Расходы",
+              "Прибыль",
+              "Рентабельность %",
+              "Аренда без распределения",
+            ],
+            ...data.profitability.rows.map((g) => [
+              g.label,
+              g.type ?? "",
+              g.guest,
+              g.owner,
+              g.income,
+              g.expense,
+              g.net,
+              g.margin ?? "",
+              g.unallocated,
             ]),
+            [
+              "Итого",
+              "",
+              data.profitability.guest,
+              data.profitability.owner,
+              data.profitability.income,
+              data.profitability.expense,
+              data.profitability.net,
+              data.profitability.margin ?? "",
+              data.profitability.unallocated,
+            ],
           ]
-        : view === "plan"
+        : view === "debts"
           ? [
-              ["Показатель", "План", "Факт", "Отклонение"],
-              [
-                "Приход",
-                data.planTotals.income,
-                data.cashTotals.income,
-                data.cashTotals.income - data.planTotals.income,
-              ],
-              [
-                "Расход",
-                data.planTotals.expense,
-                data.cashTotals.expense,
-                data.cashTotals.expense - data.planTotals.expense,
-              ],
-              [
-                "Денежный поток",
-                data.planTotals.net,
-                data.cashTotals.net,
-                data.cashTotals.net - data.planTotals.net,
-              ],
-              ...planCategories.map((g) => [
-                `${g.direction === "in" ? "Приход" : "Расход"} · ${g.name}`,
-                g.plan,
-                g.fact,
-                g.fact - g.plan,
+              ["Контрагент", "Направление", "Дата", "Объект", "Остаток"],
+              ...data.debt.map((d) => [
+                parties.data?.find((p) => p.id === d.counterparty_id)?.name ?? d.counterparty_id,
+                d.direction === "receivable" ? "Нам должны" : "Мы должны",
+                d.planned_date,
+                d.property?.internal_name || d.property?.title || "Без объекта",
+                d.remaining,
               ]),
             ]
-          : [
-              [
-                "Дата",
-                "Объект",
-                "Контрагент",
-                "Деятельность",
-                "Категория",
-                "Статья",
-                "Приход",
-                "Расход",
-              ],
-              ...(view === "expenses" ? expenses : entries).map((e) => [
-                e.date,
-                e.object,
-                e.payment.counterparty_name,
-                e.activity,
-                e.category,
-                e.article,
-                e.payment.direction === "in" ? e.amount : 0,
-                e.payment.direction === "out" ? e.amount : 0,
-              ]),
-            ];
+          : view === "plan"
+            ? [
+                ["Показатель", "План", "Факт", "Отклонение"],
+                [
+                  "Приход",
+                  data.planTotals.income,
+                  data.cashTotals.income,
+                  data.cashTotals.income - data.planTotals.income,
+                ],
+                [
+                  "Расход",
+                  data.planTotals.expense,
+                  data.cashTotals.expense,
+                  data.cashTotals.expense - data.planTotals.expense,
+                ],
+                [
+                  "Денежный поток",
+                  data.planTotals.net,
+                  data.cashTotals.net,
+                  data.cashTotals.net - data.planTotals.net,
+                ],
+                ...planCategories.map((g) => [
+                  `${g.direction === "in" ? "Приход" : "Расход"} · ${g.name}`,
+                  g.plan,
+                  g.fact,
+                  g.fact - g.plan,
+                ]),
+              ]
+            : [
+                [
+                  "Дата",
+                  "Объект",
+                  "Контрагент",
+                  "Деятельность",
+                  "Категория",
+                  "Статья",
+                  "Приход",
+                  "Расход",
+                ],
+                ...(view === "expenses" ? expenses : entries).map((e) => [
+                  e.date,
+                  e.object,
+                  e.payment.counterparty_name,
+                  e.activity,
+                  e.category,
+                  e.article,
+                  e.payment.direction === "in" ? e.amount : 0,
+                  e.payment.direction === "out" ? e.amount : 0,
+                ]),
+              ];
     const url = URL.createObjectURL(new Blob([csvText(rows)], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
@@ -242,8 +297,12 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
   const preset = (value: string) => {
     const offset = value === "last" ? -1 : 0;
     const b = monthBounds(now.getFullYear(), now.getMonth() + offset);
-    setFrom(value === "year" ? `${now.getFullYear()}-01-01` : b.from);
-    setTo(value === "year" ? `${now.getFullYear()}-12-31` : b.to);
+    setFrom(
+      value === "year" ? `${now.getFullYear()}-01-01` : value === "quarter" ? quarterStart : b.from,
+    );
+    setTo(
+      value === "year" ? `${now.getFullYear()}-12-31` : value === "quarter" ? quarterEnd : b.to,
+    );
   };
   const kpi = (label: string, value: number, items?: ReportEntry[], note?: string) => (
     <div className="fa-panel">
@@ -337,7 +396,12 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
   );
   return (
     <div className="finance-ui finance-analytics">
-      <h1>{dashboard ? "Финансовый дашборд" : "Отчёты"}</h1>
+      <h1>
+        {dashboard ? "Финансовый дашборд" : view === "objects" ? "Прибыльность объектов" : "Отчёты"}
+      </h1>
+      {!dashboard && view === "objects" && (
+        <p className="fa-note">Сколько компания зарабатывает на каждом доме и квартире</p>
+      )}
       <FinanceTabs active={dashboard ? "dashboard" : "reports"} />
       <div className="fa-toolbar">
         <select
@@ -350,7 +414,9 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
                 ? "last"
                 : from === `${now.getFullYear()}-01-01` && to === `${now.getFullYear()}-12-31`
                   ? "year"
-                  : "custom"
+                  : from === quarterStart && to === quarterEnd
+                    ? "quarter"
+                    : "custom"
           }
           onChange={(e) => preset(e.target.value)}
         >
@@ -359,6 +425,7 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
           </option>
           <option value="month">Этот месяц</option>
           <option value="last">Прошлый месяц</option>
+          <option value="quarter">Этот квартал</option>
           <option value="year">Этот год</option>
         </select>
         <input
@@ -375,17 +442,31 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
           onChange={(e) => setTo(e.target.value)}
         />
         <select
+          aria-label="Тип объекта отчёта"
+          value={objectType}
+          onChange={(e) => {
+            setObjectType(e.target.value as ObjectTypeFilter);
+            setProperty("all");
+          }}
+        >
+          <option value="all">Дома и квартиры</option>
+          <option value="house">Только дома</option>
+          <option value="apartment">Только квартиры</option>
+        </select>
+        <select
           aria-label="Объект отчёта"
           value={propertyId}
           onChange={(e) => setProperty(e.target.value)}
         >
           <option value="all">Все объекты</option>
-          <option value="none">Без объекта</option>
-          {properties.data?.map((p) => (
-            <option key={p.id} value={p.id}>
-              {financePropertyLabel(p)}
-            </option>
-          ))}
+          {view !== "objects" && <option value="none">Без объекта</option>}
+          {properties.data
+            ?.filter((p) => matchesObjectType(p.type, objectType))
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {financePropertyLabel(p)}
+              </option>
+            ))}
         </select>
         <select
           aria-label="Классификация объектов отчёта"
@@ -400,6 +481,20 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
             </option>
           ))}
         </select>
+        {!dashboard && view === "objects" && (
+          <button
+            className="fa-button"
+            onClick={() => {
+              setFrom(bounds.from);
+              setTo(bounds.to);
+              setObjectType("all");
+              setProperty("all");
+              setClassification("all");
+            }}
+          >
+            Сбросить фильтры
+          </button>
+        )}
         {!dashboard && (
           <button
             className="fa-button"
@@ -653,7 +748,10 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
                     role="tab"
                     aria-selected={view === v.id}
                     key={v.id}
-                    onClick={() => setView(v.id)}
+                    onClick={() => {
+                      setView(v.id);
+                      if (v.id === "objects" && propertyId === "none") setProperty("all");
+                    }}
                   >
                     {v.label}
                   </button>
@@ -668,7 +766,15 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
                       ? "План — по плановой дате; факт — оплаченная часть по дате оплаты. Оплата плана другого периода также входит в факт."
                       : "Оплаченные и частично оплаченные операции по дате оплаты; если она не задана — по плановой дате. Частичные оплаты учитываются общей суммой на указанную дату оплаты."}
               </p>
-              <section className="fa-panel">
+              {view === "objects" && (
+                <FinanceObjectProfitability
+                  report={data.profitability}
+                  from={from}
+                  to={to}
+                  show={show}
+                />
+              )}
+              <section className="fa-panel" hidden={view === "objects"}>
                 <h2>{views.find((v) => v.id === view)?.label}</h2>
                 {view === "debts" ? (
                   debtTable()
@@ -902,6 +1008,45 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
               оплата аренды.
             </SheetDescription>
           </SheetHeader>
+          {detail && view === "objects" && (
+            <div className="fa-detail-summary">
+              <small>
+                {from} — {to} · начисления компании
+              </small>
+              <div>
+                <span>Выручка компании</span>
+                <strong>{money(entryTotals(detail.entries).income)}</strong>
+              </div>
+              <div>
+                <span>Расходы</span>
+                <strong>{money(entryTotals(detail.entries).expense)}</strong>
+              </div>
+              <div>
+                <span>Прибыль компании</span>
+                <strong
+                  className={entryTotals(detail.entries).net < 0 ? "fa-negative" : "fa-positive"}
+                >
+                  {money(entryTotals(detail.entries).net)}
+                </strong>
+              </div>
+              <h3>По статьям</h3>
+              {groupEntries(
+                detail.entries,
+                (e) => `${e.payment.direction === "in" ? "Доход" : "Расход"} · ${e.article}`,
+              ).map((g) => (
+                <div key={g.name}>
+                  <span>{g.name}</span>
+                  <strong>{money(g.net)}</strong>
+                </div>
+              ))}
+              <h3>Исходные операции</h3>
+              {!detail.entries.length && (
+                <p className="fa-note">
+                  Нет начислений компании. Проверьте распределение комиссии по аренде.
+                </p>
+              )}
+            </div>
+          )}
           {detail?.entries.map((e, i) => (
             <button
               key={`${e.payment.id}-${i}`}

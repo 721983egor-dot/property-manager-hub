@@ -1,3 +1,4 @@
+import { objectProfitability } from "@/lib/finance-object-profitability";
 import { leaseReadTools } from "@/lib/lease/tools.server";
 import { buildFinanceCalendar, paymentCashDate } from "@/lib/finance-calendar-model";
 import { effectivePaymentStatus, financeToday, paymentFactAmount } from "@/lib/finance-payment-status";
@@ -2468,6 +2469,26 @@ export function createReadTools(ctx: AssistantToolContext) {
         const cash=reportEntries(rows,catalog,"cash",from,to,propertyId),profit=reportEntries(rows,catalog,"profit",from,to,propertyId),plan=reportEntries(rows,catalog,"plan",from,to,propertyId);
         const compact=(entries: typeof cash, key:(e: typeof cash[number])=>string)=>groupEntries(entries,key).map(({items,...group})=>({...group,paymentIds:items.map(e=>e.payment.id)}));
         return {from,to,cash:entryTotals(cash),profit:entryTotals(profit),plan:entryTotals(plan),cashByCategory:compact(cash,e=>e.category),cashByActivity:compact(cash,e=>e.activity),profitByObject:compact(profit,e=>e.object),currentDebts:currentDebts((obligations.data??[]) as unknown as FinanceObligation[],rows,propertyId)};
+      },
+    }),
+
+    getObjectProfitability: tool({
+      description: "Прибыльность домов и квартир компании за период начислений. Тип house включает дома, виллы и таунхаусы; apartment — квартиры и апартаменты. Комиссия и собственные услуги минус расходы компании; исключены депозиты, КУ, расходы собственников и общие расходы без объекта. Аренда без комиссии отмечается как нераспределённая. Только чтение финансов администратора.",
+      inputSchema: z.object({ from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), objectType: z.enum(["all", "house", "apartment"]).default("all"), propertyId: z.string().optional() }),
+      execute: async ({ from, to, objectType, propertyId }) => {
+        await (await import("@/lib/crm-results.server")).crmAccess();
+        if (from > to) return { error: "Дата начала позже окончания" };
+        const [payments, properties, categories, articles] = await Promise.all([
+          allFinancePages((start, end) => admin.from("payments").select("*").order("id").range(start, end)),
+          allFinancePages((start, end) => admin.from("properties").select("id,title,internal_name,type,status,ref_id").order("id").range(start, end)),
+          admin.from("finance_article_categories").select("*"), admin.from("finance_articles").select("*"),
+        ]);
+        const error = payments.error ?? properties.error ?? categories.error ?? articles.error;
+        if (error) return { error: error.message };
+        const rows = (payments.data ?? []).map(p => ({ ...p, property: properties.data?.find(o => o.id === p.property_id) ?? null })) as unknown as Payment[];
+        const report = objectProfitability(rows, { categories: categories.data ?? [], articles: articles.data ?? [] }, (properties.data ?? []) as FinancePropertyOption[], from, to, objectType, propertyId);
+        const { entries, rows: objects, ...totals } = report;
+        return { from, to, objectType, propertyId: propertyId ?? "all", ...totals, objects: objects.map(({ entries, ...g }) => ({ ...g, paymentIds: entries.map(e => e.payment.id) })) };
       },
     }),
 
