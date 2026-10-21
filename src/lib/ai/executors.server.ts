@@ -890,6 +890,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       : `Номер ${result.roomName} назначен в RM OS. ${result.bnovoMessage}`;
   },
 
+  rescheduleFinanceTask: async input => (await import("@/lib/finance-tasks.server")).rescheduleFinanceTaskForAssistant(input),
   confirmFinanceTask: async input => (await import("@/lib/finance-tasks.server")).confirmFinanceTask(input),
 
   upsertTask: async (input) => {

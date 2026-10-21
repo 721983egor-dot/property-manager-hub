@@ -247,3 +247,35 @@ test("historic expected receipts do not create old backlog but edited overdue it
   assert.equal(buildFinanceTasks(source([old])).length, 0);
   assert.ok(buildFinanceTasks(source([{ ...old, updated_at: "2026-10-22" }])).length > 0);
 });
+
+test("moving receipt expectation retains contract date, amount and following month", () => {
+  const tasks = buildFinanceTasks(
+    source([
+      p("rent", { task_expected_date: "2026-12-09", status: "partial", paid_amount: 350000 }),
+      p("next", { rental_period: "2027-01-01", planned_date: "2027-01-01" }),
+    ]),
+  );
+  const receipt = tasks.find((t) => t.id === "finance:receipt:rent")!;
+  assert.equal(receipt.due_date, "2026-12-09");
+  assert.equal(receipt.finance.contractDate, "2026-12-01");
+  assert.equal(receipt.finance.remaining, 1000000);
+  assert.equal(tasks.find((t) => t.id === "finance:receipt:next")!.due_date, "2027-01-01");
+});
+test("owner expectation overrides only matching booking/period, preserving contractual payout", () => {
+  const tasks = buildFinanceTasks(
+    source([
+      p("rent", { owner_task_expected_date: "2026-12-14" }),
+      p("next", { rental_period: "2027-01-01", planned_date: "2027-01-01" }),
+    ]),
+  );
+  const current = tasks.find(
+    (t) => t.finance.kind === "owner_payout" && t.finance.period === "2026-12-01",
+  )!;
+  assert.equal(current.due_date, "2026-12-14");
+  assert.equal(current.finance.contractDate, "2026-12-05");
+  assert.equal(
+    tasks.find((t) => t.finance.kind === "owner_payout" && t.finance.period === "2027-01-01")!
+      .due_date,
+    "2027-01-05",
+  );
+});

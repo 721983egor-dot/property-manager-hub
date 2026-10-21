@@ -1126,6 +1126,11 @@ export type Database = {
       }
       payments: {
         Row: {
+          cash_receipts: Json
+          task_expected_date: string | null
+          owner_task_expected_date: string | null
+          requires_confirmation: boolean
+          rental_schedule: boolean
           owner_payout_on_request: boolean
           expense_bearer: string | null
           expense_owner_id: string | null
@@ -1160,6 +1165,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cash_receipts?: Json
+          task_expected_date?: string | null
+          owner_task_expected_date?: string | null
+          requires_confirmation?: boolean
+          rental_schedule?: boolean
           owner_payout_on_request?: boolean
           expense_bearer?: string | null
           expense_owner_id?: string | null
@@ -1194,6 +1204,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cash_receipts?: Json
+          task_expected_date?: string | null
+          owner_task_expected_date?: string | null
+          requires_confirmation?: boolean
+          rental_schedule?: boolean
           owner_payout_on_request?: boolean
           expense_bearer?: string | null
           expense_owner_id?: string | null
@@ -2567,6 +2582,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finance_record_task_receipt: {Args:{p_payment:string;p_booking:string;p_expected_amount:number;p_expected_paid:number;p_expected_date:string;p_expected_account:string;p_paid_total:number;p_paid_date:string;p_received_account:string;p_request_id:string;p_actor?:string|null};Returns:undefined};
+      finance_reschedule_task: {Args:{p_booking:string;p_payment:string|null;p_period:string;p_kind:string;p_expected_date:string|null;p_date:string;p_actor?:string|null};Returns:undefined};
       finance_confirm_task_receipt: {Args:{p_payment:string;p_booking:string;p_expected_amount:number;p_expected_paid:number;p_expected_date:string;p_expected_account:string;p_paid_total:number;p_paid_date:string;p_actor?:string|null};Returns:undefined};
       finance_set_booking_collection_plan: {Args:{p_booking:string;p_plan:Json|null;p_actor?:string|null};Returns:undefined};
       finance_set_booking_cash_terms: {Args:{p_booking:string;p_receipts_from:string;p_owner_rates?:Json;p_actor?:string|null};Returns:undefined};
@@ -2576,7 +2593,7 @@ export type Database = {
       finance_refresh_rental_settlements: { Args: Record<PropertyKey, never>; Returns: undefined };
       finance_create_rental_installments: { Args: { p_booking: string; p_period: string; p_total: number; p_fee: number; p_advance: number; p_advance_date: string; p_balance_date: string; p_account: string; p_request: string }; Returns: string };
       finance_create_rental_schedule: { Args: { p_booking: string; p_account: string }; Returns: number };
-      finance_account_usage: { Args: { p_id: string }; Returns: { payments: number; deals: number; schedules?: number } };
+      finance_account_usage: { Args: { p_id: string }; Returns: { payments: number; deals: number; schedules?: number; receipts?: number } };
       delete_finance_account: { Args: { p_id: string; p_transfer_to?: string | null }; Returns: undefined };
 
       create_management_fee_payment: { Args: {p_booking_id: string; p_period: string; p_expected_amount: number}; Returns: string }

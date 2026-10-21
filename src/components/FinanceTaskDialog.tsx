@@ -1,3 +1,5 @@
+import { fetchFinanceAccounts } from "@/lib/finance-accounts";
+import { rescheduleFinanceTask } from "@/lib/finance-task-schedule";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -26,6 +28,15 @@ export function FinanceTaskDialog({
   const [snapshot] = useState(task);
   const f = snapshot.finance!;
   const [amount, setAmount] = useState(String(f.remaining));
+  const [account, setAccount] = useState(f.account);
+  const [requestId] = useState(() => crypto.randomUUID());
+  const [expectedDate, setExpectedDate] = useState(snapshot.due_date || "");
+  const accounts = useQuery({
+    queryKey: ["finance-accounts"],
+    queryFn: fetchFinanceAccounts,
+    enabled: open,
+  });
+  const activeAccounts = accounts.data?.filter((a) => !a.archived) ?? [];
   const [date, setDate] = useState(financeToday());
   const [bookingOpen, setBookingOpen] = useState(false);
   const [payoutOpen, setPayoutOpen] = useState(false);
@@ -61,28 +72,40 @@ export function FinanceTaskDialog({
         p_expected_account: f.account,
         p_paid_total: Math.round((f.amount - f.remaining + n) * 100) / 100,
         p_paid_date: date,
+        p_received_account: account,
+        p_request_id: requestId,
       });
     },
     onSuccess: async () => {
       await refresh();
       onOpenChange(false);
-      toast.success("Поступление записано в существующем платеже");
+      toast.success("Поступление записано. Остаток задачи пересчитан");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось записать поступление"),
+  });
+  const reschedule = useMutation({
+    mutationFn: () => rescheduleFinanceTask(supabase, snapshot, expectedDate),
+    onSuccess: async () => {
+      await refresh();
+      onOpenChange(false);
+      toast.success("Ожидаемая дата изменена. График брони сохранён");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
   return (
     <>
       <Dialog
         open={open && !bookingOpen && !payoutOpen}
         onOpenChange={(v) => {
-          if (!confirm.isPending) onOpenChange(v);
+          if (!confirm.isPending && !reschedule.isPending) onOpenChange(v);
         }}
       >
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{task.title}</DialogTitle>
             <DialogDescription>
-              Задача связана с бронью. Дата, сумма и статья берутся из её платежей.
+              Задача связана с платежом брони. Части оплаты сохраняются отдельно, задача закрывается
+              после полной оплаты.
             </DialogDescription>
           </DialogHeader>
           <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -107,6 +130,60 @@ export function FinanceTaskDialog({
               <dd>{f.partyName}</dd>
             </div>
           </dl>
+          <p className="text-sm">
+            Всего: {formatAdeskMoney(f.amount)} · {f.kind === "receipt" ? "Получено" : "Выплачено"}:{" "}
+            {formatAdeskMoney(f.amount - f.remaining)}
+          </p>
+          {f.contractDate && (
+            <p
+              className={
+                f.remaining > 0 && f.contractDate < financeToday()
+                  ? "text-sm text-destructive"
+                  : "text-sm text-muted-foreground"
+              }
+            >
+              Срок по договору: {formatFinanceDate(f.contractDate)}
+              {f.remaining > 0 && f.contractDate < financeToday() ? " · Просрочено" : ""}
+            </p>
+          )}
+          {!!f.receipts?.length && (
+            <div className="space-y-1 text-sm border-t pt-2">
+              {f.receipts.map((r) => (
+                <div key={r.id} className="flex justify-between gap-2">
+                  <span>
+                    {formatFinanceDate(r.date)} · {r.account}
+                  </span>
+                  <span>{formatAdeskMoney(r.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {task.status !== "done" && (
+            <div className="flex items-end gap-2">
+              <label className="text-sm flex-1">
+                Ожидаемая дата остатка
+                <Input
+                  type="date"
+                  aria-label="Ожидаемая дата остатка"
+                  value={expectedDate}
+                  onChange={(e) => setExpectedDate(e.target.value)}
+                />
+              </label>
+              <Button
+                variant="outline"
+                disabled={
+                  reschedule.isPending ||
+                  confirm.isPending ||
+                  changed ||
+                  !expectedDate ||
+                  expectedDate === snapshot.due_date
+                }
+                onClick={() => reschedule.mutate()}
+              >
+                Перенести
+              </Button>
+            </div>
+          )}
           <p className="whitespace-pre-line text-sm text-muted-foreground">
             {task.description.split("\n")[0]}
           </p>
@@ -125,8 +202,30 @@ export function FinanceTaskDialog({
           ) : f.kind === "receipt" ? (
             <div className="space-y-3 border-t pt-3">
               <p className="text-sm">
-                Запишите деньги, которые уже получены. Счёт: {f.account}. Новый приход не создаётся.
+                Запишите сумму, полученную сейчас. Для каждой части сохраняются дата и фактический
+                счёт.
               </p>
+              <label className="text-sm block">
+                Фактический счёт
+                <select
+                  aria-label="Счёт поступления"
+                  className="block w-full border rounded p-2"
+                  value={account}
+                  onChange={(e) => setAccount(e.target.value)}
+                >
+                  <option value="">Выберите счёт</option>
+                  {activeAccounts.map((a) => (
+                    <option key={a.id} value={a.name}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {accounts.error && (
+                <p role="alert" className="text-destructive text-sm">
+                  Не удалось загрузить счета
+                </p>
+              )}
               <label className="text-sm block">
                 Получено сейчас, ₽
                 <Input
@@ -149,7 +248,15 @@ export function FinanceTaskDialog({
                   onChange={(e) => setDate(e.target.value)}
                 />
               </label>
-              <Button disabled={confirm.isPending || changed} onClick={() => confirm.mutate()}>
+              <Button
+                disabled={
+                  confirm.isPending ||
+                  reschedule.isPending ||
+                  changed ||
+                  !activeAccounts.some((a) => a.name === account)
+                }
+                onClick={() => confirm.mutate()}
+              >
                 {confirm.isPending ? "Сохранение…" : "Подтвердить поступление"}
               </Button>
             </div>
@@ -203,6 +310,7 @@ export function FinanceTaskDialog({
       )}
       {payoutOpen && f.obligationId && (
         <OwnerPayoutDialog
+          defaultAccount={f.account}
           obligationId={f.obligationId}
           remaining={f.payableNow}
           onClose={() => {

@@ -72,6 +72,8 @@ export async function confirmFinanceTask(input: Record<string, unknown>) {
       p_expected_account: f.account,
       p_paid_total: Math.round((f.amount - f.remaining + Number(input["amount"])) * 100) / 100,
       p_paid_date: String(input["date"]),
+      p_received_account: String(input["account"] || f.account),
+      p_request_id: String(input["requestId"]),
       p_actor: actor,
     });
   } else {
@@ -92,4 +94,17 @@ export async function confirmFinanceTask(input: Record<string, unknown>) {
     if (error) throw new Error(error.message);
   }
   return "Оплата записана в связанном платеже. Задача обновлена без создания второй операции";
+}
+
+export async function rescheduleFinanceTaskForAssistant(input: Record<string, unknown>) {
+  const { db, actor } = await crmAccess(input);
+  const task = (await loadFinanceTasks(db as typeof supabase)).tasks.find(
+    (t) => t.id === input["taskId"],
+  );
+  if (!task || task.due_date !== input["expectedDate"])
+    throw new Error("Задача изменилась. Обновите предложение");
+  await (
+    await import("./finance-task-schedule")
+  ).rescheduleFinanceTask(db as typeof supabase, task, String(input["date"]), actor ?? undefined);
+  return "Перенесена ожидаемая дата остатка. Срок по договору и последующие месяцы не изменены";
 }

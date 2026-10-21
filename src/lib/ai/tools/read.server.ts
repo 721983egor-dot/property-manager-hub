@@ -1,3 +1,4 @@
+import { expandPaymentReceipts } from "@/lib/finance-cash-receipts";
 import { objectProfitability } from "@/lib/finance-object-profitability";
 import { leaseReadTools } from "@/lib/lease/tools.server";
 import { buildFinanceCalendar, paymentCashDate } from "@/lib/finance-calendar-model";
@@ -8,6 +9,7 @@ import { reportEntries, entryTotals, groupEntries, currentDebts, planFactCategor
 import type { FinanceObligation } from "@/lib/finance-counterparties";
 
 import type { Payment } from "@/lib/finance";
+const cashPaymentRows = (rows: unknown): Payment[] => ((rows ?? []) as Payment[]).flatMap(expandPaymentReceipts);
 import { tool } from "ai";
 import { z } from "zod";
 import { rentalCopyInputSchema } from "@/lib/property-import/copy-model";
@@ -1591,7 +1593,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getFinanceTasks: tool({
-      description:"Финансовые задачи из бронирований в существующем блоке Задачи. Добавляй к getTasks, когда спрашивают все задачи или задачи на сегодня. Только администратор. Сроки, суммы и статьи всегда берутся из платежей; подтверждение через proposeConfirmFinanceTask, изменения сроков/сумм через бронь. Не создавать копию обычной задачей. Поступления и выплаты собственнику, с учётом его расходов.",
+      description:"Финансовые задачи из бронирований в существующем блоке Задачи. Добавляй к getTasks, когда спрашивают все задачи или задачи на сегодня. Только администратор. Сроки, суммы и статьи всегда берутся из платежей; подтверждение через proposeConfirmFinanceTask, перенос ожидания через proposeRescheduleFinanceTask, изменения сумм через бронь. Не создавать копию обычной задачей. Поступления и выплаты собственнику, с учётом его расходов.",
       inputSchema:z.object({bookingId:z.string().uuid().optional(),status:z.enum(["open","done","all"]).optional(),from:z.string().optional(),to:z.string().optional(),query:z.string().optional()}),
       execute:async input=>{const rows=await (await import("@/lib/finance-tasks.server")).financeTasksForAssistant();const tasks=rows.filter(t=>(!input.bookingId||t.finance.bookingId===input.bookingId)&&((input.status??"open")==="all"||t.status===(input.status??"open"))&&(!input.from||(t.due_date??"")>=input.from)&&(!input.to||(t.due_date??"")<=input.to)&&(!input.query||(t.title+" "+t.description).toLowerCase().includes(input.query.toLowerCase())));return {count:tasks.length,source:"booking.payments.tasks",tasks:tasks.map(t=>({id:t.id,title:t.title,dueDate:t.due_date,status:t.status,...t.finance}))};},
     }),
@@ -2059,7 +2061,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
     listPayments: tool({
       description:
-        "Список платежей блока «Финансы»: период, объект, статус, направление. Сегодняшние и прошедшие операции считаются проведёнными, будущие — планируемыми; ручное проведение и частичная оплата учитываются отдельно.",
+        "Список платежей блока «Финансы»: период, объект, статус, направление. Части аренды учитываются по фактическим датам и счетам. Неполученный остаток остаётся планом. id — исходный платёж для корректировки, movementId — отдельная часть.",
       inputSchema: z.object({
         from: z.string().optional().describe("ГГГГ-ММ-ДД"),
         to: z.string().optional().describe("ГГГГ-ММ-ДД"),
@@ -2070,20 +2072,14 @@ export function createReadTools(ctx: AssistantToolContext) {
       execute: async ({ from, to, propertyRef, status, direction }) => {
         let query = admin
           .from("payments")
-          .select(
-            "id, planned_date, amount, direction, status, kind, article_id, property_id, client_id, counterparty_name, comment, paid_at, paid_amount, booking_id, deal_id",
-          )
-          .order("planned_date", { ascending: true })
-          .limit(300);
-        if (from) query = query.gte("planned_date", from);
-        if (to) query = query.lte("planned_date", to);
+          .select("*").order("id");
         if (direction === "in" || direction === "out") query = query.eq("direction", direction);
         if (propertyRef) {
           const found = await ctx.findProperty(propertyRef);
           if (!found) return { error: "Объект не найден" };
           query = query.eq("property_id", found["id"] as string);
         }
-        const { data, error } = await query;
+        const { data, error } = await allFinancePages((start,end)=>query.range(start,end));
         if (error) return { error: error.message };
         const today = financeToday();
         const propIds = Array.from(
@@ -2098,10 +2094,12 @@ export function createReadTools(ctx: AssistantToolContext) {
             }
           }
         }
-        const payments = (data ?? []).map((row) => {
+        const payments = cashPaymentRows(data).filter(row => (!from || row.planned_date >= from) && (!to || row.planned_date <= to)).map((row) => {
           const effective = effectivePaymentStatus(row, today);
           return {
-            id: row.id,
+            id: row.cash_parent_id || row.id,
+            movementId: row.id,
+            account: row.account,
             plannedDate: row.planned_date,
             amount: row.amount,
             direction: row.direction,
@@ -2145,13 +2143,12 @@ export function createReadTools(ctx: AssistantToolContext) {
         const { data, error } = await allFinancePages((from, to) => {
           let query = client.from("payments").select("*").order("id");
           if (propertyId) query = query.eq("property_id", propertyId);
-          if (account) query = query.eq("account", account);
           if (articleId) query = query.eq("article_id", articleId);
           return query.range(from, to);
         });
         if (error) return { error: error.message };
         const today = financeToday();
-        const rows = (data ?? []) as unknown as Payment[];
+        const rows = cashPaymentRows(data).filter(p => !account || p.account === account);
         const calendar = buildFinanceCalendar(rows, y, m - 1, today,
           openingBalance == null ? null : { date: `${month}-01`, amount: openingBalance });
         const visible = rows.filter(p => p.planned_date.startsWith(month) ||
@@ -2211,15 +2208,13 @@ export function createReadTools(ctx: AssistantToolContext) {
         const today = financeToday();
         let query = admin
           .from("payments")
-          .select("planned_date, amount, direction, status, paid_amount")
-          .gte("planned_date", from)
-          .lte("planned_date", to);
+          .select("*").order("id");
         if (propertyRef) {
           const found = await ctx.findProperty(propertyRef);
           if (!found) return { error: "Объект не найден" };
           query = query.eq("property_id", found["id"] as string);
         }
-        const { data, error } = await query;
+        const { data, error } = await allFinancePages((start,end)=>query.range(start,end));
         if (error) return { error: error.message };
         let planIn = 0;
         let planOut = 0;
@@ -2227,7 +2222,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         let factOut = 0;
         let overdueCount = 0;
         let overdueAmount = 0;
-        for (const row of data ?? []) {
+        for (const row of cashPaymentRows(data).filter(p=>p.planned_date>=from && p.planned_date<=to)) {
           const amount = Number(row.amount);
           if (row.direction === "in") planIn += amount;
           else planOut += amount;
@@ -2299,7 +2294,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         if (rentals.error) return { error: rentals.error.message };
         const { companyPayments, clientPayments, ownerRentalIncome } =
           await import("@/lib/finance-company-model");
-        const rows = (result.data ?? []).map(p => ({...p, article:p.finance_articles})) as unknown as Payment[];
+        const rows = cashPaymentRows((result.data ?? []).map(p => ({...p, article:p.finance_articles})));
         const ops = (clientId ? clientPayments(rows, clientId) : companyPayments(rows)).filter(
           (p) => p.planned_date.startsWith(month),
         );
@@ -2421,7 +2416,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const error=payments.error??categories.error??articles.error??settings.error??settlements.error;if(error)return {error:error.message};
         const {objectFlowPayments,objectFlowSummary,objectFlowNotes,objectFlowSourceId}=await import("@/lib/finance-object-flow");
         const catalog={categories:categories.data??[],articles:articles.data??[]};
-        const rows=objectFlowPayments(propertyId??null,(payments.data??[]) as unknown as Payment[],catalog,flow,settings.data??[],settlements.data??[]).filter(p=>(!account||p.account===account)&&(!articleId||p.article_id===articleId));
+        const rows=objectFlowPayments(propertyId??null,cashPaymentRows(payments.data),catalog,flow,settings.data??[],settlements.data??[]).filter(p=>(!account||p.account===account)&&(!articleId||p.article_id===articleId));
         const from=month+"-01",to=new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7)),0)).toISOString().slice(0,10);
         const {entries,...summary}=objectFlowSummary(rows,catalog,from,to,financeToday());
         return {propertyId:propertyId??null,account:account??null,articleId:articleId??null,month,flow,explanation:objectFlowNotes[flow],...summary,movements:rows.filter(p=>p.planned_date>=from&&p.planned_date<=to).map(p=>({sourcePaymentId:p.id.startsWith("owner-forecast:")?null:objectFlowSourceId(p.id),forecastOnly:p.id.startsWith("owner-forecast:"),isAllocation:/^(company|owner):/.test(p.id),sourceAmount:(payments.data??[]).find(row=>row.id===objectFlowSourceId(p.id))?.amount??null,date:p.planned_date,amount:p.amount,direction:p.direction,article:p.article?.name??p.kind,status:effectivePaymentStatus(p)}))};
@@ -2441,7 +2436,7 @@ export function createReadTools(ctx: AssistantToolContext) {
           allFinancePages((start,end)=>admin.from("finance_object_settings").select("property_id,classification_id").order("property_id").range(start,end)),
         ]);
         const error=properties.error??payments.error??obligations.error??categories.error??articles.error??classes.error??assignments.error;if(error)return {error:error.message};
-        const rows=payments.data as unknown as Payment[];const debts=obligations.data as unknown as FinanceObligation[];
+        const rows=cashPaymentRows(payments.data);const debts=obligations.data as unknown as FinanceObligation[];
         const catalog={categories:categories.data??[],articles:articles.data??[]};
         const objects=filterFinanceObjects((properties.data??[]) as FinancePropertyOption[],assignments.data??[],classificationId,query).filter(p=>propertyId?p.id===propertyId:p.status!=="archived");
         return {from,to,basis,classifications:classes.data??[],objects:objects.map(p=>{
@@ -2452,7 +2447,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     }),
 
     getFinanceAnalytics: tool({
-      description: "Расширенные отчёты всех движений (не основной экран компании; для него getFinanceWorkspace): ДДС по оплатам, прибыль компании по начислениям (из связанной аренды только комиссия; деньги собственника, КУ, депозиты и исключённые статьи не входят), план/факт, категории, объекты РМ ОС, текущая задолженность. Долги не являются историческим срезом на дату. По датам оплаты без полной истории частичных взносов доступны агрегированные суммы операций.",
+      description: "Расширенные отчёты всех движений (не основной экран компании; для него getFinanceWorkspace): ДДС по оплатам, прибыль компании по начислениям (из связанной аренды только комиссия; деньги собственника, КУ, депозиты и исключённые статьи не входят), план/факт, категории, объекты РМ ОС, текущая задолженность. Долги не являются историческим срезом на дату. Новые частичные поступления учитываются отдельно по фактическим датам и счетам; старые операции без истории частей остаются агрегированными.",
       inputSchema: z.object({from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),propertyId:z.string().optional()}),
       execute: async ({from,to,propertyId}) => {
         if(from>to) return {error:"Дата начала позже окончания"};
@@ -2464,7 +2459,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         ]);
         const error=payments.error??obligations.error??categories.error??articles.error??properties.error;
         if(error) return {error:error.message};
-        const rows=(payments.data??[]).map(p=>({...p,property:properties.data?.find(o=>o.id===p.property_id)??null})) as unknown as Payment[];
+        const rows=cashPaymentRows((payments.data??[]).map(p=>({...p,property:properties.data?.find(o=>o.id===p.property_id)??null})));
         const catalog={categories:categories.data??[],articles:articles.data??[]};
         const cash=reportEntries(rows,catalog,"cash",from,to,propertyId),profit=reportEntries(rows,catalog,"profit",from,to,propertyId),plan=reportEntries(rows,catalog,"plan",from,to,propertyId);
         const compact=(entries: typeof cash, key:(e: typeof cash[number])=>string)=>groupEntries(entries,key).map(({items,...group})=>({...group,paymentIds:items.map(e=>e.payment.id)}));
@@ -2485,7 +2480,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         ]);
         const error = payments.error ?? properties.error ?? categories.error ?? articles.error;
         if (error) return { error: error.message };
-        const rows = (payments.data ?? []).map(p => ({ ...p, property: properties.data?.find(o => o.id === p.property_id) ?? null })) as unknown as Payment[];
+        const rows = cashPaymentRows((payments.data ?? []).map(p => ({ ...p, property: properties.data?.find(o => o.id === p.property_id) ?? null })));
         const report = objectProfitability(rows, { categories: categories.data ?? [], articles: articles.data ?? [] }, (properties.data ?? []) as FinancePropertyOption[], from, to, objectType, propertyId);
         const { entries, rows: objects, ...totals } = report;
         return { from, to, objectType, propertyId: propertyId ?? "all", ...totals, objects: objects.map(({ entries, ...g }) => ({ ...g, paymentIds: entries.map(e => e.payment.id) })) };
@@ -2515,7 +2510,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const error = payments.error ?? categories.error ?? articles.error;
         if (error) return { error: error.message };
         const catalog = { categories: categories.data ?? [], articles: articles.data ?? [] };
-        const rows = (payments.data ?? []) as unknown as Payment[];
+        const rows = cashPaymentRows(payments.data);
         const cash=reportEntries(rows,catalog,"cash",from,to);
         const plan=reportEntries(rows,catalog,"plan",from,to);
         const groups=planFactCategories(plan,cash).map(g=>({categoryName:g.name,direction:g.direction,plan:g.plan,fact:g.fact,articles:planFactCategories(g.planEntries.map(e=>({...e,category:e.article})),g.cashEntries.map(e=>({...e,category:e.article}))).map(a=>({name:a.name,plan:a.plan,fact:a.fact}))}));
@@ -2542,7 +2537,6 @@ export function createReadTools(ctx: AssistantToolContext) {
           admin
             .from("payments")
             .select("*")
-            .or(`planned_date.eq.${date},paid_at.eq.${date}`)
             .order("created_at")
             .order("id")
             .range(from, to),
@@ -2550,7 +2544,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const today = financeToday();
         return error ? { error: error.message } : {
           date,
-          payments: (data ?? []).filter(row => row.planned_date === date || (paymentFactAmount(row, today) > 0 && paymentCashDate(row as unknown as Payment) === date)).map(row => ({ ...row, effectiveStatus: effectivePaymentStatus(row, today) })),
+          payments: cashPaymentRows(data).filter(row => row.planned_date === date || (paymentFactAmount(row, today) > 0 && paymentCashDate(row as unknown as Payment) === date)).map(row => ({ ...row, effectiveStatus: effectivePaymentStatus(row, today) })),
         };
       },
     }),

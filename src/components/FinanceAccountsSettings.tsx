@@ -42,7 +42,10 @@ export function FinanceAccountsSettings() {
   });
   const used =
     !!usage.data &&
-    (usage.data.payments > 0 || usage.data.deals > 0 || (usage.data.schedules ?? 0) > 0);
+    (usage.data.payments > 0 ||
+      usage.data.deals > 0 ||
+      (usage.data.schedules ?? 0) > 0 ||
+      (usage.data.receipts ?? 0) > 0);
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!deleting) throw new Error("Выберите счёт");
@@ -299,7 +302,7 @@ export function FinanceAccountsSettings() {
             <AlertDialogTitle>Удалить счёт «{deleting?.name}»?</AlertDialogTitle>
             <AlertDialogDescription>
               {used
-                ? `На счёте ${usage.data?.payments ?? 0} операций и ${usage.data?.deals ?? 0} связанных сделок, ${usage.data?.schedules ?? 0} графиков аренды. Выберите действующий счёт для их переноса. Суммы, даты и статусы операций сохранятся. Старый счёт будет удалён.`
+                ? `На счёте ${usage.data?.payments ?? 0} операций и ${usage.data?.deals ?? 0} связанных сделок, ${usage.data?.schedules ?? 0} графиков аренды и ${usage.data?.receipts ?? 0} платежей с частями поступлений. Выберите действующий счёт для их переноса. Суммы, даты и статусы операций сохранятся. Старый счёт будет удалён.`
                 : usage.isPending
                   ? "Проверяем связанные операции перед удалением."
                   : "На счёте нет операций и связанных сделок. Счёт будет удалён без возможности восстановления."}

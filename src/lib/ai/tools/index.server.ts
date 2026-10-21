@@ -59,3 +59,5 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
 // Связанные финансовые задачи: getFinanceTasks → proposeConfirmFinanceTask → подтверждённый confirmFinanceTask; общий проектор с блоком Задачи, аудит в платежах.
 
 // Выплаты по запросу: ownerPayoutMode=on_request через proposeBooking / proposeUpdateRentalContract; getRentalContract.ownerPayoutMode, getOwnerExpenseStatement — долг и хранение без просрочки.
+
+// Financial task rescheduling: getFinanceTasks → proposeRescheduleFinanceTask → confirmed rescheduleFinanceTask; payment audit preserves contract dates.

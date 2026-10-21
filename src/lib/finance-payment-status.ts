@@ -13,6 +13,7 @@ export function financeToday(now = new Date()): string {
 /** План становится фактом в день операции; ручное проведение действует и для будущей даты. */
 export function effectivePaymentStatus(
   payment: {
+    requires_confirmation?: boolean;
     status: string;
     planned_date: string;
     kind?: string;
@@ -28,12 +29,14 @@ export function effectivePaymentStatus(
   if (payment.kind === "owner_payout" && payment.rental_component === "owner_plan")
     return payment.planned_date < today ? "overdue" : "expected";
   if (payment.status === "partial") return "partial";
+  if (payment.requires_confirmation) return payment.planned_date < today ? "overdue" : "expected";
   if (payment.kind === "owner_payout") return payment.planned_date < today ? "overdue" : "expected";
   return payment.planned_date <= today ? "paid" : "expected";
 }
 
 export function paymentFactAmount(
   payment: {
+    requires_confirmation?: boolean;
     status: string;
     planned_date: string;
     amount: number;

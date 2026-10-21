@@ -227,6 +227,9 @@ export function ownerForecastPayments(
     result.push({
       ...first,
       id: `owner-forecast:${key}`,
+      cash_parent_id: undefined,
+      cash_receipts: [],
+      task_expected_date: null,
       rental_stage: null,
       rental_installment_id: null,
       planned_date: `${month}-${String(day).padStart(2, "0")}`,
@@ -299,9 +302,25 @@ export function ownerCashPayments(
       amount = money(amount - deduct);
     }
   }
-  return result.filter(
-    (p) => p.rental_component !== "owner_plan" || (p.amount > 0 && !p.owner_payout_on_request),
-  );
+  return result
+    .filter(
+      (p) => p.rental_component !== "owner_plan" || (p.amount > 0 && !p.owner_payout_on_request),
+    )
+    .map((p) => {
+      if (p.rental_component !== "owner_plan") return p;
+      const settlement = settlements.find((s) => s.obligation_id === p.obligation_id);
+      const booking =
+        p.booking_id ||
+        (settlement as { booking_id?: string })?.booking_id ||
+        (p.id.startsWith("owner-forecast:") ? p.id.split(":").at(-1) : null);
+      const override = rows.find(
+        (x) =>
+          x.booking_id === booking &&
+          x.rental_period === p.rental_period &&
+          x.owner_task_expected_date,
+      )?.owner_task_expected_date;
+      return { ...p, contract_date: p.planned_date, planned_date: override || p.planned_date };
+    });
 }
 
 /** The pair is one contract amount, never a third bank receipt. Read from full payment history. */

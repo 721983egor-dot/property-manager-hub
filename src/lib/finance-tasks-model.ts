@@ -23,6 +23,8 @@ export type FinanceTaskInfo = {
   obligationId: string | null;
   payableNow: number;
   account: string;
+  contractDate?: string;
+  receipts?: Payment["cash_receipts"];
 };
 export type FinanceTask = StaffTask & { finance: FinanceTaskInfo };
 export type FinanceTaskSources = {
@@ -62,7 +64,7 @@ function base(
   return {
     id,
     title,
-    description: `${b.propertyName}\n${meta.articleName} · ${amount}\n${meta.partyName}\nСвязано с бронью. Срок и сумма обновляются из её платежей.`,
+    description: `${b.propertyName}\n${meta.articleName} · ${amount}\n${meta.partyName}\nСвязано с платежом брони. Ожидаемую дату остатка можно перенести отдельно от срока договора.`,
     status: done ? "done" : "open",
     due_date: date,
     due_start: "",
@@ -130,8 +132,20 @@ export function buildFinanceTasks(s: FinanceTaskSources): FinanceTask[] {
       obligationId: null,
       payableNow: remaining,
       account: p.account,
+      contractDate: p.planned_date,
+      receipts: p.cash_receipts,
     };
-    result.push(base(`finance:receipt:${p.id}`, b, p.planned_date, remaining <= 0, meta, s, p));
+    result.push(
+      base(
+        `finance:receipt:${p.id}`,
+        b,
+        p.task_expected_date || p.planned_date,
+        remaining <= 0,
+        meta,
+        s,
+        p,
+      ),
+    );
   }
   const projected = ownerCashPayments(s.payments, s.settings, s.settlements);
   const groups = new Map<
@@ -213,6 +227,7 @@ export function buildFinanceTasks(s: FinanceTaskSources): FinanceTask[] {
         physical?.obligation_id ?? rows.find((p) => p.obligation_id)?.obligation_id ?? null,
       payableNow: money(Math.min(remaining, physical?.amount ?? 0)),
       account: first.account,
+      contractDate: first.contract_date || first.planned_date,
     };
     result.push(
       base("finance:owner:" + key, g.booking, first.planned_date, remaining <= 0, meta, s, first),

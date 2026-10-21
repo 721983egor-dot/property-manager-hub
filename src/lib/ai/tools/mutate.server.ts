@@ -847,16 +847,27 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeRescheduleFinanceTask: tool({
+      description: "Перенести ожидаемую дату остатка конкретного платежа/выплаты из getFinanceTasks. Срок по договору и ежемесячный день брони не меняются. Требует подтверждения администратора.",
+      inputSchema: z.object({taskId:z.string().startsWith("finance:"),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)}),
+      execute: async input => {
+        const task=(await (await import("@/lib/finance-tasks.server")).financeTasksForAssistant()).find(t=>t.id===input.taskId && t.status!=="done");
+        if(!task) return {error:"Открытая задача не найдена"};
+        const summary=`Перенести ожидание: ${task.title} на ${input.date}. Остаток ${money(task.finance.remaining)}. Срок договора и последующие месяцы сохраняются`;
+        ctx.propose({tool:"rescheduleFinanceTask",summary,input:{...input,expectedDate:task.due_date}});
+        return {proposed:true,summary};
+      },
+    }),
     proposeConfirmFinanceTask: tool({
-      description:"Подтвердить уже полученные деньги от арендатора или уже выполненный перевод собственнику из финансовой задачи. Сначала getFinanceTasks. amount — сумма, полученная/переведённая сейчас, date — фактическая дата, для выплаты нужен account из listFinanceAccounts. Изменяет существующий платёж, не создаёт копию. Задача закрывается только после полной оплаты; частичная оставляет остаток. Подтверждение администратора; не выполнять реальные банковские переводы.",
+      description:"Подтвердить уже полученные деньги от арендатора или уже выполненный перевод собственнику из финансовой задачи. Сначала getFinanceTasks. amount — сумма, полученная/переведённая сейчас, date — фактическая дата, account — фактический счёт из listFinanceAccounts, по умолчанию плановый счёт задачи. Изменяет существующий платёж, не создаёт копию. Задача закрывается только после полной оплаты; частичная оставляет остаток. Подтверждение администратора; не выполнять реальные банковские переводы.",
       inputSchema:z.object({taskId:z.string().startsWith("finance:"),amount:z.number().positive(),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),account:z.string().optional()}),
-      execute:async input=>{const {task,expected}=await (await import("@/lib/finance-tasks.server")).financeTaskProposal(input);const summary=`Записать ${task.finance.kind==='receipt'?'поступление':'выплату собственнику'}: ${money(input.amount)}, ${input.date}, ${task.title}. Статья: ${task.finance.articleName}. В существующей операции, без второго платежа`;ctx.propose({tool:"confirmFinanceTask",summary,input:{...input,...expected}});return {proposed:true,summary};},
+      execute:async input=>{const {task,expected}=await (await import("@/lib/finance-tasks.server")).financeTaskProposal(input);const summary=`Записать ${task.finance.kind==='receipt'?'поступление':'выплату собственнику'}: ${money(input.amount)}, ${input.date}, ${task.title}. Статья: ${task.finance.articleName}. Счёт: ${input.account || task.finance.account}. Каждая часть сохраняется отдельно`;ctx.propose({tool:"confirmFinanceTask",summary,input:{...input,...expected}});return {proposed:true,summary};},
     }),
     proposeCompleteTask: tool({
       description: "Предложить отметить задачу выполненной. Требует подтверждения.",
       inputSchema: z.object({ taskId: z.string() }),
       execute: async ({ taskId }) => {
-        if(taskId.startsWith("finance:"))return {error:"Для финансовой задачи используйте proposeConfirmFinanceTask, а сроки и суммы меняйте в связанной брони"};
+        if(taskId.startsWith("finance:"))return {error:"Для финансовой задачи используйте proposeConfirmFinanceTask, для переноса ожидания используйте proposeRescheduleFinanceTask, а суммы меняйте в связанной брони"};
         const { data: task } = await ctx.admin.from("tasks").select("title").eq("id", taskId).maybeSingle();
         if (!task) return { error: "Задача не найдена" };
         const summary = `Отметить задачу «${task.title}» выполненной`;
@@ -872,7 +883,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         dueDate: z.string().optional().describe("Новая дата ГГГГ-ММ-ДД, пусто = без срока"),
       }),
       execute: async ({ taskId, dueDate }) => {
-        if(taskId.startsWith("finance:"))return {error:"Для финансовой задачи используйте proposeConfirmFinanceTask, а сроки и суммы меняйте в связанной брони"};
+        if(taskId.startsWith("finance:"))return {error:"Для финансовой задачи используйте proposeConfirmFinanceTask, для переноса ожидания используйте proposeRescheduleFinanceTask, а суммы меняйте в связанной брони"};
         const { data: task } = await ctx.admin.from("tasks").select("title").eq("id", taskId).maybeSingle();
         if (!task) return { error: "Задача не найдена" };
         const summary = dueDate
@@ -914,7 +925,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       description: "Предложить удаление задачи RM OS. Требует подтверждения.",
       inputSchema: z.object({ taskId: z.string() }),
       execute: async ({ taskId }) => {
-        if(taskId.startsWith("finance:"))return {error:"Для финансовой задачи используйте proposeConfirmFinanceTask, а сроки и суммы меняйте в связанной брони"};
+        if(taskId.startsWith("finance:"))return {error:"Для финансовой задачи используйте proposeConfirmFinanceTask, для переноса ожидания используйте proposeRescheduleFinanceTask, а суммы меняйте в связанной брони"};
         const { data: task } = await ctx.admin.from("tasks").select("title").eq("id", taskId).maybeSingle();
         if (!task) return { error: "Задача не найдена" };
         const summary = `Удалить задачу «${task.title}»`;

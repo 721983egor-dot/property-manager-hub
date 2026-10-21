@@ -22,11 +22,17 @@ type Props = {
   tasks: StaffTask[];
   types: TaskType[];
   onOpenTask: (task: StaffTask) => void;
+  onMoveFinanceTask?: (task: StaffTask, date: string) => void;
   onCreateAt?: (dueDate: string, dueStart: string, dueEnd: string) => void;
 };
 
 /** Недельный календарь задач в стиле Apple Calendar. */
-export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
+export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt, onMoveFinanceTask }: Props) {
+  const [dragged, setDragged] = useState<StaffTask | null>(null);
+  const dropDay = (date: string) => {
+    if (dragged && dragged.due_date !== date) onMoveFinanceTask?.(dragged, date);
+    setDragged(null);
+  };
   const [anchor, setAnchor] = useState(() => new Date());
   const days = useMemo(() => weekDays(anchor), [anchor]);
   const todayIso = toISODate(new Date());
@@ -57,6 +63,14 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
             variant="ghost"
             size="icon"
             className="size-8 text-[#007aff]"
+            onDragOver={(e) => {
+              if (dragged) e.preventDefault();
+            }}
+            onDrop={() => {
+              if (dragged?.due_date)
+                dropDay(toISODate(addDays(new Date(dragged.due_date + "T12:00:00"), -7)));
+              setAnchor((current) => addDays(current, -7));
+            }}
             onClick={() => setAnchor((current) => addDays(current, -7))}
           >
             <ChevronLeft className="size-5" />
@@ -66,6 +80,14 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
             variant="ghost"
             size="icon"
             className="size-8 text-[#007aff]"
+            onDragOver={(e) => {
+              if (dragged) e.preventDefault();
+            }}
+            onDrop={() => {
+              if (dragged?.due_date)
+                dropDay(toISODate(addDays(new Date(dragged.due_date + "T12:00:00"), 7)));
+              setAnchor((current) => addDays(current, 7));
+            }}
             onClick={() => setAnchor((current) => addDays(current, 7))}
           >
             <ChevronRight className="size-5" />
@@ -116,7 +138,14 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
         {days.map((day) => {
           const iso = toISODate(day);
           return (
-            <div key={iso} className="min-h-12 max-h-40 overflow-y-auto border-r p-1 space-y-1">
+            <div
+              onDragOver={(e) => {
+                if (dragged) e.preventDefault();
+              }}
+              onDrop={() => dropDay(iso)}
+              key={iso}
+              className="min-h-12 max-h-40 overflow-y-auto border-r p-1 space-y-1"
+            >
               {tasks
                 .filter(
                   (t) => t.due_date === iso && t.status !== "done" && (!t.due_start || !t.due_end),
@@ -126,12 +155,25 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
                     key={task.id}
                     type="button"
                     className="w-full rounded border p-1 text-left text-[11px] hover:bg-muted"
+                    draggable={!!task.finance && !!onMoveFinanceTask}
+                    onDragStart={(e) => {
+                      setDragged(task);
+                      e.dataTransfer.setData("text/plain", task.id);
+                    }}
+                    onDragEnd={() => setDragged(null)}
                     onClick={() => onOpenTask(task)}
                   >
                     <span className="font-medium">{task.title}</span>
                     {task.finance && (
                       <span className="block">
-                        {task.finance.remaining.toLocaleString("ru-RU")} ₽
+                        Остаток {task.finance.remaining.toLocaleString("ru-RU")} ₽
+                        {task.finance.amount > task.finance.remaining && (
+                          <span className="block text-emerald-700">
+                            Оплачено{" "}
+                            {(task.finance.amount - task.finance.remaining).toLocaleString("ru-RU")}{" "}
+                            ₽
+                          </span>
+                        )}
                       </span>
                     )}
                   </button>
@@ -168,6 +210,10 @@ export function TasksCalendar({ tasks, types, onOpenTask, onCreateAt }: Props) {
                   "relative border-r border-[#ececef] last:border-r-0",
                   iso === todayIso && "bg-[#007aff]/[0.03]",
                 )}
+                onDragOver={(e) => {
+                  if (dragged) e.preventDefault();
+                }}
+                onDrop={() => dropDay(iso)}
                 onDoubleClick={(event) => {
                   if (!onCreateAt) return;
                   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();

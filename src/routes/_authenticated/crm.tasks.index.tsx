@@ -1,3 +1,6 @@
+import { supabase } from "@/integrations/supabase/client";
+import { rescheduleFinanceTask } from "@/lib/finance-task-schedule";
+import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { useFinanceToday } from "@/hooks/use-finance-today";
 import { fetchFinanceTasks } from "@/lib/finance-tasks-data";
 import { createFileRoute } from "@tanstack/react-router";
@@ -30,6 +33,7 @@ import { fetchProperties, internalTitle } from "@/lib/properties";
 import { formatDateRu, parseISODate, toISODate } from "@/lib/rentals";
 import {
   TASK_COLUMNS,
+  dueDateForColumn,
   completeTask,
   fetchStaffDirectory,
   fetchTaskTypes,
@@ -162,6 +166,16 @@ function TasksPage() {
     void queryClient.invalidateQueries({ queryKey: ["deal-history"] });
   };
 
+  const financeMove = useMutation({
+    mutationFn: ({ task, date }: { task: StaffTask; date: string }) =>
+      rescheduleFinanceTask(supabase, task, date),
+    onSuccess: async () => {
+      await invalidateRentalFinance(queryClient);
+      await queryClient.invalidateQueries({ queryKey: ["finance-tasks"] });
+      toast.success("Ожидаемая дата перенесена. Даты брони сохранены");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const moveMutation = useMutation({
     mutationFn: ({
       id,
@@ -173,6 +187,14 @@ function TasksPage() {
       position: number;
     }) => {
       const current = tasks.find((task) => task.id === id);
+      if (current?.finance) {
+        const date = dueDateForColumn(column);
+        if (!date) return Promise.reject(new Error("Выберите колонку с датой"));
+        return rescheduleFinanceTask(supabase, current, date).then(async () => {
+          await invalidateRentalFinance(queryClient);
+          await queryClient.invalidateQueries({ queryKey: ["finance-tasks"] });
+        });
+      }
       return moveTask(id, column, position, {
         due_start: current?.due_start ?? "",
         due_end: current?.due_end ?? "",
@@ -193,7 +215,15 @@ function TasksPage() {
   });
 
   const postponeMutation = useMutation({
-    mutationFn: ({ id, dueDate }: { id: string; dueDate: string }) => postponeTask(id, dueDate),
+    mutationFn: ({ id, dueDate }: { id: string; dueDate: string }) => {
+      const task = tasks.find((t) => t.id === id);
+      return task?.finance
+        ? rescheduleFinanceTask(supabase, task, dueDate).then(async () => {
+            await invalidateRentalFinance(queryClient);
+            await queryClient.invalidateQueries({ queryKey: ["finance-tasks"] });
+          })
+        : postponeTask(id, dueDate);
+    },
     onSuccess: () => {
       setPostponeId(null);
       invalidate();
@@ -429,9 +459,9 @@ function TasksPage() {
                       return (
                         <article
                           key={task.id}
-                          draggable={!isMobile && !task.finance}
+                          draggable={!isMobile && task.status !== "done"}
                           onDragStart={(event) => {
-                            if (isMobile || task.finance) {
+                            if (isMobile || task.status === "done") {
                               event.preventDefault();
                               return;
                             }
@@ -467,6 +497,23 @@ function TasksPage() {
                               ₽
                             </p>
                           )}
+                          {task.finance && task.finance.amount > task.finance.remaining && (
+                            <p className="mt-1 text-xs text-emerald-700">
+                              {task.finance.kind === "receipt" ? "Получено" : "Выплачено"}{" "}
+                              {(task.finance.amount - task.finance.remaining).toLocaleString(
+                                "ru-RU",
+                              )}{" "}
+                              ₽ · Остаток {task.finance.remaining.toLocaleString("ru-RU")} ₽
+                            </p>
+                          )}
+                          {task.finance?.contractDate &&
+                            task.finance.remaining > 0 &&
+                            task.finance.contractDate < today && (
+                              <p className="mt-1 text-xs text-destructive">
+                                Срок по договору {formatDateRu(task.finance.contractDate)} ·
+                                просрочено
+                              </p>
+                            )}
                           {task.is_recurring ? (
                             <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                               <RefreshCw className="size-3" />
@@ -534,7 +581,7 @@ function TasksPage() {
                               <Check className="mr-1 size-3" />
                               {task.finance ? "Открыть платёж" : "Выполнено"}
                             </Button>
-                            {!task.finance && (
+                            {
                               <Popover
                                 open={postponeId === task.id}
                                 onOpenChange={(open) => setPostponeId(open ? task.id : null)}
@@ -571,7 +618,7 @@ function TasksPage() {
                                   />
                                 </PopoverContent>
                               </Popover>
-                            )}
+                            }
                           </div>
                         </article>
                       );

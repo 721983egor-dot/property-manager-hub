@@ -40,6 +40,7 @@ import {
   buildPaymentSeriesDates,
   deletePayment,
   fetchFinancePropertyOptions,
+  fetchPayment,
   financePropertyLabel,
   savePayment,
   savePaymentSeries,
@@ -171,7 +172,31 @@ function fromPayment(payment: Payment): FormState {
   };
 }
 
-export function PaymentDialog({
+export function PaymentDialog(props: Props) {
+  const parent = props.payment?.cash_parent_id;
+  const canonical = useQuery({
+    queryKey: ["payments", "original", parent],
+    queryFn: () => fetchPayment(parent!),
+    enabled: props.open && !!parent,
+  });
+  if (parent && props.open && !canonical.data)
+    return (
+      <Sheet open onOpenChange={props.onOpenChange}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>
+              {canonical.error ? "Не удалось загрузить платёж" : "Загрузка платежа…"}
+            </SheetTitle>
+          </SheetHeader>
+          {canonical.error && <Button onClick={() => void canonical.refetch()}>Повторить</Button>}
+        </SheetContent>
+      </Sheet>
+    );
+  return (
+    <PaymentDialogForm {...props} payment={(parent ? canonical.data : props.payment) ?? null} />
+  );
+}
+function PaymentDialogForm({
   open,
   onOpenChange,
   payment,

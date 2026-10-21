@@ -129,8 +129,9 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     entrypoint: ["/bin/sh", "/apply-migrations.sh"]
     volumes:
-      - ./apply-migrations.sh:/apply-migrations.sh:ro
-      - ../supabase/migrations:/migrations:ro
+      # Docker runs on the host, including when Compose is invoked inside deploy-agent.
+      - ${RM_HOST_REPO_DIR:-/opt/rm-os/repo}/deploy/apply-migrations.sh:/apply-migrations.sh:ro
+      - ${RM_HOST_REPO_DIR:-/opt/rm-os/repo}/supabase/migrations:/migrations:ro
     depends_on:
       supabase-db:
         condition: service_healthy

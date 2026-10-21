@@ -1,3 +1,4 @@
+import { expandPaymentReceipts } from "./finance-cash-receipts";
 import { supabase } from "@/integrations/supabase/client";
 import { toISODate } from "@/lib/rentals";
 import {
@@ -42,7 +43,20 @@ export const PAYMENT_KINDS: { value: PaymentKind; label: string; direction: Paym
 
 export const PAYMENT_ACCOUNTS = ["Основной", "Касса"] as const;
 
+export type CashReceipt = {
+  id: string;
+  amount: number;
+  total: number;
+  date: string;
+  account: string;
+};
 export type Payment = {
+  cash_receipts?: CashReceipt[];
+  cash_parent_id?: string | undefined;
+  task_expected_date?: string | null;
+  owner_task_expected_date?: string | null;
+  contract_date?: string;
+  requires_confirmation?: boolean;
   owner_payout_on_request?: boolean;
   expense_bearer?: "company" | "owner" | null;
   expense_owner_id?: string | null;
@@ -119,9 +133,9 @@ export type PaymentInput = {
 };
 
 const PAYMENT_SELECT =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
+  "cash_receipts, task_expected_date, owner_task_expected_date, requires_confirmation, owner_payout_on_request, id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
 const PAYMENT_SELECT_LEGACY =
-  "id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
+  "cash_receipts, task_expected_date, owner_task_expected_date, requires_confirmation, owner_payout_on_request, id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -169,6 +183,10 @@ export function mapPayment(row: Record<string, unknown>): Payment {
     firstJoin(row["clients"] as Payment["client"] | Payment["client"][] | null) ?? null;
   const article = mapArticleJoin(row);
   return {
+    cash_receipts: (row["cash_receipts"] as CashReceipt[]) ?? [],
+    task_expected_date: row["task_expected_date"] as string | null,
+    owner_task_expected_date: row["owner_task_expected_date"] as string | null,
+    requires_confirmation: row["requires_confirmation"] === true,
     owner_payout_on_request: row["owner_payout_on_request"] === true,
     expense_bearer: (row["expense_bearer"] as Payment["expense_bearer"]) ?? null,
     expense_owner_id: (row["expense_owner_id"] as string | null) ?? null,
@@ -259,8 +277,6 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
       .range(offset, offset + 499);
-    if (opts.from) query = query.gte("planned_date", opts.from);
-    if (opts.to) query = query.lte("planned_date", opts.to);
     if (opts.bookingId) query = query.eq("booking_id", opts.bookingId);
     if (opts.propertyId) query = query.eq("property_id", opts.propertyId);
     if (opts.counterpartyId)
@@ -285,11 +301,16 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
     if (page.length < 500) break;
   }
   const today = financeToday();
-  return rows.map(mapPayment).filter((payment) => {
-    if (!opts.status || opts.status === "all") return true;
-    const status = effectivePaymentStatus(payment, today);
-    return opts.status === "open" ? status !== "paid" : status === opts.status;
-  });
+  return rows
+    .map(mapPayment)
+    .flatMap(expandPaymentReceipts)
+    .filter((payment) => {
+      if (opts.from && payment.planned_date < opts.from) return false;
+      if (opts.to && payment.planned_date > opts.to) return false;
+      if (!opts.status || opts.status === "all") return true;
+      const status = effectivePaymentStatus(payment, today);
+      return opts.status === "open" ? status !== "paid" : status === opts.status;
+    });
 }
 
 /** Лёгкий список объектов для фильтров Финансов — без select(*) и без server fn. */
@@ -502,11 +523,32 @@ export async function markPaymentPaid(
 ): Promise<void> {
   const { data: current, error: loadError } = await supabase
     .from("payments")
-    .select("amount,kind,rental_component,obligation_id,account")
+    .select("*")
     .eq("id", id)
     .maybeSingle();
   if (loadError) throw loadError;
   if (!current) throw new Error("Платёж не найден");
+  if (current.requires_confirmation && current.direction === "in" && current.booking_id) {
+    const { confirmTaskReceipt } = await import("./finance-task-receipt");
+    const received =
+      current.status === "paid"
+        ? (current.paid_amount ?? current.amount)
+        : (current.paid_amount ?? 0);
+    if (received >= current.amount) return;
+    await confirmTaskReceipt(supabase, {
+      p_payment: id,
+      p_booking: current.booking_id,
+      p_expected_amount: current.amount,
+      p_expected_paid: received,
+      p_expected_date: current.task_expected_date || current.planned_date,
+      p_expected_account: current.account,
+      p_paid_total: opts?.paidAmount ?? current.amount,
+      p_paid_date: opts?.paidAt || financeToday(),
+      p_received_account: current.account,
+      p_request_id: crypto.randomUUID(),
+    });
+    return;
+  }
   const amount = Number((current as { amount: number }).amount);
   const plan = current as unknown as {
     rental_component: string | null;
