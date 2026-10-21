@@ -2,6 +2,7 @@ import { crmAccess } from "./crm-results.server";
 import { loadFinanceTasks } from "./finance-tasks-data";
 import type { supabase } from "@/integrations/supabase/client";
 import { financeToday } from "./finance-payment-status";
+import { confirmTaskReceipt } from "./finance-task-receipt";
 export async function financeTasksForAssistant(input?: Record<string, unknown>) {
   const { db } = await crmAccess(input);
   return (await loadFinanceTasks(db as typeof supabase)).tasks;
@@ -62,18 +63,17 @@ export async function confirmFinanceTask(input: Record<string, unknown>) {
   )
     throw new Error("Условия изменились. Проверьте задачу и подтвердите актуальную сумму");
   if (f.kind === "receipt") {
-    const { error } = await db.rpc("finance_confirm_task_receipt", {
-      p_payment: f.paymentId,
+    await confirmTaskReceipt(db as typeof supabase, {
+      p_payment: f.paymentId!,
       p_booking: f.bookingId,
       p_expected_amount: f.amount,
       p_expected_paid: Math.round((f.amount - f.remaining) * 100) / 100,
-      p_expected_date: task.due_date,
+      p_expected_date: task.due_date!,
       p_expected_account: f.account,
       p_paid_total: Math.round((f.amount - f.remaining + Number(input["amount"])) * 100) / 100,
-      p_paid_date: input["date"],
+      p_paid_date: String(input["date"]),
       p_actor: actor,
     });
-    if (error) throw new Error(error.message);
   } else {
     if (
       !f.obligationId ||

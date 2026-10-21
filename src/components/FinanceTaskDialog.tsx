@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchBooking } from "@/lib/bookings";
 import { formatAdeskMoney, formatFinanceDate } from "@/lib/finance";
 import { financeToday } from "@/lib/finance-payment-status";
+import { confirmTaskReceipt } from "@/lib/finance-task-receipt";
 import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import type { StaffTask } from "@/lib/tasks";
 import { BookingDialog } from "./BookingDialog";
@@ -51,7 +52,7 @@ export function FinanceTaskDialog({
       const n = Number(amount);
       if (!Number.isFinite(n) || n <= 0 || n > f.remaining)
         throw new Error("Укажите полученную сумму в пределах остатка");
-      const result = await supabase.rpc("finance_confirm_task_receipt", {
+      await confirmTaskReceipt(supabase, {
         p_payment: f.paymentId!,
         p_booking: f.bookingId,
         p_expected_amount: f.amount,
@@ -61,7 +62,6 @@ export function FinanceTaskDialog({
         p_paid_total: Math.round((f.amount - f.remaining + n) * 100) / 100,
         p_paid_date: date,
       });
-      if (result.error) throw result.error;
     },
     onSuccess: async () => {
       await refresh();
