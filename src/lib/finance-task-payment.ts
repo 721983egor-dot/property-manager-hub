@@ -14,7 +14,9 @@ export async function confirmScheduledPayment(
   if (!f?.paymentId || f.kind !== "payment") throw new Error("Плановый платёж не найден");
   if (!Number.isFinite(amount) || amount <= 0 || amount > f.remaining)
     throw new Error("Укажите сумму в пределах остатка");
-  const { error } = await db.rpc("finance_record_scheduled_payment", {
+  if (!f.paymentUpdatedAt) throw new Error("Обновите задачу перед подтверждением");
+  const { error } = await db.rpc("finance_record_scheduled_payment_checked", {
+    p_expected_updated_at: f.paymentUpdatedAt,
     p_payment: f.paymentId,
     p_expected_amount: f.amount,
     p_expected_paid: Math.round((f.amount - f.remaining) * 100) / 100,

@@ -14,6 +14,7 @@ export type FinanceTaskBooking = {
 export type FinanceTaskInfo = {
   kind: "receipt" | "owner_payout" | "payment";
   direction?: "in" | "out";
+  paymentUpdatedAt?: string;
   bookingId: string | null;
   paymentId: string | null;
   period: string;
@@ -349,6 +350,7 @@ export function buildFinanceTasks(s: FinanceTaskSources): FinanceTask[] {
       remaining <= 0,
       {
         kind: "payment",
+        paymentUpdatedAt: p.updated_at,
         direction: p.direction,
         bookingId: p.booking_id,
         paymentId: p.id,

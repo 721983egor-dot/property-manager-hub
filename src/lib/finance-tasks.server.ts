@@ -43,6 +43,7 @@ export async function financeTaskProposal(input: {
       expectedRemaining: f.remaining,
       expectedDate: task.due_date,
       expectedAccount: f.account,
+      expectedPaymentUpdatedAt: f.paymentUpdatedAt,
       requestId: crypto.randomUUID(),
     },
   };
@@ -60,7 +61,8 @@ export async function confirmFinanceTask(input: Record<string, unknown>) {
     f.amount !== input["expectedAmount"] ||
     f.remaining !== input["expectedRemaining"] ||
     task.due_date !== input["expectedDate"] ||
-    f.account !== input["expectedAccount"]
+    f.account !== input["expectedAccount"] ||
+    f.paymentUpdatedAt !== input["expectedPaymentUpdatedAt"]
   )
     throw new Error("Условия изменились. Проверьте задачу и подтвердите актуальную сумму");
   if (f.kind === "payment") {

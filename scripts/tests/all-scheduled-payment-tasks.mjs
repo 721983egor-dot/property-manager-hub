@@ -4,6 +4,7 @@ process.env.PGLITE_MODULE=import.meta.resolve(process.env.PGLITE_MODULE||'@elect
 let source=await fs.readFile('scripts/tests/finance-task-installments.mjs','utf8');
 const cases=String.raw`
 await db.exec(await fs.readFile('supabase/migrations/20261022140000_all_scheduled_payment_tasks.sql','utf8'));
+await db.exec(await fs.readFile('supabase/migrations/20261022150000_scheduled_payment_snapshot_guard.sql','utf8'));
 const future=(await db.query("SELECT ((now() AT TIME ZONE 'Europe/Moscow')::date+10)::text d")).rows[0].d;
 const receiptAccount=part.account;
 await db.query("INSERT INTO payments(id,planned_date,amount,direction,status,kind,account) VALUES($1,$2,10000,'out','expected','other',$3),($4,$2,20000,'in','expected','other',$3)",[id(8001),future,receiptAccount,id(8002)]);
@@ -31,6 +32,13 @@ assert.ok(ownerPlan);
 await assert.rejects(db.query('SELECT finance_record_scheduled_payment($1,$2,0,$3,$4,1,$5,$4,$6)',[ownerPlan.id,ownerPlan.amount,ownerPlan.d,ownerPlan.account,actualToday,id(8007)]),/через расчёт собственника/);
 await db.query('SELECT finance_reschedule_payment($1,$2,$3)',[ownerPlan.id,ownerPlan.d,later]);
 assert.equal((await db.query('SELECT task_expected_date::text d FROM payments WHERE id=$1',[ownerPlan.id])).rows[0].d,later,'manual owner plan expectation can move without editing protected terms');
+await db.query("INSERT INTO payments(id,planned_date,amount,direction,status,kind,account) VALUES($1,$2,1000,'out','expected','other',$3)",[id(8010),future,receiptAccount]);
+const stamp=(await db.query('SELECT updated_at::text d FROM payments WHERE id=$1',[id(8010)])).rows[0].d;
+await assert.rejects(db.query('SELECT finance_record_scheduled_payment_checked($1,1000,0,$2,$3,500,$4,$3,$5,$6)',[id(8010),future,receiptAccount,actualToday,id(8011),'2000-01-01']),/изменился/);
+await db.query('SELECT finance_record_scheduled_payment_checked($1,1000,0,$2,$3,500,$4,$3,$5,$6)',[id(8010),future,receiptAccount,actualToday,id(8011),stamp]);
+await db.query('SELECT finance_record_scheduled_payment_checked($1,1000,0,$2,$3,500,$4,$3,$5,$6)',[id(8010),future,receiptAccount,actualToday,id(8011),stamp]);
+assert.equal((await db.query('SELECT jsonb_array_length(cash_receipts) n FROM payments WHERE id=$1',[id(8010)])).rows[0].n,1,'snapshot checked request remains retry safe');
+assert.equal((await db.query("SELECT has_function_privilege('authenticated','finance_record_scheduled_payment(uuid,numeric,numeric,date,text,numeric,date,text,uuid,uuid)','EXECUTE') allowed")).rows[0].allowed,false,'raw writer is internal');
 console.log('PASS: standalone income/expense, split actual accounts, partial/full, retry, stale snapshot, original date preserved, other occurrences unchanged, administrator only');
 `;
 source=source.replace('await db.close();', cases+'\nawait db.close();');

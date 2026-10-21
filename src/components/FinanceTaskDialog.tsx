@@ -57,6 +57,7 @@ export function FinanceTaskDialog({
   });
   const changed =
     task.due_date !== snapshot.due_date ||
+    task.finance?.paymentUpdatedAt !== f.paymentUpdatedAt ||
     task.finance?.remaining !== f.remaining ||
     task.finance?.amount !== f.amount ||
     task.finance?.account !== f.account ||
