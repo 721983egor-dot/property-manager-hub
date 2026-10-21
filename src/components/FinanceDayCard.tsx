@@ -2,7 +2,8 @@ import { bankPayments, rentalInstallmentSummary } from "@/lib/finance-company-mo
 import { paymentCashDate } from "@/lib/finance-calendar-model";
 import { paymentFactAmount } from "@/lib/finance-payment-status";
 import { useFinanceToday } from "@/hooks/use-finance-today";
-import { Check } from "lucide-react";
+import { PaymentCompletion } from "./PaymentCompletion";
+import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ export function FinanceDayCard({
   const markPaid = useMutation({
     mutationFn: (id: string) => markPaymentPaid(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["payments"] });
+      void invalidateRentalFinance(queryClient);
       toast.success("Операция проведена");
     },
     onError: (error) =>
@@ -110,7 +111,10 @@ export function FinanceDayCard({
               )}
               <div>
                 {payments.map((payment) => (
-                  <div key={payment.id} className="flex items-start gap-3 border-b py-4">
+                  <div
+                    key={payment.id}
+                    className={`flex items-start gap-3 border-b px-3 py-4 finance-operation finance-operation--${effectivePaymentStatus(payment, today)}`}
+                  >
                     <button
                       type="button"
                       onClick={() => onEdit(payment)}
@@ -174,34 +178,16 @@ export function FinanceDayCard({
                         )}
                       </strong>
                     </button>
-                    {effectivePaymentStatus(payment, today) !== "paid" ? (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        aria-label={`${/^(company|owner):/.test(payment.id) ? "Открыть исходный платёж" : "Провести операцию"}: ${rentalPaymentLabel(payment)}`}
-                        title={
-                          /^(company|owner):/.test(payment.id)
-                            ? "Открыть полный исходный платёж"
-                            : "Провести операцию"
-                        }
-                        disabled={markPaid.isPending || payment.id.startsWith("owner-forecast:")}
-                        onClick={() =>
-                          /^(company|owner):/.test(payment.id)
-                            ? onEdit(payment)
-                            : markPaid.mutate(payment.id)
-                        }
-                      >
-                        <Check size={18} />
-                      </Button>
-                    ) : (
-                      <span
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white"
-                        title="Операция проведена"
-                      >
-                        <Check size={18} aria-label="Проведена" />
-                      </span>
-                    )}
+                    <PaymentCompletion
+                      status={effectivePaymentStatus(payment, today)}
+                      label={rentalPaymentLabel(payment)}
+                      disabled={markPaid.isPending || payment.id.startsWith("owner-forecast:")}
+                      onComplete={() =>
+                        /^(company|owner):/.test(payment.id)
+                          ? onEdit(payment)
+                          : markPaid.mutate(payment.id)
+                      }
+                    />
                   </div>
                 ))}
               </div>

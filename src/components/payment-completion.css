@@ -1,0 +1,53 @@
+.finance-payment-completion {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #b8c5d6;
+  border-radius: 50%;
+  background: #fff;
+  color: #8b9cb1;
+  vertical-align: middle;
+}
+button.finance-payment-completion {
+  cursor: pointer;
+}
+button.finance-payment-completion:hover:not(:disabled) {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  color: #15803d;
+}
+button.finance-payment-completion:focus-visible {
+  outline: 3px solid #86efac;
+  outline-offset: 3px;
+}
+button.finance-payment-completion:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.finance-payment-completion.is-paid {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: white;
+}
+.finance-operation {
+  border-left: 3px solid transparent;
+}
+.finance-operation--paid {
+  border-left-color: #22c55e;
+  background-color: #fff;
+}
+.finance-operation--expected {
+  border-left: 3px dashed #93b4df;
+  background-color: #f5f8fd;
+}
+.finance-operation--partial {
+  border-left-color: #f59e0b;
+  background-color: #fffbeb;
+}
+.finance-operation--overdue {
+  border-left-color: #ef4444;
+  background-color: #fff5f5;
+}

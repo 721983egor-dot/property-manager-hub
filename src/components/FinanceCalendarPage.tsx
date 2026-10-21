@@ -1,3 +1,5 @@
+import { PaymentCompletion } from "./PaymentCompletion";
+import { invalidateRentalFinance } from "@/lib/invalidate-rental-finance";
 import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import { fetchOwnerSettlements } from "@/lib/finance-owner-settlements";
 import { FinanceObjectFlowSelector } from "@/components/FinanceObjectFlowSelector";
@@ -8,7 +10,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
-  Check,
   Heart,
   Plus,
   RotateCcw,
@@ -234,7 +235,7 @@ export function FinanceCalendarPage() {
   const markPaidMutation = useMutation({
     mutationFn: (id: string) => markPaymentPaid(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["payments"] });
+      void invalidateRentalFinance(queryClient);
       toast.success("Операция проведена");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Ошибка"),
@@ -607,7 +608,10 @@ export function FinanceCalendarPage() {
               return (
                 <div
                   key={payment.id}
-                  className="grid gap-2 border-b border-[#e8edf2] px-4 py-3 last:border-b-0 sm:grid-cols-[7rem_1fr_8rem_7rem_6rem] sm:items-center sm:gap-3"
+                  className={cn(
+                    "grid gap-2 border-b border-[#e8edf2] px-4 py-3 last:border-b-0 sm:grid-cols-[7rem_1fr_8rem_7rem_6rem] sm:items-center sm:gap-3",
+                    `finance-operation finance-operation--${status}`,
+                  )}
                 >
                   <button
                     type="button"
@@ -652,26 +656,18 @@ export function FinanceCalendarPage() {
                     {statusLabel(status)}
                   </span>
                   <div className="sm:justify-self-end">
-                    {status !== "paid" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={
-                          markPaidMutation.isPending || payment.id.startsWith("owner-forecast:")
-                        }
-                        onClick={() =>
-                          /^(company|owner):/.test(payment.id)
-                            ? openEdit(payment)
-                            : markPaidMutation.mutate(payment.id)
-                        }
-                      >
-                        <Check size={16} />{" "}
-                        {/^(company|owner):/.test(payment.id) ? "Открыть платёж" : "Провести"}
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-slate-400">✓</span>
-                    )}
+                    <PaymentCompletion
+                      status={status}
+                      label={rentalPaymentLabel(payment)}
+                      disabled={
+                        markPaidMutation.isPending || payment.id.startsWith("owner-forecast:")
+                      }
+                      onComplete={() =>
+                        /^(company|owner):/.test(payment.id)
+                          ? openEdit(payment)
+                          : markPaidMutation.mutate(payment.id)
+                      }
+                    />
                   </div>
                 </div>
               );

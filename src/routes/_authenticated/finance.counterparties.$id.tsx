@@ -1,3 +1,5 @@
+import { PaymentCompletion } from "@/components/PaymentCompletion";
+import { useFinanceToday } from "@/hooks/use-finance-today";
 import { fetchOwnerExpenseAllocations } from "@/lib/finance-owner-settlements";
 import { paymentFactAmount } from "@/lib/finance-payment-status";
 import { OwnerExpenseStatement } from "@/components/OwnerExpenseStatement";
@@ -52,6 +54,7 @@ import {
 } from "@/lib/finance-counterparties";
 import {
   effectivePaymentStatus,
+  markPaymentPaid,
   type Payment,
   type PaymentDirection,
   fetchFinancePropertyOptions,
@@ -85,6 +88,16 @@ function CounterpartyRoutePage() {
 
 export function CounterpartyCardPage({ id }: { id: string }) {
   const queryClient = useQueryClient();
+  const today = useFinanceToday();
+  const markPaid = useMutation({
+    mutationFn: (paymentId: string) => markPaymentPaid(paymentId),
+    onSuccess: () => {
+      void invalidateRentalFinance(queryClient);
+      toast.success("Операция проведена");
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Не удалось провести операцию"),
+  });
   const [tab, setTab] = useState<"money" | "obligations">("money");
   const [editName, setEditName] = useState("");
   const [editClass, setEditClass] = useState("__none__");
@@ -560,47 +573,59 @@ export function CounterpartyCardPage({ id }: { id: string }) {
               </p>
             ) : (
               visiblePayments.map((payment) => {
-                const status = effectivePaymentStatus(payment);
+                const status = effectivePaymentStatus(payment, today);
                 return (
                   <div
                     key={payment.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Изменить операцию ${formatFinanceDate(payment.planned_date)} ${payment.amount}`}
-                    onClick={() => {
-                      setEditingPayment(payment);
-                      setPayOpen(true);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
+                    className={cn(
+                      "flex items-center gap-3 border-b border-border px-5 py-3 last:border-0",
+                      `finance-operation finance-operation--${status}`,
+                    )}
+                  >
+                    <button
+                      type="button"
+                      aria-label={`Изменить операцию ${formatFinanceDate(payment.planned_date)} ${payment.amount}`}
+                      onClick={() => {
                         setEditingPayment(payment);
                         setPayOpen(true);
-                      }
-                    }}
-                    className="grid cursor-pointer gap-1 border-b border-border px-5 py-3 last:border-0 hover:bg-muted/40 sm:grid-cols-[7rem_9rem_1fr_8rem_7rem] sm:items-center"
-                  >
-                    <p className="tabular-nums text-sm">
-                      {formatFinanceDate(payment.planned_date)}
-                    </p>
-                    <p
-                      className={cn(
-                        "font-medium tabular-nums",
-                        payment.direction === "in" ? "text-emerald-600" : "text-red-600",
-                      )}
+                      }}
+                      className="grid min-w-0 flex-1 gap-1 text-left hover:opacity-80 sm:grid-cols-[7rem_9rem_1fr_8rem] sm:items-center"
                     >
-                      {formatAdeskMoney(
-                        payment.direction === "in" ? payment.amount : -payment.amount,
-                        true,
-                      )}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {payment.comment || payment.article?.name || kindLabel(payment.kind)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {propertyLabel(payment.property_id)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{statusLabel(status)}</p>
+                      <p className="tabular-nums text-sm">
+                        {formatFinanceDate(payment.planned_date)}
+                      </p>
+                      <p
+                        className={cn(
+                          "font-medium tabular-nums",
+                          payment.direction === "in" ? "text-emerald-600" : "text-red-600",
+                        )}
+                      >
+                        {formatAdeskMoney(
+                          payment.direction === "in" ? payment.amount : -payment.amount,
+                          true,
+                        )}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {payment.comment || payment.article?.name || kindLabel(payment.kind)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {propertyLabel(payment.property_id)}
+                      </p>
+                    </button>
+                    <div className="flex w-36 shrink-0 items-center justify-end gap-2">
+                      <span className="text-xs text-muted-foreground">{statusLabel(status)}</span>
+                      <PaymentCompletion
+                        status={status}
+                        label={payment.comment || payment.article?.name || kindLabel(payment.kind)}
+                        disabled={markPaid.isPending || payment.id.startsWith("owner-forecast:")}
+                        onComplete={() => {
+                          if (/^(company|owner):/.test(payment.id)) {
+                            setEditingPayment(payment);
+                            setPayOpen(true);
+                          } else markPaid.mutate(payment.id);
+                        }}
+                      />
+                    </div>
                   </div>
                 );
               })
