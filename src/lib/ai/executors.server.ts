@@ -1371,15 +1371,21 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
             ? null
             : Number(input["paidAmount"]),
     };
-    const { error } = await supabaseAdmin.from("payments").insert(row as never);
+    let rows = [row];
+    if (input["repeat"]) {
+      await (await import("@/lib/crm-results.server")).crmAccess(input);
+      const { buildPaymentSeriesEntries } = await import("@/lib/finance-payment-series");
+      rows = buildPaymentSeriesEntries({ ...row, planned_date: plannedDate, status }, input["repeat"] as import("@/lib/finance-payment-series").PaymentRepeatOptions);
+    }
+    const { error } = await supabaseAdmin.from("payments").insert(rows as never);
     if (error && /article_id|schema cache|could not find/i.test(error.message)) {
-      delete row["article_id"];
-      const retry = await supabaseAdmin.from("payments").insert(row as never);
+      rows = rows.map(({ article_id: _article, ...entry }) => entry);
+      const retry = await supabaseAdmin.from("payments").insert(rows as never);
       if (retry.error) throw new Error(retry.error.message);
-      return "Платёж создан";
+      return rows.length > 1 ? `Создано ${rows.length} операций; будущие платежи запланированы отдельно от фактической оплаты` : "Платёж создан";
     }
     if (error) throw new Error(error.message);
-    return "Платёж создан";
+    return rows.length > 1 ? `Создано ${rows.length} операций; будущие платежи запланированы отдельно от фактической оплаты` : "Платёж создан";
   },
 
   updatePayment: async (input) => {

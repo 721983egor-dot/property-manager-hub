@@ -1309,6 +1309,12 @@ export function createMutateTools(ctx: AssistantToolContext) {
         plannedDate: z.string().describe("ГГГГ-ММ-ДД"),
         expenseBearer: z.enum(["company", "owner"]).optional().describe("За чей счёт расход. Для owner нужен объект с прикреплённым собственником; оплаченная сумма автоматически удерживается из выплат."),
         amount: z.number(),
+        repeat: z.object({
+          interval: z.enum(["month", "week"]),
+          paymentDay: z.number().int().min(1).max(31).optional().describe("Число ежемесячных повторов, независимо от даты первой операции; следующие повторы со следующего месяца"),
+          count: z.number().int().min(1).max(36).optional().describe("Всего операций с учётом первой"),
+          untilDate: z.string().optional().describe("Повторять до даты включительно, не больше 36 операций"),
+        }).optional(),
         direction: z.enum(["in", "out"]).optional(),
         kind: z
           .enum([
@@ -1335,6 +1341,13 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async (input) => {
         if (!input.plannedDate) return { error: "Укажите дату" };
         if (!Number.isFinite(input.amount) || input.amount < 0) return { error: "Укажите сумму" };
+        let seriesDates: string[] | null = null;
+        if (input.repeat) {
+          const { ownerFinanceAdminClient } = await import("@/lib/finance-owner-access.server");
+          await ownerFinanceAdminClient();
+          const { buildPaymentSeriesDates } = await import("@/lib/finance-payment-series");
+          seriesDates = buildPaymentSeriesDates(input.plannedDate, input.repeat);
+        }
         let articleId = input.articleId ?? null;
         let articleName = "";
         let articleCode: string | null = null;
@@ -1397,6 +1410,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (clientName) parts.push(clientName);
         else if (input.counterpartyName) parts.push(input.counterpartyName);
         parts.push(`счёт: ${input.account ?? "Основной"}`);
+        if (seriesDates) parts.push(`серия: ${seriesDates.length} операций; первая ${seriesDates[0]}, следующая ${seriesDates[1] ?? "нет"}${input.repeat?.paymentDay ? `; регулярный день ${input.repeat.paymentDay}` : ""}; будущие операции без подтверждённой оплаты`);
         const summary = `Создать платёж: ${parts.join(", ")}`;
         ctx.propose({
           tool: "createPayment",
@@ -1404,6 +1418,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
           input: {
             expenseBearer: input.expenseBearer ?? null,
             plannedDate: input.plannedDate,
+            repeat: input.repeat ?? null,
             amount: input.amount,
             direction,
             kind,

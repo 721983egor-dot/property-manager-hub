@@ -42,6 +42,7 @@ import {
   fetchFinancePropertyOptions,
   fetchPayment,
   financePropertyLabel,
+  formatFinanceDate,
   savePayment,
   savePaymentSeries,
   type Payment,
@@ -95,6 +96,7 @@ type FormState = {
   accrual_date: string;
   repeat: boolean;
   repeatInterval: PaymentRepeatInterval;
+  repeatPaymentDay: string;
   repeatEndMode: RepeatEndMode;
   repeatCount: string;
   repeatUntil: string;
@@ -130,6 +132,7 @@ function emptyForm(
     accrual_date: "",
     repeat: false,
     repeatInterval: "month",
+    repeatPaymentDay: String(Number((date || toISODate(new Date())).slice(8, 10))),
     repeatEndMode: "count",
     repeatCount: "12",
     repeatUntil: "",
@@ -166,6 +169,7 @@ function fromPayment(payment: Payment): FormState {
     accrual_date: payment.accrual_date ?? "",
     repeat: false,
     repeatInterval: "month",
+    repeatPaymentDay: String(Number(payment.planned_date.slice(8, 10))),
     repeatEndMode: "count",
     repeatCount: "12",
     repeatUntil: "",
@@ -378,17 +382,26 @@ function PaymentDialogForm({
 
   const seriesDates = useMemo(() => {
     if (payment || !form.repeat || !form.planned_date) return [form.planned_date].filter(Boolean);
+    const paymentDay = Number(form.repeatPaymentDay);
+    if (
+      form.repeatInterval === "month" &&
+      (!Number.isInteger(paymentDay) || paymentDay < 1 || paymentDay > 31)
+    )
+      return [form.planned_date];
+    const dayOption = form.repeatInterval === "month" ? { paymentDay } : {};
     if (form.repeatEndMode === "until") {
-      if (!form.repeatUntil) return [form.planned_date];
+      if (!form.repeatUntil || form.repeatUntil < form.planned_date) return [form.planned_date];
       return buildPaymentSeriesDates(form.planned_date, {
         interval: form.repeatInterval,
+        ...dayOption,
         untilDate: form.repeatUntil,
       });
     }
     const count = Number(form.repeatCount);
     return buildPaymentSeriesDates(form.planned_date, {
       interval: form.repeatInterval,
-      count: Number.isFinite(count) && count > 0 ? count : 1,
+      ...dayOption,
+      count: Number.isInteger(count) && count > 0 && count <= 36 ? count : 1,
     });
   }, [
     payment,
@@ -398,6 +411,7 @@ function PaymentDialogForm({
     form.repeatUntil,
     form.repeatCount,
     form.repeatInterval,
+    form.repeatPaymentDay,
   ]);
 
   const invalidate = () => {
@@ -513,21 +527,29 @@ function PaymentDialogForm({
         interval: PaymentRepeatInterval;
         count?: number;
         untilDate?: string;
+        paymentDay?: number;
       } | null;
       if (!payment && form.repeat) {
+        const paymentDay = Number(form.repeatPaymentDay);
+        if (
+          form.repeatInterval === "month" &&
+          (!Number.isInteger(paymentDay) || paymentDay < 1 || paymentDay > 31)
+        )
+          throw new Error("Укажите день оплаты от 1 до 31");
+        const dayOption = form.repeatInterval === "month" ? { paymentDay } : {};
         if (form.repeatEndMode === "until") {
           if (!form.repeatUntil) throw new Error("Укажите дату окончания повтора");
           if (form.repeatUntil < form.planned_date) {
             throw new Error("Дата окончания не раньше первой операции");
           }
-          repeatOpts = { interval: form.repeatInterval, untilDate: form.repeatUntil };
+          repeatOpts = { interval: form.repeatInterval, ...dayOption, untilDate: form.repeatUntil };
         } else {
           const count = Number(form.repeatCount);
-          if (!Number.isFinite(count) || count < 1) {
+          if (!Number.isInteger(count) || count < 1) {
             throw new Error("Укажите число повторов (от 1)");
           }
           if (count > 36) throw new Error("Не больше 36 операций в серии");
-          repeatOpts = { interval: form.repeatInterval, count };
+          repeatOpts = { interval: form.repeatInterval, ...dayOption, count };
         }
       }
       const id = await savePaymentSeries(payment?.id ?? null, input, repeatOpts);
@@ -993,6 +1015,30 @@ function PaymentDialogForm({
                       </SelectContent>
                     </Select>
                   </div>
+                  {form.repeatInterval === "month" && (
+                    <div className="space-y-1.5">
+                      <label htmlFor="repeat-payment-day" className="text-sm font-medium">
+                        День регулярной оплаты
+                      </label>
+                      <Input
+                        id="repeat-payment-day"
+                        aria-label="День регулярной оплаты"
+                        type="number"
+                        min={1}
+                        max={31}
+                        step={1}
+                        value={form.repeatPaymentDay}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, repeatPaymentDay: e.target.value }))
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Первую операцию запишем на выбранную выше дату. Повторы начнутся со
+                        следующего месяца, в указанное число. Если такого числа нет — в последний
+                        день месяца.
+                      </p>
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
                       Срок жизни
@@ -1047,7 +1093,9 @@ function PaymentDialogForm({
                     Будет создано{" "}
                     <span className="font-semibold text-slate-700">{seriesDates.length}</span>{" "}
                     {seriesDates.length === 1 ? "операция" : "операций"}
-                    {seriesDates.length > 1 ? ` · до ${seriesDates[seriesDates.length - 1]}` : ""}
+                    {seriesDates.length > 1
+                      ? ` · следующая ${formatFinanceDate(seriesDates[1]!)} · до ${formatFinanceDate(seriesDates[seriesDates.length - 1]!)}`
+                      : ""}
                   </p>
                 </div>
               )}

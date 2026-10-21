@@ -1,3 +1,4 @@
+// Регулярные обычные операции: getPaymentSeriesPreview → proposeCreatePayment(repeat.interval/paymentDay/count/untilDate) → createPayment; общий расчёт дат, одна атомарная вставка, фактическая оплата только у первой операции.
 // Остатки всех счетов: getFinanceAccountBalances. Отмена подтверждения: getPaymentConfirmation → proposeReversePaymentConfirmation → reversePaymentConfirmation; атомарный RPC, администратор, аудит.
 // Прибыльность домов и квартир: getObjectProfitability, общий расчёт с отчётом, только чтение администратора.
 // Единая аренда: ownerPayoutDay в createBooking/updateRentalContract, getRentalContract/getFinanceRentalTerms; сроки выплат и платежи в брони. Старые настройки дня на объекте больше не предлагаются.

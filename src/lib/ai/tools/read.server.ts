@@ -2353,6 +2353,15 @@ export function createReadTools(ctx: AssistantToolContext) {
         return {expenses,expenseAllocations:allocations.data.filter(a=>expenses.some(p=>p.id===a.payment_id)),settlements:settlements.data.map(s=>{const o=obligations.data.find(o=>o.id===s.obligation_id);return {...s,obligation:o,rentalIncome:ownerRentalIncome(payments.data as unknown as Payment[],s.period.slice(0,7),s.property_id,today),state:o?ownerSettlementState(o as unknown as FinanceObligation,payments.data as unknown as Payment[],today):null};})};
       },
     }),
+    getPaymentSeriesPreview: tool({
+      description: "Даты регулярных обычных операций до создания. Первая сохраняет выбранную дату/факт, monthly paymentDay задаёт число повторов со следующего месяца; при отсутствии числа — последний день месяца. Не меняет данные. Для аренды используется график брони. Только администратор.",
+      inputSchema: z.object({ plannedDate: z.string(), interval: z.enum(["month", "week"]), paymentDay: z.number().int().min(1).max(31).optional(), count: z.number().int().min(1).max(36).optional(), untilDate: z.string().optional() }),
+      execute: async ({ plannedDate, ...repeat }) => {
+        await (await import("@/lib/finance-owner-access.server")).ownerFinanceAdminClient();
+        const { buildPaymentSeriesDates } = await import("@/lib/finance-payment-series");
+        return { dates: buildPaymentSeriesDates(plannedDate, repeat), paymentDay: repeat.paymentDay ?? null, futureStatus: "expected" };
+      },
+    }),
     getFinanceAccountBalances: tool({
       description: "Текущие фактические остатки действующих счетов и общий итог, как в компактном окне всех страниц Финансов. Учитывает отдельные части поступлений; планы и будущие суммы не включаются. Только администратор.",
       inputSchema: z.object({}),

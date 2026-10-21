@@ -1,3 +1,4 @@
+import { buildPaymentSeriesEntries, type PaymentRepeatOptions } from "./finance-payment-series";
 import { expandPaymentReceipts } from "./finance-cash-receipts";
 import { supabase } from "@/integrations/supabase/client";
 import { toISODate } from "@/lib/rentals";
@@ -434,85 +435,30 @@ export async function savePayment(id: string | null, input: PaymentInput): Promi
   }
 }
 
-function addMonthsIso(iso: string, months: number) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(y ?? 1970, (m ?? 1) - 1 + months, 1);
-  const last = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  const day = Math.min(d ?? 1, last);
-  return toISODate(new Date(date.getFullYear(), date.getMonth(), day));
-}
+export { buildPaymentSeriesDates } from "./finance-payment-series";
+export type { PaymentRepeatInterval, PaymentRepeatOptions } from "./finance-payment-series";
 
-function addWeeksIso(iso: string, weeks: number) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
-  date.setDate(date.getDate() + weeks * 7);
-  return toISODate(date);
-}
-
-export type PaymentRepeatInterval = "month" | "week";
-
-/** Параметры серии для арендного календаря: период + срок (до даты или число раз). */
-export type PaymentRepeatOptions = {
-  interval: PaymentRepeatInterval;
-  /** Всего операций, включая первую. */
-  count?: number;
-  /** Повторять, пока planned_date <= untilDate (включительно). */
-  untilDate?: string;
-};
-
-const MAX_SERIES = 36;
-
-/** Даты серии (первая + повторы), без записи в БД. */
-export function buildPaymentSeriesDates(
-  startDate: string,
-  opts: PaymentRepeatOptions | null | undefined,
-): string[] {
-  if (!opts) return [startDate];
-  const dates = [startDate];
-  const shift = opts.interval === "week" ? addWeeksIso : addMonthsIso;
-
-  if (opts.untilDate) {
-    for (let i = 1; i < MAX_SERIES; i += 1) {
-      const next = shift(startDate, i);
-      if (next > opts.untilDate) break;
-      dates.push(next);
-    }
-    return dates;
-  }
-
-  const total = Math.min(MAX_SERIES, Math.max(1, Math.floor(opts.count ?? 1)));
-  for (let i = 1; i < total; i += 1) dates.push(shift(startDate, i));
-  return dates;
-}
-
-/** Сохранить операцию: опционально серия по периоду до даты или N раз. */
+/** Validate the whole series first, then insert all rows atomically. */
 export async function savePaymentSeries(
   id: string | null,
   input: PaymentInput,
   repeat: PaymentRepeatOptions | number | null = null,
 ): Promise<string> {
-  const firstId = await savePayment(id, input);
-  if (id || repeat == null) return firstId;
-
-  // Совместимость: число = доп. месяцы после первой (старый API).
-  const opts: PaymentRepeatOptions =
-    typeof repeat === "number"
-      ? { interval: "month", count: Math.max(1, Math.floor(repeat) + 1) }
-      : repeat;
-
-  const dates = buildPaymentSeriesDates(input.planned_date, opts);
-  for (let i = 1; i < dates.length; i += 1) {
-    const planned = dates[i]!;
-    const monthsOrWeeks = i;
-    await savePayment(null, {
-      ...input,
-      planned_date: planned,
-      accrual_date: input.accrual_date
-        ? opts.interval === "week"
-          ? addWeeksIso(input.accrual_date, monthsOrWeeks)
-          : addMonthsIso(input.accrual_date, monthsOrWeeks)
-        : null,
-    });
+  if (id || repeat == null) return savePayment(id, input);
+  const opts: PaymentRepeatOptions = typeof repeat === "number"
+    ? { interval: "month", count: Math.min(36, Math.max(1, Math.floor(repeat) + 1)) }
+    : repeat;
+  if (input.booking_id || input.rental_component || input.obligation_id)
+    throw new Error("Для связанной аренды и выплат используйте график в брони");
+  const entries = buildPaymentSeriesEntries(input, opts);
+  const firstId = crypto.randomUUID();
+  const rows = entries.map((entry, index) => ({ ...normalizeInput(entry), id: index === 0 ? firstId : crypto.randomUUID() }));
+  const write = (payload: Record<string, unknown>[]) => supabase.from("payments").insert(payload as never);
+  const result = await write(rows);
+  if (result.error) {
+    if (!missingArticleColumn(result.error.message)) throw result.error;
+    const retry = await write(rows.map(({ article_id: _article, ...row }) => row));
+    if (retry.error) throw retry.error;
   }
   return firstId;
 }
