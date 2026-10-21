@@ -16,6 +16,7 @@ export async function invalidateRentalFinance(qc: QueryClient) {
       "finance-owner-settlements",
       "finance-obligations",
       "payments",
+      "finance-payment-series",
       "finance-tasks",
       "finance-task-booking",
       "deals",

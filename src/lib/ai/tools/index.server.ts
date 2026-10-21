@@ -1,3 +1,4 @@
+// Связанные регулярные серии: repeat.unlimited; getRecurringPaymentSeries → proposeUpdateRecurringPayment(single/following) → editRecurringPayment. Постоянный шаблон, защищённый cron продления, атомарные RPC и аудит; оплаченные/частичные не переписываются массово.
 // Регулярные обычные операции: getPaymentSeriesPreview → proposeCreatePayment(repeat.interval/paymentDay/count/untilDate) → createPayment; общий расчёт дат, одна атомарная вставка, фактическая оплата только у первой операции.
 // Остатки всех счетов: getFinanceAccountBalances. Отмена подтверждения: getPaymentConfirmation → proposeReversePaymentConfirmation → reversePaymentConfirmation; атомарный RPC, администратор, аудит.
 // Прибыльность домов и квартир: getObjectProfitability, общий расчёт с отчётом, только чтение администратора.

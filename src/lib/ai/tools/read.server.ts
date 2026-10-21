@@ -2353,9 +2353,14 @@ export function createReadTools(ctx: AssistantToolContext) {
         return {expenses,expenseAllocations:allocations.data.filter(a=>expenses.some(p=>p.id===a.payment_id)),settlements:settlements.data.map(s=>{const o=obligations.data.find(o=>o.id===s.obligation_id);return {...s,obligation:o,rentalIncome:ownerRentalIncome(payments.data as unknown as Payment[],s.period.slice(0,7),s.property_id,today),state:o?ownerSettlementState(o as unknown as FinanceObligation,payments.data as unknown as Payment[],today):null};})};
       },
     }),
+    getRecurringPaymentSeries: tool({
+      description: "Условия связанной регулярной операции, срок/без срока, день оплаты, ревизия и созданные операции для выбора single/following. Не объединяет старые независимые операции по похожим суммам. Только администратор.",
+      inputSchema:z.object({paymentId:z.string().uuid()}),
+      execute:async({paymentId})=>{const {db}=await(await import("@/lib/crm-results.server")).crmAccess();const p=await db.from("payments").select("*").eq("id",paymentId).single();if(p.error||!p.data?.recurring_series_id)throw new Error("Связанная серия не найдена");const s=await db.from("finance_payment_series").select("*").eq("id",p.data.recurring_series_id).single();if(s.error)throw new Error(s.error.message);const rows=await allFinancePages((from,to)=>db.from("payments").select("*").eq("recurring_series_id",s.data.id).order("recurring_index").range(from,to));if(rows.error)throw new Error(rows.error.message);return {series:s.data,selected:p.data,payments:rows.data};},
+    }),
     getPaymentSeriesPreview: tool({
       description: "Даты регулярных обычных операций до создания. Первая сохраняет выбранную дату/факт, monthly paymentDay задаёт число повторов со следующего месяца; при отсутствии числа — последний день месяца. Не меняет данные. Для аренды используется график брони. Только администратор.",
-      inputSchema: z.object({ plannedDate: z.string(), interval: z.enum(["month", "week"]), paymentDay: z.number().int().min(1).max(31).optional(), count: z.number().int().min(1).max(36).optional(), untilDate: z.string().optional() }),
+      inputSchema: z.object({ plannedDate: z.string(), interval: z.enum(["month", "week"]), unlimited: z.boolean().optional(), paymentDay: z.number().int().min(1).max(31).optional(), count: z.number().int().min(1).max(36).optional(), untilDate: z.string().optional() }),
       execute: async ({ plannedDate, ...repeat }) => {
         await (await import("@/lib/finance-owner-access.server")).ownerFinanceAdminClient();
         const { buildPaymentSeriesDates } = await import("@/lib/finance-payment-series");

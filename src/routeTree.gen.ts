@@ -87,6 +87,7 @@ import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authen
 import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_authenticated/objects.$id.preview'
 import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/cron/bnovo-sync'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
+import { Route as ApiPublicCronFinanceSeriesRouteImport } from './routes/api/public/cron/finance-series'
 import { Route as ApiPublicCronVideoPublishRouteImport } from './routes/api/public/cron/video-publish'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsAvitoDotxmlRouteImport } from './routes/api/public/feeds/avito[.]xml'
@@ -530,6 +531,12 @@ const ApiPublicCronCianSyncRoute = ApiPublicCronCianSyncRouteImport.update({
   path: '/api/public/cron/cian-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronFinanceSeriesRoute =
+  ApiPublicCronFinanceSeriesRouteImport.update({
+    id: '/api/public/cron/finance-series',
+    path: '/api/public/cron/finance-series',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronVideoPublishRoute =
   ApiPublicCronVideoPublishRouteImport.update({
     id: '/api/public/cron/video-publish',
@@ -682,6 +689,7 @@ export interface FileRoutesByFullPath {
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
@@ -773,6 +781,7 @@ export interface FileRoutesByTo {
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
@@ -868,6 +877,7 @@ export interface FileRoutesById {
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
+  '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
@@ -963,6 +973,7 @@ export interface FileRouteTypes {
     | '/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
+    | '/api/public/cron/finance-series'
     | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
@@ -1054,6 +1065,7 @@ export interface FileRouteTypes {
     | '/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
+    | '/api/public/cron/finance-series'
     | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
@@ -1148,6 +1160,7 @@ export interface FileRouteTypes {
     | '/_authenticated/objects/$id/preview'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
+    | '/api/public/cron/finance-series'
     | '/api/public/cron/video-publish'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
@@ -1196,6 +1209,7 @@ export interface RootRouteChildren {
   ApiPublicStaffSessionRoute: typeof ApiPublicStaffSessionRoute
   ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
+  ApiPublicCronFinanceSeriesRoute: typeof ApiPublicCronFinanceSeriesRoute
   ApiPublicCronVideoPublishRoute: typeof ApiPublicCronVideoPublishRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsAvitoDotxmlRoute: typeof ApiPublicFeedsAvitoDotxmlRoute
@@ -1758,6 +1772,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronCianSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/finance-series': {
+      id: '/api/public/cron/finance-series'
+      path: '/api/public/cron/finance-series'
+      fullPath: '/api/public/cron/finance-series'
+      preLoaderRoute: typeof ApiPublicCronFinanceSeriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/video-publish': {
       id: '/api/public/cron/video-publish'
       path: '/api/public/cron/video-publish'
@@ -2029,6 +2050,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicStaffSessionRoute: ApiPublicStaffSessionRoute,
   ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
+  ApiPublicCronFinanceSeriesRoute: ApiPublicCronFinanceSeriesRoute,
   ApiPublicCronVideoPublishRoute: ApiPublicCronVideoPublishRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsAvitoDotxmlRoute: ApiPublicFeedsAvitoDotxmlRoute,

@@ -1126,6 +1126,8 @@ export type Database = {
       }
       payments: {
         Row: {
+          recurring_series_id: string | null
+          recurring_index: number | null
           cash_receipts: Json
           task_expected_date: string | null
           owner_task_expected_date: string | null
@@ -1165,6 +1167,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          recurring_series_id?: string | null
+          recurring_index?: number | null
           cash_receipts?: Json
           task_expected_date?: string | null
           owner_task_expected_date?: string | null
@@ -1204,6 +1208,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          recurring_series_id?: string | null
+          recurring_index?: number | null
           cash_receipts?: Json
           task_expected_date?: string | null
           owner_task_expected_date?: string | null

@@ -1311,6 +1311,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         amount: z.number(),
         repeat: z.object({
           interval: z.enum(["month", "week"]),
+          unlimited: z.boolean().optional().describe("Без даты окончания; не передавать count и untilDate"),
           paymentDay: z.number().int().min(1).max(31).optional().describe("Число ежемесячных повторов, независимо от даты первой операции; следующие повторы со следующего месяца"),
           count: z.number().int().min(1).max(36).optional().describe("Всего операций с учётом первой"),
           untilDate: z.string().optional().describe("Повторять до даты включительно, не больше 36 операций"),
@@ -1410,7 +1411,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
         if (clientName) parts.push(clientName);
         else if (input.counterpartyName) parts.push(input.counterpartyName);
         parts.push(`счёт: ${input.account ?? "Основной"}`);
-        if (seriesDates) parts.push(`серия: ${seriesDates.length} операций; первая ${seriesDates[0]}, следующая ${seriesDates[1] ?? "нет"}${input.repeat?.paymentDay ? `; регулярный день ${input.repeat.paymentDay}` : ""}; будущие операции без подтверждённой оплаты`);
+        if (seriesDates) parts.push(`серия${input.repeat?.unlimited ? " без срока" : ""}: ближайшие ${seriesDates.length} операций; первая ${seriesDates[0]}, следующая ${seriesDates[1] ?? "нет"}${input.repeat?.paymentDay ? `; регулярный день ${input.repeat.paymentDay}` : ""}; будущие операции без подтверждённой оплаты`);
         const summary = `Создать платёж: ${parts.join(", ")}`;
         ctx.propose({
           tool: "createPayment",
@@ -1419,6 +1420,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
             expenseBearer: input.expenseBearer ?? null,
             plannedDate: input.plannedDate,
             repeat: input.repeat ?? null,
+            seriesId: input.repeat ? crypto.randomUUID() : null,
             amount: input.amount,
             direction,
             kind,
@@ -1437,9 +1439,23 @@ export function createMutateTools(ctx: AssistantToolContext) {
       },
     }),
 
+    proposeUpdateRecurringPayment: tool({
+      description: "Изменить связанную регулярную операцию: single — только эту, following — эту и все последующие неоплаченные. Оплаченные/частичные при following сохраняются. Условия будущих месяцев также обновляются. Сначала getRecurringPaymentSeries; подтверждение администратора.",
+      inputSchema: z.object({paymentId:z.string().uuid(),scope:z.enum(["single","following"]),amount:z.number().positive().optional(),plannedDate:z.string().optional(),paymentDay:z.number().int().min(1).max(31).optional(),account:z.string().optional(),comment:z.string().optional(),articleId:z.string().uuid().optional()}),
+      execute: async input => {
+        const {db}=await (await import("@/lib/crm-results.server")).crmAccess();
+        const p=await db.from("payments").select("*").eq("id",input.paymentId).single();
+        if(p.error||!p.data?.recurring_series_id)throw new Error("Связанная регулярная операция не найдена");
+        const series=await db.from("finance_payment_series").select("*").eq("id",p.data.recurring_series_id).single();if(series.error)throw new Error(series.error.message);
+        const values={...p.data,...(input.amount!==undefined?{amount:input.amount}:{}),...(input.plannedDate?{planned_date:input.plannedDate}:{}),...(input.account?{account:input.account}:{}),...(input.comment!==undefined?{comment:input.comment}:{}),...(input.articleId?{article_id:input.articleId}:{})};
+        if(input.articleId){const article=await db.from("finance_articles").select("code,direction").eq("id",input.articleId).single();if(article.error||article.data.direction!==p.data.direction)throw new Error("Выберите статью текущего типа операции");values.kind=["rent_in","deposit_in","deposit_out","owner_payout","contractor","agency_cost","other"].includes(article.data.code)?article.data.code:"other";}
+        const summary=`Изменить ${input.scope==="single"?"только эту операцию":"эту и последующие неоплаченные операции серии"}: ${money(values.amount)}, ${values.planned_date}, счёт ${values.account}${input.paymentDay?`; регулярный день ${input.paymentDay}`:""}. Проведённые и частичные при массовом изменении сохраняются`;
+        ctx.propose({tool:"editRecurringPayment",summary,input:{paymentId:input.paymentId,scope:input.scope,paymentDay:input.paymentDay??series.data.payment_day,values,expected:p.data,revision:series.data.revision}});return {proposed:true,summary};
+      },
+    }),
     proposeUpdatePayment: tool({
       description:
-        "Предложить изменение платежа Финансов (частичный патч: дата, сумма, статус, объект, комментарий…). Требует подтверждения.",
+        "Предложить изменение платежа Финансов (частичный патч). Для связанных регулярных серий используй proposeUpdateRecurringPayment с выбором single/following. Требует подтверждения.",
       inputSchema: z.object({
         paymentId: z.string(),
         articleId: z.string().uuid().nullable().optional().describe("Выбранная статья. При смене доход/расхода выберите статью нового типа; null очищает выбор."),

@@ -1,6 +1,7 @@
 export type PaymentRepeatInterval = "month" | "week";
 export type PaymentRepeatOptions = {
   interval: PaymentRepeatInterval;
+  unlimited?: boolean | undefined;
   /** Total operations, including the original payment. */
   count?: number | undefined;
   untilDate?: string | undefined;
@@ -55,8 +56,10 @@ export function buildPaymentSeriesDates(
     dateParts(opts.untilDate);
     if (opts.untilDate < startDate) throw new Error("Дата окончания не раньше первой операции");
   }
+  if (opts.unlimited && (opts.count !== undefined || opts.untilDate))
+    throw new Error("Для серии без срока не указывайте дату окончания или количество");
   const dates = [startDate];
-  const total = opts.untilDate ? MAX_SERIES : (opts.count ?? 1);
+  const total = opts.unlimited || opts.untilDate ? MAX_SERIES : (opts.count ?? 1);
   for (let i = 1; i < total; i++) {
     const next =
       opts.interval === "week"

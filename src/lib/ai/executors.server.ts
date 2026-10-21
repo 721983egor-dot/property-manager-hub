@@ -1371,12 +1371,13 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
             ? null
             : Number(input["paidAmount"]),
     };
-    let rows = [row];
     if (input["repeat"]) {
-      await (await import("@/lib/crm-results.server")).crmAccess(input);
-      const { buildPaymentSeriesEntries } = await import("@/lib/finance-payment-series");
-      rows = buildPaymentSeriesEntries({ ...row, planned_date: plannedDate, status }, input["repeat"] as import("@/lib/finance-payment-series").PaymentRepeatOptions);
+      const {db,actor}=await (await import("@/lib/crm-results.server")).crmAccess(input);
+      const {data,error}=await db.rpc("finance_create_payment_series",{p_id:input["seriesId"],p_input:row,p_repeat:input["repeat"],p_actor:actor});
+      if(error)throw new Error(error.message);
+      return `Связанная регулярная серия создана: ${data}`;
     }
+    let rows = [row];
     const { error } = await supabaseAdmin.from("payments").insert(rows as never);
     if (error && /article_id|schema cache|could not find/i.test(error.message)) {
       rows = rows.map(({ article_id: _article, ...entry }) => entry);
@@ -1386,6 +1387,13 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     }
     if (error) throw new Error(error.message);
     return rows.length > 1 ? `Создано ${rows.length} операций; будущие платежи запланированы отдельно от фактической оплаты` : "Платёж создан";
+  },
+
+  editRecurringPayment: async (input) => {
+    const {db,actor}=await (await import("@/lib/crm-results.server")).crmAccess(input);
+    const {data,error}=await db.rpc("finance_edit_payment_series",{p_payment:input["paymentId"],p_input:input["values"],p_scope:input["scope"],p_day:input["paymentDay"],p_expected:input["expected"],p_revision:input["revision"],p_actor:actor});
+    if(error)throw new Error(error.message);
+    return `Обновлено операций: ${data.updated}; сохранено проведённых и частичных: ${data.preservedActual}`;
   },
 
   updatePayment: async (input) => {
@@ -1426,6 +1434,8 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
         patch["kind"] = ["rent_in","deposit_in","deposit_out","owner_payout","contractor","agency_cost","other"].includes(article.data.code ?? "") ? article.data.code : "other";
       }
     }
+    const recurringCheck=await supabaseAdmin.from("payments").select("*").eq("id",paymentId).single();
+    if ((recurringCheck.data as unknown as Record<string,unknown> | null)?.["recurring_series_id"]) throw new Error("Для регулярной серии выберите single/following через proposeUpdateRecurringPayment");
     if (!Object.keys(patch).length) throw new Error("Нет полей для обновления платежа");
     const { error } = await supabaseAdmin.from("payments").update(patch as never).eq("id", paymentId);
     if (error) throw new Error(error.message);

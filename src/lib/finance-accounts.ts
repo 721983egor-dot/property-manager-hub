@@ -56,7 +56,7 @@ export async function updateFinanceAccount(id: string, name: string, type: Finan
 
 export async function fetchFinanceAccountUsage(
   id: string,
-): Promise<{ payments: number; deals: number; schedules?: number; receipts?: number }> {
+): Promise<{ payments: number; deals: number; schedules?: number; receipts?: number; series?: number }> {
   const { data, error } = await supabase.rpc("finance_account_usage", { p_id: id });
   if (error) throw error;
   if (!data) throw new Error("Не удалось проверить счёт");

@@ -1,3 +1,9 @@
+import { RepeatEndSelect, RecurringEditScope, type RepeatEndMode } from "./RecurringPaymentOptions";
+import {
+  fetchRecurringSeries,
+  editPaymentSeries,
+  createPaymentSeries,
+} from "@/lib/finance-recurring-client";
 import { InlineCounterpartyCreate } from "./InlineCounterpartyCreate";
 import { fetchFinanceObjectAssignments } from "@/lib/finance-objects";
 import { RentalTermsButton } from "./RentalTermsButton";
@@ -53,8 +59,6 @@ import {
 } from "@/lib/finance";
 import { toISODate } from "@/lib/rentals";
 import { cn } from "@/lib/utils";
-
-type RepeatEndMode = "count" | "until";
 
 type Props = {
   open: boolean;
@@ -230,6 +234,19 @@ function PaymentDialogForm({
   });
   const amountRef = useRef<HTMLInputElement>(null);
   const [counterpartyCreating, setCounterpartyCreating] = useState(false);
+  const [seriesScope, setSeriesScope] = useState<"single" | "following">("single");
+  const [seriesRequestId, setSeriesRequestId] = useState(() => crypto.randomUUID());
+  const series = useQuery({
+    queryKey: ["finance-payment-series", payment?.recurring_series_id],
+    queryFn: () => fetchRecurringSeries(payment!.recurring_series_id!),
+    enabled: open && !!payment?.recurring_series_id,
+  });
+  useEffect(() => {
+    if (open) {
+      setSeriesScope("single");
+      setSeriesRequestId(crypto.randomUUID());
+    }
+  }, [open, payment?.id]);
   const [form, setForm] = useState<FormState>(() =>
     emptyForm(
       defaultPropertyId,
@@ -339,6 +356,14 @@ function PaymentDialogForm({
   ]);
 
   useEffect(() => {
+    if (open && series.data)
+      setForm((p) => ({
+        ...p,
+        repeatPaymentDay: String(series.data.payment_day ?? Number(p.planned_date.slice(8, 10))),
+      }));
+  }, [series.data, open, payment?.id]);
+
+  useEffect(() => {
     if (
       open &&
       !payment &&
@@ -397,6 +422,12 @@ function PaymentDialogForm({
         untilDate: form.repeatUntil,
       });
     }
+    if (form.repeatEndMode === "unlimited")
+      return buildPaymentSeriesDates(form.planned_date, {
+        interval: form.repeatInterval,
+        ...dayOption,
+        unlimited: true,
+      });
     const count = Number(form.repeatCount);
     return buildPaymentSeriesDates(form.planned_date, {
       interval: form.repeatInterval,
@@ -416,6 +447,7 @@ function PaymentDialogForm({
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["payments"] });
+    void queryClient.invalidateQueries({ queryKey: ["finance-payment-series"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-tasks"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
     void queryClient.invalidateQueries({ queryKey: ["finance-counterparties"] });
@@ -528,6 +560,7 @@ function PaymentDialogForm({
         count?: number;
         untilDate?: string;
         paymentDay?: number;
+        unlimited?: boolean;
       } | null;
       if (!payment && form.repeat) {
         const paymentDay = Number(form.repeatPaymentDay);
@@ -543,6 +576,8 @@ function PaymentDialogForm({
             throw new Error("Дата окончания не раньше первой операции");
           }
           repeatOpts = { interval: form.repeatInterval, ...dayOption, untilDate: form.repeatUntil };
+        } else if (form.repeatEndMode === "unlimited") {
+          repeatOpts = { interval: form.repeatInterval, ...dayOption, unlimited: true };
         } else {
           const count = Number(form.repeatCount);
           if (!Number.isInteger(count) || count < 1) {
@@ -552,7 +587,26 @@ function PaymentDialogForm({
           repeatOpts = { interval: form.repeatInterval, ...dayOption, count };
         }
       }
-      const id = await savePaymentSeries(payment?.id ?? null, input, repeatOpts);
+      let id: string;
+      if (payment?.recurring_series_id) {
+        if (!series.data || series.error) throw new Error("Дождитесь загрузки условий серии");
+        const day = series.data.interval_kind === "month" ? Number(form.repeatPaymentDay) : null;
+        if (day !== null && (!Number.isInteger(day) || day < 1 || day > 31))
+          throw new Error("Укажите день оплаты от 1 до 31");
+        const result = await editPaymentSeries(
+          payment.id,
+          input,
+          seriesScope,
+          day,
+          payment,
+          series.data.revision,
+        );
+        if (result.preservedActual > 0)
+          toast.info(`Сохранено проведённых и частичных оплат: ${result.preservedActual}`);
+        id = payment.id;
+      } else if (!payment && repeatOpts) {
+        id = await createPaymentSeries(input, repeatOpts, seriesRequestId);
+      } else id = await savePaymentSeries(payment?.id ?? null, input, repeatOpts);
       if (
         !form.rental_component &&
         form.countInObligations &&
@@ -576,7 +630,9 @@ function PaymentDialogForm({
       onOpenChange(false);
       toast.success(
         payment
-          ? "Операция обновлена"
+          ? seriesScope === "following" && payment.recurring_series_id
+            ? "Последующие неоплаченные операции серии обновлены"
+            : "Операция обновлена"
           : form.repeat && seriesDates.length > 1
             ? `Добавлено операций: ${seriesDates.length}`
             : "Операция добавлена",
@@ -984,6 +1040,17 @@ function PaymentDialogForm({
               onChange={(e) => setForm((p) => ({ ...p, accrual_date: e.target.value }))}
             />
           )}
+          {payment?.recurring_series_id && (
+            <RecurringEditScope
+              scope={seriesScope}
+              onScopeChange={setSeriesScope}
+              day={form.repeatPaymentDay}
+              onDayChange={(value) => setForm((p) => ({ ...p, repeatPaymentDay: value }))}
+              monthly={series.data?.interval_kind === "month"}
+              unlimited={series.data?.end_mode === "unlimited"}
+              error={!!series.error}
+            />
+          )}
           {!payment && (
             <div>
               <label className="finance-payment-option">
@@ -1039,25 +1106,10 @@ function PaymentDialogForm({
                       </p>
                     </div>
                   )}
-                  <div className="space-y-1.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
-                      Срок жизни
-                    </p>
-                    <Select
-                      value={form.repeatEndMode}
-                      onValueChange={(v) =>
-                        setForm((p) => ({ ...p, repeatEndMode: v as RepeatEndMode }))
-                      }
-                    >
-                      <SelectTrigger className="h-9 border-[#e8edf2]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="count">Количество раз</SelectItem>
-                        <SelectItem value="until">До даты</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <RepeatEndSelect
+                    value={form.repeatEndMode}
+                    onChange={(value) => setForm((p) => ({ ...p, repeatEndMode: value }))}
+                  />
                   {form.repeatEndMode === "count" ? (
                     <div className="space-y-1.5">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
@@ -1071,11 +1123,9 @@ function PaymentDialogForm({
                         value={form.repeatCount}
                         onChange={(e) => setForm((p) => ({ ...p, repeatCount: e.target.value }))}
                       />
-                      <p className="text-xs text-slate-400">
-                        Включая первую. Для аренды обычно 12 месяцев.
-                      </p>
+                      <p className="text-xs text-slate-400">Включая первую операцию.</p>
                     </div>
-                  ) : (
+                  ) : form.repeatEndMode === "until" ? (
                     <div className="space-y-1.5">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-400">
                         Повторять до
@@ -1088,15 +1138,26 @@ function PaymentDialogForm({
                         onChange={(e) => setForm((p) => ({ ...p, repeatUntil: e.target.value }))}
                       />
                     </div>
+                  ) : null}
+                  {form.repeatEndMode === "unlimited" && (
+                    <p className="text-xs text-muted-foreground">
+                      Серия без даты окончания. План на 24 месяца вперёд автоматически продлевается.
+                    </p>
                   )}
-                  <p className="text-xs text-slate-500">
-                    Будет создано{" "}
-                    <span className="font-semibold text-slate-700">{seriesDates.length}</span>{" "}
-                    {seriesDates.length === 1 ? "операция" : "операций"}
-                    {seriesDates.length > 1
-                      ? ` · следующая ${formatFinanceDate(seriesDates[1]!)} · до ${formatFinanceDate(seriesDates[seriesDates.length - 1]!)}`
-                      : ""}
-                  </p>
+                  {form.repeatEndMode === "unlimited" ? (
+                    <p className="text-xs text-slate-500">
+                      Следующая операция: {seriesDates[1] ? formatFinanceDate(seriesDates[1]) : "—"}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Будет создано{" "}
+                      <span className="font-semibold text-slate-700">{seriesDates.length}</span>{" "}
+                      {seriesDates.length === 1 ? "операция" : "операций"}
+                      {seriesDates.length > 1
+                        ? ` · следующая ${formatFinanceDate(seriesDates[1]!)} · до ${formatFinanceDate(seriesDates[seriesDates.length - 1]!)}`
+                        : ""}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -1106,6 +1167,7 @@ function PaymentDialogForm({
             type="button"
             className="finance-save-button"
             disabled={
+              (!!payment?.recurring_series_id && (!series.data || !!series.error)) ||
               counterpartyCreating ||
               !selectedAccountValid ||
               accountsQuery.isPending ||
@@ -1121,9 +1183,11 @@ function PaymentDialogForm({
           >
             {payment
               ? "Сохранить"
-              : form.repeat && seriesDates.length > 1
-                ? `Добавить ${seriesDates.length} операций`
-                : "Добавить операцию"}
+              : form.repeat && form.repeatEndMode === "unlimited"
+                ? "Создать серию без срока"
+                : form.repeat && seriesDates.length > 1
+                  ? `Добавить ${seriesDates.length} операций`
+                  : "Добавить операцию"}
           </Button>
 
           {payment && (

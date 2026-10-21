@@ -273,6 +273,8 @@ services:
             -H "x-cron-secret: $$SECRET" || true
           curl -fsS -X POST http://app:3000/api/public/cron/bnovo-sync \
             -H "x-cron-secret: $$SECRET" || true
+          curl -fsS -X POST http://app:3000/api/public/cron/finance-series \
+            -H "x-cron-secret: $$SECRET" || true
           sleep 600
         done
     depends_on:

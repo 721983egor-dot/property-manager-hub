@@ -107,3 +107,10 @@ test("future repeats never inherit paid or partial cash; accrual stays separate 
     assert.equal(input.paid_at, "2026-10-20", "original input not changed");
   }
 });
+test("unlimited preview has no count/end date; mixing an end rule is rejected", () => {
+  const dates = buildPaymentSeriesDates("2026-10-21", { interval: "month", paymentDay: 5, unlimited: true });
+  assert.equal(dates.length, 36); // bounded preview only; persistence/cron continues indefinitely
+  assert.equal(dates[1], "2026-11-05");
+  assert.throws(() => buildPaymentSeriesDates("2026-10-21", { interval: "month", unlimited: true, count: 12 }), /без срока/);
+  assert.throws(() => buildPaymentSeriesDates("2026-10-21", { interval: "month", unlimited: true, untilDate: "2027-01-01" }), /без срока/);
+});

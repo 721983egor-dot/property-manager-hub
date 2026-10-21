@@ -52,6 +52,8 @@ export type CashReceipt = {
   account: string;
 };
 export type Payment = {
+  recurring_series_id?: string | null;
+  recurring_index?: number | null;
   cash_receipts?: CashReceipt[];
   cash_parent_id?: string | undefined;
   task_expected_date?: string | null;
@@ -134,9 +136,9 @@ export type PaymentInput = {
 };
 
 const PAYMENT_SELECT =
-  "cash_receipts, task_expected_date, owner_task_expected_date, requires_confirmation, owner_payout_on_request, id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
+  "recurring_series_id, recurring_index, cash_receipts, task_expected_date, owner_task_expected_date, requires_confirmation, owner_payout_on_request, id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, article_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone), finance_articles(id, name, category_id, code, affects_profit, finance_article_categories(id, name))";
 const PAYMENT_SELECT_LEGACY =
-  "cash_receipts, task_expected_date, owner_task_expected_date, requires_confirmation, owner_payout_on_request, id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
+  "recurring_series_id, recurring_index, cash_receipts, task_expected_date, owner_task_expected_date, requires_confirmation, owner_payout_on_request, id, planned_date, amount, direction, status, kind, property_id, client_id, booking_id, rental_installment_id, rental_stage, rental_schedule, rental_component, rental_period, expense_bearer, expense_owner_id, owner_payout_day, company_fee, crm_charge, management_period, deal_id, counterparty_id, counterparty_name, account, comment, paid_at, paid_amount, accrual_date, obligation_id, created_at, updated_at, properties(id, title, internal_name, ref_id), clients(id, full_name, phone)";
 
 function asDirection(value: unknown): PaymentDirection {
   return value === "out" ? "out" : "in";
@@ -184,6 +186,8 @@ export function mapPayment(row: Record<string, unknown>): Payment {
     firstJoin(row["clients"] as Payment["client"] | Payment["client"][] | null) ?? null;
   const article = mapArticleJoin(row);
   return {
+    recurring_series_id: (row["recurring_series_id"] as string | null) ?? null,
+    recurring_index: row["recurring_index"] == null ? null : Number(row["recurring_index"]),
     cash_receipts: (row["cash_receipts"] as CashReceipt[]) ?? [],
     task_expected_date: row["task_expected_date"] as string | null,
     owner_task_expected_date: row["owner_task_expected_date"] as string | null,
@@ -292,8 +296,12 @@ export async function fetchPayments(opts: FetchPaymentsOpts = {}): Promise<Payme
   let columns = PAYMENT_SELECT;
   for (let offset = 0; ; offset += 500) {
     let result = await run(columns, offset);
-    if (result.error && columns === PAYMENT_SELECT && missingArticleColumn(result.error.message)) {
-      columns = PAYMENT_SELECT_LEGACY;
+    if (result.error && /recurring_series_id|recurring_index/.test(result.error.message)) {
+      columns = columns.replace("recurring_series_id, recurring_index, ", "");
+      result = await run(columns, offset);
+    }
+    if (result.error && columns.includes("finance_articles(") && missingArticleColumn(result.error.message)) {
+      columns = columns.includes("recurring_series_id") ? PAYMENT_SELECT_LEGACY : PAYMENT_SELECT_LEGACY.replace("recurring_series_id, recurring_index, ", "");
       result = await run(columns, offset);
     }
     if (result.error) throw result.error;
@@ -355,17 +363,18 @@ export function financePropertyLabel(p: Pick<FinancePropertyOption, "title" | "i
 }
 
 export async function fetchPayment(id: string): Promise<Payment | null> {
-  let result = await supabase.from("payments").select(PAYMENT_SELECT).eq("id", id).maybeSingle();
+  let columns = PAYMENT_SELECT;
+  const read = () => supabase.from("payments").select(columns).eq("id", id).maybeSingle();
+  let result = await read();
+  if (result.error && /recurring_series_id|recurring_index/.test(result.error.message)) {
+    columns = columns.replace("recurring_series_id, recurring_index, ", ""); result = await read();
+  }
   if (result.error && missingArticleColumn(result.error.message)) {
-    result = await supabase
-      .from("payments")
-      .select(PAYMENT_SELECT_LEGACY)
-      .eq("id", id)
-      .maybeSingle();
+    columns = columns.includes("recurring_series_id") ? PAYMENT_SELECT_LEGACY : PAYMENT_SELECT_LEGACY.replace("recurring_series_id, recurring_index, ", ""); result = await read();
   }
   if (result.error) throw result.error;
   if (!result.data) return null;
-  return mapPayment(result.data as Record<string, unknown>);
+  return mapPayment(result.data as unknown as Record<string, unknown>);
 }
 
 function normalizeInput(input: PaymentInput) {
@@ -450,17 +459,11 @@ export async function savePaymentSeries(
     : repeat;
   if (input.booking_id || input.rental_component || input.obligation_id)
     throw new Error("Для связанной аренды и выплат используйте график в брони");
-  const entries = buildPaymentSeriesEntries(input, opts);
-  const firstId = crypto.randomUUID();
-  const rows = entries.map((entry, index) => ({ ...normalizeInput(entry), id: index === 0 ? firstId : crypto.randomUUID() }));
-  const write = (payload: Record<string, unknown>[]) => supabase.from("payments").insert(payload as never);
-  const result = await write(rows);
-  if (result.error) {
-    if (!missingArticleColumn(result.error.message)) throw result.error;
-    const retry = await write(rows.map(({ article_id: _article, ...row }) => row));
-    if (retry.error) throw retry.error;
-  }
-  return firstId;
+  // The RPC persists the template and occurrence IDs together; unlimited series are extended by cron.
+  buildPaymentSeriesEntries(input, opts); // validate before any write
+  const { createPaymentSeries } = await import("./finance-recurring-client");
+  return createPaymentSeries(normalizeInput(input), opts);
+
 }
 
 export async function markPaymentPaid(
