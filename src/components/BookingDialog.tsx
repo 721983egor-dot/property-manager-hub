@@ -164,6 +164,9 @@ export function BookingDialog({
   const [clientPhone, setClientPhone] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [assignRoomId, setAssignRoomId] = useState("");
+  const [serviceOverride, setServiceOverride] = useState<"management" | "commission_only" | null>(
+    null,
+  );
   const [financeAccount, setFinanceAccount] = useState("");
   const [financialTerms, setFinancialTerms] = useState<BookingFinancialTerms | null>(null);
   const [managementFee, setManagementFee] = useState<{
@@ -176,6 +179,7 @@ export function BookingDialog({
     if (!open) return;
     setMode(createdBooking ? "view" : (initialMode ?? (booking ? "view" : "edit")));
     setManagementFee(null);
+    setServiceOverride(null);
     setForm(booking ? fromBooking(booking) : emptyForm(defaultPropertyId, defaultClientId));
     setNewClient(false);
     setClientName("");
@@ -192,15 +196,22 @@ export function BookingDialog({
   });
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: fetchClients });
   const isRm = properties.find((p) => p.id === form.property_id)?.portfolio === "rm";
+  const serviceType =
+    booking?.service_type ??
+    serviceOverride ??
+    properties.find((p) => p.id === form.property_id)?.service_type ??
+    "management";
+  const brokerage = isRm && serviceType === "commission_only";
+  const managed = isRm && !brokerage;
   const ownerLinks = useQuery({
     queryKey: ["finance-object-settings"],
     queryFn: fetchFinanceObjectAssignments,
-    enabled: open && isAdmin && isRm,
+    enabled: open && isAdmin && managed,
   });
   const owners = useQuery({
     queryKey: ["finance-counterparties"],
     queryFn: () => fetchCounterparties(),
-    enabled: open && isAdmin && isRm,
+    enabled: open && isAdmin && managed,
   });
   const ownerId = ownerLinks.data?.find(
     (s) => s.property_id === form.property_id,
@@ -209,12 +220,12 @@ export function BookingDialog({
   const accounts = useQuery({
     queryKey: ["finance-accounts"],
     queryFn: fetchFinanceAccounts,
-    enabled: open && isAdmin && isRm,
+    enabled: open && isAdmin && managed,
   });
   const financeConfig = useQuery({
     queryKey: ["booking-finance-account", booking?.id],
     queryFn: () => fetchBookingFinanceAccount(booking!.id),
-    enabled: open && isAdmin && isRm && !!booking,
+    enabled: open && isAdmin && managed && !!booking,
   });
   useEffect(() => {
     if (!open || !isRm || financeAccount) return;
@@ -226,7 +237,7 @@ export function BookingDialog({
   const savedFinancialTerms = useQuery({
     queryKey: ["booking-financial-terms", booking?.id],
     queryFn: () => fetchBookingFinancialTerms(booking!.id),
-    enabled: open && isAdmin && isRm && !!booking,
+    enabled: open && isAdmin && managed && !!booking,
   });
   const priceTerms = {
     start_date: form.start_date,
@@ -263,6 +274,8 @@ export function BookingDialog({
   const save = useMutation({
     mutationFn: async () => {
       if (!form.property_id) throw new Error("Выберите объект");
+      if (!properties.some((p) => p.id === form.property_id))
+        throw new Error("Дождитесь загрузки объекта");
       if (
         !form.start_date ||
         !form.end_date ||
@@ -271,11 +284,11 @@ export function BookingDialog({
       )
         throw new Error("Дата окончания аренды должна быть позже даты начала");
       if (seasonalProblem) throw new Error(seasonalProblem);
-      if (isAdmin && isRm && (!ownerLinks.isSuccess || !owners.isSuccess))
+      if (isAdmin && managed && (!ownerLinks.isSuccess || !owners.isSuccess))
         throw new Error("Дождитесь загрузки собственника объекта");
       if (
         isAdmin &&
-        isRm &&
+        managed &&
         form.owner_payout_mode === "scheduled" &&
         ((ownerId && !form.owner_payout_day) ||
           (form.owner_payout_day &&
@@ -285,6 +298,7 @@ export function BookingDialog({
       )
         throw new Error("Укажите день выплаты собственнику от 1 до 31");
       if (
+        !brokerage &&
         managementFee &&
         (!managementFee.value.trim() ||
           !Number.isFinite(Number(managementFee.value)) ||
@@ -292,7 +306,7 @@ export function BookingDialog({
           (managementFee.type === "percent" && Number(managementFee.value) > 100))
       )
         throw new Error("Укажите корректную комиссию за управление");
-      if (isAdmin && isRm) {
+      if (isAdmin && managed) {
         if (booking && !savedFinancialTerms.isSuccess)
           throw new Error("Дождитесь загрузки условий поступлений и выплат");
         const problem = bookingFinancialTermsProblem(effectiveFinancialTerms, priceTerms);
@@ -309,7 +323,7 @@ export function BookingDialog({
       }
       const selected = properties.find((p) => p.id === form.property_id);
       const hotel = selected?.portfolio === "n11";
-      if (isAdmin && selected?.portfolio === "rm" && !financeAccount)
+      if (isAdmin && selected?.portfolio === "rm" && !brokerage && !financeAccount)
         throw new Error("Выберите счёт для графика аренды");
       let clientId = form.client_id;
       if (newClient) {
@@ -327,17 +341,20 @@ export function BookingDialog({
 
       const bookingId = await saveBooking(booking?.id ?? null, {
         ...(isAdmin && selected?.portfolio === "rm"
-          ? {
-              finance_account_id: financeAccount,
-              financial_terms: effectiveFinancialTerms,
-              owner_payout_mode: form.owner_payout_mode,
-              owner_payout_day:
-                form.owner_payout_mode === "scheduled" && form.owner_payout_day
-                  ? Number(form.owner_payout_day)
-                  : null,
-            }
+          ? brokerage
+            ? { service_type: "commission_only" as const }
+            : {
+                service_type: "management" as const,
+                finance_account_id: financeAccount,
+                financial_terms: effectiveFinancialTerms,
+                owner_payout_mode: form.owner_payout_mode,
+                owner_payout_day:
+                  form.owner_payout_mode === "scheduled" && form.owner_payout_day
+                    ? Number(form.owner_payout_day)
+                    : null,
+              }
           : {}),
-        ...(isAdmin && selected?.portfolio === "rm" && managementFee
+        ...(isAdmin && selected?.portfolio === "rm" && !brokerage && managementFee
           ? {
               management_fee_type: managementFee.type,
               management_fee_value: Number(managementFee.value),
@@ -508,6 +525,12 @@ export function BookingDialog({
                     : "—"
                 }
               />
+              {isRm && (
+                <Field
+                  label="Формат работы"
+                  value={brokerage ? "Только разовая комиссия" : "Управление объектом"}
+                />
+              )}
               <Field label="Статус" value={statusLabel(booking.status)} />
               <Field label="ФИО" value={booking.client?.full_name ?? "—"} />
               <Field label="Телефон" value={booking.client?.phone || "—"} />
@@ -519,7 +542,7 @@ export function BookingDialog({
                 label="Стоимость в месяц"
                 value={formatMoney(priceOn(booking, toISODate(new Date())))}
               />
-              {isAdmin && isRm && (
+              {isAdmin && managed && (
                 <Field
                   label="Комиссия за управление"
                   value={
@@ -529,7 +552,7 @@ export function BookingDialog({
                   }
                 />
               )}
-              {isAdmin && isRm && (
+              {isAdmin && managed && (
                 <Field
                   label="Выплата собственнику"
                   value={
@@ -602,7 +625,7 @@ export function BookingDialog({
               <RentalPricePreview terms={{ ...booking, booking_price_periods: booking.periods }} />
             )}
 
-            {isAdmin && isRm && (
+            {isAdmin && managed && (
               <BookingFinanceActions
                 booking={booking}
                 fee={property?.management_fee_value ?? null}
@@ -902,6 +925,34 @@ export function BookingDialog({
               )}
             </div>
 
+            {isAdmin && isRm && (
+              <div className="rounded-lg border p-4 space-y-2">
+                <Label>Формат работы по аренде</Label>
+                <Select
+                  disabled={!!booking}
+                  value={serviceType}
+                  onValueChange={(v) => {
+                    setServiceOverride(v as "management" | "commission_only");
+                    setManagementFee(null);
+                  }}
+                >
+                  <SelectTrigger aria-label="Формат работы по аренде">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="management">Управление объектом</SelectItem>
+                    <SelectItem value="commission_only">Только разовая комиссия</SelectItem>
+                  </SelectContent>
+                </Select>
+                {brokerage && (
+                  <p className="text-sm text-muted-foreground">
+                    Сохраняем сроки аренды и клиента. Ежемесячное вознаграждение, поступления аренды
+                    и выплаты собственнику не планируются. Разовая комиссия оформляется при успешном
+                    закрытии сделки CRM.
+                  </p>
+                )}
+              </div>
+            )}
             {isRm && (
               <RentalPricePreview
                 terms={{
@@ -915,7 +966,7 @@ export function BookingDialog({
               />
             )}
 
-            {isAdmin && isRm && (
+            {isAdmin && managed && (
               <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
                 <Label>Собственник объекта</Label>
                 <p className="text-sm">
@@ -1055,7 +1106,7 @@ export function BookingDialog({
             </div>
 
             {isAdmin &&
-              isRm &&
+              managed &&
               (booking && savedFinancialTerms.isPending ? (
                 <p>Загрузка условий поступлений и выплат…</p>
               ) : savedFinancialTerms.error ? (

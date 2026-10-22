@@ -44,7 +44,7 @@ export type DealField = {
 };
 
 export type Deal = {
-  finance_terms?: { account_id: string; one_time: number; one_time_date: string | null; seasons: import("./crm-commission").SeasonalRent[] } | null;
+  finance_terms?: { service_type?: "management" | "commission_only"; account_id: string; one_time: number; one_time_date: string | null; seasons: import("./crm-commission").SeasonalRent[] } | null;
   closed_at?: string | null; closing_source?: string; loss_reason_id?: string | null;
   loss_reason_name?: string | null; loss_comment?: string; booking_id?: string | null;
   income_type?: "percent" | "amount" | null; income_value?: number | null; income_month?: number | null;
@@ -696,6 +696,7 @@ export async function fetchClientDeals(clientId: string): Promise<Deal[]> {
 /* ---------------- успешное закрытие ---------------- */
 
 export type DealWonInput = {
+  service_type?: "management" | "commission_only";
   account_id: string; one_time: number; one_time_date: string | null; seasons: import("./crm-commission").SeasonalRent[];
   property_id: string;
   start_date: string;

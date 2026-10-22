@@ -49,6 +49,8 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
   const [deposit, setDeposit] = useState("");
   const [day, setDay] = useState("1");
   const [source, setSource] = useState("");
+  const [serviceType, setServiceType] = useState<"management" | "commission_only">("management");
+  const brokerage = serviceType === "commission_only";
   const [incomeType, setIncomeType] = useState<"percent" | "amount">("percent");
   const [income, setIncome] = useState("");
   const [booking, setBooking] = useState(true);
@@ -62,9 +64,14 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
   const [oneDate, setOneDate] = useState("");
   const [seasons, setSeasons] = useState<SeasonalRent[]>([]);
   const property = properties.find((p) => p.id === propertyId);
+  const initialServiceType =
+    deal.finance_terms?.service_type ??
+    properties.find((p) => p.id === (deal.closed_property_id ?? deal.property_id))?.service_type ??
+    "management";
   const active = properties.filter((p) => p.status !== "archived" && p.portfolio === "rm");
   useEffect(() => {
     if (!open) return;
+    setServiceType(initialServiceType);
     setPropertyId(deal.closed_property_id ?? deal.property_id ?? "");
     setStart(deal.start_date ?? "");
     setEnd(deal.end_date ?? "");
@@ -76,7 +83,7 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
     setIncome(deal.income_value == null ? "" : String(deal.income_value));
     setBooking(true);
     setAccount(deal.finance_terms?.account_id ?? "");
-    setOneTime(String(deal.finance_terms?.one_time ?? 0));
+    setOneTime(String(deal.finance_terms?.one_time ?? deal.commission ?? 0));
     setOneDate(deal.finance_terms?.one_time_date ?? deal.start_date ?? "");
     setSeasons(deal.finance_terms?.seasons ?? []);
   }, [
@@ -88,15 +95,18 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
     deal.end_date,
     deal.price_month,
     deal.deposit,
+    deal.commission,
     deal.payment_day,
     deal.closing_source,
     deal.source,
     deal.income_type,
     deal.income_value,
     deal.finance_terms,
+    initialServiceType,
   ]);
   const selectProperty = (id: string) => {
     setPropertyId(id);
+    setServiceType(properties.find((p) => p.id === id)?.service_type ?? "management");
     const p = properties.find((x) => x.id === id);
     setRent(p?.price_month == null ? "" : String(p.price_month));
     setDeposit(p?.deposit == null ? "" : String(p.deposit));
@@ -113,11 +123,15 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
   }, [open, propertyId, property, deal.income_type]);
   const fee = useMemo(() => {
     try {
-      return income.trim() === "" ? null : companyIncome(Number(rent), incomeType, Number(income));
+      return brokerage
+        ? 0
+        : income.trim() === ""
+          ? null
+          : companyIncome(Number(rent), incomeType, Number(income));
     } catch {
       return null;
     }
-  }, [rent, incomeType, income]);
+  }, [rent, incomeType, income, brokerage]);
   const save = useMutation({
     mutationFn: async () => {
       if (
@@ -127,9 +141,11 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
         !end ||
         end <= start ||
         !rent.trim() ||
+        !Number.isFinite(Number(rent)) ||
+        Number(rent) <= 0 ||
         !deposit.trim() ||
         !source ||
-        !income.trim() ||
+        (!brokerage && !income.trim()) ||
         fee == null
       )
         throw new Error(
@@ -143,11 +159,13 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
         (Number(oneTime) > 0 && !oneDate)
       )
         throw new Error("Укажите сумму и дату разовой комиссии");
-      for (const period of seasons) companyIncome(period.price_month, incomeType, Number(income));
+      if (!brokerage)
+        for (const period of seasons) companyIncome(period.price_month, incomeType, Number(income));
       return closeDealAsWon(
         deal.id,
         stageId,
         {
+          service_type: serviceType,
           account_id: account,
           one_time: Number(oneTime),
           one_time_date: Number(oneTime) > 0 ? oneDate : null,
@@ -160,8 +178,8 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
           commission: deal.commission,
           payment_day: Number(day),
           closing_source: source,
-          income_type: incomeType,
-          income_value: Number(income),
+          income_type: brokerage ? "amount" : incomeType,
+          income_value: brokerage ? 0 : Number(income),
           create_booking: booking,
         },
         {
@@ -183,7 +201,11 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
         "finance-object-properties",
       ])
         qc.invalidateQueries({ queryKey: [key] });
-      toast.success("Сделка закрыта. Доходы добавлены в финансовый календарь");
+      toast.success(
+        brokerage
+          ? "Сделка закрыта. Разовая комиссия запланирована, срок аренды сохранён"
+          : "Сделка закрыта. Доходы добавлены в финансовый календарь",
+      );
       onClosed?.();
       onOpenChange(false);
     },
@@ -324,29 +346,54 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
         </section>
         <section className="crm-section">
           <h3>03 · Доход компании</h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label>Вознаграждение в месяц</Label>
-              <Select
-                value={incomeType}
-                onValueChange={(v) => setIncomeType(v as "percent" | "amount")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="percent">Процент от аренды</SelectItem>
-                  <SelectItem value="amount">Фиксированная сумма</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {field(
-              incomeType === "percent" ? "Процент, %" : "Сумма в месяц, ₽",
-              income,
-              setIncome,
-              "number",
+          <div className="mb-4 grid gap-2">
+            <Label>Как работаем по этой аренде</Label>
+            <Select
+              value={serviceType}
+              onValueChange={(v) => setServiceType(v as "management" | "commission_only")}
+            >
+              <SelectTrigger aria-label="Формат работы">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="management">Управление · ежемесячное вознаграждение</SelectItem>
+                <SelectItem value="commission_only">Только разовая комиссия</SelectItem>
+              </SelectContent>
+            </Select>
+            {brokerage && (
+              <p className="text-sm text-muted-foreground">
+                Сохраняем клиента и срок аренды. Доход компании — только разовая комиссия; графики
+                поступления аренды и выплат собственнику не создаются.
+              </p>
             )}
           </div>
+          {!brokerage && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label>Вознаграждение в месяц</Label>
+                  <Select
+                    value={incomeType}
+                    onValueChange={(v) => setIncomeType(v as "percent" | "amount")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percent">Процент от аренды</SelectItem>
+                      <SelectItem value="amount">Фиксированная сумма</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {field(
+                  incomeType === "percent" ? "Процент, %" : "Сумма в месяц, ₽",
+                  income,
+                  setIncome,
+                  "number",
+                )}
+              </div>
+            </>
+          )}
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {field("Разовая комиссия компании, ₽", oneTime, setOneTime, "number")}
             {Number(oneTime) > 0 && field("Дата разовой комиссии", oneDate, setOneDate, "date")}
@@ -376,19 +423,21 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
               )}
             </div>
           </div>
-          <div className="crm-income mt-4">
-            <div>
-              <small>Доход компании / месяц</small>
-              <strong>{fee == null ? "—" : fee.toLocaleString("ru-RU") + " ₽"}</strong>
+          {!brokerage && (
+            <div className="crm-income mt-4">
+              <div>
+                <small>Доход компании / месяц</small>
+                <strong>{fee == null ? "—" : fee.toLocaleString("ru-RU") + " ₽"}</strong>
+              </div>
+              <div>
+                <small>Собственнику до расходов / месяц</small>
+                <strong>
+                  {fee == null ? "—" : (Number(rent) - fee).toLocaleString("ru-RU") + " ₽"}
+                </strong>
+              </div>
             </div>
-            <div>
-              <small>Собственнику до расходов / месяц</small>
-              <strong>
-                {fee == null ? "—" : (Number(rent) - fee).toLocaleString("ru-RU") + " ₽"}
-              </strong>
-            </div>
-          </div>
-          {seasons.length > 0 && (
+          )}
+          {!brokerage && seasons.length > 0 && (
             <div className="mt-3 space-y-1 text-sm">
               {seasons.map((s, i) => (
                 <p key={i}>
@@ -405,10 +454,16 @@ export function DealWonDialog({ open, onOpenChange, deal, stageId, properties, o
             </div>
           )}
           <p className="mt-4 text-xs text-muted-foreground">
-            В финансовый календарь попадёт только доход компании: разовая комиссия и ежемесячное
-            вознаграждение. Платежи запланированы на указанное число в пределах срока аренды (дата
-            окончания не включается); если этого числа в месяце нет — на последний день. Получение
-            денег отмечается отдельно.
+            {brokerage ? (
+              "В финансовый календарь попадёт только разовая комиссия на выбранную дату. Получение денег отмечается отдельно. Срок аренды остаётся в CRM и календаре объекта."
+            ) : (
+              <>
+                В финансовый календарь попадёт только доход компании: разовая комиссия и ежемесячное
+                вознаграждение. Платежи запланированы на указанное число в пределах срока аренды
+                (дата окончания не включается); если этого числа в месяце нет — на последний день.
+                Получение денег отмечается отдельно.
+              </>
+            )}
           </p>
         </section>
         <label className="flex items-start gap-3 text-sm">

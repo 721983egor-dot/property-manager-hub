@@ -221,12 +221,13 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
 
   createBooking: async (input) => {
     const propertyId = must(input["propertyId"] as string, "Не указан объект");
-    const property = await supabaseAdmin.from("properties").select("portfolio").eq("id",propertyId).single();
+    const property = await supabaseAdmin.from("properties").select("portfolio,service_type").eq("id",propertyId).single();
     if(property.error) throw property.error;
     const isRm=property.data.portfolio==="rm";
-    if(isRm && !input["accountId"]) throw new Error("Укажите счёт графика аренды через accountId");
+    const brokerage = isRm && (input["serviceType"] ?? property.data.service_type) === "commission_only";
+    if(isRm && !brokerage && !input["accountId"]) throw new Error("Укажите счёт графика аренды через accountId");
     const access=isRm ? await (await import("@/lib/crm-results.server")).crmAccess(input) : null;
-    if(access&&input["ownerPayoutMode"]!=="on_request"&&!input["ownerPayoutDay"]){const link=await access.db.from("finance_object_settings").select("owner_counterparty_id").eq("property_id",propertyId).maybeSingle();if(link.error)throw link.error;if(link.data?.owner_counterparty_id)throw new Error("Укажите конкретное число выплаты собственнику в брони через ownerPayoutDay");}
+    if(access&&!brokerage&&input["ownerPayoutMode"]!=="on_request"&&!input["ownerPayoutDay"]){const link=await access.db.from("finance_object_settings").select("owner_counterparty_id").eq("property_id",propertyId).maybeSingle();if(link.error)throw link.error;if(link.data?.owner_counterparty_id)throw new Error("Укажите конкретное число выплаты собственнику в брони через ownerPayoutDay");}
     const fullName = must(input["clientName"] as string, "Не указан клиент");
     const phone = (input["clientPhone"] as string) ?? "";
     let clientId: string | null = null;
@@ -248,9 +249,9 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     }
     const priceMonth = (input["priceMonth"] as number) ?? null;
     if(access) {
-      const result=await access.db.rpc("finance_save_booking",{p_booking:null,p_account:input["accountId"],p_actor:access.actor,p_input:{property_id:propertyId,client_id:clientId,start_date:input["startDate"],end_date:input["endDate"],price_type:input["priceType"]??"fixed",price_month:priceMonth,...(input["financialTerms"]!==undefined?{financial_terms:input["financialTerms"]}:{}),...(input["managementFeeType"]!==undefined?{management_fee_type:input["managementFeeType"],management_fee_value:input["managementFeeValue"]}:{}),payment_day:input["paymentDay"]??1,...(input["ownerPayoutMode"]!==undefined?{owner_payout_mode:input["ownerPayoutMode"]}:{}),...(input["ownerPayoutDay"]!==undefined?{owner_payout_day:input["ownerPayoutDay"]}:{}),deposit:input["deposit"]??null,source:input["source"]??null,status:"active",comment:input["comment"]??"",stay_kind:"long_term",periods:input["periods"]??[]}});
+      const result=await access.db.rpc("finance_save_booking",{p_booking:null,p_account:input["accountId"],p_actor:access.actor,p_input:{service_type:brokerage?"commission_only":"management",property_id:propertyId,client_id:clientId,start_date:input["startDate"],end_date:input["endDate"],price_type:input["priceType"]??"fixed",price_month:priceMonth,...(input["financialTerms"]!==undefined?{financial_terms:input["financialTerms"]}:{}),...(input["managementFeeType"]!==undefined?{management_fee_type:input["managementFeeType"],management_fee_value:input["managementFeeValue"]}:{}),payment_day:input["paymentDay"]??1,...(input["ownerPayoutMode"]!==undefined?{owner_payout_mode:input["ownerPayoutMode"]}:{}),...(input["ownerPayoutDay"]!==undefined?{owner_payout_day:input["ownerPayoutDay"]}:{}),deposit:input["deposit"]??null,source:input["source"]??null,status:"active",comment:input["comment"]??"",stay_kind:"long_term",periods:input["periods"]??[]}});
       if(result.error) throw result.error;
-      return "Бронь создана; будущие платежи аренды добавлены автоматически";
+      return brokerage ? "Срок аренды и клиент сохранены. Ежемесячные начисления не создаются" : "Бронь создана; будущие платежи аренды добавлены автоматически";
     }
     const { error } = await supabaseAdmin.from("bookings").insert({
       property_id: propertyId,

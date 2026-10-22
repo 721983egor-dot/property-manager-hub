@@ -35,6 +35,7 @@ export type BookingPricePeriod = {
 };
 
 export type Booking = {
+  service_type?: "management" | "commission_only";
   id: string;
   property_id: string;
   client_id: string;
@@ -107,7 +108,7 @@ export function priceOn(booking: Booking, iso: string): number | null {
 }
 
 const SELECT =
-  "id, property_id, client_id, start_date, end_date, price_type, price_month, price_night, payment_day, owner_payout_day, deposit, source, status, comment, stay_kind, bnovo_id, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
+  "id, property_id, client_id, start_date, end_date, price_type, price_month, price_night, payment_day, owner_payout_day, service_type, deposit, source, status, comment, stay_kind, bnovo_id, clients(id, full_name, phone), booking_price_periods(id, start_date, end_date, price_month)";
 
 function normalize(row: Record<string, unknown>): Booking {
   const client = (row["clients"] ?? null) as Client | null;
@@ -198,6 +199,7 @@ export async function createClient(input: { full_name: string; phone: string }) 
 }
 
 export type BookingInput = {
+  service_type?: "management" | "commission_only";
   owner_payout_mode?: "scheduled" | "on_request";
   financial_terms?: import("./booking-finance-terms").BookingFinancialTerms;
   finance_account_id?: string | undefined;
@@ -221,7 +223,7 @@ export type BookingInput = {
 };
 
 export async function saveBooking(id: string | null, input: BookingInput) {
-  if (input.finance_account_id !== undefined) {
+  if (input.finance_account_id !== undefined || input.service_type === "commission_only") {
     const { crmDb } = await import("./crm-results");
     const { finance_account_id, ...booking } = input;
     const result = await crmDb.rpc("finance_save_booking", {

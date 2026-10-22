@@ -137,6 +137,7 @@ export async function executeCrmResult(tool: string, input: Record<string, unkno
     result = await db.rpc("crm_close_won_finance", {
       p_deal: input["dealId"],
       p_terms: {
+        service_type: input["serviceType"],
         property_id: input["propertyId"],
         start_date: input["startDate"],
         end_date: input["endDate"],

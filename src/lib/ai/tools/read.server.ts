@@ -2802,7 +2802,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const obs=ids.length ? await db.from("finance_obligations").select("id,planned_date,amount").in("id",ids) : {data:[],error:null};
         if(obs.error)return {error:obs.error.message};
         const prepaid=(settlements.data??[]).map(s=>{const ob=obs.data?.find(o=>o.id===s.obligation_id);if(!ob)throw new Error("Не найден расчёт собственника");return {period:s.period,date:ob.planned_date,amount:Number(s.gross_amount??ob.amount)};});
-        return {ownerPayoutMode:booking.data?.owner_payout_day == null ? "on_request" : "scheduled",financialTerms:cashTerms.data ? {...cashTerms.data,prepaid_owner_payouts:prepaid} : null,cashTerms:cashTerms.data,booking:booking.data,schedule:config.data,payments:payments.data??[],policy:"Менять условия в брони. Будущие платежи автоматически обновляются; проведённые, частичные и предоплаты сохраняются."};
+        return {serviceType:booking.data?.service_type??"management",ownerPayoutMode:booking.data?.owner_payout_day == null ? "on_request" : "scheduled",financialTerms:cashTerms.data ? {...cashTerms.data,prepaid_owner_payouts:prepaid} : null,cashTerms:cashTerms.data,booking:booking.data,schedule:config.data,payments:payments.data??[],policy:"Менять условия в брони. Будущие платежи автоматически обновляются; проведённые, частичные и предоплаты сохраняются."};
       },
     }),
     listFinanceCatalog: tool({

@@ -37,6 +37,8 @@ export async function updateRentalContract(input: Record<string, unknown>) {
     p_actor: actor,
   });
   if (result.error) throw result.error;
+  if (row.service_type === "commission_only")
+    return "Сроки и условия аренды сохранены в CRM и календаре. Ежемесячные начисления не создаются.";
   return "Условия аренды сохранены. Будущие платежи и прогноз выплат обновлены; полученные деньги и предоплаты сохранены.";
 }
 

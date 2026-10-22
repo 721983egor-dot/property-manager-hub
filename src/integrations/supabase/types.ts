@@ -198,6 +198,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          service_type: "management" | "commission_only"
           owner_payout_day: number | null
           stay_kind: "long_term" | "short_stay"
           client_id: string
@@ -216,6 +217,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          service_type?: "management" | "commission_only"
           owner_payout_day?: number | null
           stay_kind?: "long_term" | "short_stay"
           client_id: string
@@ -234,6 +236,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          service_type?: "management" | "commission_only"
           owner_payout_day?: number | null
           stay_kind?: "long_term" | "short_stay"
           client_id?: string
