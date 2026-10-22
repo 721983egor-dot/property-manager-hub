@@ -1,3 +1,4 @@
+import { propertyKeyMutateTools } from "@/lib/property-keys-tools.server";
 import { bookingFinancialTermsSchema } from "@/lib/booking-finance-schema";
 import { bookingFinancialSummary } from "@/lib/booking-finance-terms";
 import { leaseMutateTools } from "@/lib/lease/tools.server";
@@ -32,7 +33,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
   const label = async (ref: string) => {
     const p = await ctx.findProperty(ref);
     if (!p) return null;
-    return { id: p["id"] as string, text: propertyLabel(p as never), row: p };
+    return {
+    ...propertyKeyMutateTools(ctx), id: p["id"] as string, text: propertyLabel(p as never), row: p };
   };
 
   return {

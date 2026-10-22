@@ -1,3 +1,4 @@
+import { ManagerObjectsWorkspace } from "@/components/ManagerObjectsWorkspace";
 import { LeaseDocumentsButton } from "@/components/LeaseDocuments";
 import { ClientOnly, createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -59,6 +60,12 @@ export const Route = createFileRoute("/_authenticated/objects/$id/")({
 });
 
 function ObjectViewPage() {
+  const { id } = Route.useParams();
+  const { isAdmin, loading } = useAccess();
+  if (loading) return <p className="p-6">Загрузка…</p>;
+  return isAdmin ? <AdminObjectViewPage /> : <ManagerObjectsWorkspace propertyId={id} />;
+}
+function AdminObjectViewPage() {
   const { id } = Route.useParams();
   const { isAdmin } = useAccess();
   const queryClient = useQueryClient();

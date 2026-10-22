@@ -1,7 +1,18 @@
+import { ManagerObjectsWorkspace } from "@/components/ManagerObjectsWorkspace";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Bookmark, ChevronDown, Copy, ImageIcon, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  Bookmark,
+  ChevronDown,
+  Copy,
+  ImageIcon,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -86,6 +97,26 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 function ObjectsPage() {
+  const { isAdmin, loading } = useAccess();
+  const [registry, setRegistry] = useState(false);
+  if (loading) return <p className="p-6">Загрузка…</p>;
+  return (
+    <>
+      <div className="flex justify-end gap-2 px-6 pt-4">
+        {isAdmin && (
+          <button
+            className="rounded border px-3 py-2 text-xs"
+            onClick={() => setRegistry((v) => !v)}
+          >
+            {registry ? "Рабочий каталог и ключи" : "Реестр и редактирование"}
+          </button>
+        )}
+      </div>
+      {registry && isAdmin ? <AdminObjectsPage /> : <ManagerObjectsWorkspace />}
+    </>
+  );
+}
+function AdminObjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>("all");
@@ -154,8 +185,7 @@ function ObjectsPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, next }: { id: string; next: PropertyStatus }) =>
-      setPropertyStatus(id, next),
+    mutationFn: ({ id, next }: { id: string; next: PropertyStatus }) => setPropertyStatus(id, next),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       toast.success("Статус объекта обновлён");
@@ -169,8 +199,7 @@ function ObjectsPage() {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       toast.success("Объект удалён");
     },
-    onError: (e) =>
-      toast.error(e instanceof Error ? e.message : "Не удалось удалить объект"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось удалить объект"),
   });
 
   const createSelectionMutation = useMutation({
@@ -188,8 +217,7 @@ function ObjectsPage() {
       setDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["selections"] });
     },
-    onError: (e) =>
-      toast.error(e instanceof Error ? e.message : "Не удалось создать подборку"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось создать подборку"),
   });
 
   const hasFilters =
@@ -215,8 +243,7 @@ function ObjectsPage() {
     );
   };
 
-  const allFilteredSelected =
-    filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
+  const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
   const someFilteredSelected = filtered.some((p) => selectedIds.has(p.id));
 
   const toggleId = (id: string) => {
@@ -387,12 +414,13 @@ function ObjectsPage() {
           >
             <Checkbox checked={allFilteredSelected} aria-label="Выбрать все" />
             {allFilteredSelected ? "Снять выбор" : "Выбрать все"}
-            {filtered.length > 0 && <span className="text-muted-foreground/70">({filtered.length})</span>}
+            {filtered.length > 0 && (
+              <span className="text-muted-foreground/70">({filtered.length})</span>
+            )}
           </button>
           <p className="text-sm text-muted-foreground">Всего объектов: {filtered.length}</p>
         </div>
       </div>
-
 
       {/* Мобильная версия — карточки вместо таблицы */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:hidden">
@@ -683,7 +711,11 @@ function Row({
       </td>
       <td className="px-4 py-4 text-muted-foreground">{formatMoney(property.deposit)}</td>
       <td className="px-4 py-4 text-muted-foreground">
-        {property.commission == null ? "—" : property.commission === 0 ? "0%" : `${property.commission}%`}
+        {property.commission == null
+          ? "—"
+          : property.commission === 0
+            ? "0%"
+            : `${property.commission}%`}
       </td>
       <td className="px-4 py-4">
         <StatusBadge status={property.status} />
@@ -692,43 +724,43 @@ function Row({
       <td className="px-4 py-4">
         <div className="flex items-center justify-end">
           {!isAdmin ? null : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Действия
-                <ChevronDown className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem asChild>
-                <Link to="/objects/$id/edit" params={{ id: property.id }}>
-                  <Pencil className="size-4" />
-                  Редактировать
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                Статус
-              </DropdownMenuLabel>
-              {PROPERTY_STATUSES.map((s) => (
-                <DropdownMenuItem
-                  key={s.value}
-                  disabled={s.value === property.status}
-                  onSelect={() => onStatus(s.value)}
-                >
-                  {s.label}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Действия
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem asChild>
+                  <Link to="/objects/$id/edit" params={{ id: property.id }}>
+                    <Pencil className="size-4" />
+                    Редактировать
+                  </Link>
                 </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onSelect={onDelete}
-              >
-                <Trash2 className="size-4" />
-                Удалить объект
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                  Статус
+                </DropdownMenuLabel>
+                {PROPERTY_STATUSES.map((s) => (
+                  <DropdownMenuItem
+                    key={s.value}
+                    disabled={s.value === property.status}
+                    onSelect={() => onStatus(s.value)}
+                  >
+                    {s.label}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={onDelete}
+                >
+                  <Trash2 className="size-4" />
+                  Удалить объект
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </td>

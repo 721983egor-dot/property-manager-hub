@@ -1,3 +1,4 @@
+import { managerPropertyView } from "./manager-property-view";
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/lib/auth-user-middleware";
@@ -106,7 +107,14 @@ export const listStaffProperties = createServerFn({ method: "POST" })
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    const role = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (role.error) throw new Error(role.error.message);
+    return role.data ? (data ?? []) : (data ?? []).map((row) => managerPropertyView(row));
   });
 
 /** Карточка объекта для сотрудников RM OS. Без входа недоступна. */
@@ -121,7 +129,14 @@ export const getStaffProperty = createServerFn({ method: "POST" })
       .eq("id", input.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return data;
+    const role = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (role.error) throw new Error(role.error.message);
+    return !data || role.data ? data : managerPropertyView(data);
   });
 
 const CLIENT_COLUMNS =
