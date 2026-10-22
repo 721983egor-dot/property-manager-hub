@@ -96,7 +96,7 @@ export function applyKeyCommand(
     for (const t of inv.transfers.filter((t) => t.status === "pending")) {
       const old = inv.bundles.find((b) => b.id === t.bundleId),
         next = cmd.bundles.find((b) => b.id === t.bundleId);
-      if (JSON.stringify(old) !== JSON.stringify(next))
+      if (JSON.stringify(old && keyBundleSchema.parse(old)) !== JSON.stringify(next))
         throw Error("Сначала завершите или отмените передачу этой связки");
     }
     inv.required = [...new Set(cmd.required)];

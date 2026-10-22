@@ -48,3 +48,11 @@ test('external custody needs explicit handoff; nonholder cannot transfer',()=>{
  assert.throws(()=>apply(initial(),{...command,handed:true},manager,people),/свои/);
  const v=apply(initial(),{...command,handed:true},admin,people);assert.equal(v.transfers[0]!.status,'received');assert.equal(v.bundles[1]!.holder,'Клининг Анна');assert.equal(v.bundles[1]!.holderId,null);
 });
+
+test('unchanged pending bundle survives JSONB field ordering',()=>{
+ const v=send(initial());
+ // PostgreSQL JSONB does not retain the insertion order of object fields.
+ const reorder=(x:unknown):unknown=>Array.isArray(x)?x.map(reorder):x && typeof x === 'object'?Object.fromEntries(Object.entries(x).reverse().map(([k,v])=>[k,reorder(v)])):x;
+ const stored=reorder(v) as KeyInventory;
+ assert.equal(apply(stored,{kind:'composition',required:['Дверь'],bundles:stored.bundles},admin,people).required.length,1);
+});
