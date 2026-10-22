@@ -294,6 +294,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
       execute: async ({ ref, ...rest }) => {
         const p = await label(ref);
         if (!p) return { error: "Объект не найден" };
+        rest.serviceType ??= p.row["service_type"] === "commission_only" ? "commission_only" : "management";
         if (rest.serviceType === "commission_only" && (rest.financialTerms || rest.managementFeeValue !== undefined || rest.ownerPayoutMode || rest.ownerPayoutDay)) throw new Error("Для разовой аренды не задаются ежемесячные финансовые условия");
         const summary = (rest.serviceType === "commission_only" ? "Только разовая комиссия, без ежемесячных начислений. " : "") + `Добавить бронь «${p.text}» для ${rest.clientName}: ${rest.startDate} — ${rest.endDate}${rest.priceMonth ? `, ${money(rest.priceMonth)}/мес` : ""}${rest.ownerPayoutMode === "on_request" ? "; выплата собственнику по запросу, деньги хранятся у нас" : ""}${rest.ownerPayoutDay ? `; выплата собственнику ${rest.ownerPayoutDay}-го числа` : ""}${rest.accountId ? `; счёт ${rest.accountId}${rest.serviceType === "commission_only" ? "" : ", будущие платежи аренды создадутся автоматически"}` : ""}`;
         if(rest.financialTerms) await (await import("@/lib/crm-results.server")).crmAccess();
