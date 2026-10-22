@@ -316,7 +316,10 @@ export async function fetchCianOffersFull(): Promise<CianOffer[]> {
     const card = cards.get(o.id);
     const title = card?.title ?? "";
     return {
+      // Для связки/статистики храним номер объявления ЦИАН.
       externalId: String(o.id),
+      // ExternalId из фида (UUID CRM) — пусто у ручных объявлений до автозагрузки.
+      feedExternalId: String(o.externalId ?? "").trim(),
       url: o.url || `https://www.cian.ru/rent/flat/${o.id}/`,
       title,
       address: card?.address ?? "",
@@ -329,6 +332,72 @@ export async function fetchCianOffersFull(): Promise<CianOffer[]> {
       status: o.status,
     } satisfies CianOffer;
   });
+}
+
+const FEED_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Перепривязывает property_listings к опубликованным объявлениям из XML-фида
+ * (у которых ExternalId = UUID объекта). Старые ручные объявления без ExternalId
+ * фид не обновляет — их нужно снять в кабинете ЦИАН.
+ */
+export async function relinkCianListingsToFeedOffers(): Promise<{
+  relinked: number;
+  skipped: number;
+}> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const offers = await listMyOffers();
+  const now = new Date().toISOString();
+
+  // На один UUID берём published, иначе первое попавшееся.
+  const byFeedId = new Map<string, (typeof offers)[number]>();
+  for (const offer of offers) {
+    const feedId = String(offer.externalId ?? "").trim();
+    if (!FEED_UUID_RE.test(feedId)) continue;
+    const prev = byFeedId.get(feedId);
+    if (!prev || (offer.status === "published" && prev.status !== "published")) {
+      byFeedId.set(feedId, offer);
+    }
+  }
+
+  let relinked = 0;
+  let skipped = 0;
+  for (const [propertyId, offer] of byFeedId) {
+    if (offer.status !== "published") {
+      skipped += 1;
+      continue;
+    }
+    const { data: existing } = await supabaseAdmin
+      .from("property_listings")
+      .select("external_id")
+      .eq("property_id", propertyId)
+      .eq("platform", "cian")
+      .maybeSingle();
+    const currentId = String((existing as { external_id?: string } | null)?.external_id ?? "");
+    if (currentId === String(offer.id)) {
+      skipped += 1;
+      continue;
+    }
+    const { error } = await supabaseAdmin.from("property_listings").upsert(
+      {
+        property_id: propertyId,
+        platform: "cian" as const,
+        published: true,
+        published_at: now,
+        unpublished_at: null,
+        external_id: String(offer.id),
+        external_url: offer.url || `https://cian.ru/rent/flat/${offer.id}/`,
+        last_synced_at: now,
+        sync_status: "synced",
+        sync_error: "",
+      },
+      { onConflict: "property_id,platform" },
+    );
+    if (error) throw new Error(error.message);
+    relinked += 1;
+  }
+
+  return { relinked, skipped };
 }
 
 export type CianOrderInfo = {
