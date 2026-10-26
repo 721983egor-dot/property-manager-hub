@@ -4,6 +4,11 @@
  */
 
 import { getPlatformSecret } from "@/lib/platform-secrets.server";
+import {
+  AVITO_PUBLICATION_STATUSES,
+  loadAvitoStatusItems,
+  type AvitoPublicationStatus,
+} from "@/lib/avito-publication";
 
 const BASE_URL = "https://api.avito.ru";
 
@@ -14,7 +19,9 @@ async function credentials(): Promise<{ clientId: string; clientSecret: string }
   const clientId = (await getPlatformSecret("AVITO_CLIENT_ID")).trim();
   const clientSecret = (await getPlatformSecret("AVITO_CLIENT_SECRET")).trim();
   if (!clientId || !clientSecret) {
-    throw new Error("Авито не подключён: не заданы Client ID и секрет. Сохраните их в настройках площадок.");
+    throw new Error(
+      "Авито не подключён: не заданы Client ID и секрет. Сохраните их в настройках площадок.",
+    );
   }
   return { clientId, clientSecret };
 }
@@ -175,7 +182,9 @@ export async function fetchAvitoMessages(chatId: string, limit = 50): Promise<Av
       const authorId = Number(message.author_id ?? message.authorId);
       const explicit = String(message.direction ?? "");
       const direction: "in" | "out" =
-        explicit === "out" || (Number.isFinite(authorId) && authorId === auth.userId) ? "out" : "in";
+        explicit === "out" || (Number.isFinite(authorId) && authorId === auth.userId)
+          ? "out"
+          : "in";
       return {
         messageId: String(message.id ?? ""),
         direction,
@@ -190,10 +199,13 @@ export async function fetchAvitoMessages(chatId: string, limit = 50): Promise<Av
 export async function sendAvitoMessage(chatId: string, text: string): Promise<string> {
   const auth = await access();
   const payload = asRecord(
-    await avitoFetch(`/messenger/v1/accounts/${auth.userId}/chats/${encodeURIComponent(chatId)}/messages`, {
-      method: "POST",
-      body: JSON.stringify({ type: "text", message: { text } }),
-    }),
+    await avitoFetch(
+      `/messenger/v1/accounts/${auth.userId}/chats/${encodeURIComponent(chatId)}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ type: "text", message: { text } }),
+      },
+    ),
   );
   return String(payload.id ?? asRecord(payload.result).id ?? "");
 }
@@ -209,7 +221,11 @@ export type AvitoDayStat = {
 };
 
 /** Статистика объявлений по дням. itemIds — номера объявлений Авито. */
-export async function fetchAvitoStats(itemIds: number[], from: string, to: string): Promise<Map<number, AvitoDayStat[]>> {
+export async function fetchAvitoStats(
+  itemIds: number[],
+  from: string,
+  to: string,
+): Promise<Map<number, AvitoDayStat[]>> {
   const auth = await access();
   const result = new Map<number, AvitoDayStat[]>();
   for (let i = 0; i < itemIds.length; i += 100) {
@@ -231,21 +247,23 @@ export async function fetchAvitoStats(itemIds: number[], from: string, to: strin
       const item = asRecord(raw);
       const itemId = Number(item.itemId);
       if (!Number.isFinite(itemId)) continue;
-      const days = ((item.stats ?? []) as unknown[]).map((dayRaw) => {
-        const day = asRecord(dayRaw);
-        const views = Number(day.uniqViews ?? 0);
-        const contacts = Number(day.uniqContacts ?? 0);
-        const favorites = Number(day.uniqFavorites ?? 0);
-        return {
-          date: String(day.date ?? "").slice(0, 10),
-          impressions: Number.isFinite(views) ? views : 0,
-          views: Number.isFinite(views) ? views : 0,
-          contact_views: Number.isFinite(contacts) ? contacts : 0,
-          calls: 0,
-          messages: 0,
-          favorites: Number.isFinite(favorites) ? favorites : 0,
-        };
-      }).filter((day) => day.date.length === 10);
+      const days = ((item.stats ?? []) as unknown[])
+        .map((dayRaw) => {
+          const day = asRecord(dayRaw);
+          const views = Number(day.uniqViews ?? 0);
+          const contacts = Number(day.uniqContacts ?? 0);
+          const favorites = Number(day.uniqFavorites ?? 0);
+          return {
+            date: String(day.date ?? "").slice(0, 10),
+            impressions: Number.isFinite(views) ? views : 0,
+            views: Number.isFinite(views) ? views : 0,
+            contact_views: Number.isFinite(contacts) ? contacts : 0,
+            calls: 0,
+            messages: 0,
+            favorites: Number.isFinite(favorites) ? favorites : 0,
+          };
+        })
+        .filter((day) => day.date.length === 10);
       result.set(itemId, days);
     }
   }
@@ -262,28 +280,42 @@ export type AvitoItem = {
 
 /** Активные объявления кабинета. Нужны для ручной привязки к объектам RM OS. */
 export async function fetchAvitoItems(): Promise<AvitoItem[]> {
-  const items: AvitoItem[] = [];
-  for (let page = 1; page <= 10; page += 1) {
-    const payload = asRecord(await avitoFetch(`/core/v1/items?status=active&per_page=100&page=${page}`));
-    const resources = (payload.resources ?? asRecord(payload.result).resources ?? []) as unknown[];
-    if (resources.length === 0) break;
-    for (const raw of resources) {
-      const item = asRecord(raw);
-      const id = String(item.id ?? "");
-      if (!id) continue;
-      const priceRaw = item.price;
-      const price = typeof priceRaw === "number" ? priceRaw : Number(asRecord(priceRaw).value ?? priceRaw);
-      items.push({
-        id,
-        title: String(item.title ?? ""),
-        address: String(item.address ?? ""),
-        price: Number.isFinite(price) ? price : null,
-        url: String(item.url ?? ""),
-      });
+  const resources = await loadAvitoStatusItems("active", (page) =>
+    avitoFetch(`/core/v1/items?status=active&per_page=100&page=${page}`),
+  );
+  return resources.map((raw) => {
+    const item = asRecord(raw);
+    const id = String(item.id ?? "");
+    const priceRaw = item.price;
+    const price =
+      typeof priceRaw === "number" ? priceRaw : Number(asRecord(priceRaw).value ?? priceRaw);
+    return {
+      id,
+      title: String(item.title ?? ""),
+      address: String(item.address ?? ""),
+      price: Number.isFinite(price) ? price : null,
+      url: String(item.url ?? ""),
+    };
+  });
+}
+
+/** Read all statuses successfully before any local publication changes are allowed. */
+export async function fetchAvitoPublicationStatuses(): Promise<
+  Map<string, Set<AvitoPublicationStatus>>
+> {
+  const statuses = new Map<string, Set<AvitoPublicationStatus>>();
+  for (const status of AVITO_PUBLICATION_STATUSES) {
+    const items = await loadAvitoStatusItems(status, (page) =>
+      avitoFetch(`/core/v1/items?status=${status}&per_page=100&page=${page}`),
+    );
+    for (const item of items) {
+      const id = String(item.id);
+      const values = statuses.get(id) ?? new Set<AvitoPublicationStatus>();
+      values.add(status);
+      statuses.set(id, values);
     }
-    if (resources.length < 100) break;
   }
-  return items;
+  return statuses;
 }
 
 /**

@@ -1,10 +1,14 @@
+import { avitoConfirmedInactiveStatus, avitoLinkKeys } from "@/lib/avito-publication";
+
 /** Синхронизация переписки Авито с общим разделом чатов RM OS. */
 export async function syncAvitoChats(): Promise<{ chats: number; messages: number }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { fetchAvitoChats, fetchAvitoMessages } = await import("@/lib/avito.server");
   const chats = await fetchAvitoChats();
 
-  const itemIds = [...new Set(chats.map((chat) => chat.itemId).filter((id): id is string => Boolean(id)))];
+  const itemIds = [
+    ...new Set(chats.map((chat) => chat.itemId).filter((id): id is string => Boolean(id))),
+  ];
   const propertyByItem = new Map<string, string>();
   if (itemIds.length > 0) {
     const { data: listings } = await supabaseAdmin
@@ -18,7 +22,10 @@ export async function syncAvitoChats(): Promise<{ chats: number; messages: numbe
   }
 
   const externalIds = chats.map((chat) => chat.chatId);
-  const existingByExternal = new Map<string, { id: string; last_message_at: string; name: string; phone: string }>();
+  const existingByExternal = new Map<
+    string,
+    { id: string; last_message_at: string; name: string; phone: string }
+  >();
   if (externalIds.length > 0) {
     const { data: existing } = await supabaseAdmin
       .from("chat_threads")
@@ -40,10 +47,11 @@ export async function syncAvitoChats(): Promise<{ chats: number; messages: numbe
 
   let messageCount = 0;
   for (const chat of chats) {
-    const propertyId = chat.itemId ? propertyByItem.get(chat.itemId) ?? null : null;
+    const propertyId = chat.itemId ? (propertyByItem.get(chat.itemId) ?? null) : null;
     const prev = existingByExternal.get(chat.chatId);
     const updatedAt = chat.updatedAt || new Date().toISOString();
-    const needsMessages = !prev || new Date(updatedAt).getTime() > new Date(prev.last_message_at).getTime();
+    const needsMessages =
+      !prev || new Date(updatedAt).getTime() > new Date(prev.last_message_at).getTime();
 
     let threadId = prev?.id;
     const nextName = resolvedPlatformName(prev?.name, chat.opponentName, "Клиент Авито");
@@ -65,7 +73,8 @@ export async function syncAvitoChats(): Promise<{ chats: number; messages: numbe
         )
         .select("id")
         .single();
-      if (threadError || !thread) throw new Error(threadError?.message ?? "Не удалось сохранить чат Авито");
+      if (threadError || !thread)
+        throw new Error(threadError?.message ?? "Не удалось сохранить чат Авито");
       threadId = thread.id;
     } else {
       await supabaseAdmin
@@ -137,17 +146,18 @@ export async function syncAvitoPublicationStatus(): Promise<{
   activeOnAvito: number;
 }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { fetchAvitoItems } = await import("@/lib/avito.server");
-
-  const activeItems = await fetchAvitoItems();
-  const activeIds = new Set(activeItems.map((item) => item.id));
+  const { fetchAvitoPublicationStatuses } = await import("@/lib/avito.server");
 
   const { data: listings, error } = await supabaseAdmin
     .from("property_listings")
-    .select("property_id, external_id")
+    .select("id, property_id, external_id, published_at, updated_at")
     .eq("platform", "avito")
     .eq("published", true);
   if (error) throw new Error(error.message);
+
+  // Keep the local version from before the API requests: a manager's newer decision wins.
+  const statuses = await fetchAvitoPublicationStatuses();
+  const activeOnAvito = [...statuses.values()].filter((values) => values.has("active")).length;
 
   const now = new Date().toISOString();
   let checked = 0;
@@ -158,9 +168,10 @@ export async function syncAvitoPublicationStatus(): Promise<{
     // Без номера объявления ещё не знаем статус на Авито — не трогаем.
     if (!/^\d+$/.test(externalId)) continue;
     checked += 1;
-    if (activeIds.has(externalId)) continue;
+    const avitoStatus = avitoConfirmedInactiveStatus(externalId, statuses, row.published_at);
+    if (!avitoStatus) continue;
 
-    const { error: updError } = await supabaseAdmin
+    const { data: changed, error: updError } = await supabaseAdmin
       .from("property_listings")
       .update({
         published: false,
@@ -171,12 +182,30 @@ export async function syncAvitoPublicationStatus(): Promise<{
       })
       .eq("property_id", row.property_id)
       .eq("platform", "avito")
-      .eq("published", true);
+      .eq("published", true)
+      .eq("external_id", externalId)
+      .eq("updated_at", row.updated_at)
+      .select("id");
     if (updError) throw new Error(updError.message);
+    if (!changed?.length) continue;
+    const { error: auditError } = await supabaseAdmin.from("activity_log").insert({
+      table_name: "property_listings",
+      record_id: row.id,
+      action: "update",
+      source: "avito_sync",
+      summary: "Автоматически выключена выгрузка неактивного объявления Авито",
+      changes: {
+        propertyId: row.property_id,
+        externalId,
+        avitoStatus,
+        published: { before: true, after: false },
+      },
+    });
+    if (auditError) throw new Error(auditError.message);
     deactivated += 1;
   }
 
-  return { checked, deactivated, activeOnAvito: activeIds.size };
+  return { checked, deactivated, activeOnAvito };
 }
 
 /**
@@ -189,7 +218,7 @@ export async function syncAvitoListingIds(): Promise<{ linked: number }> {
 
   const { data: listings, error } = await supabaseAdmin
     .from("property_listings")
-    .select("property_id, external_id")
+    .select("property_id, external_id, updated_at")
     .eq("platform", "avito")
     .eq("published", true);
   if (error) throw new Error(error.message);
@@ -197,23 +226,30 @@ export async function syncAvitoListingIds(): Promise<{ linked: number }> {
   const pending = (listings ?? []).filter((row) => !/^\d+$/.test(String(row.external_id ?? "")));
   if (pending.length === 0) return { linked: 0 };
 
-  const map = await fetchAvitoIdsByAdIds(pending.map((row) => String(row.external_id)));
+  const map = await fetchAvitoIdsByAdIds(pending.flatMap(avitoLinkKeys));
   let linked = 0;
   for (const row of pending) {
-    const avitoId = map.get(String(row.external_id));
+    const avitoId = avitoLinkKeys(row)
+      .map((key) => map.get(key))
+      .find(Boolean);
     if (!avitoId) continue;
     const externalId = String(avitoId);
-    const { error: updError } = await supabaseAdmin
+    const { data: changed, error: updError } = await supabaseAdmin
       .from("property_listings")
       .update({ external_id: externalId })
       .eq("property_id", row.property_id)
-      .eq("platform", "avito");
-    if (updError) continue;
-    await supabaseAdmin
-      .from("chat_threads")
-      .update({ property_id: row.property_id, external_offer_id: externalId })
-      .eq("source", "avito")
-      .eq("external_offer_id", String(row.external_id));
+      .eq("platform", "avito")
+      .eq("updated_at", row.updated_at)
+      .select("property_id");
+    if (updError) throw new Error(updError.message);
+    if (!changed?.length) continue;
+    // Never relink every chat whose old offer ID is empty.
+    if (row.external_id)
+      await supabaseAdmin
+        .from("chat_threads")
+        .update({ property_id: row.property_id, external_offer_id: externalId })
+        .eq("source", "avito")
+        .eq("external_offer_id", String(row.external_id));
     linked += 1;
   }
   return { linked };
