@@ -1,4 +1,8 @@
-import { avitoConfirmedInactiveStatus, avitoLinkKeys } from "@/lib/avito-publication";
+import {
+  avitoConfirmedInactiveStatus,
+  avitoLinkKeys,
+  avitoRequestProcessed,
+} from "@/lib/avito-publication";
 
 /** Синхронизация переписки Авито с общим разделом чатов RM OS. */
 export async function syncAvitoChats(): Promise<{ chats: number; messages: number }> {
@@ -146,11 +150,12 @@ export async function syncAvitoPublicationStatus(): Promise<{
   activeOnAvito: number;
 }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { fetchAvitoPublicationStatuses } = await import("@/lib/avito.server");
+  const { fetchAvitoPublicationStatuses, fetchAvitoProcessedUpload } =
+    await import("@/lib/avito.server");
 
   const { data: listings, error } = await supabaseAdmin
     .from("property_listings")
-    .select("id, property_id, external_id, published_at, updated_at")
+    .select("id, property_id, external_id, published_at, sync_status, updated_at")
     .eq("platform", "avito")
     .eq("published", true);
   if (error) throw new Error(error.message);
@@ -158,6 +163,12 @@ export async function syncAvitoPublicationStatus(): Promise<{
   // Keep the local version from before the API requests: a manager's newer decision wins.
   const statuses = await fetchAvitoPublicationStatuses();
   const activeOnAvito = [...statuses.values()].filter((values) => values.has("active")).length;
+  const pendingInactive = (listings ?? []).some(
+    (row) =>
+      row.sync_status === "in_feed" &&
+      avitoConfirmedInactiveStatus(row.external_id, statuses, row.published_at),
+  );
+  const upload = pendingInactive ? await fetchAvitoProcessedUpload() : null;
 
   const now = new Date().toISOString();
   let checked = 0;
@@ -168,8 +179,22 @@ export async function syncAvitoPublicationStatus(): Promise<{
     // Без номера объявления ещё не знаем статус на Авито — не трогаем.
     if (!/^\d+$/.test(externalId)) continue;
     checked += 1;
+    if (
+      row.sync_status === "in_feed" &&
+      statuses.get(externalId)?.size === 1 &&
+      statuses.get(externalId)?.has("active")
+    ) {
+      const { error: confirmedError } = await supabaseAdmin
+        .from("property_listings")
+        .update({ sync_status: "synced", sync_error: "", last_synced_at: now })
+        .eq("id", row.id)
+        .eq("updated_at", row.updated_at)
+        .eq("published", true);
+      if (confirmedError) throw new Error(confirmedError.message);
+      continue;
+    }
     const avitoStatus = avitoConfirmedInactiveStatus(externalId, statuses, row.published_at);
-    if (!avitoStatus) continue;
+    if (!avitoStatus || !avitoRequestProcessed(row, upload)) continue;
 
     const { data: changed, error: updError } = await supabaseAdmin
       .from("property_listings")
@@ -297,7 +322,8 @@ export async function syncAvitoStats(): Promise<{ synced: number }> {
       .from("property_listings")
       .update({ last_synced_at: new Date().toISOString(), sync_status: "synced", sync_error: "" })
       .eq("property_id", row.property_id)
-      .eq("platform", "avito");
+      .eq("platform", "avito")
+      .neq("sync_status", "in_feed");
     synced += 1;
   }
   return { synced };

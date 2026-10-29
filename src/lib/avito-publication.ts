@@ -51,3 +51,33 @@ export function avitoConfirmedInactiveStatus(
   const status = [...values][0];
   return AVITO_PUBLICATION_STATUSES.includes(status) ? status : null;
 }
+
+export type AvitoProcessedUpload = {
+  startedAt: string;
+  items: { propertyId: string; avitoId: string; status: string }[];
+};
+
+/** A queued republication must be judged by its own processed upload, never the old ad state. */
+export function avitoRequestProcessed(
+  row: {
+    property_id: string;
+    external_id: string;
+    published_at: string | null;
+    sync_status: string;
+  },
+  upload: AvitoProcessedUpload | null,
+): boolean {
+  if (row.sync_status !== "in_feed") return true;
+  if (
+    !row.published_at ||
+    !Number.isFinite(Date.parse(row.published_at)) ||
+    !upload ||
+    !Number.isFinite(Date.parse(upload.startedAt)) ||
+    Date.parse(upload.startedAt) <= Date.parse(row.published_at)
+  )
+    return false;
+  const items = upload.items.filter(
+    (item) => item.propertyId === row.property_id && item.avitoId === row.external_id,
+  );
+  return items.length === 1 && ["old", "removed", "blocked", "rejected"].includes(items[0]!.status);
+}

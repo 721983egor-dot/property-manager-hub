@@ -4,6 +4,7 @@
  */
 
 import { getPlatformSecret } from "@/lib/platform-secrets.server";
+import type { AvitoProcessedUpload } from "@/lib/avito-publication";
 import {
   AVITO_PUBLICATION_STATUSES,
   loadAvitoStatusItems,
@@ -322,6 +323,47 @@ export async function fetchAvitoPublicationStatuses(): Promise<
  * Соответствие «наш Id в фиде → номер объявления на Авито».
  * Нужно, чтобы после автозагрузки подтянуть AvitoId и не плодить дубли.
  */
+export async function fetchAvitoProcessedUpload(): Promise<AvitoProcessedUpload | null> {
+  const upload = asRecord(await avitoFetch("/autoload/v4/uploads/last_successful"));
+  if (upload.status !== "success" || typeof upload.started_at !== "string" || !upload.upload_id)
+    return null;
+  const items: AvitoProcessedUpload["items"] = [];
+  for (let page = 1; page <= 100; page += 1) {
+    const data = asRecord(
+      await avitoFetch(`/autoload/v4/uploads/last_successful/items?page=${page}&perPage=50`),
+    );
+    const meta = asRecord(data.meta);
+    if (
+      !Array.isArray(data.items) ||
+      meta.page !== page ||
+      !Number.isInteger(meta.pages) ||
+      Number(meta.pages) < page
+    ) {
+      throw new Error("Авито вернул неполный отчёт автозагрузки");
+    }
+    for (const raw of data.items) {
+      const item = asRecord(raw);
+      if (
+        typeof item.ad_id !== "string" ||
+        !/^\d+$/.test(String(item.avito_id)) ||
+        typeof item.avito_status !== "string"
+      )
+        continue;
+      items.push({
+        propertyId: item.ad_id,
+        avitoId: String(item.avito_id),
+        status: item.avito_status,
+      });
+    }
+    if (page === meta.pages) {
+      // The pointer can advance between requests; never mix two different uploads.
+      const after = asRecord(await avitoFetch("/autoload/v4/uploads/last_successful"));
+      return after.upload_id === upload.upload_id ? { startedAt: upload.started_at, items } : null;
+    }
+  }
+  throw new Error("Не удалось прочитать все страницы отчёта Авито");
+}
+
 export async function fetchAvitoIdsByAdIds(adIds: string[]): Promise<Map<string, number>> {
   const result = new Map<string, number>();
   const unique = [...new Set(adIds.map((id) => id.trim()).filter(Boolean))];

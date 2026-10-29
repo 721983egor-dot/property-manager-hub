@@ -13,6 +13,7 @@ type Row = {
   published: boolean;
   updated_at: string;
   published_at: string;
+  sync_status: string;
 };
 const row = (id: string, external_id: string): Row => ({
   id,
@@ -22,6 +23,7 @@ const row = (id: string, external_id: string): Row => ({
   published: true,
   updated_at: "2026-10-20T00:00:00Z",
   published_at: "2026-10-20T00:00:00Z",
+  sync_status: "synced",
 });
 
 async function fixture(
@@ -30,6 +32,8 @@ async function fixture(
     failStatus?: string;
     stale?: boolean;
     mappings?: { ad_id: string; avito_id: number }[];
+    uploadStartedAt?: string;
+    uploadItems?: unknown[];
   } = {},
   run: (result: { audits: unknown[]; requests: URL[] }) => Promise<void>,
 ) {
@@ -61,6 +65,14 @@ async function fixture(
       });
     }
     if (url.pathname.endsWith("/avito_ids")) return json({ items: options.mappings ?? [] });
+    if (url.pathname === "/autoload/v4/uploads/last_successful")
+      return json({
+        status: "success",
+        upload_id: 1,
+        started_at: options.uploadStartedAt ?? "2026-10-19T00:00:00Z",
+      });
+    if (url.pathname === "/autoload/v4/uploads/last_successful/items")
+      return json({ items: options.uploadItems ?? [], meta: { page: 1, pages: 1 } });
     if (url.pathname.endsWith("/property_listings")) {
       if (init?.method !== "PATCH") return json(structuredClone(rows.filter((r) => r.published)));
       if (options.stale) return json([]);
@@ -102,6 +114,53 @@ test("sync removes only positively confirmed inactive ads and records the change
       [true, false, true],
     );
     assert.equal(audits.length, 1);
+  });
+});
+
+test("queued republication survives even after grace time until its own upload is processed", async () => {
+  const rows = [{ ...row("queued", "101"), sync_status: "in_feed" }];
+  await fixture(
+    rows,
+    {
+      uploadStartedAt: "2026-10-19T23:59:59Z",
+      uploadItems: [{ ad_id: "queued", avito_id: 101, avito_status: "old" }],
+    },
+    async () => {
+      assert.equal((await syncAvitoPublicationStatus()).deactivated, 0);
+      assert.equal(rows[0].published, true);
+    },
+  );
+});
+
+test("a newer completed upload without the queued item cannot cancel it", async () => {
+  const rows = [{ ...row("queued", "101"), sync_status: "in_feed" }];
+  await fixture(rows, { uploadStartedAt: "2026-10-21T00:00:00Z" }, async () => {
+    assert.equal((await syncAvitoPublicationStatus()).deactivated, 0);
+    assert.equal(rows[0].published, true);
+  });
+});
+
+test("an explicit inactive result in the request's own completed upload cancels it", async () => {
+  const rows = [{ ...row("queued", "101"), sync_status: "in_feed" }];
+  await fixture(
+    rows,
+    {
+      uploadStartedAt: "2026-10-21T00:00:00Z",
+      uploadItems: [{ ad_id: "queued", avito_id: 101, avito_status: "old" }],
+    },
+    async () => {
+      assert.equal((await syncAvitoPublicationStatus()).deactivated, 1);
+      assert.equal(rows[0].published, false);
+    },
+  );
+});
+
+test("an active queued ad is confirmed before its later expiry is reconciled", async () => {
+  const rows = [{ ...row("queued", "100"), sync_status: "in_feed" }];
+  await fixture(rows, {}, async () => {
+    assert.equal((await syncAvitoPublicationStatus()).deactivated, 0);
+    assert.equal(rows[0].published, true);
+    assert.equal(rows[0].sync_status, "synced");
   });
 });
 
