@@ -1,3 +1,4 @@
+import "./crm-navigation.css";
 import { FinanceAccountBalances } from "@/components/FinanceAccountBalances";
 import { fetchTasks } from "@/lib/tasks";
 import { fetchFinanceTasks } from "@/lib/finance-tasks-data";
@@ -362,11 +363,11 @@ function CrmShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={`flex min-h-screen w-full flex-col bg-background text-foreground ${pathname.startsWith("/objects") || pathname.startsWith("/selections") ? "crm-office" : ""}`}>
+    <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
       <PreviewBanner />
       <div className="flex min-h-0 min-w-0 flex-1">
         <CrmShellNotifications />
-        <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
+        <aside className="crm-navigation hidden w-64 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
           <div className="flex h-16 items-center gap-2.5 px-5">
             <img src={logoNavy} alt="Резиденция&Море" className="h-7 w-auto shrink-0" />
           </div>
@@ -377,7 +378,7 @@ function CrmShell({ children }: { children: ReactNode }) {
         </aside>
 
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <SheetContent side="left" className="w-[17rem] bg-sidebar p-0 lg:hidden">
+          <SheetContent side="left" className="crm-navigation w-[18rem] bg-sidebar p-0 lg:hidden">
             <SheetTitle className="flex h-14 items-center gap-2.5 px-5 text-[15px] font-semibold">
               <img src={logoNavy} alt="Резиденция&Море" className="h-6 w-auto shrink-0" />
             </SheetTitle>

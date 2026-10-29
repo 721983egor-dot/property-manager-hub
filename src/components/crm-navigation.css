@@ -1,0 +1,50 @@
+/* One navigation style for every RM OS section, including the mobile drawer. */
+.crm-navigation {
+  --sidebar: oklch(0.3 0.055 260);
+  --sidebar-foreground: oklch(0.81 0.035 260);
+  --sidebar-accent: oklch(0.37 0.06 260);
+  --sidebar-border: oklch(0.39 0.05 260);
+  --primary: oklch(0.98 0.005 260);
+  background: var(--sidebar);
+  border-color: var(--sidebar-border);
+  color: var(--sidebar-foreground);
+}
+.crm-navigation img {
+  filter: brightness(0) invert(1);
+  opacity: 0.94;
+}
+.crm-navigation nav a,
+.crm-navigation nav button,
+.crm-navigation > div > button {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--sidebar-foreground);
+  min-height: 44px;
+}
+.crm-navigation nav a:hover,
+.crm-navigation nav button:hover {
+  background: var(--sidebar-accent);
+  color: oklch(0.98 0 0);
+}
+.crm-navigation nav a[data-status="active"] {
+  background: oklch(0.42 0.075 260);
+  color: oklch(1 0 0);
+}
+.crm-navigation nav svg {
+  width: 18px;
+  height: 18px;
+}
+.crm-navigation nav .text-muted-foreground {
+  color: oklch(0.7 0.04 260);
+}
+.crm-navigation nav .border-border {
+  border-color: var(--sidebar-border);
+}
+.crm-navigation nav a.ai-glow-ring {
+  background: oklch(0.35 0.06 260);
+}
+.crm-navigation button:focus-visible,
+.crm-navigation a:focus-visible {
+  outline: 2px solid oklch(0.8 0.08 260);
+  outline-offset: 2px;
+}

@@ -1,3 +1,10 @@
+import {
+  emptyManagerCatalogFilters,
+  filterManagerCatalog,
+  catalogComplexOptions,
+  catalogFilterError,
+  type ManagerCatalogFilters,
+} from "@/lib/manager-catalog-filters";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -36,12 +43,13 @@ const label = (p: ManagerProperty) => p.internal_name || p.title || `Объек�
 export function ManagerOfficeCatalog() {
   const q = useManagerCatalog(),
     navigate = useNavigate();
-  const [search, setSearch] = useState(""),
-    [type, setType] = useState("all"),
-    [status, setStatus] = useState("all"),
-    [selected, setSelected] = useState<string[]>([]),
-    [max, setMax] = useState(""),
+  const [filters, setFilters] = useState(emptyManagerCatalogFilters);
+  const [selected, setSelected] = useState<string[]>([]),
     [loaded, setLoaded] = useState(false);
+  function filter<K extends keyof ManagerCatalogFilters>(key: K, value: ManagerCatalogFilters[K]) {
+    setFilters((current) => ({ ...current, [key]: value }));
+  }
+  const amount = (value: string) => (value.trim() === "" ? undefined : Math.max(0, Number(value)));
   const actorId = q.data?.actor.id;
   useEffect(() => {
     if (!actorId) return;
@@ -77,19 +85,10 @@ export function ManagerOfficeCatalog() {
         <button onClick={() => void q.refetch()}>Повторить</button>
       </p>
     );
-  const properties = q.data.properties
-    .filter(
-      (p) =>
-        (status === "archive" ? p.status === "archived" : p.status !== "archived") &&
-        (status === "all" || status === "archive" || p.status === status) &&
-        (type === "all" ||
-          (type === "house" ? ["house", "villa", "townhouse"] : ["apartment", "aparts"]).includes(
-            p.type,
-          )) &&
-        `${label(p)} ${p.address} ${p.complex_name}`.toLowerCase().includes(search.toLowerCase()) &&
-        (!max || (p.price_month != null && p.price_month <= Number(max))),
-    )
-    .sort((a, b) => label(a).localeCompare(label(b), "ru"));
+  const properties = filterManagerCatalog(q.data.properties, filters);
+  const complexes = catalogComplexOptions(q.data.properties);
+  const filterError = catalogFilterError(filters);
+  const filtered = JSON.stringify(filters) !== JSON.stringify(emptyManagerCatalogFilters());
   const toggle = (id: string) =>
     setSelected((v) => (v.includes(id) ? v.filter((x) => x !== id) : [...v, id]));
   function prepare() {
@@ -114,30 +113,172 @@ export function ManagerOfficeCatalog() {
         </Link>
       </header>
       <OfficeTabs active="objects" />
-      <div className="of-catalog-filters">
-        <label className="of-search">
-          <Search size={17} />
-          <input
-            aria-label="Поиск объектов"
-            placeholder="Название, комплекс или адрес"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </label>
-        <select aria-label="Тип объекта" value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="all">Дома и квартиры</option>
-          <option value="apartment">Квартиры</option>
-          <option value="house">Дома</option>
-        </select>
-        <input
-          type="number"
-          min="0"
-          aria-label="Бюджет до"
-          placeholder="До … ₽ / месяц"
-          value={max}
-          onChange={(e) => setMax(e.target.value)}
-        />
-      </div>
+      <section className="of-filter-panel" aria-label="Фильтры объектов">
+        <div className="of-catalog-filters">
+          <label className="of-search-field">
+            Поиск
+            <div className="of-search">
+              <Search size={18} />
+              <input
+                aria-label="Поиск объектов"
+                placeholder="Название, комплекс или адрес"
+                value={filters.search}
+                onChange={(e) => filter("search", e.target.value)}
+              />
+            </div>
+          </label>
+          <label>
+            Жилой комплекс
+            <select
+              aria-label="Жилой комплекс"
+              value={filters.complex}
+              onChange={(e) => filter("complex", e.target.value)}
+            >
+              <option value="all">Все комплексы</option>
+              <option value="none">Без комплекса</option>
+              {complexes.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Тип объекта
+            <select
+              aria-label="Тип объекта"
+              value={filters.type}
+              onChange={(e) => filter("type", e.target.value as ManagerCatalogFilters["type"])}
+            >
+              <option value="all">Дома и квартиры</option>
+              <option value="apartment">Квартиры</option>
+              <option value="house">Дома</option>
+              <option value="townhouse">Таунхаусы</option>
+            </select>
+          </label>
+          <label>
+            Цена от, ₽ / месяц
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              aria-label="Цена от"
+              placeholder="Без ограничения"
+              value={filters.minPrice ?? ""}
+              onChange={(e) => filter("minPrice", amount(e.target.value))}
+            />
+          </label>
+          <label>
+            Цена до, ₽ / месяц
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              aria-label="Цена до"
+              placeholder="Без ограничения"
+              value={filters.maxPrice ?? ""}
+              onChange={(e) => filter("maxPrice", amount(e.target.value))}
+            />
+          </label>
+          <label>
+            Количество комнат
+            <select
+              aria-label="Количество комнат"
+              value={filters.rooms}
+              onChange={(e) => filter("rooms", e.target.value as ManagerCatalogFilters["rooms"])}
+            >
+              <option value="all">Любое</option>
+              <option value="0">Студия</option>
+              <option value="1">1 комната</option>
+              <option value="2">2 комнаты</option>
+              <option value="3">3 комнаты</option>
+              <option value="4+">4 и больше</option>
+            </select>
+          </label>
+          <label>
+            Сортировка
+            <select
+              aria-label="Сортировка"
+              value={filters.sort}
+              onChange={(e) => filter("sort", e.target.value as ManagerCatalogFilters["sort"])}
+            >
+              <option value="name">По названию</option>
+              <option value="price_asc">Сначала дешевле</option>
+              <option value="price_desc">Сначала дороже</option>
+              <option value="area_desc">Сначала просторнее</option>
+            </select>
+          </label>
+        </div>
+        <details className="of-more-filters">
+          <summary>
+            Ещё фильтры <span>Площадь, публикация, сезон</span>
+          </summary>
+          <div className="of-catalog-extra">
+            <label>
+              Площадь от, м²
+              <input
+                type="number"
+                min="0"
+                aria-label="Площадь от"
+                value={filters.minArea ?? ""}
+                placeholder="Любая"
+                onChange={(e) => filter("minArea", amount(e.target.value))}
+              />
+            </label>
+            <label>
+              Площадь до, м²
+              <input
+                type="number"
+                min="0"
+                aria-label="Площадь до"
+                value={filters.maxArea ?? ""}
+                placeholder="Любая"
+                onChange={(e) => filter("maxArea", amount(e.target.value))}
+              />
+            </label>
+            <label>
+              Публикация на сайте
+              <select
+                aria-label="Публикация на сайте"
+                value={filters.published}
+                onChange={(e) =>
+                  filter("published", e.target.value as ManagerCatalogFilters["published"])
+                }
+              >
+                <option value="all">Все объекты</option>
+                <option value="yes">Опубликованы</option>
+                <option value="no">Не опубликованы</option>
+              </select>
+            </label>
+            <label>
+              По какой цене искать
+              <select
+                aria-label="Сезон цены"
+                value={filters.priceBasis}
+                onChange={(e) =>
+                  filter("priceBasis", e.target.value as ManagerCatalogFilters["priceBasis"])
+                }
+              >
+                <option value="regular">Обычная цена</option>
+                <option value="summer">Летняя цена</option>
+              </select>
+            </label>
+          </div>
+        </details>
+        {filtered && (
+          <button
+            className="of-reset-filters"
+            onClick={() => setFilters(emptyManagerCatalogFilters())}
+          >
+            Сбросить фильтры
+          </button>
+        )}
+        {filterError && (
+          <p className="of-error" role="alert">
+            {filterError}
+          </p>
+        )}
+      </section>
       <div className="of-filter-tabs">
         {[
           ["all", "Все объекты"],
@@ -149,8 +290,9 @@ export function ManagerOfficeCatalog() {
         ].map(([key, title]) => (
           <button
             key={key}
-            className={status === key ? "active" : ""}
-            onClick={() => setStatus(key!)}
+            className={filters.status === key ? "active" : ""}
+            aria-pressed={filters.status === key}
+            onClick={() => filter("status", key as ManagerCatalogFilters["status"])}
           >
             {title}
           </button>
@@ -158,6 +300,7 @@ export function ManagerOfficeCatalog() {
       </div>
       <p className="of-subtle">
         Найдено: {properties.length} · Выбрано для показа: {selected.length}
+        {filters.priceBasis === "summer" ? " · Поиск по летней цене" : ""}
       </p>
       <div className="of-catalog-table">
         <div className="of-catalog-head">
@@ -234,7 +377,11 @@ export function ManagerOfficeCatalog() {
             </Link>
           </article>
         ))}
-        {!properties.length && <div className="of-empty">По этим условиям объекты не найдены.</div>}
+        {!properties.length && (
+          <div className="of-empty">
+            {filterError || "По этим условиям объекты не найдены. Попробуйте изменить фильтры."}
+          </div>
+        )}
       </div>
       {selected.length > 0 && (
         <div className="of-savebar">

@@ -1,3 +1,4 @@
+// getManagerCatalog: общие с UI фильтры по комплексу, цене/сезону, типу, комнатам, площади и публикации; только чтение сотрудников.
 // Рабочие подборки: getWorkingSelections; proposeWorkingSelection / proposeManagerPropertyNote → confirmed saveWorkingSelection / saveManagerPropertyNote. Версии, staff-only заметки, публичный порядок, атомарный аудит.
 // Общая очередь: prepareActionSchedule оборачивает обычные предложения; подтверждённый scheduleAssistantAction, listScheduledAssistantActions, proposeManageScheduledAction → manageScheduledAction. Серверный cron, подпись параметров, права автора и аудит; без автоматических повторов бизнес-действия.
 // Разовая аренда: proposeDealWon(serviceType=commission_only) → closeDealWon; getRentalContract.serviceType; proposeBooking и updateRentalContract используют общий защищённый writer без ежемесячных начислений.
