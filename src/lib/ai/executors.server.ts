@@ -30,6 +30,8 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
   runAssistantReport: async input => (await import("@/lib/scheduled-actions/report.server")).executeScheduledReport(input),
   scheduleAssistantAction: async input => (await import("@/lib/scheduled-actions/service.server")).enqueueScheduledAction(input),
   manageScheduledAction: async input => (await import("@/lib/scheduled-actions/service.server")).manageScheduledAction(input),
+  saveWorkingSelection: async input => (await import('@/lib/working-selections.server')).workingAssistantSave(input),
+  saveManagerPropertyNote: async input => (await import('@/lib/working-selections.server')).managerAssistantNote(input),
   changePropertyKeys: async input => { const s = await import("@/lib/property-keys-tools.server"); return s.executePropertyKeyChange(input); },
   prepareLease: async input => {const s=await import("@/lib/lease/service.server");return s.executeLeasePreparation(input);},
   saveClientPassport: async input => {const s=await import("@/lib/lease/service.server");return s.executeSavePassport(input);},

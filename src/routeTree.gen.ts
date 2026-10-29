@@ -57,6 +57,7 @@ import { Route as AuthenticatedPromoIdRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPromoAvitoRouteImport } from './routes/_authenticated/promo.avito'
 import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
+import { Route as AuthenticatedSelectionsIdRouteImport } from './routes/_authenticated/selections.$id'
 import { Route as AuthenticatedSocialIndexRouteImport } from './routes/_authenticated/social.index'
 import { Route as AuthenticatedSystemQuickRepliesRouteImport } from './routes/_authenticated/system.quick-replies'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
@@ -357,6 +358,12 @@ const AuthenticatedSelectionsIndexRoute =
   AuthenticatedSelectionsIndexRouteImport.update({
     id: '/selections/',
     path: '/selections/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSelectionsIdRoute =
+  AuthenticatedSelectionsIdRouteImport.update({
+    id: '/selections/$id',
+    path: '/selections/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSocialIndexRoute =
@@ -665,6 +672,7 @@ export interface FileRoutesByFullPath {
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
+  '/selections/$id': typeof AuthenticatedSelectionsIdRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -758,6 +766,7 @@ export interface FileRoutesByTo {
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
+  '/selections/$id': typeof AuthenticatedSelectionsIdRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -855,6 +864,7 @@ export interface FileRoutesById {
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
   '/_authenticated/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
+  '/_authenticated/selections/$id': typeof AuthenticatedSelectionsIdRoute
   '/_authenticated/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
   '/_authenticated/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -952,6 +962,7 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/avito'
     | '/promo/import'
+    | '/selections/$id'
     | '/system/quick-replies'
     | '/system/staff'
     | '/system/telegram'
@@ -1045,6 +1056,7 @@ export interface FileRouteTypes {
     | '/promo/$id'
     | '/promo/avito'
     | '/promo/import'
+    | '/selections/$id'
     | '/system/quick-replies'
     | '/system/staff'
     | '/system/telegram'
@@ -1141,6 +1153,7 @@ export interface FileRouteTypes {
     | '/_authenticated/promo/$id'
     | '/_authenticated/promo/avito'
     | '/_authenticated/promo/import'
+    | '/_authenticated/selections/$id'
     | '/_authenticated/system/quick-replies'
     | '/_authenticated/system/staff'
     | '/_authenticated/system/telegram'
@@ -1576,6 +1589,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSelectionsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/selections/$id': {
+      id: '/_authenticated/selections/$id'
+      path: '/selections/$id'
+      fullPath: '/selections/$id'
+      preLoaderRoute: typeof AuthenticatedSelectionsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/social/': {
       id: '/_authenticated/social/'
       path: '/social'
@@ -1919,6 +1939,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
   AuthenticatedPromoAvitoRoute: typeof AuthenticatedPromoAvitoRoute
   AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
+  AuthenticatedSelectionsIdRoute: typeof AuthenticatedSelectionsIdRoute
   AuthenticatedSystemQuickRepliesRoute: typeof AuthenticatedSystemQuickRepliesRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
   AuthenticatedSystemTelegramRoute: typeof AuthenticatedSystemTelegramRoute
@@ -1974,6 +1995,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
   AuthenticatedPromoAvitoRoute: AuthenticatedPromoAvitoRoute,
   AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
+  AuthenticatedSelectionsIdRoute: AuthenticatedSelectionsIdRoute,
   AuthenticatedSystemQuickRepliesRoute: AuthenticatedSystemQuickRepliesRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
   AuthenticatedSystemTelegramRoute: AuthenticatedSystemTelegramRoute,

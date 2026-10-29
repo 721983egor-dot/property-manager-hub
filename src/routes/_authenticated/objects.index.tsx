@@ -1,4 +1,4 @@
-import { ManagerObjectsWorkspace } from "@/components/ManagerObjectsWorkspace";
+import {ManagerOfficeCatalog} from "@/components/ManagerOfficeCatalog";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -108,11 +108,11 @@ function ObjectsPage() {
             className="rounded border px-3 py-2 text-xs"
             onClick={() => setRegistry((v) => !v)}
           >
-            {registry ? "Рабочий каталог и ключи" : "Реестр и редактирование"}
+            {registry ? "Рабочий каталог" : "Реестр и редактирование"}
           </button>
         )}
       </div>
-      {registry && isAdmin ? <AdminObjectsPage /> : <ManagerObjectsWorkspace />}
+      {registry && isAdmin ? <AdminObjectsPage /> : <ManagerOfficeCatalog />}
     </>
   );
 }

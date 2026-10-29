@@ -1,3 +1,4 @@
+import {DealWorkingSelections} from "./WorkingSelections";
 import { LeaseDocumentsButton } from "@/components/LeaseDocuments";
 import { DealLostDialog } from "@/components/DealLostDialog";
 import { useEffect, useMemo, useState } from "react";
@@ -549,7 +550,7 @@ export function DealDialog({ open, onOpenChange, deal, stages, fields, defaultSt
                 <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
               </div>
 
-              {deal ? <DealShowings dealId={deal.id} properties={properties} /> : null}
+              {deal ? <><DealShowings dealId={deal.id} properties={properties} /><DealWorkingSelections dealId={deal.id}/></> : null}
             </div>
 
             {deal ? (

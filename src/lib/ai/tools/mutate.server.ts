@@ -1,3 +1,4 @@
+import {workingSelectionMutateTools} from '@/lib/working-selections-tools.server';
 import {scheduledMutateTools} from "@/lib/scheduled-actions/tools.server";
 import { propertyKeyMutateTools } from "@/lib/property-keys-tools.server";
 import { bookingFinancialTermsSchema } from "@/lib/booking-finance-schema";
@@ -40,6 +41,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
   return {
     ...leaseMutateTools(ctx),
     ...propertyKeyMutateTools(ctx),
+    ...workingSelectionMutateTools(ctx),
     ...scheduledMutateTools(ctx),
     proposeDealLossReason:tool({description:"Добавить, переименовать или убрать причину провала (archived=true). Сначала listDealLossReasons. История сохраняется; подтверждение администратора.",inputSchema:z.object({id:z.string().uuid().optional(),pipeline:z.enum(["rental","intake"]),name:z.string().min(1).max(160),position:z.number().int(),archived:z.boolean().optional()}),execute:async(input)=>{const {crmAccess}=await import("@/lib/crm-results.server");await crmAccess();const summary=`${input.archived?"Убрать из выбора":"Сохранить причину провала"}: ${input.name}`;ctx.propose({tool:"saveDealLossReason",summary,input:{...input,newId:crypto.randomUUID()}});return {proposed:summary};}}),
     proposeCloseDealLost:tool({description:"Закрыть сделку с причиной провала. Причину взять из listDealLossReasons. closedOn YYYY-MM-DD по Москве. Только после подтверждения.",inputSchema:z.object({dealId:z.string().uuid(),reasonId:z.string().uuid(),comment:z.string().max(3000),closedOn:z.string()}),execute:async(input)=>{const {crmAccess}=await import("@/lib/crm-results.server");const {db}=await crmAccess();const d=await db.from("deals").select("title,pipeline").eq("id",input.dealId).single();const r=await db.from("deal_loss_reasons").select("name,pipeline,archived").eq("id",input.reasonId).single();if(!d.data||!r.data||r.data.archived||r.data.pipeline!==d.data.pipeline)throw new Error("Проверьте сделку и причину");const summary=`Закрыть «${d.data.title}» с отказом: ${r.data.name}, ${input.closedOn}. ${input.comment}`;ctx.propose({tool:"closeDealLost",summary,input});return {proposed:summary};}}),

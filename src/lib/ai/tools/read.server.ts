@@ -1,3 +1,4 @@
+import {workingSelectionReadTools} from '@/lib/working-selections-tools.server';
 import {scheduledReadTools} from "@/lib/scheduled-actions/tools.server";
 import { propertyKeyReadTools } from "@/lib/property-keys-tools.server";
 import { expandPaymentReceipts } from "@/lib/finance-cash-receipts";
@@ -141,6 +142,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
   return {
     ...propertyKeyReadTools(),
+    ...workingSelectionReadTools(),
     ...scheduledReadTools(ctx),
     ...leaseReadTools(ctx),
     getCrmResults: tool({

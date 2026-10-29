@@ -114,6 +114,7 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <Building2 className="size-4 shrink-0" />
         Объекты
       </Link>
+      <Link to="/selections" onClick={onNavigate} className={NAV_LINK_CLASS}><ListTodo className="size-4 shrink-0"/>Подборки</Link>
       <Link to="/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <CalendarDays className="size-4 shrink-0" />
         Календарь
@@ -361,7 +362,7 @@ function CrmShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+    <div className={`flex min-h-screen w-full flex-col bg-background text-foreground ${pathname.startsWith("/objects") || pathname.startsWith("/selections") ? "crm-office" : ""}`}>
       <PreviewBanner />
       <div className="flex min-h-0 min-w-0 flex-1">
         <CrmShellNotifications />

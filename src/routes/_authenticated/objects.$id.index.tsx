@@ -1,4 +1,4 @@
-import { ManagerObjectsWorkspace } from "@/components/ManagerObjectsWorkspace";
+import {ManagerOfficeObject} from "@/components/ManagerOfficeCatalog";
 import { LeaseDocumentsButton } from "@/components/LeaseDocuments";
 import { ClientOnly, createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -62,8 +62,9 @@ export const Route = createFileRoute("/_authenticated/objects/$id/")({
 function ObjectViewPage() {
   const { id } = Route.useParams();
   const { isAdmin, loading } = useAccess();
+  const [full,setFull]=useState(false);
   if (loading) return <p className="p-6">Загрузка…</p>;
-  return isAdmin ? <AdminObjectViewPage /> : <ManagerObjectsWorkspace propertyId={id} />;
+  return full && isAdmin ? <><div className="px-6 pt-4"><Button variant="outline" onClick={()=>setFull(false)}>← Рабочая карточка</Button></div><AdminObjectViewPage /></> : <ManagerOfficeObject propertyId={id} onAdmin={isAdmin?()=>setFull(true):undefined} />;
 }
 function AdminObjectViewPage() {
   const { id } = Route.useParams();
