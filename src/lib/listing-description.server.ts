@@ -304,8 +304,8 @@ function fitToLimit(
     } else {
       const titleMatch = current.complexInfo.match(/^(Инфо по ЖК[^\n]*)\n\n([\s\S]*)$/);
       if (titleMatch) {
-        const title = titleMatch[1];
-        let body = titleMatch[2].trim();
+        const title = titleMatch[1] ?? "Инфо по ЖК";
+        let body = (titleMatch[2] ?? "").trim();
         const maxBody = Math.max(0, budget - title.length - 2);
         if (body.length > maxBody) {
           body = `${body.slice(0, Math.max(0, maxBody - 1)).trim()}…`;
@@ -334,8 +334,8 @@ function fitToLimit(
     } else {
       const titleMatch = current.location.match(/^(Локация)\n\n([\s\S]*)$/);
       if (titleMatch) {
-        let body = titleMatch[2].trim();
-        const maxBody = Math.max(0, budget - titleMatch[1].length - 2);
+        let body = (titleMatch[2] ?? "").trim();
+        const maxBody = Math.max(0, budget - (titleMatch[1] ?? "Локация").length - 2);
         if (body.length > maxBody) {
           body = `${body.slice(0, Math.max(0, maxBody - 1)).trim()}…`;
         }
