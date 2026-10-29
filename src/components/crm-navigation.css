@@ -25,7 +25,8 @@
   background: var(--sidebar-accent);
   color: oklch(0.98 0 0);
 }
-.crm-navigation nav a[data-status="active"] {
+.crm-navigation nav a[data-status="active"],
+.crm-navigation nav a[data-objects-active="true"] {
   background: oklch(0.42 0.075 260);
   color: oklch(1 0 0);
 }

@@ -24,7 +24,6 @@ import {
   UserRound,
   Users,
   Wallet,
-  Wrench,
   Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -92,7 +91,7 @@ const NAV_LINK_CLASS =
 function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith("/system"));
-  const { isAdmin, isOwner, isSocialOwner } = useAccess();
+  const { isAdmin, isOwner } = useAccess();
 
   if (isOwner) {
     return (
@@ -111,32 +110,24 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
         <Hotel className="size-4 shrink-0" />
         H11 Резиденция
       </Link>
-      <Link to="/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
+      <Link
+        to="/objects"
+        onClick={onNavigate}
+        className={NAV_LINK_CLASS}
+        data-objects-active={pathname.startsWith("/objects") || pathname.startsWith("/selections")}
+      >
         <Building2 className="size-4 shrink-0" />
         Объекты
       </Link>
-      <Link to="/selections" onClick={onNavigate} className={NAV_LINK_CLASS}><ListTodo className="size-4 shrink-0"/>Подборки</Link>
       <Link to="/calendar" onClick={onNavigate} className={NAV_LINK_CLASS}>
         <CalendarDays className="size-4 shrink-0" />
         Календарь
       </Link>
-      {/* Новые блоки (Обслуживание, Финансы и далее) — только админ, пока Егор явно не откроет менеджерам. */}
+      {/* Финансы по-прежнему доступны только администратору. */}
       {isAdmin && (
-        <>
-          <Link to="/maintenance/objects" onClick={onNavigate} className={NAV_LINK_CLASS}>
-            <Wrench className="size-4 shrink-0" />
-            Обслуживание
-          </Link>
-          <Link to="/finance" onClick={onNavigate} className={NAV_LINK_CLASS}>
-            <Wallet className="size-4 shrink-0" />
-            Финансы
-          </Link>
-        </>
-      )}
-      {isSocialOwner && (
-        <Link to="/social" onClick={onNavigate} className={NAV_LINK_CLASS}>
-          <Share2 className="size-4 shrink-0" />
-          Соцсети
+        <Link to="/finance" onClick={onNavigate} className={NAV_LINK_CLASS}>
+          <Wallet className="size-4 shrink-0" />
+          Финансы
         </Link>
       )}
       {isAdmin && (
@@ -258,13 +249,11 @@ type NavItem = {
   icon: React.ElementType;
   adminOnly?: boolean;
   managerOnly?: boolean;
-  socialOnly?: boolean;
 };
 
 const MOBILE_NAV: NavItem[] = [
   { to: "/objects", label: "Объекты", icon: Building2 },
   { to: "/calendar", label: "Календарь", icon: CalendarDays, managerOnly: true },
-  { to: "/social", label: "Соцсети", icon: Share2, socialOnly: true },
   { to: "/chats", label: "Чаты", icon: MessagesSquare, adminOnly: true },
   { to: "/assistant", label: "Ассистент", icon: Sparkles, adminOnly: true },
   { to: "/crm/deals", label: "CRM", icon: Handshake, adminOnly: true },
@@ -274,14 +263,12 @@ const MOBILE_NAV: NavItem[] = [
 
 function CrmMobileNav({ unread }: { unread: number }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { isAdmin, isOwner, isSocialOwner } = useAccess();
+  const { isAdmin, isOwner } = useAccess();
   const items = isOwner
     ? [{ to: "/owner", label: "Кабинет", icon: Hotel }]
     : MOBILE_NAV.filter(
         (item) =>
-          (!item.adminOnly || isAdmin) &&
-          (!item.managerOnly || !isAdmin) &&
-          (!item.socialOnly || isSocialOwner),
+          (!item.adminOnly || isAdmin) && (!item.managerOnly || !isAdmin),
       );
 
   return (
@@ -291,7 +278,9 @@ function CrmMobileNav({ unread }: { unread: number }) {
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       >
         {items.map((item) => {
-          const active = pathname.startsWith(item.to);
+          const active =
+            pathname.startsWith(item.to) ||
+            (item.to === "/objects" && pathname.startsWith("/selections"));
           const isAssistant = item.to === "/assistant";
           const Icon = item.icon;
           if (isAssistant) {
