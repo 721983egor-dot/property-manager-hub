@@ -91,6 +91,33 @@ export function ManagerOfficeCatalog() {
   const filtered = JSON.stringify(filters) !== JSON.stringify(emptyManagerCatalogFilters());
   const toggle = (id: string) =>
     setSelected((v) => (v.includes(id) ? v.filter((x) => x !== id) : [...v, id]));
+  const visibleSelected = properties.filter((p) => selected.includes(p.id)).length;
+  const allVisibleSelected = properties.length > 0 && visibleSelected === properties.length;
+  const partlyVisibleSelected = visibleSelected > 0 && !allVisibleSelected;
+  function toggleAll(checked: boolean) {
+    const visibleIds = new Set(properties.map((p) => p.id));
+    setSelected((current) =>
+      checked
+        ? [...new Set([...current, ...visibleIds])]
+        : current.filter((id) => !visibleIds.has(id)),
+    );
+  }
+  function allCheckbox(id: string) {
+    return (
+      <input
+        id={id}
+        type="checkbox"
+        aria-label="Выбрать все найденные объекты"
+        aria-checked={partlyVisibleSelected ? "mixed" : allVisibleSelected}
+        checked={allVisibleSelected}
+        disabled={!properties.length}
+        ref={(node) => {
+          if (node) node.indeterminate = partlyVisibleSelected;
+        }}
+        onChange={(event) => toggleAll(event.target.checked)}
+      />
+    );
+  }
   function prepare() {
     try {
       sessionStorage.setItem("office-selection-draft", JSON.stringify(selected));
@@ -302,10 +329,18 @@ export function ManagerOfficeCatalog() {
         Найдено: {properties.length} · Выбрано для показа: {selected.length}
         {filters.priceBasis === "summer" ? " · Поиск по летней цене" : ""}
       </p>
+      <div className="of-select-all-mobile">
+        <label>
+          {allCheckbox("select-all-mobile")}
+          <span>Выбрать все найденные ({properties.length})</span>
+        </label>
+      </div>
       <div className="of-catalog-table">
         <div className="of-catalog-head">
-          <span></span>
-          <span>Объект</span>
+          {allCheckbox("select-all-desktop")}
+          <label className="of-select-all-title" htmlFor="select-all-desktop">
+            Объекты <span>Выбрать все ({properties.length})</span>
+          </label>
           <span>Условия аренды</span>
           <span>Доступность</span>
           <span></span>

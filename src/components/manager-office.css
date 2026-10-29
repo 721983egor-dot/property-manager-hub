@@ -1469,3 +1469,38 @@
     font-size: 14px;
   }
 }
+
+.of-select-all-mobile {
+  display: none;
+}
+.office-workspace .of-select-all-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.of-select-all-title span {
+  font-size: 13px;
+  color: #5f7ca7;
+  text-transform: none;
+  letter-spacing: 0;
+}
+@media (max-width: 850px) {
+  .of-select-all-mobile {
+    display: block;
+    margin: 16px 0 10px;
+  }
+  .office-workspace .of-select-all-mobile label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    color: #486896;
+  }
+  .of-select-all-mobile input {
+    width: 18px !important;
+    height: 18px !important;
+  }
+}
