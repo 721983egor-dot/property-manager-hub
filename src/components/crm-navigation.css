@@ -4,7 +4,6 @@
   --sidebar-foreground: oklch(0.81 0.035 260);
   --sidebar-accent: oklch(0.37 0.06 260);
   --sidebar-border: oklch(0.39 0.05 260);
-  --primary: oklch(0.98 0.005 260);
   background: var(--sidebar);
   border-color: var(--sidebar-border);
   color: var(--sidebar-foreground);
@@ -15,7 +14,7 @@
 }
 .crm-navigation nav a,
 .crm-navigation nav button,
-.crm-navigation > div > button {
+.crm-navigation button {
   font-size: 16px;
   line-height: 1.5;
   color: var(--sidebar-foreground);

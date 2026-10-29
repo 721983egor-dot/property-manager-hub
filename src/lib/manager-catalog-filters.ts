@@ -28,7 +28,6 @@ export function catalogComplexKey(p: Pick<ManagerProperty, "complex_id" | "compl
 export function catalogComplexOptions(properties: ManagerProperty[]) {
   const values = new Map<string, string>();
   for (const p of properties) {
-    if (p.status === "archived") continue;
     const key = catalogComplexKey(p);
     if (key !== "none" && !values.has(key))
       values.set(key, p.complex_name?.trim() || "Комплекс без названия");
