@@ -29,7 +29,9 @@ for (const platform of Object.keys(LISTING_DESCRIPTION_LIMITS) as ListingDescrip
     assert.match(description, /С 1 октября по 31 мая [—-] 100 000 ₽ в месяц\./);
     assert.match(description, /С 1 июня по 30 сентября [—-] 150 000 ₽ в месяц\./);
     assert.ok(description.length <= LISTING_DESCRIPTION_LIMITS[platform]);
-    assert.equal((description.match(/Стоимость аренды по периодам/g) || []).length, 1);
+    assert.doesNotMatch(description, /Стоимость аренды по периодам/);
+    assert.equal((description.match(/^Условия$/gm) || []).length, 1);
+    assert.ok(description.indexOf("Условия") < description.indexOf("С 1 октября"));
     if (platform === "cian") assert.doesNotMatch(description, /[\u00a0\u202f/]/);
   });
   test(`${platform}: long prose and terms cannot displace seasonal rates`, () => {

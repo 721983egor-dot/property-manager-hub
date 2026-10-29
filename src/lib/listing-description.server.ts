@@ -196,13 +196,10 @@ export function buildSeasonalPriceDescription(
     summer === base
   )
     return "";
-  return section(
-    "Стоимость аренды по периодам",
-    [
-      `С 1 октября по 31 мая — ${formatMoneyRu(base)} в месяц.`,
-      `С 1 июня по 30 сентября — ${formatMoneyRu(summer)} в месяц.`,
-    ].join("\n"),
-  );
+  return [
+    `— С 1 октября по 31 мая — ${formatMoneyRu(base)} в месяц.`,
+    `— С 1 июня по 30 сентября — ${formatMoneyRu(summer)} в месяц.`,
+  ].join("\n");
 }
 
 function assembleParts(
@@ -233,19 +230,22 @@ function assembleParts(
   }
 
   const bullets = buildRentTermsBullets(property);
-  const terms = bullets.length > 0 ? section("Условия", bullets.join("\n")) : "";
+  const terms = bullets.join("\n");
   const footer = companyFooter(platform);
 
   return { objectDescription, seasonalPrice, location, complexInfo, terms, footer };
 }
 
+function renderTerms(parts: AssembledParts): string {
+  return section("Условия", [parts.seasonalPrice, parts.terms].filter(Boolean).join("\n"));
+}
+
 function renderParts(parts: AssembledParts): string {
   return joinBlocks([
     parts.objectDescription,
-    parts.seasonalPrice,
     parts.location,
     parts.complexInfo,
-    parts.terms,
+    renderTerms(parts),
     parts.footer,
   ]);
 }
@@ -293,9 +293,8 @@ function fitToLimit(
   if (current.complexInfo) {
     const withoutComplex = joinBlocks([
       current.objectDescription,
-      current.seasonalPrice,
       current.location,
-      current.terms,
+      renderTerms(current),
       current.footer,
     ]);
     const budget = maxLength - withoutComplex.length;
@@ -323,9 +322,8 @@ function fitToLimit(
   if (current.location) {
     const withoutLocation = joinBlocks([
       current.objectDescription,
-      current.seasonalPrice,
       current.complexInfo,
-      current.terms,
+      renderTerms(current),
       current.footer,
     ]);
     const budget = maxLength - withoutLocation.length;
@@ -350,13 +348,14 @@ function fitToLimit(
 
   // 4) В крайнем случае укоротить описание объекта (футер и условия сохранить)
   // Seasonal prices outrank prose and optional terms: never lose the summer rate on long ads.
-  const essential = joinBlocks([current.seasonalPrice, current.footer]);
+  const essential = joinBlocks([section("Условия", current.seasonalPrice), current.footer]);
   if (essential.length > maxLength) return essential.slice(0, maxLength);
-  const termsBudget = maxLength - essential.length - (current.terms ? 2 : 0);
+  const overflow = joinBlocks([renderTerms(current), current.footer]).length - maxLength;
+  const termsBudget = current.terms.length - Math.max(0, overflow);
   if (current.terms.length > termsBudget) {
     current.terms = termsBudget > 1 ? `${current.terms.slice(0, termsBudget - 1).trim()}…` : "";
   }
-  const tail = joinBlocks([current.seasonalPrice, current.terms, current.footer]);
+  const tail = joinBlocks([renderTerms(current), current.footer]);
   const budget = maxLength - (tail ? tail.length + 2 : 0);
   let head = current.objectDescription;
   if (budget <= 0) {
@@ -365,10 +364,7 @@ function fitToLimit(
   if (head.length > budget) {
     head = `${head.slice(0, Math.max(0, budget - 1)).trim()}…`;
   }
-  return joinBlocks([head, current.seasonalPrice, current.terms, current.footer]).slice(
-    0,
-    maxLength,
-  );
+  return joinBlocks([head, renderTerms(current), current.footer]).slice(0, maxLength);
 }
 
 /**
