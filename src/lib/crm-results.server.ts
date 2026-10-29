@@ -1,3 +1,4 @@
+import {scheduledActor} from "./scheduled-actions/actor.server";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -6,6 +7,8 @@ import { webhookSecret } from "@/lib/telegram/api.server";
 import { crmSources, filterCrmResults, type ResultMode } from "@/lib/crm-results-model";
 import type { Deal, DealStage } from "@/lib/deals";
 export async function crmAccess(input?: Record<string, unknown>) {
+  const scheduled=scheduledActor.getStore();
+  if(scheduled) return {db:supabaseAdmin as unknown as SupabaseClient,actor:scheduled.id};
   const req = getRequest();
   const auth = req?.headers.get("authorization");
   if (auth?.startsWith("Bearer ")) {

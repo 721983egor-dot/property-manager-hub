@@ -1,3 +1,4 @@
+import { ScheduledAssistantActions } from "@/components/ScheduledAssistantActions";
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
 import { useServerFn } from "@tanstack/react-start";
@@ -36,6 +37,7 @@ function AssistantPage() {
   const ask = useServerFn(askAssistant);
   const runAction = useServerFn(runAssistantAction);
 
+  const [queueOpen, setQueueOpen] = useState(false);
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -89,9 +91,17 @@ function AssistantPage() {
         <span className="text-sm text-muted-foreground">
           знает все объекты, сделки, клиентов, календарь и журнал системы
         </span>
+        <Button variant="outline" className="ml-auto" onClick={() => setQueueOpen((v) => !v)}>
+          {queueOpen ? "Вернуться в чат" : "Отложенные поручения"}
+        </Button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+      {queueOpen && (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ScheduledAssistantActions />
+        </div>
+      )}
+      <div className={queueOpen ? "hidden" : "min-h-0 flex-1 overflow-y-auto px-6 py-6"}>
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
           {messages.length === 0 && (
             <div className="rounded-lg border border-border bg-card p-5">
@@ -140,7 +150,9 @@ function AssistantPage() {
                       <div className="mt-2 flex gap-2">
                         <Button size="sm" onClick={() => void confirm(a)}>
                           <Check className="size-4" />
-                          Подтвердить
+                          {a.tool === "scheduleAssistantAction"
+                            ? "Запланировать"
+                            : "Подтвердить сейчас"}
                         </Button>
                         <Button
                           size="sm"
@@ -164,7 +176,7 @@ function AssistantPage() {
       </div>
 
       <form
-        className="shrink-0 border-t border-border px-6 py-4"
+        className={queueOpen ? "hidden" : "shrink-0 border-t border-border px-6 py-4"}
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);

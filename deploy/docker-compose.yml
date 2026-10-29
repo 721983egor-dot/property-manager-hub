@@ -267,13 +267,20 @@ services:
       - -c
       - |
         apk add --no-cache curl >/dev/null
+        SECRET="$${CRON_SECRET:-$$DEPLOY_AGENT_TOKEN}"
+        (
+          while true; do
+            curl -fsS --max-time 120 -X POST http://app:3000/api/public/cron/assistant-actions \
+              -H "x-cron-secret: $$SECRET" >/dev/null || true
+            sleep 30
+          done
+        ) &
         while true; do
-          SECRET="$${CRON_SECRET:-$$DEPLOY_AGENT_TOKEN}"
-          curl -fsS -X POST http://app:3000/api/public/cron/cian-sync \
+          curl -fsS --max-time 90 -X POST http://app:3000/api/public/cron/cian-sync \
             -H "x-cron-secret: $$SECRET" || true
-          curl -fsS -X POST http://app:3000/api/public/cron/bnovo-sync \
+          curl -fsS --max-time 90 -X POST http://app:3000/api/public/cron/bnovo-sync \
             -H "x-cron-secret: $$SECRET" || true
-          curl -fsS -X POST http://app:3000/api/public/cron/finance-series \
+          curl -fsS --max-time 90 -X POST http://app:3000/api/public/cron/finance-series \
             -H "x-cron-secret: $$SECRET" || true
           sleep 600
         done

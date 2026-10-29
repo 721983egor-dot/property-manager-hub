@@ -85,6 +85,7 @@ import { Route as AuthenticatedMaintenanceObjectsNewRouteImport } from './routes
 import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authenticated/objects.$id.index'
 import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authenticated/objects.$id.edit'
 import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_authenticated/objects.$id.preview'
+import { Route as ApiPublicCronAssistantActionsRouteImport } from './routes/api/public/cron/assistant-actions'
 import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/cron/bnovo-sync'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
 import { Route as ApiPublicCronFinanceSeriesRouteImport } from './routes/api/public/cron/finance-series'
@@ -521,6 +522,12 @@ const AuthenticatedObjectsIdPreviewRoute =
     path: '/objects/$id/preview',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicCronAssistantActionsRoute =
+  ApiPublicCronAssistantActionsRouteImport.update({
+    id: '/api/public/cron/assistant-actions',
+    path: '/api/public/cron/assistant-actions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronBnovoSyncRoute = ApiPublicCronBnovoSyncRouteImport.update({
   id: '/api/public/cron/bnovo-sync',
   path: '/api/public/cron/bnovo-sync',
@@ -687,6 +694,7 @@ export interface FileRoutesByFullPath {
   '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
+  '/api/public/cron/assistant-actions': typeof ApiPublicCronAssistantActionsRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
@@ -779,6 +787,7 @@ export interface FileRoutesByTo {
   '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
+  '/api/public/cron/assistant-actions': typeof ApiPublicCronAssistantActionsRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
@@ -875,6 +884,7 @@ export interface FileRoutesById {
   '/_authenticated/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
+  '/api/public/cron/assistant-actions': typeof ApiPublicCronAssistantActionsRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
@@ -971,6 +981,7 @@ export interface FileRouteTypes {
     | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
+    | '/api/public/cron/assistant-actions'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
@@ -1063,6 +1074,7 @@ export interface FileRouteTypes {
     | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
+    | '/api/public/cron/assistant-actions'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
@@ -1158,6 +1170,7 @@ export interface FileRouteTypes {
     | '/_authenticated/maintenance/objects/new'
     | '/_authenticated/objects/$id/edit'
     | '/_authenticated/objects/$id/preview'
+    | '/api/public/cron/assistant-actions'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
@@ -1207,6 +1220,7 @@ export interface RootRouteChildren {
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicN11ChatRoute: typeof ApiPublicN11ChatRoute
   ApiPublicStaffSessionRoute: typeof ApiPublicStaffSessionRoute
+  ApiPublicCronAssistantActionsRoute: typeof ApiPublicCronAssistantActionsRoute
   ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
   ApiPublicCronFinanceSeriesRoute: typeof ApiPublicCronFinanceSeriesRoute
@@ -1758,6 +1772,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedObjectsIdPreviewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/cron/assistant-actions': {
+      id: '/api/public/cron/assistant-actions'
+      path: '/api/public/cron/assistant-actions'
+      fullPath: '/api/public/cron/assistant-actions'
+      preLoaderRoute: typeof ApiPublicCronAssistantActionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/bnovo-sync': {
       id: '/api/public/cron/bnovo-sync'
       path: '/api/public/cron/bnovo-sync'
@@ -2048,6 +2069,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicN11ChatRoute: ApiPublicN11ChatRoute,
   ApiPublicStaffSessionRoute: ApiPublicStaffSessionRoute,
+  ApiPublicCronAssistantActionsRoute: ApiPublicCronAssistantActionsRoute,
   ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
   ApiPublicCronFinanceSeriesRoute: ApiPublicCronFinanceSeriesRoute,

@@ -1,3 +1,4 @@
+import { actionScheduler } from "@/lib/scheduled-actions/context.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import type { AssistantAction } from "@/lib/ai/types";
@@ -186,6 +187,8 @@ export async function selectInChunks<T extends Record<string, unknown>>(
 /** Общий контекст для всех инструментов Ассистента. */
 export type AssistantToolContext = {
   admin: typeof supabaseAdmin;
+  scheduledFor: () => string | null;
+  scheduleActions: (runAt:string,actorId:string) => {runAt:string;time:string;wrapped:number};
   /** Все объекты (кэш на один запрос Ассистента). */
   allProperties: () => Promise<Record<string, unknown>[]>;
   /** Найти объект по номеру (ref_id), названию или внутреннему названию. */
@@ -201,6 +204,7 @@ export type AssistantToolContext = {
 };
 
 export function createToolContext(actions: AssistantAction[]): AssistantToolContext {
+  const scheduler = actionScheduler(actions);
   let propertyCache: Record<string, unknown>[] | null = null;
   const allProperties = async () => {
     if (!propertyCache) propertyCache = await loadAllProperties(supabaseAdmin);
@@ -209,6 +213,8 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
 
   return {
     admin: supabaseAdmin,
+    scheduleActions: scheduler.prepare,
+    scheduledFor: scheduler.runAt,
     allProperties,
     findProperty: async (ref: string) => {
       const asNumber = Number(ref);
@@ -292,12 +298,12 @@ export function createToolContext(actions: AssistantAction[]): AssistantToolCont
       return scored[0]?.client ?? null;
     },
     propose: (action) => {
-      const full: AssistantAction = {
+      const full: AssistantAction = scheduler.wrap({
         tool: action.tool,
         summary: action.summary,
         input: JSON.stringify(action.input),
         id: `${Date.now()}-${actions.length}`,
-      };
+      });
       actions.push(full);
       return full;
     },

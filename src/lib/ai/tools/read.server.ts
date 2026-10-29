@@ -1,3 +1,4 @@
+import {scheduledReadTools} from "@/lib/scheduled-actions/tools.server";
 import { propertyKeyReadTools } from "@/lib/property-keys-tools.server";
 import { expandPaymentReceipts } from "@/lib/finance-cash-receipts";
 import { objectProfitability } from "@/lib/finance-object-profitability";
@@ -140,6 +141,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
   return {
     ...propertyKeyReadTools(),
+    ...scheduledReadTools(ctx),
     ...leaseReadTools(ctx),
     getCrmResults: tool({
       description: "CRM: в режиме won также возвращает commission: план и факт дохода компании по датам платежей, включая ранее закрытые договоры; оборот аренды отдельно, сезонные цены учтены. Обращения по дате создания и исходному источнику, успешные по дате закрытия и площадке сделки, проваленные по причинам. Даты YYYY-MM-DD по Москве; пустые даты = всё время. Только администратор.",

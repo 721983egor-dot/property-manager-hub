@@ -225,7 +225,7 @@ async function runAssistant(messages: AssistantChatMessage[]) {
 
 async function storeProposal(action: AssistantAction, chatId: number, telegramUserId: number) {
   const input = JSON.parse(action.input || "{}");
-  if (["prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake", "confirmFinanceTask", "rescheduleFinanceTask"].includes(action.tool)) {
+  if (["prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "scheduleAssistantAction", "manageScheduledAction", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake", "confirmFinanceTask", "rescheduleFinanceTask"].includes(action.tool)) {
     await reminderAccount(telegramUserId, chatId);
     input._telegramChatId = chatId;
     input._telegramUserId = telegramUserId;
@@ -279,7 +279,7 @@ export async function sendAssistantReply(
       const importing = action.tool === "importRentalFromDisk";
       const keyboard: InlineKeyboard = [
         [
-          { text: importing ? "✅ Создать в РМ ОС" : "✅ Подтвердить", callback_data: `do:${id}` },
+          { text: importing ? "✅ Создать в РМ ОС" : action.tool === "scheduleAssistantAction" ? "🕓 Запланировать" : "✅ Подтвердить сейчас", callback_data: `do:${id}` },
           { text: "✖️ Отмена", callback_data: `no:${id}` },
         ],
       ];
@@ -499,7 +499,7 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       await answerCallbackQuery(query.id, "Предложение не найдено");
       return;
     }
-    if (["prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake", "confirmFinanceTask", "rescheduleFinanceTask"].includes(target.tool_name)) {
+    if (["prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "scheduleAssistantAction", "manageScheduledAction", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake", "confirmFinanceTask", "rescheduleFinanceTask"].includes(target.tool_name)) {
       const owner = target.input as Record<string, unknown>;
       try { await reminderAccount(query.from.id, chatId); } catch { await answerCallbackQuery(query.id, "Нет доступа"); return; }
       if (owner["_telegramUserId"] !== query.from.id || owner["_telegramChatId"] !== chatId) {
@@ -580,7 +580,7 @@ async function handleCallback(query: NonNullable<TgUpdate["callback_query"]>) {
       await answerCallbackQuery(query.id, "Уже обработано");
       return;
     }
-    if (["importRentalFromDisk", "prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake", "confirmFinanceTask", "rescheduleFinanceTask"].includes(proposal.tool_name)) {
+    if (["importRentalFromDisk", "prepareLease", "saveClientPassport", "saveLeaseSetting", "createReminder", "manageReminder", "scheduleAssistantAction", "manageScheduledAction", "closeDealWon", "closeDealLost", "saveDealLossReason", "acceptIntake", "confirmFinanceTask", "rescheduleFinanceTask"].includes(proposal.tool_name)) {
       const { data: claimed, error } = await supabaseAdmin
         .from("ai_action_proposals")
         .update({ status: "executing", confirmed_at: new Date().toISOString() })

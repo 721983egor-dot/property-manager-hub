@@ -1,3 +1,4 @@
+import {scheduledActor} from "@/lib/scheduled-actions/actor.server";
 import { financeToday } from "@/lib/finance-payment-status";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -16,6 +17,7 @@ function must<T>(value: T | null | undefined, message: string): T {
 async function logAction(summary: string, tool: string, input: Input) {
   await supabaseAdmin.from("activity_log").insert({
     table_name: "assistant",
+    actor_id: scheduledActor.getStore()?.id ?? null,
     action: tool,
     source: "assistant",
     summary,
@@ -25,6 +27,9 @@ async function logAction(summary: string, tool: string, input: Input) {
 
 /** Исполнители подтверждённых действий Ассистента. Ключ = поле `tool` предложения. */
 export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
+  runAssistantReport: async input => (await import("@/lib/scheduled-actions/report.server")).executeScheduledReport(input),
+  scheduleAssistantAction: async input => (await import("@/lib/scheduled-actions/service.server")).enqueueScheduledAction(input),
+  manageScheduledAction: async input => (await import("@/lib/scheduled-actions/service.server")).manageScheduledAction(input),
   changePropertyKeys: async input => { const s = await import("@/lib/property-keys-tools.server"); return s.executePropertyKeyChange(input); },
   prepareLease: async input => {const s=await import("@/lib/lease/service.server");return s.executeLeasePreparation(input);},
   saveClientPassport: async input => {const s=await import("@/lib/lease/service.server");return s.executeSavePassport(input);},
@@ -148,6 +153,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
       .eq("id", propertyId)
       .maybeSingle();
     if (loadError) throw new Error(loadError.message);
+    if (!current) throw new Error("Объект больше не существует");
     const fields = sanitizePropertyUpdateFields(raw, (current ?? null) as Record<string, unknown> | null);
     const patch = propertyUpdateFieldsToDbPatch(fields);
     if (!Object.keys(patch).length) {

@@ -1,3 +1,4 @@
+import { scheduledActor, assertScheduleAdmin } from "./scheduled-actions/actor.server";
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
@@ -8,6 +9,16 @@ import type { Database } from "@/integrations/supabase/types";
  * токен валидируется запросом /auth/v1/user, а не локальной проверкой JWKS.
  */
 export const requireUser = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  const scoped = scheduledActor.getStore();
+  if (scoped) {
+    await assertScheduleAdmin(scoped.id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const result = await supabaseAdmin.auth.admin.getUserById(scoped.id);
+    if (result.error || !result.data.user) throw Error("Учётная запись недоступна");
+    return next({
+      context: { supabase: supabaseAdmin, userId: scoped.id, user: result.data.user },
+    });
+  }
   const SUPABASE_URL = process.env["SUPABASE_URL"];
   const SUPABASE_PUBLISHABLE_KEY = process.env["SUPABASE_PUBLISHABLE_KEY"];
 

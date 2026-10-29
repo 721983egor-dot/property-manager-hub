@@ -1,3 +1,4 @@
+// Общая очередь: prepareActionSchedule оборачивает обычные предложения; подтверждённый scheduleAssistantAction, listScheduledAssistantActions, proposeManageScheduledAction → manageScheduledAction. Серверный cron, подпись параметров, права автора и аудит; без автоматических повторов бизнес-действия.
 // Разовая аренда: proposeDealWon(serviceType=commission_only) → closeDealWon; getRentalContract.serviceType; proposeBooking и updateRentalContract используют общий защищённый writer без ежемесячных начислений.
 // Ключи: getPropertyKeys → proposePropertyKeyChange → confirmed changePropertyKeys; роль/держатель/версия проверяются сервером, атомарный аудит.
 // Связанные регулярные серии: repeat.unlimited; getRecurringPaymentSeries → proposeUpdateRecurringPayment(single/following) → editRecurringPayment. Постоянный шаблон, защищённый cron продления, атомарные RPC и аудит; оплаченные/частичные не переписываются массово.
