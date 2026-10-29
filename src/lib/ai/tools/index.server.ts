@@ -25,6 +25,7 @@
 // Finance accounts: listFinanceAccounts, proposeCreateFinanceAccount, proposeUpdateFinanceAccount, proposeArchiveFinanceAccount, getFinanceAccountUsage, proposeDeleteFinanceAccount.
 // Финансовые объекты: getFinanceObjects; save/delete/assignFinanceObjectClassification, updateFinanceObligation — только через подтверждение.
 // Финансовый дашборд, ДДС/ОПиУ/план-факт/объекты/долги: getFinanceAnalytics; политика статей: proposeSaveFinanceArticle.
+// Описания площадок: getListingDescription; сезонные периоды из объекта, proposePropertyUpdate(seasonalPricing/summerPriceMonth/priceMonth) → существующий подтверждённый updateProperty с аудитом.
 import { createReadTools } from "@/lib/ai/tools/read.server";
 import { createMutateTools } from "@/lib/ai/tools/mutate.server";
 import { createSkillTools } from "@/lib/ai/tools/skills.server";

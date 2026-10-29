@@ -114,6 +114,8 @@ export function createMutateTools(ctx: AssistantToolContext) {
         floor: z.number().optional(),
         totalFloors: z.number().optional(),
         priceMonth: z.number().optional().describe("Новая цена в месяц; другие поля не передавай"),
+        seasonalPricing: z.boolean().optional().describe("Сезонные цены объекта: лето 1 июня–30 сентября, остальное время 1 октября–31 мая. Менять только по прямой просьбе."),
+        summerPriceMonth: z.number().finite().positive().optional().describe("Месячная цена объекта на июнь–сентябрь. При seasonalPricing=true автоматически добавляется с периодами в описания выгрузок."),
         status: z.enum(["free", "soon_free", "rented", "booked", "archived"]).optional(),
         deposit: z.number().optional(),
         commission: z.number().optional(),

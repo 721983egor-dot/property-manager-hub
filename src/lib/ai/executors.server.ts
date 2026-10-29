@@ -143,7 +143,7 @@ export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
     const { data: current, error: loadError } = await supabaseAdmin
       .from("properties")
       .select(
-        "title, internal_name, address, complex_name, type, rooms, bathrooms, area, floor, total_floors, price_month, status, deposit, commission, utilities_month, description, rent_terms, availability_note, for_rent, video_url",
+        "title, internal_name, address, complex_name, type, rooms, bathrooms, area, floor, total_floors, price_month, seasonal_pricing, summer_price_month, status, deposit, commission, utilities_month, description, rent_terms, availability_note, for_rent, video_url",
       )
       .eq("id", propertyId)
       .maybeSingle();

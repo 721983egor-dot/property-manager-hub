@@ -35,6 +35,9 @@ export type ListingDescriptionProperty = {
   rent_terms: string;
   deposit: number | null;
   utilities_month: number | null;
+  price_month?: number | null;
+  seasonal_pricing?: boolean;
+  summer_price_month?: number | null;
 };
 
 export type BuildListingDescriptionOptions = {
@@ -68,22 +71,28 @@ function formatMoneyRu(value: number): string {
 }
 
 function normalizeParagraph(text: string): string {
-  return text.replace(/\r\n/g, "\n").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /** Чистка тела описания под правила Циан (без обрезки и без футера). */
 export function cleanCianDescriptionBody(raw: string): string {
-  return raw
-    .replace(/&/g, " и ")
-    .replace(/[№/\\]/g, " ")
-    .replace(/[«»]/g, '"')
-    .replace(/[–—]/g, "-")
-    // NBSP / узкие пробелы из Intl и копипаста — в обычный пробел
-    .replace(/[\u00a0\u202f\u2007\u2009\u200a]/g, " ")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
+  return (
+    raw
+      .replace(/&/g, " и ")
+      .replace(/[№/\\]/g, " ")
+      .replace(/[«»]/g, '"')
+      .replace(/[–—]/g, "-")
+      // NBSP / узкие пробелы из Intl и копипаста — в обычный пробел
+      .replace(/[\u00a0\u202f\u2007\u2009\u200a]/g, " ")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim()
+  );
 }
 
 function joinBlocks(blocks: string[]): string {
@@ -119,7 +128,9 @@ export function buildRentTermsBullets(
 
   const deposit = property.deposit != null && property.deposit > 0 ? property.deposit : null;
   const utilities =
-    property.utilities_month != null && property.utilities_month > 0 ? property.utilities_month : null;
+    property.utilities_month != null && property.utilities_month > 0
+      ? property.utilities_month
+      : null;
 
   let usedDeposit = false;
   let usedUtilities = false;
@@ -158,11 +169,41 @@ export function buildRentTermsBullets(
 
 type AssembledParts = {
   objectDescription: string;
+  seasonalPrice: string;
   location: string;
   complexInfo: string;
   terms: string;
   footer: string;
 };
+
+/** Recurring advertised seasons from the property, independent of private booking rates. */
+export function buildSeasonalPriceDescription(
+  property: Pick<
+    ListingDescriptionProperty,
+    "price_month" | "seasonal_pricing" | "summer_price_month"
+  >,
+): string {
+  const base = property.price_month;
+  const summer = property.summer_price_month;
+  if (
+    !property.seasonal_pricing ||
+    typeof base !== "number" ||
+    typeof summer !== "number" ||
+    !Number.isFinite(base) ||
+    !Number.isFinite(summer) ||
+    base <= 0 ||
+    summer <= 0 ||
+    summer === base
+  )
+    return "";
+  return section(
+    "Стоимость аренды по периодам",
+    [
+      `С 1 октября по 31 мая — ${formatMoneyRu(base)} в месяц.`,
+      `С 1 июня по 30 сентября — ${formatMoneyRu(summer)} в месяц.`,
+    ].join("\n"),
+  );
+}
 
 function assembleParts(
   property: ListingDescriptionProperty,
@@ -170,10 +211,12 @@ function assembleParts(
   platform: ListingDescriptionPlatform,
 ): AssembledParts {
   const objectDescription = normalizeParagraph(property.description ?? "");
+  const seasonalPrice = buildSeasonalPriceDescription(property);
   const hasComplex = Boolean(property.complex_id && complex);
 
   let location = "";
-  if (!hasComplex) location = section("Локация", normalizeParagraph(property.location_description ?? ""));
+  if (!hasComplex)
+    location = section("Локация", normalizeParagraph(property.location_description ?? ""));
   let complexInfo = "";
   if (hasComplex && complex) {
     const locationText = normalizeParagraph(complex.location_description ?? "");
@@ -193,21 +236,33 @@ function assembleParts(
   const terms = bullets.length > 0 ? section("Условия", bullets.join("\n")) : "";
   const footer = companyFooter(platform);
 
-  return { objectDescription, location, complexInfo, terms, footer };
+  return { objectDescription, seasonalPrice, location, complexInfo, terms, footer };
 }
 
 function renderParts(parts: AssembledParts): string {
-  return joinBlocks([parts.objectDescription, parts.location, parts.complexInfo, parts.terms, parts.footer]);
+  return joinBlocks([
+    parts.objectDescription,
+    parts.seasonalPrice,
+    parts.location,
+    parts.complexInfo,
+    parts.terms,
+    parts.footer,
+  ]);
 }
 
 /**
  * Укорачиваем середину (инфра / текст ЖК / локация), объект и футер компании сохраняем.
  */
-function fitToLimit(parts: AssembledParts, maxLength: number, platform: ListingDescriptionPlatform): string {
+function fitToLimit(
+  parts: AssembledParts,
+  maxLength: number,
+  platform: ListingDescriptionPlatform,
+): string {
   const applyCianClean = (p: AssembledParts): AssembledParts => {
     if (platform !== "cian") return p;
     return {
       objectDescription: cleanCianDescriptionBody(p.objectDescription),
+      seasonalPrice: cleanCianDescriptionBody(p.seasonalPrice),
       location: p.location ? cleanCianDescriptionBody(p.location) : "",
       complexInfo: p.complexInfo ? cleanCianDescriptionBody(p.complexInfo) : "",
       terms: p.terms ? cleanCianDescriptionBody(p.terms) : "",
@@ -236,9 +291,9 @@ function fitToLimit(parts: AssembledParts, maxLength: number, platform: ListingD
 
   // 2) Укоротить тело «Инфо по ЖК» (после заголовка)
   if (current.complexInfo) {
-    const footerLen = current.footer.length + 2;
     const withoutComplex = joinBlocks([
       current.objectDescription,
+      current.seasonalPrice,
       current.location,
       current.terms,
       current.footer,
@@ -268,6 +323,7 @@ function fitToLimit(parts: AssembledParts, maxLength: number, platform: ListingD
   if (current.location) {
     const withoutLocation = joinBlocks([
       current.objectDescription,
+      current.seasonalPrice,
       current.complexInfo,
       current.terms,
       current.footer,
@@ -293,16 +349,26 @@ function fitToLimit(parts: AssembledParts, maxLength: number, platform: ListingD
   }
 
   // 4) В крайнем случае укоротить описание объекта (футер и условия сохранить)
-  const tail = joinBlocks([current.terms, current.footer]);
+  // Seasonal prices outrank prose and optional terms: never lose the summer rate on long ads.
+  const essential = joinBlocks([current.seasonalPrice, current.footer]);
+  if (essential.length > maxLength) return essential.slice(0, maxLength);
+  const termsBudget = maxLength - essential.length - (current.terms ? 2 : 0);
+  if (current.terms.length > termsBudget) {
+    current.terms = termsBudget > 1 ? `${current.terms.slice(0, termsBudget - 1).trim()}…` : "";
+  }
+  const tail = joinBlocks([current.seasonalPrice, current.terms, current.footer]);
   const budget = maxLength - (tail ? tail.length + 2 : 0);
   let head = current.objectDescription;
   if (budget <= 0) {
-    return current.footer.slice(0, maxLength);
+    return tail;
   }
   if (head.length > budget) {
     head = `${head.slice(0, Math.max(0, budget - 1)).trim()}…`;
   }
-  return joinBlocks([head, current.terms, current.footer]).slice(0, maxLength);
+  return joinBlocks([head, current.seasonalPrice, current.terms, current.footer]).slice(
+    0,
+    maxLength,
+  );
 }
 
 /**

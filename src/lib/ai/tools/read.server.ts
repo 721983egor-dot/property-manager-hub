@@ -333,6 +333,19 @@ export function createReadTools(ctx: AssistantToolContext) {
         };
       },
     }),
+    getListingDescription: tool({
+      description: "Точный текст описания объекта для Авито, ЦИАН, Яндекс Недвижимости или Справочника. Включает публичные сезонные цены июня–сентября и октября–мая из карточки объекта, условия и лимит площадки. Только чтение; не использует цены частных броней. Для изменения цен предложи proposePropertyUpdate(seasonalPricing,summerPriceMonth,priceMonth).",
+      inputSchema: z.object({ref: z.string(), platform: z.enum(["avito", "cian", "yandex", "yandex-spravochnik"])}),
+      execute: async ({ref, platform}) => {
+        const p = await ctx.findProperty(ref);
+        if (!p) return {error: "Объект не найден"};
+        const {buildListingDescription, fetchComplexesMapForFeeds, LISTING_DESCRIPTION_LIMITS} = await import("@/lib/listing-description.server");
+        const {data: full, error} = await admin.from("properties").select("description,location_description,complex_id,rent_terms,deposit,utilities_month,price_month,seasonal_pricing,summer_price_month").eq("id", String(p.id)).single();
+        if (error || !full) throw new Error(error?.message ?? "Объект не найден");
+        const complexes = await fetchComplexesMapForFeeds();
+        return {platform, maxLength: LISTING_DESCRIPTION_LIMITS[platform], description: buildListingDescription(full, full.complex_id ? complexes.get(full.complex_id) : null, {platform})};
+      },
+    }),
 
     getVideoHostStatus: tool({
       description:

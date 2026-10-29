@@ -17,6 +17,8 @@ export type PropertyUpdateFields = {
   floor?: number;
   totalFloors?: number;
   priceMonth?: number;
+  seasonalPricing?: boolean;
+  summerPriceMonth?: number;
   status?: string;
   deposit?: number;
   commission?: number;
@@ -63,7 +65,13 @@ const TEXT_FIELDS = new Set<string>([
 const STRUCTURAL_NUMBERS = new Set(["rooms", "bathrooms", "area", "floor", "totalFloors"]);
 
 /** Деньги: обнуление без clearFields — типичный wipe. */
-const MONEY_FIELDS = new Set(["deposit", "commission", "utilitiesMonth", "priceMonth"]);
+const MONEY_FIELDS = new Set([
+  "deposit",
+  "commission",
+  "utilitiesMonth",
+  "priceMonth",
+  "summerPriceMonth",
+]);
 
 function sameValue(a: unknown, b: unknown): boolean {
   if (a == null && b == null) return true;
@@ -97,6 +105,8 @@ function currentOf(
     floor: "floor",
     totalFloors: "total_floors",
     priceMonth: "price_month",
+    seasonalPricing: "seasonal_pricing",
+    summerPriceMonth: "summer_price_month",
     status: "status",
     deposit: "deposit",
     commission: "commission",
@@ -163,7 +173,13 @@ export function sanitizePropertyUpdateFields(
     if (value === undefined || value === null) continue;
     const k = key as keyof PropertyUpdateFields;
 
-    if (massWipe && (k === "status" || k === "type" || k === "forRent")) continue;
+    if (massWipe && (k === "status" || k === "type" || k === "forRent" || k === "seasonalPricing"))
+      continue;
+    if (
+      k === "summerPriceMonth" &&
+      (typeof value !== "number" || !Number.isFinite(value) || value <= 0)
+    )
+      continue;
 
     if (typeof value === "string") {
       const trimmed = value.trim();
@@ -263,6 +279,12 @@ export function propertyUpdateFieldsToDbPatch(
   if (fields.floor != null) patch["floor"] = fields.floor;
   if (fields.totalFloors != null) patch["total_floors"] = fields.totalFloors;
   if (fields.priceMonth != null) patch["price_month"] = fields.priceMonth;
+  if (fields.seasonalPricing != null) patch["seasonal_pricing"] = fields.seasonalPricing;
+  if (fields.summerPriceMonth != null) {
+    if (!Number.isFinite(fields.summerPriceMonth) || fields.summerPriceMonth <= 0)
+      throw new Error("Укажите положительную летнюю цену");
+    patch["summer_price_month"] = fields.summerPriceMonth;
+  }
   if (fields.status) patch["status"] = fields.status;
   if (fields.deposit != null) patch["deposit"] = fields.deposit;
   if (fields.commission != null) patch["commission"] = fields.commission;
@@ -329,6 +351,14 @@ export function summarizePropertyUpdateFields(fields: PropertyUpdateFields): str
   if (fields.floor != null) parts.push(`этаж ${fields.floor}`);
   if (fields.totalFloors != null) parts.push(`этажей ${fields.totalFloors}`);
   if (fields.priceMonth != null) parts.push(`цена ${moneyRu(fields.priceMonth)}/мес`);
+  if (fields.seasonalPricing != null)
+    parts.push(
+      fields.seasonalPricing
+        ? "сезонные цены: июнь–сентябрь и октябрь–май"
+        : "без сезонного изменения цены",
+    );
+  if (fields.summerPriceMonth != null)
+    parts.push(`июнь–сентябрь: ${moneyRu(fields.summerPriceMonth)}/мес`);
   if (fields.status) parts.push(`статус «${fields.status}»`);
   if (Object.prototype.hasOwnProperty.call(fields, "deposit")) {
     parts.push(fields.deposit ? `депозит ${moneyRu(fields.deposit)}` : "очистить депозит");
