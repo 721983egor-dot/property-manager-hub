@@ -273,6 +273,7 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          attribution: Json | null
           body: string
           created_at: string
           direction: string
@@ -282,6 +283,7 @@ export type Database = {
           thread_id: string
         }
         Insert: {
+          attribution?: Json | null
           body: string
           created_at?: string
           direction: string
@@ -291,6 +293,7 @@ export type Database = {
           thread_id: string
         }
         Update: {
+          attribution?: Json | null
           body?: string
           created_at?: string
           direction?: string
@@ -311,6 +314,7 @@ export type Database = {
       }
       chat_threads: {
         Row: {
+          attribution: Json | null
           created_at: string
           external_id: string | null
           external_offer_id: string | null
@@ -330,6 +334,7 @@ export type Database = {
           visitor_key: string
         }
         Insert: {
+          attribution?: Json | null
           created_at?: string
           external_id?: string | null
           external_offer_id?: string | null
@@ -349,6 +354,7 @@ export type Database = {
           visitor_key: string
         }
         Update: {
+          attribution?: Json | null
           created_at?: string
           external_id?: string | null
           external_offer_id?: string | null
@@ -991,8 +997,16 @@ export type Database = {
           },
         ]
       }
+      site_marketing_events: {
+        Row: { id: string; created_at: string; event_type: string; visitor_id: string; attribution: Json }
+        Insert: { id: string; created_at?: string; event_type: string; visitor_id: string; attribution: Json }
+        Update: { id?: string; created_at?: string; event_type?: string; visitor_id?: string; attribution?: Json }
+        Relationships: []
+      }
       leads: {
         Row: {
+          attribution: Json | null
+          submission_id: string | null
           created_at: string
           id: string
           message: string
@@ -1004,6 +1018,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attribution?: Json | null
+          submission_id?: string | null
           created_at?: string
           id?: string
           message?: string
@@ -1015,6 +1031,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attribution?: Json | null
+          submission_id?: string | null
           created_at?: string
           id?: string
           message?: string

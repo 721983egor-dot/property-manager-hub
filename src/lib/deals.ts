@@ -416,6 +416,7 @@ export function customValueLabel(field: DealField, value: unknown) {
 
 /** Превращает заявку с сайта в сделку: находит или создаёт клиента и ставит первую стадию. */
 export async function convertLeadToDeal(lead: {
+  attribution?: import("./marketing-attribution").MarketingAttribution | null;
   id: string;
   name: string;
   phone: string;
@@ -453,7 +454,7 @@ export async function convertLeadToDeal(lead: {
     client_id: clientId,
     lead_id: lead.id,
     responsible_id: sessionData.session?.user?.id ?? null,
-    source: "Сайт",
+    source: lead.attribution ? (await import("./marketing-attribution")).attributionChannel(lead.attribution) : "Сайт",
     comment: lead.message,
   };
   let { data, error } = await supabase.from("deals").insert(row as never).select("id").single();

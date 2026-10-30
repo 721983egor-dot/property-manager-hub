@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import { attributionSchema, sanitizeAttribution, type MarketingAttribution } from "./marketing-attribution";
 import { z } from "zod";
 import { formatTelegramHandle } from "@/lib/chat-contact";
 
 export type ChatMessage = {
+  attribution?: MarketingAttribution | null;
   id: string;
   direction: "in" | "out";
   body: string;
@@ -10,6 +12,7 @@ export type ChatMessage = {
 };
 
 export type ChatThread = {
+  attribution?: MarketingAttribution | null;
   id: string;
   visitor_key: string;
   name: string;
@@ -64,17 +67,19 @@ async function ensureThread(
   db: Awaited<ReturnType<typeof admin>>,
   visitorKey: string,
   firstPage: string,
+  attribution?: MarketingAttribution,
 ) {
   const { data: existing } = await db
     .from("chat_threads")
-    .select("id")
+    .select("id, attribution")
     .eq("visitor_key", visitorKey)
     .maybeSingle();
+  // Attribution at chat acquisition is immutable; later touches belong to messages.
   if (existing) return existing.id as string;
 
   const { data, error } = await db
     .from("chat_threads")
-    .insert({ visitor_key: visitorKey, first_page: firstPage })
+    .insert({ visitor_key: visitorKey, first_page: firstPage, attribution: attribution ? sanitizeAttribution(attribution) : null })
     .select("id")
     .single();
   if (error) throw new Error("Не удалось начать чат");
@@ -106,10 +111,11 @@ export const fetchVisitorMessages = createServerFn({ method: "POST" })
 
 /** Публичное: отправить сообщение из чата на сайте. */
 export const sendVisitorMessage = createServerFn({ method: "POST" })
-  .inputValidator((input: { visitorKey: string; body: string; page?: string }) =>
+  .inputValidator((input: { visitorKey: string; body: string; page?: string; attribution?: MarketingAttribution }) =>
     z
       .object({
         visitorKey: visitorKeySchema,
+        attribution: attributionSchema.optional(),
         body: bodySchema,
         page: z.string().trim().max(300).optional().default(""),
       })
@@ -117,7 +123,7 @@ export const sendVisitorMessage = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const db = await admin();
-    const threadId = await ensureThread(db, data.visitorKey, data.page);
+    const threadId = await ensureThread(db, data.visitorKey, data.page, data.attribution);
 
     // Простая защита от флуда: не более 30 сообщений в час с одного ключа.
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -133,7 +139,7 @@ export const sendVisitorMessage = createServerFn({ method: "POST" })
 
     const { data: row, error } = await db
       .from("chat_messages")
-      .insert({ thread_id: threadId, direction: "in", body: data.body })
+      .insert({ thread_id: threadId, direction: "in", body: data.body, attribution: data.attribution ? sanitizeAttribution(data.attribution) : null })
       .select("id, direction, body, created_at")
       .single();
     if (error) throw new Error("Не удалось отправить сообщение");
@@ -154,7 +160,9 @@ export const sendVisitorMessage = createServerFn({ method: "POST" })
       })
       .eq("id", threadId);
 
-    return { message: row as ChatMessage };
+    const { data: first } = await db.from("chat_messages").select("id")
+      .eq("thread_id", threadId).eq("direction", "in").order("created_at").order("id").limit(1).maybeSingle();
+    return { message: row as ChatMessage, isFirstMessage: first?.id === row.id };
   });
 
 /** Оператор: список диалогов. */
@@ -163,7 +171,7 @@ export const fetchThreads = createServerFn({ method: "POST" }).handler(async () 
   const { data: threads, error: threadsError } = await db
     .from("chat_threads")
     .select(
-      "id, visitor_key, name, phone, first_page, status, unread_count, last_message_at, created_at, source, external_id, external_offer_id, property_id, client_id, deal_id",
+      "id, attribution, visitor_key, name, phone, first_page, status, unread_count, last_message_at, created_at, source, external_id, external_offer_id, property_id, client_id, deal_id",
     )
     .order("last_message_at", { ascending: false })
     .limit(200);
@@ -268,7 +276,7 @@ export const fetchThreadMessages = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: rows } = await db
       .from("chat_messages")
-      .select("id, direction, body, created_at")
+      .select("id, direction, body, created_at, attribution")
       .eq("thread_id", data.threadId)
       .order("created_at", { ascending: true })
       .limit(500);

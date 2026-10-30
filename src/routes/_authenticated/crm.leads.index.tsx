@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { MarketingReport } from "@/components/MarketingReport";
+import { MarketingAttributionDetails } from "@/components/MarketingAttributionDetails";
 import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -92,6 +94,7 @@ function LeadsPage() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="text-2xl font-bold tracking-tight">Заявки с сайта</h1>
       <CrmTabs active="leads" />
+      <MarketingReport />
 
       <div className="mt-6 overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[900px] text-sm">
@@ -102,6 +105,7 @@ function LeadsPage() {
               <th className="px-4 py-3 font-medium">Телефон</th>
               <th className="px-4 py-3 font-medium">Тема</th>
               <th className="px-4 py-3 font-medium">Сообщение</th>
+              <th className="px-4 py-3 font-medium">Источник рекламы</th>
               <th className="px-4 py-3 font-medium">Статус</th>
               <th className="px-4 py-3 font-medium" />
             </tr>
@@ -109,14 +113,14 @@ function LeadsPage() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
                   Загружаем заявки…
                 </td>
               </tr>
             )}
             {!isLoading && leads.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
                   Заявок пока нет.
                 </td>
               </tr>
@@ -138,6 +142,9 @@ function LeadsPage() {
                 <td className="px-4 py-3">{leadTopicLabel(lead.topic)}</td>
                 <td className="max-w-[260px] px-4 py-3 text-muted-foreground">
                   <span className="line-clamp-2">{lead.message || "—"}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <MarketingAttributionDetails value={lead.attribution} />
                 </td>
                 <td className="px-4 py-3">
                   <Select

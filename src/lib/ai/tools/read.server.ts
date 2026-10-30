@@ -903,8 +903,17 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getMarketingReport: tool({
+      description: "Рекламная аналитика сайта РМ: UTM-кампании, посетители, просмотры, клики контактов, сохранённые заявки и новые чаты за период. Только администратор. Клики не являются заявками. Не содержит расходов Директа и не рассчитывает окупаемость.",
+      inputSchema: z.object({ days: z.number().int().min(1).max(366).default(30) }),
+      execute: async ({ days }) => {
+        const { marketingReport } = await import("@/lib/marketing-report.server");
+        return marketingReport(days);
+      },
+    }),
+
     getLeads: tool({
-      description: "Заявки с сайта: список и сводка по статусам и источникам за N дней.",
+      description: "Заявки с сайта: список и сводка по статусам, рекламным источникам, UTM-кампаниям за N дней. attribution содержит первый/последний значимый переход, yclid, ClientID и направление обращения. Старые заявки могут не иметь attribution.",
       inputSchema: z.object({ days: z.number().optional(), status: z.string().optional() }),
       execute: async ({ days, status }) => {
         const period = days && days > 0 ? days : 30;
@@ -941,7 +950,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         if (threadId) {
           const { data } = await admin
             .from("chat_messages")
-            .select("direction, body, created_at")
+            .select("direction, body, created_at, attribution")
             .eq("thread_id", threadId)
             .order("created_at", { ascending: true });
           return { threadId, messages: data ?? [] };
@@ -950,7 +959,7 @@ export function createReadTools(ctx: AssistantToolContext) {
         const { data, error } = await admin
           .from("chat_threads")
           .select(
-            "id, source, name, phone, status, unread_count, last_message_at, property_id, client_id, deal_id, external_offer_id, first_page",
+            "id, attribution, source, name, phone, status, unread_count, last_message_at, property_id, client_id, deal_id, external_offer_id, first_page",
           )
           .gte("last_message_at", daysAgoISO(period))
           .order("last_message_at", { ascending: false })

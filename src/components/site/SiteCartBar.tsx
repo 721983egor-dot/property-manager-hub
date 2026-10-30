@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Heart, MessageCircle, Send, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { trackEvent } from "@/lib/analytics";
+import { getMarketingAttribution, reachMarketingGoal } from "@/lib/site-marketing";
 import { submitLead } from "@/lib/leads.functions";
 import { fetchPublishedProperties, formatMoney, signedUrls } from "@/lib/properties";
 import { createSelection } from "@/lib/selections";
@@ -123,13 +124,16 @@ export function SiteCartBar() {
       });
       const url = `${window.location.origin}/p/${selection.code}`;
       const list = selected.map((p, i) => `${i + 1}. ${p.title}`).join("\n");
-      await sendChat({
+      const attribution = await getMarketingAttribution("site_cart");
+      const chatResult = await sendChat({
         data: {
+          ...(attribution ? { attribution } : {}),
           visitorKey: getVisitorKey(),
           body: `Мне понравились эти объекты:\n${list}\n\nМоя подборка: ${url}`,
           page: window.location.pathname,
         },
       });
+      if (chatResult.isFirstMessage) reachMarketingGoal("rm_chat_started", "tenant");
       setListOpen(false);
       window.dispatchEvent(new CustomEvent("rm-open-chat"));
       toast.success("Подборка отправлена менеджеру в чат");
@@ -363,6 +367,7 @@ function ViewingRequestDialog({
   titles: string[];
 }) {
   const send = useServerFn(submitLead);
+  const submissionId = useRef<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
@@ -373,6 +378,7 @@ function ViewingRequestDialog({
   const close = (v: boolean) => {
     onOpenChange(v);
     if (!v) {
+      if (sent) submissionId.current = null;
       setSent(false);
       setError("");
     }
@@ -422,9 +428,12 @@ function ViewingRequestDialog({
                     .map((t, i) => `${i + 1}. ${t} — ${window.location.origin}/rent/${ids[i]}`)
                     .join("\n");
                   const text = `Объекты на просмотр:\n${list}${message.trim() ? `\n\nКомментарий: ${message.trim()}` : ""}`;
+                  submissionId.current ??= crypto.randomUUID();
+                  const attribution = await getMarketingAttribution("site_cart");
                   await send({
-                    data: { name, phone, topic: "Просмотр объектов", message: text, source: "site_cart" },
+                    data: { name, phone, topic: "Просмотр объектов", message: text, source: "site_cart", submissionId: submissionId.current, ...(attribution ? { attribution } : {}) },
                   });
+                  reachMarketingGoal("rm_lead_tenant", "tenant");
                   for (const id of ids) trackEvent(id, "lead_submit");
                   setSent(true);
                 } catch (err) {

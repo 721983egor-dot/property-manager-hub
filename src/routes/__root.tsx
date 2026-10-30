@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
+import { SiteMarketing } from "@/components/site/SiteMarketing";
 import { YandexMetrika } from "@/components/site/YandexMetrika";
 import { startStaffSessionKeeper } from "@/integrations/supabase/staff-session";
 
@@ -135,6 +136,7 @@ function RootComponent() {
         <Outlet />
       </AppShell>
       <Toaster position="top-right" />
+      <SiteMarketing />
       <YandexMetrika />
     </QueryClientProvider>
   );

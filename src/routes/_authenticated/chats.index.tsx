@@ -1,3 +1,4 @@
+import { MarketingAttributionDetails } from "@/components/MarketingAttributionDetails";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -307,6 +308,7 @@ function ChatsPage() {
                         {chatSourceLabel(active.source)}
                       </span>
                     </div>
+                    {active.source === "site" && <MarketingAttributionDetails value={active.attribution} />}
                     {active.property_title && active.property_id ? (
                       <Link
                         to="/objects/$id/"
@@ -399,6 +401,7 @@ function ChatsPage() {
                       text={m.body}
                       onCopy={() => toast.success("Скопировано")}
                     />
+                    {m.direction === "in" && m.attribution && <MarketingAttributionDetails value={m.attribution} />}
                     <p className="mt-0.5 text-[10px] opacity-70">
                       {format(new Date(m.created_at), "d MMM, HH:mm", { locale: ru })}
                     </p>

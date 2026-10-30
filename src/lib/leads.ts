@@ -1,8 +1,10 @@
+import type { MarketingAttribution } from "./marketing-attribution";
 import { supabase } from "@/integrations/supabase/client";
 
 export type LeadStatus = "new" | "in_work" | "done" | "rejected";
 
 export type Lead = {
+  attribution?: MarketingAttribution | null;
   id: string;
   name: string;
   phone: string;

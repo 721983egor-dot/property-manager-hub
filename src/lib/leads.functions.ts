@@ -2,9 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { attributionSchema, sanitizeAttribution } from "./marketing-attribution";
 import type { Database } from "@/integrations/supabase/types";
 
 const leadSchema = z.object({
+  attribution: attributionSchema.optional(),
+  submissionId: z.string().uuid().optional(),
   name: z.string().trim().min(2, "Укажите имя").max(120),
   phone: z.string().trim().min(5, "Укажите телефон").max(32),
   topic: z.string().trim().max(40).optional().default(""),
@@ -41,7 +44,9 @@ export const submitLead = createServerFn({ method: "POST" })
       topic: data.topic,
       message: data.message,
       source: data.source,
+      attribution: data.attribution ? sanitizeAttribution(data.attribution) : null,
+      submission_id: data.submissionId ?? null,
     });
-    if (error) throw new Error("Не удалось отправить заявку");
+    if (error && !(error.code === "23505" && data.submissionId)) throw new Error("Не удалось отправить заявку");
     return { ok: true as const };
   });

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2 } from "lucide-react";
 
+import { getMarketingAttribution, reachMarketingGoal } from "@/lib/site-marketing";
 import { submitLead } from "@/lib/leads.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ export function SiteLeadForm({
   withMessage = true,
 }: Props) {
   const send = useServerFn(submitLead);
+  const submissionId = useRef<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [topic, setTopic] = useState(defaultTopic);
@@ -35,9 +37,7 @@ export function SiteLeadForm({
       <div className="flex flex-col items-center gap-3 rounded-xl border border-site-line bg-white p-8 text-center">
         <CheckCircle2 className="size-10 text-site-green" />
         <p className="text-lg font-semibold text-site-navy">Заявка отправлена</p>
-        <p className="text-sm text-site-muted">
-          Мы свяжемся с вами в ближайшее время.
-        </p>
+        <p className="text-sm text-site-muted">Мы свяжемся с вами в ближайшее время.</p>
       </div>
     );
   }
@@ -50,7 +50,21 @@ export function SiteLeadForm({
         setError("");
         setSending(true);
         try {
-          await send({ data: { name, phone, topic, message, source } });
+          submissionId.current ??= crypto.randomUUID();
+          const attribution = await getMarketingAttribution(source);
+          await send({
+            data: {
+              name,
+              phone,
+              topic,
+              message,
+              source,
+              submissionId: submissionId.current,
+              ...(attribution ? { attribution } : {}),
+            },
+          });
+          const kind = attribution?.kind ?? "general";
+          reachMarketingGoal(`rm_lead_${kind}`, kind);
           setSent(true);
         } catch (err) {
           setError(

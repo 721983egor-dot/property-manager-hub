@@ -7,6 +7,7 @@ import {
   sendVisitorMessage,
   type ChatMessage,
 } from "@/lib/chat.functions";
+import { getMarketingAttribution, reachMarketingGoal } from "@/lib/site-marketing";
 import { chatTime, getVisitorKey } from "@/lib/site-chat";
 import { ChatText } from "@/components/ChatText";
 
@@ -55,13 +56,16 @@ export function SiteChatPanel() {
     setSending(true);
     setError("");
     try {
+      const attribution = await getMarketingAttribution();
       const res = await send({
         data: {
+          ...(attribution ? { attribution } : {}),
           visitorKey: getVisitorKey(),
           body,
           page: window.location.pathname,
         },
       });
+      if (res.isFirstMessage) reachMarketingGoal("rm_chat_started", attribution?.kind ?? "general");
       setMessages((prev) => [...prev, res.message]);
       setText("");
     } catch (err) {
