@@ -160,7 +160,7 @@ export function TaskAppleCalendar({ userId }: { userId: string }) {
                   </p>
                   {(
                     [
-                      ["Адрес сервера", origin + credentials.path],
+                      ["Адрес сервера", origin.replace("https://", "")],
                       ["Имя пользователя", credentials.username],
                       ["Отдельный пароль", credentials.password],
                     ] as const

@@ -23,3 +23,7 @@ npm run build
 An independent `tsdav` client smoke test is also available as `scripts/tests/apple-calendar-client.ts`. Point `CALDAV_CLIENT_MODULE` at a separately installed `tsdav` module (for example in `/tmp`) to run discovery, multiget, update/create/delete and date-window filtering against an isolated in-memory adapter. It makes no network requests and touches no business records.
 
 Final native Apple Calendar compatibility must be verified after the owner adds the account on their device. Automated protocol and database tests do not substitute for that check. A real Apple account has not been added automatically.
+
+## iPhone discovery
+
+`/.well-known/caldav` is also served directly by the application with a method-preserving redirect. This avoids depending on the proxy configuration being refreshed during app deployments. iPhone setup should use just the HTTPS host (SSL, 443) and the same separate username/password already used on the Mac. Do not generate a replacement password just to add another device: that revokes the Mac's old password. Account URLs without a trailing slash are normalized after authentication, retaining PROPFIND.

@@ -112,10 +112,15 @@ export async function handleCalendarRequest(
       });
     const home = `${CALDAV_BASE}${account.user_id}/`,
       collection = home + "tasks/";
-    if (path !== CALDAV_BASE && path !== CALDAV_BASE.slice(0, -1) && !path.startsWith(home))
+    if (
+      path !== CALDAV_BASE &&
+      path !== CALDAV_BASE.slice(0, -1) &&
+      path !== home.slice(0, -1) &&
+      !path.startsWith(home)
+    )
       return response("Not found", 404);
     if (path === home.slice(0, -1) || path === collection.slice(0, -1))
-      return response("", 301, { Location: path + "/" });
+      return response("", 307, { Location: path + "/" });
     const root = path === CALDAV_BASE || path === CALDAV_BASE.slice(0, -1),
       isHome = path === home,
       isCollection = path === collection;

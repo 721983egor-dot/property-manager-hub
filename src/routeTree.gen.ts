@@ -22,6 +22,7 @@ import { Route as RentRouteImport } from './routes/rent'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as ServiceRouteImport } from './routes/service'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as DotwellKnownCaldavRouteImport } from './routes/[.]well-known/caldav'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedLeasesRouteImport } from './routes/_authenticated/leases'
 import { Route as ApiLeaseDocumentsRouteImport } from './routes/api/lease-documents'
@@ -169,6 +170,11 @@ const ServiceRoute = ServiceRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DotwellKnownCaldavRoute = DotwellKnownCaldavRouteImport.update({
+  id: '/.well-known/caldav',
+  path: '/.well-known/caldav',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
@@ -659,6 +665,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/caldav': typeof DotwellKnownCaldavRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/leases': typeof AuthenticatedLeasesRoute
   '/api/lease-documents': typeof ApiLeaseDocumentsRoute
@@ -755,6 +762,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/caldav': typeof DotwellKnownCaldavRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/leases': typeof AuthenticatedLeasesRoute
   '/api/lease-documents': typeof ApiLeaseDocumentsRoute
@@ -855,6 +863,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/service': typeof ServiceRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/caldav': typeof DotwellKnownCaldavRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/leases': typeof AuthenticatedLeasesRoute
   '/api/lease-documents': typeof ApiLeaseDocumentsRoute
@@ -955,6 +964,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/service'
     | '/sitemap.xml'
+    | '/.well-known/caldav'
     | '/calendar'
     | '/leases'
     | '/api/lease-documents'
@@ -1051,6 +1061,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/service'
     | '/sitemap.xml'
+    | '/.well-known/caldav'
     | '/calendar'
     | '/leases'
     | '/api/lease-documents'
@@ -1150,6 +1161,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/service'
     | '/sitemap.xml'
+    | '/.well-known/caldav'
     | '/_authenticated/calendar'
     | '/_authenticated/leases'
     | '/api/lease-documents'
@@ -1250,6 +1262,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   ServiceRoute: typeof ServiceRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  DotwellKnownCaldavRoute: typeof DotwellKnownCaldavRoute
   ApiLeaseDocumentsRoute: typeof ApiLeaseDocumentsRoute
   ApiPhotoUploadRoute: typeof ApiPhotoUploadRoute
   ApiSocialMediaUploadRoute: typeof ApiSocialMediaUploadRoute
@@ -1368,6 +1381,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/caldav': {
+      id: '/.well-known/caldav'
+      path: '/.well-known/caldav'
+      fullPath: '/.well-known/caldav'
+      preLoaderRoute: typeof DotwellKnownCaldavRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/calendar': {
@@ -2124,6 +2144,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   ServiceRoute: ServiceRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  DotwellKnownCaldavRoute: DotwellKnownCaldavRoute,
   ApiLeaseDocumentsRoute: ApiLeaseDocumentsRoute,
   ApiPhotoUploadRoute: ApiPhotoUploadRoute,
   ApiSocialMediaUploadRoute: ApiSocialMediaUploadRoute,

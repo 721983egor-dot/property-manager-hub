@@ -19,7 +19,7 @@ export type CalendarEdit = {
   start: string;
   end: string;
 };
-export const CALDAV_BASE = "/api/public/caldav/";
+export { CALDAV_BASE } from "./discovery";
 export function xml(value: unknown) {
   return String(value ?? "").replace(
     /[<>&"']/g,

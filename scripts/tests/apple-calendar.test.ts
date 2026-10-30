@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import ICAL from "ical.js";
+import { calendarDiscoveryResponse, CALDAV_BASE } from "../../src/lib/apple-calendar/discovery";
 import {
   taskIcs,
   parseCalendarEdit,
@@ -10,6 +11,12 @@ import {
 } from "../../src/lib/apple-calendar/model";
 
 const id = "00000000-0000-4000-8000-000000000001";
+test("iPhone origin discovery preserves the request method and contains no credentials", async () => {
+  const result = calendarDiscoveryResponse();
+  assert.equal(result.status, 307);
+  assert.equal(result.headers.get("location"), CALDAV_BASE);
+  assert.equal(await result.text(), "");
+});
 const task: CalendarTask = {
   id,
   title: "Показ квартиры, ключи; вход",
@@ -143,6 +150,9 @@ test("CalDAV discovery, multiget, conditional updates, creation, removal and own
   const discovery = await req(home, "PROPFIND", { Depth: "1" });
   assert.equal(discovery.status, 207);
   assert.match(await discovery.text(), /calendar-home-set/);
+  for (const path of [home.slice(0,-1),collection.slice(0,-1)]) {
+    const redirect=await req(path,'PROPFIND');assert.equal(redirect.status,307);assert.equal(redirect.headers.get('location'),path+'/');
+  }
   assert.equal((await req("/api/public/caldav/other/tasks/", "PROPFIND")).status, 404);
   const listing = await req(
     collection,
