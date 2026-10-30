@@ -198,6 +198,10 @@ function CrmNav({ unread, onNavigate }: { unread: number; onNavigate?: () => voi
                 <Share2 className="size-4 shrink-0" />
                 Видеоканалы
               </Link>
+              <Link to="/system/advertising" onClick={onNavigate} className={NAV_LINK_CLASS}>
+                <Share2 className="size-4 shrink-0" />
+                Реклама
+              </Link>
               <Link to="/system/quick-replies" onClick={onNavigate} className={NAV_LINK_CLASS}>
                 <Zap className="size-4 shrink-0" />
                 Быстрые ответы

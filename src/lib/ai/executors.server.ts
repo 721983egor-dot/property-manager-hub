@@ -27,6 +27,7 @@ async function logAction(summary: string, tool: string, input: Input) {
 
 /** Исполнители подтверждённых действий Ассистента. Ключ = поле `tool` предложения. */
 export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
+  applyYandexCampaignChange: async input => (await import("@/lib/yandex-marketing/service.server")).applyAdvertisingChange(input),
   disconnectTaskCalendar: async () => { await (await import('@/lib/apple-calendar/service.server')).configureCalendar('disable'); return 'Доступ Apple Календаря к задачам отключён'; },
   runAssistantReport: async input => (await import("@/lib/scheduled-actions/report.server")).executeScheduledReport(input),
   scheduleAssistantAction: async input => (await import("@/lib/scheduled-actions/service.server")).enqueueScheduledAction(input),

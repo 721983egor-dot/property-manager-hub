@@ -30,6 +30,7 @@
 // Финансовый дашборд, ДДС/ОПиУ/план-факт/объекты/долги: getFinanceAnalytics; политика статей: proposeSaveFinanceArticle.
 // Описания площадок: getListingDescription; сезонные периоды из объекта, proposePropertyUpdate(seasonalPricing/summerPriceMonth/priceMonth) → существующий подтверждённый updateProperty с аудитом.
 // Apple Calendar: getTaskCalendarConnection; proposeDisconnectTaskCalendar → confirmed disconnectTaskCalendar. Device password is only issued in Tasks UI. CalDAV edits have fresh administrator checks, optimistic concurrency and transactional audit.
+// Реклама Яндекса: getYandexMarketingConnection/getYandexAdvertisingReport; proposeYandexCampaignChange → confirmed applyYandexCampaignChange, admin-only, immutable proposals, pre-send audit, no retry after uncertain API response.
 // getMarketingReport: admin-only website attribution report shared with CRM UI.
 // getLeads includes immutable lead attribution (UTM, yclid, Metrika ClientID, first/last touch).
 import { createReadTools } from "@/lib/ai/tools/read.server";

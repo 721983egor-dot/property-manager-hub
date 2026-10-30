@@ -60,6 +60,7 @@ import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenti
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
 import { Route as AuthenticatedSelectionsIdRouteImport } from './routes/_authenticated/selections.$id'
 import { Route as AuthenticatedSocialIndexRouteImport } from './routes/_authenticated/social.index'
+import { Route as AuthenticatedSystemAdvertisingRouteImport } from './routes/_authenticated/system.advertising'
 import { Route as AuthenticatedSystemQuickRepliesRouteImport } from './routes/_authenticated/system.quick-replies'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
 import { Route as AuthenticatedSystemTelegramRouteImport } from './routes/_authenticated/system.telegram'
@@ -94,6 +95,7 @@ import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
 import { Route as ApiPublicCronFinanceSeriesRouteImport } from './routes/api/public/cron/finance-series'
 import { Route as ApiPublicCronVideoPublishRouteImport } from './routes/api/public/cron/video-publish'
+import { Route as ApiPublicCronYandexMarketingRouteImport } from './routes/api/public/cron/yandex-marketing'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
 import { Route as ApiPublicFeedsAvitoDotxmlRouteImport } from './routes/api/public/feeds/avito[.]xml'
 import { Route as ApiPublicFeedsCianDotxmlRouteImport } from './routes/api/public/feeds/cian[.]xml'
@@ -380,6 +382,12 @@ const AuthenticatedSocialIndexRoute =
     path: '/social/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemAdvertisingRoute =
+  AuthenticatedSystemAdvertisingRouteImport.update({
+    id: '/system/advertising',
+    path: '/system/advertising',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSystemQuickRepliesRoute =
   AuthenticatedSystemQuickRepliesRouteImport.update({
     id: '/system/quick-replies',
@@ -575,6 +583,12 @@ const ApiPublicCronVideoPublishRoute =
     path: '/api/public/cron/video-publish',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronYandexMarketingRoute =
+  ApiPublicCronYandexMarketingRouteImport.update({
+    id: '/api/public/cron/yandex-marketing',
+    path: '/api/public/cron/yandex-marketing',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicFeedPhotoSplatRoute = ApiPublicFeedPhotoSplatRouteImport.update({
   id: '/api/public/feed-photo/$',
   path: '/api/public/feed-photo/$',
@@ -692,6 +706,7 @@ export interface FileRoutesByFullPath {
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
   '/selections/$id': typeof AuthenticatedSelectionsIdRoute
+  '/system/advertising': typeof AuthenticatedSystemAdvertisingRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -727,6 +742,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
+  '/api/public/cron/yandex-marketing': typeof ApiPublicCronYandexMarketingRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
@@ -789,6 +805,7 @@ export interface FileRoutesByTo {
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
   '/selections/$id': typeof AuthenticatedSelectionsIdRoute
+  '/system/advertising': typeof AuthenticatedSystemAdvertisingRoute
   '/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
   '/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -824,6 +841,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
+  '/api/public/cron/yandex-marketing': typeof ApiPublicCronYandexMarketingRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
@@ -890,6 +908,7 @@ export interface FileRoutesById {
   '/_authenticated/promo/avito': typeof AuthenticatedPromoAvitoRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
   '/_authenticated/selections/$id': typeof AuthenticatedSelectionsIdRoute
+  '/_authenticated/system/advertising': typeof AuthenticatedSystemAdvertisingRoute
   '/_authenticated/system/quick-replies': typeof AuthenticatedSystemQuickRepliesRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
   '/_authenticated/system/telegram': typeof AuthenticatedSystemTelegramRoute
@@ -925,6 +944,7 @@ export interface FileRoutesById {
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
+  '/api/public/cron/yandex-marketing': typeof ApiPublicCronYandexMarketingRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
   '/api/public/feeds/avito.xml': typeof ApiPublicFeedsAvitoDotxmlRoute
   '/api/public/feeds/cian.xml': typeof ApiPublicFeedsCianDotxmlRoute
@@ -991,6 +1011,7 @@ export interface FileRouteTypes {
     | '/promo/avito'
     | '/promo/import'
     | '/selections/$id'
+    | '/system/advertising'
     | '/system/quick-replies'
     | '/system/staff'
     | '/system/telegram'
@@ -1026,6 +1047,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
     | '/api/public/cron/video-publish'
+    | '/api/public/cron/yandex-marketing'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
@@ -1088,6 +1110,7 @@ export interface FileRouteTypes {
     | '/promo/avito'
     | '/promo/import'
     | '/selections/$id'
+    | '/system/advertising'
     | '/system/quick-replies'
     | '/system/staff'
     | '/system/telegram'
@@ -1123,6 +1146,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
     | '/api/public/cron/video-publish'
+    | '/api/public/cron/yandex-marketing'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
@@ -1188,6 +1212,7 @@ export interface FileRouteTypes {
     | '/_authenticated/promo/avito'
     | '/_authenticated/promo/import'
     | '/_authenticated/selections/$id'
+    | '/_authenticated/system/advertising'
     | '/_authenticated/system/quick-replies'
     | '/_authenticated/system/staff'
     | '/_authenticated/system/telegram'
@@ -1223,6 +1248,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
     | '/api/public/cron/video-publish'
+    | '/api/public/cron/yandex-marketing'
     | '/api/public/feed-photo/$'
     | '/api/public/feeds/avito.xml'
     | '/api/public/feeds/cian.xml'
@@ -1276,6 +1302,7 @@ export interface RootRouteChildren {
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
   ApiPublicCronFinanceSeriesRoute: typeof ApiPublicCronFinanceSeriesRoute
   ApiPublicCronVideoPublishRoute: typeof ApiPublicCronVideoPublishRoute
+  ApiPublicCronYandexMarketingRoute: typeof ApiPublicCronYandexMarketingRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
   ApiPublicFeedsAvitoDotxmlRoute: typeof ApiPublicFeedsAvitoDotxmlRoute
   ApiPublicFeedsCianDotxmlRoute: typeof ApiPublicFeedsCianDotxmlRoute
@@ -1649,6 +1676,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSocialIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system/advertising': {
+      id: '/_authenticated/system/advertising'
+      path: '/system/advertising'
+      fullPath: '/system/advertising'
+      preLoaderRoute: typeof AuthenticatedSystemAdvertisingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/system/quick-replies': {
       id: '/_authenticated/system/quick-replies'
       path: '/system/quick-replies'
@@ -1887,6 +1921,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronVideoPublishRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/yandex-marketing': {
+      id: '/api/public/cron/yandex-marketing'
+      path: '/api/public/cron/yandex-marketing'
+      fullPath: '/api/public/cron/yandex-marketing'
+      preLoaderRoute: typeof ApiPublicCronYandexMarketingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/feed-photo/$': {
       id: '/api/public/feed-photo/$'
       path: '/api/public/feed-photo/$'
@@ -2000,6 +2041,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPromoAvitoRoute: typeof AuthenticatedPromoAvitoRoute
   AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
   AuthenticatedSelectionsIdRoute: typeof AuthenticatedSelectionsIdRoute
+  AuthenticatedSystemAdvertisingRoute: typeof AuthenticatedSystemAdvertisingRoute
   AuthenticatedSystemQuickRepliesRoute: typeof AuthenticatedSystemQuickRepliesRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
   AuthenticatedSystemTelegramRoute: typeof AuthenticatedSystemTelegramRoute
@@ -2056,6 +2098,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPromoAvitoRoute: AuthenticatedPromoAvitoRoute,
   AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
   AuthenticatedSelectionsIdRoute: AuthenticatedSelectionsIdRoute,
+  AuthenticatedSystemAdvertisingRoute: AuthenticatedSystemAdvertisingRoute,
   AuthenticatedSystemQuickRepliesRoute: AuthenticatedSystemQuickRepliesRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
   AuthenticatedSystemTelegramRoute: AuthenticatedSystemTelegramRoute,
@@ -2158,6 +2201,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
   ApiPublicCronFinanceSeriesRoute: ApiPublicCronFinanceSeriesRoute,
   ApiPublicCronVideoPublishRoute: ApiPublicCronVideoPublishRoute,
+  ApiPublicCronYandexMarketingRoute: ApiPublicCronYandexMarketingRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,
   ApiPublicFeedsAvitoDotxmlRoute: ApiPublicFeedsAvitoDotxmlRoute,
   ApiPublicFeedsCianDotxmlRoute: ApiPublicFeedsCianDotxmlRoute,

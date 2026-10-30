@@ -1,3 +1,4 @@
+import { yandexReadTools } from '@/lib/yandex-marketing/tools.server';
 import {calendarReadTools} from '@/lib/apple-calendar/tools.server';
 import {workingSelectionReadTools} from '@/lib/working-selections-tools.server';
 import {scheduledReadTools} from "@/lib/scheduled-actions/tools.server";
@@ -144,6 +145,7 @@ export function createReadTools(ctx: AssistantToolContext) {
   return {
     ...propertyKeyReadTools(),
     ...calendarReadTools(),
+    ...yandexReadTools(),
     ...workingSelectionReadTools(),
     ...scheduledReadTools(ctx),
     ...leaseReadTools(ctx),
