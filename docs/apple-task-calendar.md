@@ -20,4 +20,6 @@ PGLITE_MODULE=/tmp/rm-scheduled-test/node_modules/@electric-sql/pglite/dist/inde
 npm run build
 ```
 
+An independent `tsdav` client smoke test is also available as `scripts/tests/apple-calendar-client.ts`. Point `CALDAV_CLIENT_MODULE` at a separately installed `tsdav` module (for example in `/tmp`) to run discovery, multiget, update/create/delete and date-window filtering against an isolated in-memory adapter. It makes no network requests and touches no business records.
+
 Final native Apple Calendar compatibility must be verified after the owner adds the account on their device. Automated protocol and database tests do not substitute for that check. A real Apple account has not been added automatically.
