@@ -29,6 +29,7 @@
 // Финансовые объекты: getFinanceObjects; save/delete/assignFinanceObjectClassification, updateFinanceObligation — только через подтверждение.
 // Финансовый дашборд, ДДС/ОПиУ/план-факт/объекты/долги: getFinanceAnalytics; политика статей: proposeSaveFinanceArticle.
 // Описания площадок: getListingDescription; сезонные периоды из объекта, proposePropertyUpdate(seasonalPricing/summerPriceMonth/priceMonth) → существующий подтверждённый updateProperty с аудитом.
+// Apple Calendar: getTaskCalendarConnection; proposeDisconnectTaskCalendar → confirmed disconnectTaskCalendar. Device password is only issued in Tasks UI. CalDAV edits have fresh administrator checks, optimistic concurrency and transactional audit.
 import { createReadTools } from "@/lib/ai/tools/read.server";
 import { createMutateTools } from "@/lib/ai/tools/mutate.server";
 import { createSkillTools } from "@/lib/ai/tools/skills.server";

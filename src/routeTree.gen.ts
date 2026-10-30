@@ -86,6 +86,8 @@ import { Route as AuthenticatedMaintenanceObjectsNewRouteImport } from './routes
 import { Route as AuthenticatedObjectsIdIndexRouteImport } from './routes/_authenticated/objects.$id.index'
 import { Route as AuthenticatedObjectsIdEditRouteImport } from './routes/_authenticated/objects.$id.edit'
 import { Route as AuthenticatedObjectsIdPreviewRouteImport } from './routes/_authenticated/objects.$id.preview'
+import { Route as ApiPublicCaldavIndexRouteImport } from './routes/api/public/caldav/index'
+import { Route as ApiPublicCaldavSplatRouteImport } from './routes/api/public/caldav/$'
 import { Route as ApiPublicCronAssistantActionsRouteImport } from './routes/api/public/cron/assistant-actions'
 import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/cron/bnovo-sync'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
@@ -529,6 +531,16 @@ const AuthenticatedObjectsIdPreviewRoute =
     path: '/objects/$id/preview',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicCaldavIndexRoute = ApiPublicCaldavIndexRouteImport.update({
+  id: '/api/public/caldav/',
+  path: '/api/public/caldav/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCaldavSplatRoute = ApiPublicCaldavSplatRouteImport.update({
+  id: '/api/public/caldav/$',
+  path: '/api/public/caldav/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronAssistantActionsRoute =
   ApiPublicCronAssistantActionsRouteImport.update({
     id: '/api/public/cron/assistant-actions',
@@ -702,6 +714,7 @@ export interface FileRoutesByFullPath {
   '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
+  '/api/public/caldav/$': typeof ApiPublicCaldavSplatRoute
   '/api/public/cron/assistant-actions': typeof ApiPublicCronAssistantActionsRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
@@ -727,6 +740,7 @@ export interface FileRoutesByFullPath {
   '/finance/objects/': typeof AuthenticatedFinanceObjectsIndexRoute
   '/maintenance/objects/': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
+  '/api/public/caldav/': typeof ApiPublicCaldavIndexRoute
   '/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
   '/maintenance/objects/$id/': typeof AuthenticatedMaintenanceObjectsIdIndexRoute
 }
@@ -796,6 +810,7 @@ export interface FileRoutesByTo {
   '/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
+  '/api/public/caldav/$': typeof ApiPublicCaldavSplatRoute
   '/api/public/cron/assistant-actions': typeof ApiPublicCronAssistantActionsRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
@@ -821,6 +836,7 @@ export interface FileRoutesByTo {
   '/finance/objects': typeof AuthenticatedFinanceObjectsIndexRoute
   '/maintenance/objects': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/objects/$id': typeof AuthenticatedObjectsIdIndexRoute
+  '/api/public/caldav': typeof ApiPublicCaldavIndexRoute
   '/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
   '/maintenance/objects/$id': typeof AuthenticatedMaintenanceObjectsIdIndexRoute
 }
@@ -894,6 +910,7 @@ export interface FileRoutesById {
   '/_authenticated/maintenance/objects/new': typeof AuthenticatedMaintenanceObjectsNewRoute
   '/_authenticated/objects/$id/edit': typeof AuthenticatedObjectsIdEditRoute
   '/_authenticated/objects/$id/preview': typeof AuthenticatedObjectsIdPreviewRoute
+  '/api/public/caldav/$': typeof ApiPublicCaldavSplatRoute
   '/api/public/cron/assistant-actions': typeof ApiPublicCronAssistantActionsRoute
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
@@ -919,6 +936,7 @@ export interface FileRoutesById {
   '/_authenticated/finance/objects/': typeof AuthenticatedFinanceObjectsIndexRoute
   '/_authenticated/maintenance/objects/': typeof AuthenticatedMaintenanceObjectsIndexRoute
   '/_authenticated/objects/$id/': typeof AuthenticatedObjectsIdIndexRoute
+  '/api/public/caldav/': typeof ApiPublicCaldavIndexRoute
   '/_authenticated/maintenance/objects/$id/edit': typeof AuthenticatedMaintenanceObjectsIdEditRoute
   '/_authenticated/maintenance/objects/$id/': typeof AuthenticatedMaintenanceObjectsIdIndexRoute
 }
@@ -992,6 +1010,7 @@ export interface FileRouteTypes {
     | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
+    | '/api/public/caldav/$'
     | '/api/public/cron/assistant-actions'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
@@ -1017,6 +1036,7 @@ export interface FileRouteTypes {
     | '/finance/objects/'
     | '/maintenance/objects/'
     | '/objects/$id/'
+    | '/api/public/caldav/'
     | '/maintenance/objects/$id/edit'
     | '/maintenance/objects/$id/'
   fileRoutesByTo: FileRoutesByTo
@@ -1086,6 +1106,7 @@ export interface FileRouteTypes {
     | '/maintenance/objects/new'
     | '/objects/$id/edit'
     | '/objects/$id/preview'
+    | '/api/public/caldav/$'
     | '/api/public/cron/assistant-actions'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
@@ -1111,6 +1132,7 @@ export interface FileRouteTypes {
     | '/finance/objects'
     | '/maintenance/objects'
     | '/objects/$id'
+    | '/api/public/caldav'
     | '/maintenance/objects/$id/edit'
     | '/maintenance/objects/$id'
   id:
@@ -1183,6 +1205,7 @@ export interface FileRouteTypes {
     | '/_authenticated/maintenance/objects/new'
     | '/_authenticated/objects/$id/edit'
     | '/_authenticated/objects/$id/preview'
+    | '/api/public/caldav/$'
     | '/api/public/cron/assistant-actions'
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
@@ -1208,6 +1231,7 @@ export interface FileRouteTypes {
     | '/_authenticated/finance/objects/'
     | '/_authenticated/maintenance/objects/'
     | '/_authenticated/objects/$id/'
+    | '/api/public/caldav/'
     | '/_authenticated/maintenance/objects/$id/edit'
     | '/_authenticated/maintenance/objects/$id/'
   fileRoutesById: FileRoutesById
@@ -1233,6 +1257,7 @@ export interface RootRouteChildren {
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicN11ChatRoute: typeof ApiPublicN11ChatRoute
   ApiPublicStaffSessionRoute: typeof ApiPublicStaffSessionRoute
+  ApiPublicCaldavSplatRoute: typeof ApiPublicCaldavSplatRoute
   ApiPublicCronAssistantActionsRoute: typeof ApiPublicCronAssistantActionsRoute
   ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
@@ -1249,6 +1274,7 @@ export interface RootRouteChildren {
   ApiPublicSystemTelegramCredentialsRoute: typeof ApiPublicSystemTelegramCredentialsRoute
   ApiPublicTelegramRemindersRoute: typeof ApiPublicTelegramRemindersRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  ApiPublicCaldavIndexRoute: typeof ApiPublicCaldavIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1792,6 +1818,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedObjectsIdPreviewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/caldav/': {
+      id: '/api/public/caldav/'
+      path: '/api/public/caldav'
+      fullPath: '/api/public/caldav/'
+      preLoaderRoute: typeof ApiPublicCaldavIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/caldav/$': {
+      id: '/api/public/caldav/$'
+      path: '/api/public/caldav/$'
+      fullPath: '/api/public/caldav/$'
+      preLoaderRoute: typeof ApiPublicCaldavSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/assistant-actions': {
       id: '/api/public/cron/assistant-actions'
       path: '/api/public/cron/assistant-actions'
@@ -2091,6 +2131,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicN11ChatRoute: ApiPublicN11ChatRoute,
   ApiPublicStaffSessionRoute: ApiPublicStaffSessionRoute,
+  ApiPublicCaldavSplatRoute: ApiPublicCaldavSplatRoute,
   ApiPublicCronAssistantActionsRoute: ApiPublicCronAssistantActionsRoute,
   ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
@@ -2109,6 +2150,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicSystemTelegramCredentialsRoute,
   ApiPublicTelegramRemindersRoute: ApiPublicTelegramRemindersRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  ApiPublicCaldavIndexRoute: ApiPublicCaldavIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -27,6 +27,7 @@
 # База, вход и фото — общие. Само приложение подключается на каждом домене отдельно.
 # Снимаем CORS бэкенда: иначе два Access-Control-Allow-Origin и браузер блокирует вход.
 (services) {
+    redir /.well-known/caldav /api/public/caldav/ 301
     handle_path /auth/v1/* {
         import cors
         reverse_proxy supabase-auth:9999 {

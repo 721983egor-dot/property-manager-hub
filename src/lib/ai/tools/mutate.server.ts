@@ -1,3 +1,4 @@
+import {calendarMutateTools} from '@/lib/apple-calendar/tools.server';
 import {workingSelectionMutateTools} from '@/lib/working-selections-tools.server';
 import {scheduledMutateTools} from "@/lib/scheduled-actions/tools.server";
 import { propertyKeyMutateTools } from "@/lib/property-keys-tools.server";
@@ -40,6 +41,7 @@ export function createMutateTools(ctx: AssistantToolContext) {
 
   return {
     ...leaseMutateTools(ctx),
+    ...calendarMutateTools(ctx),
     ...propertyKeyMutateTools(ctx),
     ...workingSelectionMutateTools(ctx),
     ...scheduledMutateTools(ctx),

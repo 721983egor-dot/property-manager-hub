@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 
 import { TaskDialog } from "@/components/TaskDialog";
+import { TaskAppleCalendar } from "@/components/TaskAppleCalendar";
 import { TaskTypesDialog } from "@/components/TaskTypesDialog";
 import { TasksCalendar } from "@/components/TasksCalendar";
 import { CrmTabs } from "@/components/CrmTabs";
@@ -257,6 +258,7 @@ function TasksPage() {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Задачи</h1>
         <div className="ml-auto flex flex-wrap gap-2">
+          {isAdmin && profile?.id && <TaskAppleCalendar userId={profile.id} />}
           <Button variant="outline" onClick={() => setTypesOpen(true)}>
             <Settings2 className="mr-1.5 size-4" /> Типы
           </Button>

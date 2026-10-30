@@ -1,3 +1,4 @@
+import {calendarReadTools} from '@/lib/apple-calendar/tools.server';
 import {workingSelectionReadTools} from '@/lib/working-selections-tools.server';
 import {scheduledReadTools} from "@/lib/scheduled-actions/tools.server";
 import { propertyKeyReadTools } from "@/lib/property-keys-tools.server";
@@ -142,6 +143,7 @@ export function createReadTools(ctx: AssistantToolContext) {
 
   return {
     ...propertyKeyReadTools(),
+    ...calendarReadTools(),
     ...workingSelectionReadTools(),
     ...scheduledReadTools(ctx),
     ...leaseReadTools(ctx),
