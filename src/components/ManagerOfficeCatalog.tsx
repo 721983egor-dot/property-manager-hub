@@ -143,6 +143,24 @@ export function ManagerOfficeCatalog() {
         </Link>
       </header>
       <OfficeTabs active="objects" />
+      <nav className="of-complex-shortcuts" aria-label="Быстрый выбор ЖК">
+        {[
+          { value: "all", label: "Все комплексы" },
+          ...complexes,
+          { value: "none", label: "Без комплекса" },
+        ].map((complex) => (
+          <button
+            key={complex.value}
+            type="button"
+            aria-pressed={filters.complex === complex.value}
+            onClick={() => filter("complex", complex.value)}
+          >
+            {complex.value === "all" || complex.value === "none"
+              ? complex.label
+              : `ЖК ${complex.label}`}
+          </button>
+        ))}
+      </nav>
       <section className="of-compact-filter-panel" aria-label="Фильтры объектов">
         <div className="of-compact-filterbar">
           <div className="of-compact-search">

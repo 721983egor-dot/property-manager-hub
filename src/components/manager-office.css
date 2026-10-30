@@ -1,3 +1,36 @@
+.of-complex-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.office-workspace .of-complex-shortcuts button {
+  border: 1px solid var(--of-line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: white;
+  color: var(--of-ink);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 150ms,
+    border-color 150ms,
+    color 150ms;
+}
+.office-workspace .of-complex-shortcuts button:hover {
+  border-color: var(--of-blue);
+  color: var(--of-blue);
+}
+.office-workspace .of-complex-shortcuts button[aria-pressed="true"] {
+  background: var(--of-blue);
+  border-color: var(--of-blue);
+  color: white;
+}
+.office-workspace .of-complex-shortcuts button:focus-visible {
+  outline: 2px solid var(--of-blue);
+  outline-offset: 3px;
+}
 .office-workspace {
   --of-ink: #263c62;
   --of-text: #526784;
@@ -1510,10 +1543,9 @@
 }
 .of-compact-filterbar {
   display: grid;
-  grid-template-columns: minmax(190px, 1.5fr) minmax(140px, 1fr) minmax(155px, 1.1fr) minmax(
-      130px,
-      0.9fr
-    ) minmax(245px, 1.7fr) auto;
+  grid-template-columns:
+    minmax(190px, 1.5fr) minmax(140px, 1fr) minmax(155px, 1.1fr) minmax(130px, 0.9fr)
+    minmax(245px, 1.7fr) auto;
   gap: 10px;
   align-items: center;
 }
