@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useAccess } from "@/hooks/useAccess";
 import { Search, Plus, ArrowRight, MapPin, Pencil, SlidersHorizontal, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { formatPriceDigits, priceDigits } from "@/lib/rent-search";
@@ -43,6 +44,7 @@ const statuses: Record<string, string> = {
 };
 const label = (p: ManagerProperty) => p.internal_name || p.title || `Объект №${p.ref_id}`;
 export function ManagerOfficeCatalog() {
+  const { isAdmin } = useAccess();
   const q = useManagerCatalog(),
     navigate = useNavigate();
   const [filters, setFilters] = useState(emptyManagerCatalogFilters);
@@ -138,9 +140,17 @@ export function ManagerOfficeCatalog() {
           <h1>Объекты</h1>
           <p>Подберите варианты клиенту и подготовьте рабочую подборку к показу</p>
         </div>
-        <Link to="/selections" className="of-button">
-          Все подборки →
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <Link to="/objects/new" className="of-button of-primary">
+              <Plus size={18} aria-hidden="true" />
+              Добавить объект
+            </Link>
+          )}
+          <Link to="/selections" className="of-button">
+            Все подборки →
+          </Link>
+        </div>
       </header>
       <OfficeTabs active="objects" />
       <nav className="of-complex-shortcuts" aria-label="Быстрый выбор ЖК">
