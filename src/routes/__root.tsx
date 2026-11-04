@@ -124,6 +124,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const localTest = import.meta.env.DEV && import.meta.env.VITE_LOCAL_TEST_MODE === "true";
 
   useEffect(() => {
     startStaffSessionKeeper();
@@ -131,13 +132,18 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      {localTest && (
+        <div className="sticky top-0 z-[100] bg-amber-200 px-4 py-2 text-center text-sm font-semibold text-amber-950">
+          Локальная РМ ОС · Тестовые данные · Изменения не попадают в рабочую систему
+        </div>
+      )}
       <AppShell>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </AppShell>
       <Toaster position="top-right" />
-      <SiteMarketing />
-      <YandexMetrika />
+      {!localTest && <SiteMarketing />}
+      {!localTest && <YandexMetrika />}
     </QueryClientProvider>
   );
 

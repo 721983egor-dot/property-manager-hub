@@ -1,0 +1,74 @@
+name: rmos-local
+services:
+  db:
+    image: supabase/postgres:15.1.1.78
+    environment:
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - local_db:/var/lib/postgresql/data
+      - ./bootstrap.sql:/docker-entrypoint-initdb.d/zz-local.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres']
+      interval: 3s
+      retries: 40
+  auth:
+    image: supabase/gotrue:v2.158.1
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://127.0.0.1:54321/auth/v1
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${LOCAL_DB_PASSWORD}@db:5432/postgres?search_path=auth
+      GOTRUE_JWT_SECRET: ${LOCAL_JWT_SECRET}
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_EXP: 86400
+      GOTRUE_SITE_URL: http://127.0.0.1:4194
+      GOTRUE_URI_ALLOW_LIST: http://127.0.0.1:4194/**,http://localhost:4194/**
+      GOTRUE_DISABLE_SIGNUP: 'true'
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_MAILER_AUTOCONFIRM: 'true'
+    depends_on:
+      db: {condition: service_healthy}
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    environment:
+      PGRST_DB_URI: postgres://postgres:${LOCAL_DB_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${LOCAL_JWT_SECRET}
+    depends_on:
+      db: {condition: service_healthy}
+  storage:
+    image: supabase/storage-api:v1.22.17
+    environment:
+      ANON_KEY: ${LOCAL_ANON_KEY}
+      SERVICE_KEY: ${LOCAL_SERVICE_KEY}
+      AUTH_JWT_SECRET: ${LOCAL_JWT_SECRET}
+      DATABASE_URL: postgres://postgres:${LOCAL_DB_PASSWORD}@db:5432/postgres
+      DB_DRIVER: postgres
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: local-test
+      REGION: local
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: 'false'
+      IS_MULTITENANT: 'false'
+      POSTGREST_URL: http://rest:3000
+    volumes:
+      - local_storage:/var/lib/storage
+    depends_on:
+      db: {condition: service_healthy}
+  gateway:
+    image: caddy:2-alpine
+    ports:
+      - '127.0.0.1:54321:54321'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on: [auth, rest, storage]
+volumes:
+  local_db:
+  local_storage:

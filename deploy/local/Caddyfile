@@ -1,0 +1,35 @@
+{
+    auto_https off
+}
+:54321 {
+    @allowed header_regexp Origin ^http://(127\.0\.0\.1|localhost):4194$
+    header @allowed {
+        Access-Control-Allow-Origin "{http.request.header.Origin}"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "authorization, apikey, content-type, x-client-info, prefer, range, x-supabase-api-version, accept-profile, content-profile"
+        Access-Control-Expose-Headers "content-range, content-length"
+        Vary Origin
+    }
+    @preflight method OPTIONS
+    respond @preflight 204
+    handle_path /auth/v1/* {
+        reverse_proxy auth:9999 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
+    }
+    handle_path /rest/v1/* {
+        reverse_proxy rest:3000 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
+    }
+    handle_path /storage/v1/* {
+        reverse_proxy storage:5000 {
+            header_down -Access-Control-Allow-Origin
+            header_down -Access-Control-Allow-Credentials
+        }
+    }
+    respond /health "RM OS local test backend" 200
+}

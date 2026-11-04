@@ -9,7 +9,11 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "local:start": "python3 scripts/local-dev.py start",
+    "local:setup": "python3 scripts/local-dev.py setup",
+    "local:dev": "python3 scripts/local-dev.py dev",
+    "local:status": "python3 scripts/local-dev.py status"
   },
   "overrides": {
     "rolldown": "1.2.1"
