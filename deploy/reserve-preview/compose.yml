@@ -1,0 +1,42 @@
+# Used together with ../local/compose.yml under project rmos-preview.
+# Public ports belong to the existing host nginx; all containers stay private.
+services:
+  db:
+    restart: unless-stopped
+  auth:
+    restart: unless-stopped
+    environment:
+      API_EXTERNAL_URL: https://${TEST_DOMAIN}/auth/v1
+      GOTRUE_SITE_URL: https://${TEST_DOMAIN}
+      GOTRUE_URI_ALLOW_LIST: https://${TEST_DOMAIN}/**
+  rest:
+    restart: unless-stopped
+  storage:
+    restart: unless-stopped
+  gateway:
+    restart: unless-stopped
+  app:
+    restart: unless-stopped
+    build:
+      context: ../..
+      dockerfile: deploy/Dockerfile
+      args:
+        VITE_SUPABASE_URL: https://${TEST_DOMAIN}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${LOCAL_ANON_KEY}
+        VITE_SUPABASE_PROJECT_ID: reserve-preview
+        VITE_TEST_ENVIRONMENT: 'true'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      PREVIEW_MODE: '1'
+      SUPABASE_URL: http://gateway:54321
+      SUPABASE_PROJECT_ID: reserve-preview
+      SUPABASE_PUBLISHABLE_KEY: ${LOCAL_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${LOCAL_SERVICE_KEY}
+      PUBLIC_SITE_URL: https://${TEST_DOMAIN}
+      PUBLIC_BASE_URL: https://${TEST_DOMAIN}
+      RM_OS_URL: https://${TEST_DOMAIN}
+      LEASE_DATA_KEY: ${LOCAL_LEASE_DATA_KEY}
+    ports:
+      - '127.0.0.1:64194:3000'
+    depends_on: [gateway]
