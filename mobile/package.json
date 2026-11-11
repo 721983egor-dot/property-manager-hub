@@ -1,0 +1,23 @@
+{
+  "name": "rm-os-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Thin Capacitor iOS shell that loads hosted RM OS in WKWebView (personal sideload, not App Store).",
+  "scripts": {
+    "sync": "npx cap sync ios",
+    "sync:prod": "RM_OS_TARGET=prod npx cap sync ios",
+    "sync:preview": "RM_OS_TARGET=preview npx cap sync ios",
+    "open:ios": "npx cap open ios",
+    "add:ios": "npx cap add ios"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.2.0"
+  }
+}
