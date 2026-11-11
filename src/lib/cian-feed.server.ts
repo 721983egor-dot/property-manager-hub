@@ -97,9 +97,9 @@ export async function computeFeedSelection(): Promise<FeedSelection> {
       continue;
     }
 
-    // ExternalId фида = UUID CRM. Нельзя подставлять property_listings.external_id:
-    // там часто числовой id объявления Циан (для API/статистики) — смена ExternalId
-    // ломает обновление уже загруженных объявлений.
+    // ExternalId фида = UUID объекта CRM. Не подставляем property_listings.external_id:
+    // там номер объявления ЦИАН (для API статистики/чатов). Ручные объявления до фида
+    // ExternalId не имеют — фид их не обновит; нужны снятие дублей в кабинете.
     included.push({
       property,
       externalId: property.id,
