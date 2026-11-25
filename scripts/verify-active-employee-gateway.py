@@ -46,7 +46,7 @@ def main():
     if app["image"] != IMAGE or app["environment"].get("AI_EMPLOYEES_PROVIDER") != "gateway":
         sys.exit("The configured candidate is incorrect.")
     subprocess.run(COMPOSE + [
-        "run", "--no-deps", "--rm", "--no-build", "-T", "--entrypoint", "node", "app",
+        "run", "--no-deps", "--rm", "--pull=never", "-T", "--entrypoint", "node", "app",
         "--input-type=module", "-e", PROBE,
     ], check=True)
 
