@@ -13,7 +13,7 @@ import urllib.request
 BASE = Path("/opt/rm-os-recovery/beget-production-20261115")
 STAGING = Path("/opt/rm-os-recovery/ai-employees-20261125")
 PRODUCTION = BASE / "production.yml"
-PENDING = BASE / "production.polza-candidate-v2.yml"
+PENDING = BASE / "production.polza-candidate-v4.yml"
 BACKUP = BASE / "production.before-polza-20261125.yml"
 OVERLAY = STAGING / "polza-employee-overlay.json"
 HISTORY = STAGING / "polza-activate.log"
@@ -75,7 +75,7 @@ def install():
     app_text = replace_one(app_match[0], f"    image: {OLD_IMAGE}\n",
                            f"    image: {NEW_IMAGE}\n")
     if "    env_file:\n" in app_text:
-        app_text = replace_one(app_text, "    env_file:\n", f"    env_file:\n      - {env_path}\n")
+        app_text = replace_one(app_text, "    env_file:\n", f"    env_file:\n    - {env_path}\n")
     else:
         app_text = replace_one(app_text, f"    image: {NEW_IMAGE}\n",
                                f"    image: {NEW_IMAGE}\n    env_file:\n      - {env_path}\n")
@@ -90,7 +90,10 @@ def install():
     expected = copy.deepcopy(before)
     expected["services"]["app"]["image"] = NEW_IMAGE
     expected["services"]["app"]["build"]["context"] = new_context
-    expected["services"]["app"]["env_file"] = updated.get("env_file")
+    if "env_file" in updated:
+        expected["services"]["app"]["env_file"] = updated["env_file"]
+    else:
+        expected["services"]["app"].pop("env_file", None)
     new_env = dict(line.split("=", 1) for line in Path(env_path).read_text().splitlines())
     if set(new_env) != {"AI_EMPLOYEES_PROVIDER", "AI_EMPLOYEES_GATEWAY_URL",
                         "AI_EMPLOYEES_GATEWAY_KEY", "AI_EMPLOYEES_OPENAI_MODEL"}:
@@ -99,7 +102,13 @@ def install():
         raise RuntimeError("Gateway settings already exist on the active service.")
     expected["services"]["app"]["environment"].update(new_env)
     if expected != after:
-        raise RuntimeError("The deployment would change unrelated Compose settings.")
+        def changed_keys(left, right, prefix=""):
+            if isinstance(left, dict) and isinstance(right, dict):
+                return [path for key in sorted(left.keys() | right.keys())
+                        for path in changed_keys(left.get(key), right.get(key), f"{prefix}/{key}")]
+            return [prefix] if left != right else []
+        differences = ", ".join(changed_keys(expected, after))
+        raise RuntimeError("Unexpected Compose differences: " + differences)
 
     shutil.copy2(PRODUCTION, BACKUP)
     os.replace(PENDING, PRODUCTION)
