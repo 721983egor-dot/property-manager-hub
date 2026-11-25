@@ -63,6 +63,31 @@ export function verifyAnalysis(raw: unknown, messages: EvidenceMessage[]): Analy
   return value;
 }
 
+export function marketplaceListingUrl(source: "avito" | "cian", value: string) {
+  const url = URL.parse(value);
+  if (
+    !url ||
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.port ||
+    ![`${source}.ru`, `www.${source}.ru`].includes(url.hostname) ||
+    url.pathname === "/"
+  )
+    return null;
+  return url.origin + url.pathname;
+}
+
+export function hasUnapprovedMarketplaceContact(reply: string, listingUrls: ReadonlySet<string>) {
+  const remaining = reply.replace(/https:\/\/[^\s<>"'\])]+/giu, (match) => {
+    const url = match.replace(/[.,!?;:]+$/u, "");
+    return listingUrls.has(url) ? "" : match;
+  });
+  return /https?:|www\.|\b(?:avito|cian)\.ru\b|t\.me|wa\.me|телеграм|telegram|whats|ватс|мессендж|\bmax\b|макс|\+\d[\d\s()-]{7,}|@[a-z\d_]{3,}/iu.test(
+    remaining,
+  );
+}
+
 export function channelNotice(source: string) {
   return source === "avito" || source === "cian"
     ? "Правила перехода на этой площадке ещё не подтверждены. Ответ остаётся в чате площадки. Контакт и желание клиента можно зафиксировать для проверки менеджером; внешняя отправка отключена."
