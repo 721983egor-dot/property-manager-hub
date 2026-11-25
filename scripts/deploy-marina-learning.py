@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import time
 import urllib.request
+from urllib.parse import unquote, urlsplit
 
 ROOT = Path("/opt/rm-os-recovery")
 BASE = ROOT / "beget-production-20261115"
@@ -19,14 +20,14 @@ SOURCE = WORK / "polza-gateway"
 CANDIDATE = WORK / "marina-learning"
 OVERLAY = WORK / "marina-learning-overlay.json"
 BACKUP = BASE / "production.before-marina-learning.yml"
-PENDING = BASE / "production.marina-learning-candidate-v3.yml"
+PENDING = BASE / "production.marina-learning-candidate-v4.yml"
 OLD = "rmos-beget-prod-app:employee-polza-20261125"
 NEW = "rmos-beget-prod-app:marina-learning-20261125"
 CONTAINER = "rmos-beget-prod-app-1"
 HEALTH = "http://127.0.0.1:64197/api/public/health"
 COMPOSE = ["docker", "compose", "-p", "rmos-beget-prod", "--env-file", str(BASE / "production.env")]
 DB = ["docker", "exec", "-i", "-u", "postgres", "rmos-beget-prod-db-1",
-      "psql", "-h", "/tmp", "-w", "-X", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1"]
+      "psql", "-h", "/tmp", "-w", "-X", "-U", "postgres", "-v", "ON_ERROR_STOP=1"]
 OWNER = """
   select distinct p.id from public.profiles p join public.user_roles r on r.user_id = p.id
   join auth.users u on u.id = p.id
@@ -129,10 +130,22 @@ def build(revision):
     print("Candidate built. Production is still on the prior version.", flush=True)
 
 def migrate():
-    ids = output(DB + ["-Atc", OWNER]).splitlines()
+    rest, postgres = json.loads(output(["docker", "inspect",
+                                         "rmos-beget-prod-rest-1", "rmos-beget-prod-db-1"]))
+    rest_env = dict(entry.split("=", 1) for entry in rest["Config"]["Env"])
+    uri = urlsplit(rest_env.get("PGRST_DB_URI", ""))
+    database = unquote(uri.path.removeprefix("/"))
+    aliases = {"rmos-beget-prod-db-1"}
+    for network in postgres["NetworkSettings"]["Networks"].values():
+        aliases.update(network.get("Aliases") or [])
+        aliases.add(network.get("IPAddress", ""))
+    if uri.hostname not in aliases or not re.fullmatch(r"[a-zA-Z0-9_]+", database):
+        raise RuntimeError("Could not match the running REST API to its PostgreSQL instance.")
+    db = DB + ["-d", database]
+    ids = output(db + ["-Atc", OWNER]).splitlines()
     if len(ids) != 1 or not re.fullmatch(r"[0-9a-f-]{36}", ids[0]):
         raise RuntimeError(f"Exactly one active administrator named Egor Moshkov is required (found {len(ids)}).")
-    exists = output(DB + ["-Atc", "select to_regclass('public.marina_showing_rules') is not null"]).strip()
+    exists = output(db + ["-Atc", "select to_regclass('public.marina_showing_rules') is not null"]).strip()
     script = "" if exists == "t" else (CANDIDATE / MIGRATION).read_text()
     script += f"""
       insert into public.marina_learning_approver(user_id) values ('{ids[0]}')
@@ -145,7 +158,7 @@ def migrate():
       select rule_key, count(*) as matched_deals
       from public.marina_showing_evidence() group by rule_key;
     """
-    subprocess.run(DB + ["--single-transaction"], input=script, text=True, check=True)
+    subprocess.run(db + ["--single-transaction"], input=script, text=True, check=True)
 
 def health(image):
     for _ in range(24):
