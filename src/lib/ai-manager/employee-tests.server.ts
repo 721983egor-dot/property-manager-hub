@@ -127,7 +127,7 @@ export async function runEmployeeScenario(raw: unknown) {
   const { value } = scenario.startsWith("marina")
     ? await getPlaybook()
     : await getSupportPlaybook();
-  const rules = await approvedEmployeeRules(sample.employeeId);
+  const rules: string[] = await approvedEmployeeRules(sample.employeeId);
   if (sample.employeeId === "marina") rules.push(...(await approvedMarinaShowingRules()));
   let draft: string;
   try {

@@ -49,7 +49,7 @@ export async function listMarinaShowingRules(input?: Record<string, unknown>) {
           key,
           title: showingRuleTemplates[key].title,
           text: decision?.rule_text ?? showingRuleTemplates[key].text,
-          showingId: decision ? decision.showing_id : examples[0].showing_id,
+          showingId: decision ? decision.showing_id : (examples[0]?.showing_id ?? null),
           status: decision?.status ?? ("pending" as const),
           examples: examples.slice(0, 3),
           dealCount: examples.length,

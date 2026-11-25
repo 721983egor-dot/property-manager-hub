@@ -119,7 +119,7 @@ export function MarinaShowingLearning() {
                   <li key={example.showing_id}>
                     <Link
                       to="/crm/deals"
-                      search={{ deal: example.deal_id }}
+                      search={{ deal: example.deal_id, funnel: "deals" }}
                       className="text-primary underline underline-offset-4"
                     >
                       Сделка от {date.format(new Date(example.shown_at))}
