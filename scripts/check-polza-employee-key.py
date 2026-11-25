@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import urllib.error
 import urllib.request
+import warnings
 
 API_URL = "https://polza.ai/api/v1"
 MODEL = "openai/gpt-5.4-mini"
@@ -19,8 +20,12 @@ def main():
     args = parser.parse_args()
     if args.save and args.save.exists():
         raise SystemExit("The configuration file already exists.")
-    with open("/dev/tty", "r+"):
-        key = getpass.getpass("Polza API key (hidden): ").strip()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", getpass.GetPassWarning)
+        try:
+            key = getpass.getpass("Polza API key (hidden): ").strip()
+        except getpass.GetPassWarning:
+            raise SystemExit("Use a terminal with hidden input.") from None
     if args.hex:
         try:
             key = bytes.fromhex(key).decode("ascii")
