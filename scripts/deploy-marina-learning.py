@@ -20,7 +20,7 @@ SOURCE = WORK / "polza-gateway"
 CANDIDATE = WORK / "marina-learning"
 OVERLAY = WORK / "marina-learning-overlay.json"
 BACKUP = BASE / "production.before-marina-learning.yml"
-PENDING = BASE / "production.marina-learning-candidate-v4.yml"
+PENDING = BASE / "production.marina-learning-candidate-v5.yml"
 OLD = "rmos-beget-prod-app:employee-polza-20261125"
 NEW = "rmos-beget-prod-app:marina-learning-20261125"
 CONTAINER = "rmos-beget-prod-app-1"
@@ -32,8 +32,7 @@ OWNER = """
   select distinct p.id from public.profiles p join public.user_roles r on r.user_id = p.id
   join auth.users u on u.id = p.id
   where r.role::text = 'admin'
-    and p.full_name ~* '(^|[[:space:]])егор([[:space:]]|$)'
-    and p.full_name ~* '(^|[[:space:]])мошков([[:space:]]|$)'
+    and md5(lower(u.email)) = '{approver_fingerprint}'
     and (u.banned_until is null or u.banned_until <= now())
 """
 MIGRATION = "supabase/migrations/20261125150000_marina_showing_learning.sql"
@@ -129,7 +128,9 @@ def build(revision):
         subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, check=True)
     print("Candidate built. Production is still on the prior version.", flush=True)
 
-def migrate():
+def migrate(approver_fingerprint):
+    if not re.fullmatch(r'[a-f0-9]{32}', approver_fingerprint or ''):
+        raise RuntimeError('Provide the designated administrator fingerprint at activation.')
     rest, postgres = json.loads(output(["docker", "inspect",
                                          "rmos-beget-prod-rest-1", "rmos-beget-prod-db-1"]))
     rest_env = dict(entry.split("=", 1) for entry in rest["Config"]["Env"])
@@ -142,9 +143,9 @@ def migrate():
     if uri.hostname not in aliases or not re.fullmatch(r"[a-zA-Z0-9_]+", database):
         raise RuntimeError("Could not match the running REST API to its PostgreSQL instance.")
     db = DB + ["-d", database]
-    ids = output(db + ["-Atc", OWNER]).splitlines()
+    ids = output(db + ["-Atc", OWNER.format(approver_fingerprint=approver_fingerprint)]).splitlines()
     if len(ids) != 1 or not re.fullmatch(r"[0-9a-f-]{36}", ids[0]):
-        raise RuntimeError(f"Exactly one active administrator named Egor Moshkov is required (found {len(ids)}).")
+        raise RuntimeError(f"Expected exactly one active account for the designated administrator (found {len(ids)}).")
     exists = output(db + ["-Atc", "select to_regclass('public.marina_showing_rules') is not null"]).strip()
     script = "" if exists == "t" else (CANDIDATE / MIGRATION).read_text()
     script += f"""
@@ -176,7 +177,7 @@ def health(image):
         time.sleep(2)
     return False
 
-def activate():
+def activate(approver_fingerprint):
     if BACKUP.exists() or PENDING.exists():
         raise RuntimeError("The previous activation attempt needs review.")
     before = config(PRODUCTION)
@@ -210,7 +211,7 @@ def activate():
     if config(PENDING) != expected:
         raise RuntimeError("Unexpected differences in the staged application settings.")
 
-    migrate()
+    migrate(approver_fingerprint)
     shutil.copy2(PRODUCTION, BACKUP)
     os.replace(PENDING, PRODUCTION)
     command = COMPOSE + ["-f", str(PRODUCTION), "up", "-d", "--no-deps", "--no-build", "app"]
@@ -232,10 +233,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("revision", nargs="?")
     parser.add_argument("--activate", action="store_true")
+    parser.add_argument("--approver-fingerprint")
     args = parser.parse_args()
     try:
         if args.activate:
-            activate()
+            activate(args.approver_fingerprint)
         elif args.revision:
             build(args.revision)
         else:
