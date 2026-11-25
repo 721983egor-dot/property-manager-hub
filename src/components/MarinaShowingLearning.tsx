@@ -1,3 +1,4 @@
+import { PrivateEmployeeTestChat } from "@/components/PrivateEmployeeTestChat";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -9,6 +10,9 @@ import {
   decideMarinaRule,
   getMarinaShowingRules,
 } from "@/lib/ai-manager/marina-learning.functions";
+import { getManagerPlaybook } from "@/lib/ai-manager/functions";
+import { inboxRulePrefix } from "@/lib/ai-manager/inbox";
+import { privateRulePrefix } from "@/lib/ai-manager/private-employee-chat";
 import { MARINA_INSTRUCTIONS } from "@/lib/ai-manager/marina-instructions";
 
 const reviewKey = ["marina-showing-rules"];
@@ -18,6 +22,18 @@ const date = new Intl.DateTimeFormat("ru-RU", {
 });
 
 export function MarinaCoreInstructions() {
+  const getPlaybook = useServerFn(getManagerPlaybook);
+  const playbook = useQuery({
+    queryKey: ["marina-operator-rules"],
+    queryFn: () => getPlaybook(),
+  });
+  const rules =
+    playbook.data?.value.instructions.split("\n").flatMap((line) => {
+      const prefix = [inboxRulePrefix, privateRulePrefix].find((candidate) =>
+        line.startsWith(candidate),
+      );
+      return prefix ? [line.slice(prefix.length)] : [];
+    }) ?? [];
   return (
     <dl className="mt-2 space-y-2.5">
       {MARINA_INSTRUCTIONS.map(({ title, text }) => (
@@ -26,21 +42,39 @@ export function MarinaCoreInstructions() {
           <dd className="text-muted-foreground">{text}</dd>
         </div>
       ))}
+      {rules.length > 0 && (
+        <div>
+          <dt className="font-medium">Подтверждённые правила из чатов</dt>
+          <dd className="text-muted-foreground">
+            <ul className="list-disc space-y-1 pl-5">
+              {rules.map((rule) => (
+                <li key={rule}>{rule}</li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+      )}
     </dl>
   );
 }
 
 export function MarinaStaffProfile() {
   return (
-    <section className="space-y-4 rounded-lg border p-4 text-sm" aria-labelledby="marina-staff-profile">
+    <section
+      className="space-y-4 rounded-lg border p-4 text-sm"
+      aria-labelledby="marina-staff-profile"
+    >
       <div>
-        <h2 id="marina-staff-profile" className="text-base font-semibold">Марина</h2>
+        <h2 id="marina-staff-profile" className="text-base font-semibold">
+          Марина
+        </h2>
         <p className="text-muted-foreground">ИИ-менеджер по длительной аренде · Черновики</p>
       </div>
       <details open>
         <summary className="cursor-pointer font-medium">Действующие инструкции</summary>
         <MarinaCoreInstructions />
       </details>
+      <PrivateEmployeeTestChat employeeId="marina" />
       <MarinaShowingLearning />
     </section>
   );

@@ -3,15 +3,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { resolveEmployeeModel } from "@/lib/ai-gateway.server";
 import { requestScheduleActor } from "@/lib/scheduled-actions/actor.server";
-import { playbookSchema } from "./model";
 import {
-  DEFAULT_SUPPORT_PLAYBOOK,
   employeeScenarioInput,
   employeeScenarioInstructions,
   employeeScenarios,
   supportPlaybookInput,
 } from "./employee-tests";
 import { getPlaybook } from "./service.server";
+import { getSupportPlaybook } from "./support-playbook.server";
 import {
   approvedEmployeeRules,
   employeeSkillStates,
@@ -22,19 +21,7 @@ import { approvedMarinaShowingRules } from "./marina-learning.server";
 
 const db = supabaseAdmin as unknown as SupabaseClient;
 
-export async function getSupportPlaybook() {
-  await requestScheduleActor();
-  const result = await db
-    .from("ai_support_playbook")
-    .select("value,revision")
-    .eq("id", true)
-    .maybeSingle();
-  if (result.error) throw Error("Не удалось загрузить памятку Александра");
-  return {
-    value: result.data ? playbookSchema.parse(result.data.value) : DEFAULT_SUPPORT_PLAYBOOK,
-    revision: (result.data?.revision as string | undefined) ?? "initial",
-  };
-}
+export { getSupportPlaybook } from "./support-playbook.server";
 
 export async function saveSupportPlaybook(raw: unknown) {
   const actor = await requestScheduleActor();
