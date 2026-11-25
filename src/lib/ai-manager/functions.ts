@@ -38,9 +38,9 @@ export const saveAlexanderPlaybook = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => (await import("./employee-tests.server")).saveSupportPlaybook(data));
 
-export const testEmployeeOpenAI = createServerFn({ method: "POST" })
+export const testEmployeeConnection = createServerFn({ method: "POST" })
   .middleware([requireUser])
-  .handler(async () => (await import("./employee-tests.server")).checkEmployeeOpenAI());
+  .handler(async () => (await import("./employee-tests.server")).checkEmployeeConnection());
 
 export const testEmployeeScenario = createServerFn({ method: "POST" })
   .middleware([requireUser])

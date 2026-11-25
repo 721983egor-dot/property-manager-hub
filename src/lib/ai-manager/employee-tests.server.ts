@@ -74,20 +74,26 @@ export async function getEmployeeHandbooks() {
   }));
 }
 
-function providerError(error: unknown) {
+const providerNames = {
+  openai: "OpenAI",
+  yandex: "Yandex AI Studio",
+  gateway: "Шлюз OpenAI",
+};
+
+function providerError(error: unknown, source: keyof typeof providerNames) {
+  const provider = providerNames[source];
   if (APICallError.isInstance(error)) {
     const code = error.statusCode;
-    if (code === 401) return "OpenAI отклонил ключ (401)";
-    if (code === 403)
-      return "OpenAI или API-шлюз запретил запрос (403). Проверьте регион и разрешения проекта.";
-    if (code === 404) return "OpenAI не нашёл модель или маршрут API (404)";
-    if (code === 429) return "OpenAI вернул ограничение квоты или частоты (429)";
+    if (code === 401) return `${provider}: ошибка авторизации (401)`;
+    if (code === 403) return `${provider}: запрос запрещён (403). Проверьте разрешения проекта.`;
+    if (code === 404) return `${provider}: модель или маршрут API не найдены (404)`;
+    if (code === 429) return `${provider}: превышена квота или частота запросов (429)`;
     if (code) return `API вернул ошибку HTTP ${code}`;
   }
-  return "Ответ от OpenAI не получен. Проверьте доступ сервера к API и тайм-аут.";
+  return `Ответ от ${provider} не получен. Проверьте доступ сервера к API и тайм-аут.`;
 }
 
-export async function checkEmployeeOpenAI() {
+export async function checkEmployeeConnection() {
   await requestScheduleActor();
   const setup = resolveEmployeeModel();
   if ("error" in setup) return { ok: false, message: setup.error };
@@ -101,10 +107,13 @@ export async function checkEmployeeOpenAI() {
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(12_000),
     });
-    if (!response.text.trim()) return { ok: false, message: "OpenAI вернул пустой ответ" };
-    return { ok: true, message: `OpenAI ответил с сервера РМ ОС за ${Date.now() - start} мс` };
+    if (!response.text.trim()) return { ok: false, message: "Модель вернула пустой ответ" };
+    return {
+      ok: true,
+      message: `${providerNames[setup.source]} ответил с сервера РМ ОС за ${Date.now() - start} мс`,
+    };
   } catch (error) {
-    return { ok: false, message: providerError(error) };
+    return { ok: false, message: providerError(error, setup.source) };
   }
 }
 
@@ -132,7 +141,7 @@ export async function runEmployeeScenario(raw: unknown) {
     draft = result.text.trim();
     if (!draft) throw Error();
   } catch (error) {
-    throw Error(providerError(error));
+    throw Error(providerError(error, setup.source));
   }
   const runId = await trackEmployeeScenario(scenario, actor);
   return { draft, expected: sample.expected, rule: sample.rule, runId };

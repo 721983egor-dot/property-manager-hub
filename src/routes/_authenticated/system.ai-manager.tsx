@@ -13,7 +13,7 @@ import {
   getManagerPlaybook,
   saveAlexanderPlaybook,
   saveManagerPlaybook,
-  testEmployeeOpenAI,
+  testEmployeeConnection,
   testEmployeeScenario,
 } from "@/lib/ai-manager/functions";
 import { DEFAULT_PLAYBOOK } from "@/lib/ai-manager/model";
@@ -175,7 +175,7 @@ function EmployeePlaybook({ employee }: { employee: "marina" | "alexander" }) {
 
 function EmployeeTests() {
   const queryClient = useQueryClient();
-  const probe = useServerFn(testEmployeeOpenAI);
+  const probe = useServerFn(testEmployeeConnection);
   const run = useServerFn(testEmployeeScenario);
   const approve = useServerFn(approveEmployeeSkill);
   const connection = useMutation({ mutationFn: () => probe() });
@@ -195,10 +195,10 @@ function EmployeeTests() {
   return (
     <section className="space-y-4 rounded-xl border bg-card p-5" aria-labelledby="employee-tests">
       <h2 id="employee-tests" className="text-lg font-semibold">
-        OpenAI и учебные сценарии
+        Подключение модели и учебные сценарии
       </h2>
       <Button variant="outline" disabled={connection.isPending} onClick={() => connection.mutate()}>
-        {connection.isPending ? "Проверяю…" : "Проверить OpenAI с сервера"}
+        {connection.isPending ? "Проверяю…" : "Проверить модель с сервера"}
       </Button>
       {connection.data && (
         <p role="status" className="text-sm">

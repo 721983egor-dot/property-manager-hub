@@ -17,11 +17,11 @@ export function managerReadTools() {
       inputSchema: z.object({}),
       execute: async () => (await import("./employee-tests.server")).getEmployeeHandbooks(),
     }),
-    checkEmployeeOpenAI: tool({
+    checkEmployeeConnection: tool({
       description:
-        "Проверить OpenAI из серверного процесса РМ ОС коротким запросом без клиентских данных. Только администратор.",
+        "Проверить модель ИИ-сотрудников из серверного процесса РМ ОС коротким запросом без клиентских данных. Только администратор.",
       inputSchema: z.object({}),
-      execute: async () => (await import("./employee-tests.server")).checkEmployeeOpenAI(),
+      execute: async () => (await import("./employee-tests.server")).checkEmployeeConnection(),
     }),
     getAlexanderPlaybook: tool({
       description: "Памятка Александра по сопровождению аренды и её версия. Только администратор.",
