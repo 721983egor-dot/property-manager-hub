@@ -15,11 +15,17 @@ MODEL = "openai/gpt-5.4-mini"
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--save", type=Path, help="Create a new private environment file")
+    parser.add_argument("--hex", action="store_true", help="Accept a hex-encoded key from the hidden prompt")
     args = parser.parse_args()
     if args.save and args.save.exists():
         raise SystemExit("The configuration file already exists.")
     with open("/dev/tty", "r+"):
         key = getpass.getpass("Polza API key (hidden): ").strip()
+    if args.hex:
+        try:
+            key = bytes.fromhex(key).decode("ascii")
+        except ValueError:
+            raise SystemExit("Invalid hex encoding.") from None
     if not re.fullmatch(r"pza_[a-zA-Z0-9_-]{16,}", key):
         raise SystemExit("Unexpected key format.")
     request = urllib.request.Request(
