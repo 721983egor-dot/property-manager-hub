@@ -17,7 +17,7 @@ BASE = ROOT / "beget-production-20261115"
 PRODUCTION = BASE / "production.yml"
 WORK = ROOT / "ai-employees-20261125"
 SOURCE = WORK / "marina-learning"
-CANDIDATE = WORK / "marina-marketplaces"
+CANDIDATE = WORK / "marina-marketplaces-v2"
 OVERLAY = WORK / "marina-marketplaces-overlay.json"
 BACKUP = BASE / "production.before-marina-marketplaces.yml"
 PENDING = BASE / "production.marina-marketplaces-candidate.yml"
@@ -53,12 +53,41 @@ def build(revision):
             return response.read(300_000).decode()
     shutil.copytree(SOURCE, CANDIDATE,
                     ignore=shutil.ignore_patterns(".git", ".env*", "node_modules", ".output", "dist"))
-    for path in [
-        "src/lib/ai-manager/model.ts",
-        "src/lib/ai-manager/service.server.ts",
-        "src/lib/ai-manager/marina-instructions.ts",
-    ]:
-        (CANDIDATE / path).write_text(fetch(path))
+    root = "src/lib/ai-manager/"
+    def slice_between(source, start, end):
+        begin = source.index(start)
+        return source[begin:source.index(end, begin)]
+
+    instructions = root + "marina-instructions.ts"
+    (CANDIDATE / instructions).write_text(fetch(instructions))
+
+    model_file = CANDIDATE / (root + "model.ts")
+    model = model_file.read_text()
+    helpers = slice_between(fetch(root + "model.ts"),
+                            "export function marketplaceListingUrl(", "export function channelNotice(")
+    model_file.write_text(replace_once(model, "export function channelNotice(",
+                                      helpers + "export function channelNotice("))
+
+    service_file = CANDIDATE / (root + "service.server.ts")
+    service = service_file.read_text()
+    reference = fetch(root + "service.server.ts")
+    service = 'import { hasUnapprovedMarketplaceContact, marketplaceListingUrl } from "./model";\n' + service
+    marker = "export async function prepareChatReview("
+    service = replace_once(service, marker,
+                           slice_between(reference, "async function marketplaceListings(", marker) + marker)
+    marker = "  const result = await generateText({"
+    service = replace_once(service, marker,
+                           "  const listings = await marketplaceListings(c.thread.source);\n" + marker)
+    old_policy = next(line for line in service.splitlines() if line.startswith("Для Авито/Циан"))
+    new_policy = next(line for line in reference.splitlines()
+                      if line.startswith("Для Авито и Циана, если клиент"))
+    service = replace_once(service, old_policy, new_policy)
+    service = replace_once(service, "      messages: c.messages,",
+                           "      listings,\n      messages: c.messages,")
+    start_marker, end_marker = "  const notice = channelNotice(c.thread.source);", "  const id = randomUUID();"
+    service = replace_once(service, slice_between(service, start_marker, end_marker),
+                           slice_between(reference, start_marker, end_marker))
+    service_file.write_text(service)
 
     OVERLAY.write_text(json.dumps({"services": {"app": {
         "image": NEW, "build": {"context": str(CANDIDATE)},
