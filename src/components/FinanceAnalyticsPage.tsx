@@ -403,6 +403,9 @@ export function FinanceAnalyticsPage({ dashboard = false }: { dashboard?: boolea
         <p className="fa-note">Сколько компания зарабатывает на каждом доме и квартире</p>
       )}
       <FinanceTabs active={dashboard ? "dashboard" : "reports"} />
+      <Link to="/finance/management" className="mt-4 inline-flex rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted">
+        Доход от управления
+      </Link>
       <div className="fa-toolbar">
         <select
           aria-label="Быстрый период"

@@ -1,0 +1,300 @@
+.management-page {
+  --management-dark: #19191e;
+  --management-lime: #cbfa5b;
+  --management-violet: #bc9bff;
+  min-width: 0;
+}
+.management-page .finance-page-header {
+  padding-bottom: 0;
+}
+.management-body {
+  display: grid;
+  gap: 22px;
+  padding: 24px clamp(14px, 3vw, 36px) 32px;
+}
+.management-dark {
+  background: var(--management-dark);
+  color: #fff;
+  border-radius: 18px;
+  padding: clamp(16px, 2.3vw, 28px);
+}
+.management-section-heading,
+.management-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.management-page .management-back {
+  display: inline-block;
+  color: #5b5a67;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  margin-bottom: 4px;
+}
+.management-picker {
+  background: white;
+  border-radius: 8px;
+  padding: 4px 7px;
+  flex-wrap: nowrap;
+}
+.management-picker strong,
+.management-range {
+  text-transform: capitalize;
+}
+.management-picker button {
+  padding: 7px;
+  border-radius: 5px;
+}
+.management-picker button:hover {
+  background: #eeeef1;
+}
+.management-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.management-metric {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+.management-metric > span {
+  color: #dfdfe7;
+  font-size: clamp(13px, 1.4vw, 20px);
+}
+.management-metric > strong {
+  font-size: clamp(24px, 4vw, 50px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+}
+.management-metric small,
+.management-muted,
+.management-range {
+  color: #cccbd5;
+}
+.management-lime {
+  color: var(--management-lime);
+}
+.management-violet {
+  color: var(--management-violet);
+}
+.management-groups {
+  display: grid;
+  gap: 15px;
+  margin-top: 22px;
+  border-top: 1px solid #44434b;
+  padding-top: 16px;
+}
+.management-groups h2,
+.management-commissions h2 {
+  font-size: 19px;
+  font-weight: 720;
+}
+.management-group {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(90px, 1.7fr) minmax(175px, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+.management-group-stack {
+  display: flex;
+  overflow: hidden;
+  background: #32313a;
+  border-radius: 6px;
+  height: 28px;
+}
+.management-bar-contract {
+  background: var(--management-lime);
+}
+.management-bar-full {
+  background: var(--management-violet);
+}
+.management-group-values {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+  text-align: right;
+}
+.management-commissions {
+  background: #fff;
+  border-radius: 12px;
+  padding: 17px 22px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 14px;
+}
+.management-commissions ul {
+  max-height: 10rem;
+  overflow-y: auto;
+}
+.management-commissions li,
+.management-commissions p,
+.management-note {
+  color: #5c5b68;
+  font-size: 14px;
+  margin-top: 5px;
+}
+.management-commission-totals {
+  display: grid;
+  gap: 3px;
+  text-align: right;
+}
+.management-commission-totals strong {
+  margin-left: 6px;
+}
+.management-table-title,
+.management-forecast h2 {
+  font-size: clamp(21px, 2.3vw, 28px);
+  font-weight: 720;
+  margin-bottom: 10px;
+}
+.management-table-wrap {
+  overflow: auto;
+  background: #fff;
+  border-radius: 12px;
+}
+.management-table {
+  width: 100%;
+  min-width: 790px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.management-table th,
+.management-table td {
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #ecebef;
+}
+.management-table thead {
+  color: #494857;
+}
+.management-table td:nth-last-child(-n + 3) {
+  white-space: nowrap;
+}
+.management-table-group {
+  background: #f7f7f9;
+}
+.management-table a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.management-sub {
+  display: block;
+  color: #5c5b68;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+.management-note {
+  margin-block: 9px;
+}
+.management-legend {
+  display: flex;
+  gap: 10px 30px;
+  flex-wrap: wrap;
+  margin: 13px 0;
+  font-weight: 600;
+}
+.management-legend span::before {
+  content: "";
+  display: inline-block;
+  width: 25px;
+  border-top: 3px solid;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.management-plot {
+  position: relative;
+  height: 258px;
+  min-width: 0;
+}
+.management-month-hitboxes {
+  position: absolute;
+  inset: 20px 14px 0 57px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+.management-month-hitboxes button {
+  cursor: crosshair;
+  min-width: 0;
+  border-radius: 4px;
+}
+.management-month-hitboxes button:focus-visible {
+  outline: 2px solid white;
+}
+.management-month-hitboxes button[aria-pressed="true"] {
+  background-color: #ffffff21;
+}
+.management-tooltip {
+  position: absolute;
+  inset: 12px 22px auto auto;
+  width: min(268px, calc(100% - 36px));
+  color: #19191e;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 0 2px 18px #0006;
+  padding: 12px;
+  font-size: 13px;
+  pointer-events: none;
+}
+.management-tooltip dl {
+  margin: 4px 0 0;
+}
+.management-tooltip dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 4px;
+}
+.management-tooltip dd {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.management-tooltip small {
+  display: block;
+  margin-top: 5px;
+  color: #555;
+}
+@media (max-width: 650px) {
+  .management-body {
+    gap: 14px;
+  }
+  .management-metrics {
+    grid-template-columns: 1fr;
+    gap: 11px;
+  }
+  .management-metric {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+  }
+  .management-metric small {
+    grid-column: 1 / -1;
+  }
+  .management-group {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .management-group-values {
+    flex-direction: row;
+    flex-wrap: wrap;
+    text-align: left;
+    gap: 4px 9px;
+  }
+  .management-group-stack {
+    height: 12px;
+  }
+  .management-commission-totals {
+    text-align: left;
+  }
+  .management-plot {
+    height: 230px;
+  }
+  .management-plot .recharts-xAxis .recharts-text {
+    font-size: 9px;
+  }
+}

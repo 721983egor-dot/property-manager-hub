@@ -2093,6 +2093,13 @@ export function createReadTools(ctx: AssistantToolContext) {
       },
     }),
 
+    getFinanceManagementReport: tool({
+      description: "Доход от управления объектами РМ: выбранный месяц YYYY-MM и прогноз на 12 месяцев. По заключённым договорам, при полной сдаче, разница и разовые комиссии. Суммы в копейках. Только администратор.",
+      inputSchema: z.object({ month: z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/) }),
+      execute: async ({ month }) =>
+        (await import("@/lib/finance-management.server")).getFinanceManagementReport(month),
+    }),
+
     listPayments: tool({
       description:
         "Список платежей блока «Финансы»: период, объект, статус, направление. Части аренды учитываются по фактическим датам и счетам. Неполученный остаток остаётся планом. id — исходный платёж для корректировки, movementId — отдельная часть.",
