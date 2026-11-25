@@ -13,7 +13,7 @@ import urllib.request
 BASE = Path("/opt/rm-os-recovery/beget-production-20261115")
 STAGING = Path("/opt/rm-os-recovery/ai-employees-20261125")
 PRODUCTION = BASE / "production.yml"
-PENDING = BASE / "production.polza-candidate.yml"
+PENDING = BASE / "production.polza-candidate-v2.yml"
 BACKUP = BASE / "production.before-polza-20261125.yml"
 OVERLAY = STAGING / "polza-employee-overlay.json"
 HISTORY = STAGING / "polza-activate.log"
@@ -73,7 +73,12 @@ def install():
     if not app_match:
         raise RuntimeError("The deployment file does not have a recognizable app service.")
     app_text = replace_one(app_match[0], f"    image: {OLD_IMAGE}\n",
-                           f"    image: {NEW_IMAGE}\n    env_file:\n      - {env_path}\n")
+                           f"    image: {NEW_IMAGE}\n")
+    if "    env_file:\n" in app_text:
+        app_text = replace_one(app_text, "    env_file:\n", f"    env_file:\n      - {env_path}\n")
+    else:
+        app_text = replace_one(app_text, f"    image: {NEW_IMAGE}\n",
+                               f"    image: {NEW_IMAGE}\n    env_file:\n      - {env_path}\n")
     app_text = replace_one(app_text, f"      context: {old_context}\n", f"      context: {new_context}\n")
     new_contents = contents[:app_match.start()] + app_text + contents[app_match.end():]
     with PENDING.open("x") as file:
