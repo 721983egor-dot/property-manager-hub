@@ -1,4 +1,5 @@
 import { MarketingAttributionDetails } from "@/components/MarketingAttributionDetails";
+import { ChatManagerReview } from "@/components/ChatManagerReview";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminOnly } from "@/components/AdminOnly";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -324,6 +325,7 @@ function ChatsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                  <ChatManagerReview key={active.id} threadId={active.id} onDraft={setText} />
                   {active.client_id ? (
                     <Button size="sm" variant="outline" className="w-full sm:w-auto" asChild>
                       <Link to="/crm/clients/$id" params={{ id: active.client_id }}>

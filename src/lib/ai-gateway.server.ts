@@ -36,3 +36,15 @@ export function resolveAssistantModel(): AssistantModelSetup | { error: string }
   const modelId = process.env["OPENAI_MODEL"] || OPENAI_DEFAULT_MODEL;
   return { model: provider(modelId), source: "openai" };
 }
+
+export function resolveEmployeeModel(env: Record<string, string | undefined> = process.env) {
+  const key = env["OPENAI_API_KEY"]?.trim();
+  if (!key) return { error: "На сервере РМ ОС отсутствует ключ OpenAI" };
+  const provider = createOpenAI({
+    name: "openai",
+    baseURL: env["OPENAI_BASE_URL"] || "https://api.openai.com/v1",
+    apiKey: key,
+  });
+  const model = env["AI_EMPLOYEES_OPENAI_MODEL"]?.trim() || env["OPENAI_MODEL"]?.trim() || OPENAI_DEFAULT_MODEL;
+  return { model: provider(model), source: "openai" as const };
+}

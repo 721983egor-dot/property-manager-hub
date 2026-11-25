@@ -1,3 +1,4 @@
+import { managerReadTools } from "@/lib/ai-manager/tools.server";
 import { yandexReadTools } from '@/lib/yandex-marketing/tools.server';
 import {calendarReadTools} from '@/lib/apple-calendar/tools.server';
 import {workingSelectionReadTools} from '@/lib/working-selections-tools.server';
@@ -148,6 +149,7 @@ export function createReadTools(ctx: AssistantToolContext) {
     ...yandexReadTools(),
     ...workingSelectionReadTools(),
     ...scheduledReadTools(ctx),
+    ...managerReadTools(),
     ...leaseReadTools(ctx),
     getCrmResults: tool({
       description: "CRM: в режиме won также возвращает commission: план и факт дохода компании по датам платежей, включая ранее закрытые договоры; оборот аренды отдельно, сезонные цены учтены. Обращения по дате создания и исходному источнику, успешные по дате закрытия и площадке сделки, проваленные по причинам. Даты YYYY-MM-DD по Москве; пустые даты = всё время. Только администратор.",

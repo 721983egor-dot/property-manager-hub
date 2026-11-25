@@ -6,6 +6,7 @@ import { Loader2, Plus, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { AiStaffCards } from "@/components/AiStaffCards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -155,6 +156,7 @@ function StaffPage() {
         ))}
       </div>
 
+      {isAdmin && <AiStaffCards />}
       <StaffDialog
         open={Boolean(editing)}
         member={editing}
