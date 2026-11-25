@@ -18,6 +18,7 @@ import {
   trackEmployeeScenario,
 } from "./employee-skills.server";
 import { AI_EMPLOYEE_PROFILES } from "./profiles";
+import { approvedMarinaShowingRules } from "./marina-learning.server";
 
 const db = supabaseAdmin as unknown as SupabaseClient;
 
@@ -127,6 +128,7 @@ export async function runEmployeeScenario(raw: unknown) {
     ? await getPlaybook()
     : await getSupportPlaybook();
   const rules = await approvedEmployeeRules(sample.employeeId);
+  if (sample.employeeId === "marina") rules.push(...(await approvedMarinaShowingRules()));
   let draft: string;
   try {
     const result = await generateText({

@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
 import { getEmployeeHandbooks } from "@/lib/ai-manager/functions";
+import { MarinaCoreInstructions, MarinaShowingLearning } from "@/components/MarinaShowingLearning";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const dateTime = new Intl.DateTimeFormat("ru-RU", {
@@ -83,8 +84,10 @@ export function AiStaffCards() {
                   ))}
                 </ul>
               </div>
-              <details>
+              <details open={employee.id === "marina" || undefined}>
                 <summary className="cursor-pointer font-medium">Действующие инструкции</summary>
+                {employee.id === "marina" && <MarinaCoreInstructions />}
+                <h4 className="mt-3 font-medium">Памятка администратора</h4>
                 <p className="mt-2 whitespace-pre-wrap break-words">
                   {employee.playbook.instructions}
                 </p>
@@ -97,6 +100,7 @@ export function AiStaffCards() {
                     </p>
                   ))}
               </details>
+              {employee.id === "marina" && <MarinaShowingLearning />}
               <details>
                 <summary className="cursor-pointer font-medium">Обязанности и полномочия</summary>
                 <ul className="mt-2 list-disc space-y-1 pl-5">

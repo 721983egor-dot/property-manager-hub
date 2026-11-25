@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { AssistantToolContext } from "@/lib/ai/context.server";
 import { playbookSchema } from "./model";
+import { decideShowingRuleInput } from "./marina-learning";
 import {
   employeeScenarioApproval,
   employeeScenarioInput,
@@ -11,6 +12,12 @@ import {
 
 export function managerReadTools() {
   return {
+    listMarinaShowingRules: tool({
+      description:
+        "Показать предложенные и действующие правила Марины по состоявшимся показам. Только администратор.",
+      inputSchema: z.object({}),
+      execute: async () => (await import("./marina-learning.server")).listMarinaShowingRules(),
+    }),
     getAiEmployeeHandbooks: tool({
       description:
         "Показать действующие памятки, подтверждённые правила и время проверки навыков Марины и Александра. Только администратор.",
@@ -58,6 +65,26 @@ export function managerReadTools() {
 }
 export function managerMutateTools(ctx: AssistantToolContext) {
   return {
+    proposeMarinaShowingRuleDecision: tool({
+      description:
+        "Предложить подтвердить, отклонить или отключить правило Марины. Сначала listMarinaShowingRules. Решение применяется только после подтверждения назначенным администратором.",
+      inputSchema: decideShowingRuleInput,
+      execute: async (input) => {
+        const { listMarinaShowingRules } = await import("./marina-learning.server");
+        const { canDecide, rules } = await listMarinaShowingRules();
+        if (!canDecide) throw Error("Решение доступно назначенному администратору");
+        const rule = rules.find(
+          (item) => item.key === input.key && item.showingId === input.showingId,
+        );
+        if (!rule) throw Error("Сначала обновите список правил");
+        const label = { approved: "Подтвердить", dismissed: "Отклонить", revoke: "Отключить" }[
+          input.decision
+        ];
+        const summary = `${label} правило Марины\n${input.text}`;
+        ctx.propose({ tool: "decideMarinaShowingRule", summary, input });
+        return { proposed: summary };
+      },
+    }),
     proposeApproveAiEmployeeSkill: tool({
       description:
         "После проверки результата учебного сценария предложить включить правило в действующие инструкции. Используй scenario и runId из runAiEmployeeScenario. Требуется подтверждение администратора.",

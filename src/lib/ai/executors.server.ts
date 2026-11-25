@@ -27,6 +27,8 @@ async function logAction(summary: string, tool: string, input: Input) {
 
 /** Исполнители подтверждённых действий Ассистента. Ключ = поле `tool` предложения. */
 export const ASSISTANT_EXECUTORS: Record<string, Executor> = {
+  decideMarinaShowingRule: async (input) =>
+    (await import("@/lib/ai-manager/marina-learning.server")).decideMarinaShowingRule(input),
   saveRentalManagerPlaybook: async (input) => (await import("@/lib/ai-manager/service.server")).savePlaybook(input),
   applyRentalChatReview: async (input) => (await import("@/lib/ai-manager/service.server")).applyChatReview(input),
   saveAlexanderPlaybook: async (input) => (await import("@/lib/ai-manager/employee-tests.server")).saveSupportPlaybook(input),

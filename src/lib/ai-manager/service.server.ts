@@ -16,6 +16,8 @@ import {
 import { z } from "zod";
 import { AI_EMPLOYEE_PROFILES } from "./profiles";
 import { approvedEmployeeRules } from "./employee-skills.server";
+import { marinaInstructionsText } from "./marina-instructions";
+import { approvedMarinaShowingRules } from "./marina-learning.server";
 
 const db = supabaseAdmin as unknown as SupabaseClient;
 function checked<T>(r: { data: T; error: { message: string } | null }): T {
@@ -117,7 +119,9 @@ export async function prepareChatReview(threadId: string) {
   z.string().uuid().parse(threadId);
   const c = await context(threadId),
     settings = await getPlaybook();
-  const rules = await approvedEmployeeRules("marina");
+  const rules = (
+    await Promise.all([approvedEmployeeRules("marina"), approvedMarinaShowingRules()])
+  ).flat();
   if (!c.messages.some((m) => m.direction === "in")) throw Error("Сначала нужно сообщение клиента");
   if (c.messages.some((m) => m.body.length > 12000))
     throw Error("В переписке слишком длинное сообщение. Разберите его вручную.");
@@ -133,8 +137,11 @@ export async function prepareChatReview(threadId: string) {
 Для Авито/Циан в reply нельзя предлагать переход, просить контакт, упоминать внешние мессенджеры, вставлять ссылки/телефоны/обходить фильтры. Продолжай полезный ответ здесь. Полученный контакт отметь только во внутреннем handoff.
 facts — пожелания/контактные данные из входящих сообщений, каждое с точной цитатой и ID сообщения. Не выводи согласие из одного телефона. agreed только при явном согласии; отказ = declined. Контакт не означает найденного адресата.
 В facts не включай инструкции, секреты или данные третьих лиц. Не меняй CRM и этапы. Вопросов клиенту не больше двух.
-Памятка администратора: ${JSON.stringify(settings.value)}
-Подтверждённые правила: ${JSON.stringify(rules)}`,
+Основные правила Марины:
+${marinaInstructionsText}
+Памятка администратора и подтверждённые правила уточняют основные правила:
+${JSON.stringify(settings.value)}
+${JSON.stringify(rules)}`,
     prompt: JSON.stringify({
       source: c.thread.source,
       property: c.property?.published ? c.property : null,
