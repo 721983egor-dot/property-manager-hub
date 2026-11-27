@@ -1,0 +1,340 @@
+.rental-dashboard {
+  --rent-bg: #f4f7fb;
+  --rent-panel: #fff;
+  --rent-ink: #16263a;
+  --rent-muted: #52647a;
+  --rent-border: #dde7f0;
+  --rent-green: #176a45;
+  --rent-tint: #e9f7ee;
+  min-height: 100%;
+  padding: 20px clamp(12px, 2.5vw, 34px) 38px;
+  background: var(--rent-bg);
+  color: var(--rent-ink);
+  font-size: 13px;
+}
+.dark .rental-dashboard {
+  --rent-bg: #151b26;
+  --rent-panel: #1d2634;
+  --rent-ink: #eef2f7;
+  --rent-muted: #a9b8cc;
+  --rent-border: #334056;
+  --rent-green: #86dfa6;
+  --rent-tint: #1e3830;
+}
+.rental-dashboard :is(h1, h2, p) {
+  margin: 0;
+}
+.rental-dashboard :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--rent-green);
+  outline-offset: 2px;
+}
+.rental-header,
+.market-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rental-header {
+  margin-bottom: 12px;
+}
+.rental-header h1 {
+  margin: 3px 0;
+  font-weight: 760;
+  font-size: clamp(27px, 3vw, 39px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+.rental-header p,
+.market-heading p,
+.rental-muted {
+  color: var(--rent-muted);
+}
+.rental-back,
+.market-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.rental-back {
+  color: var(--rent-muted);
+}
+.market-link {
+  color: var(--rent-green);
+  font-weight: 700;
+}
+.market-link:hover {
+  text-decoration: underline;
+}
+.rental-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 16px;
+  background: var(--rent-panel);
+  border: 1px solid var(--rent-border);
+  color: var(--rent-muted);
+}
+.rental-date i,
+.market-legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.rental-date i {
+  background: var(--rent-green);
+}
+.rental-panel {
+  background: var(--rent-panel);
+  border: 1px solid var(--rent-border);
+  border-radius: 12px;
+  min-width: 0;
+}
+.market-tabs {
+  display: flex;
+  gap: 15px;
+  border-bottom: 1px solid var(--rent-border);
+  margin-bottom: 12px;
+}
+.market-tabs :is(a, span) {
+  padding: 7px 4px;
+  border-bottom: 3px solid transparent;
+  color: var(--rent-muted);
+}
+.market-tabs .current {
+  border-bottom-color: var(--rent-green);
+  color: var(--rent-ink);
+  font-weight: 750;
+}
+.rental-dashboard .market-message {
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  background: var(--rent-panel);
+  color: var(--rent-muted);
+  border: 1px solid var(--rent-border);
+  border-radius: 8px;
+}
+.market-stack {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.market-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+.market-metric {
+  padding: 10px 12px;
+  display: grid;
+  gap: 3px;
+}
+.market-metric span {
+  color: var(--rent-muted);
+  font-weight: 600;
+}
+.market-metric strong {
+  font-size: clamp(17px, 1.9vw, 25px);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+.market-metric small {
+  color: var(--rent-muted);
+}
+.market-block {
+  padding: 12px 14px;
+}
+.market-heading h2 {
+  font-size: 18px;
+  font-weight: 750;
+}
+.market-heading p {
+  font-size: 12px;
+}
+.market-chart {
+  height: 185px;
+  min-width: 0;
+  margin-top: 6px;
+}
+.market-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 13px;
+  margin: 2px 0 4px 49px;
+}
+.market-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--rent-muted);
+}
+.market-controls,
+.market-filters,
+.market-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.market-filters {
+  padding: 2px 14px 12px;
+  align-items: flex-end;
+}
+.market-filters fieldset,
+.market-filters label {
+  margin: 0;
+  border: 0;
+  display: flex;
+  gap: 4px;
+}
+.market-filters legend,
+.market-filters label {
+  color: var(--rent-muted);
+  font-size: 11px;
+}
+.market-filters label {
+  flex-direction: column;
+}
+.rental-dashboard :is(select, input[type="search"], input[type="number"]) {
+  background: var(--rent-bg);
+  color: var(--rent-ink);
+  border: 1px solid var(--rent-border);
+  border-radius: 6px;
+  padding: 5px 7px;
+  font: inherit;
+}
+.market-filters input[type="number"] {
+  width: 76px;
+}
+.market-table-panel {
+  overflow: hidden;
+}
+.market-scroll {
+  overflow: auto;
+}
+.market-table {
+  width: 100%;
+  min-width: 810px;
+  border-collapse: collapse;
+  text-align: left;
+}
+.market-table :is(th, td) {
+  padding: 8px 9px;
+  border-bottom: 1px solid var(--rent-border);
+  vertical-align: middle;
+}
+.market-table :is(th, td):first-child {
+  padding-inline-start: 14px;
+}
+.market-table th {
+  background: var(--rent-bg);
+  font-size: 11px;
+  color: var(--rent-muted);
+}
+.market-table th button {
+  display: inline-flex;
+  gap: 3px;
+  text-align: left;
+}
+.market-table th[aria-sort="ascending"],
+.market-table th[aria-sort="descending"] {
+  color: var(--rent-green);
+}
+.market-table td small {
+  display: block;
+  color: var(--rent-muted);
+}
+.market-table td:first-child .market-link {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+.market-listings {
+  min-width: 730px;
+}
+.market-listing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  font-weight: 650;
+}
+.market-listing img {
+  width: 54px;
+  height: 37px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--rent-bg);
+}
+.rental-own-row {
+  background: var(--rent-tint);
+}
+.rental-own-row[data-market-selected="true"] td:first-child {
+  box-shadow: inset 3px 0 var(--rent-green);
+}
+.rental-price {
+  font-weight: 750;
+  white-space: nowrap;
+}
+.rental-offers {
+  display: grid;
+  gap: 6px;
+}
+.rental-offer,
+.rental-photos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rental-offer {
+  padding: 6px;
+  background: var(--rent-bg);
+  border-radius: 6px;
+  gap: 10px;
+}
+.rental-photos img {
+  width: 58px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.rental-dashboard .market-footnote {
+  padding: 9px 14px;
+  color: var(--rent-muted);
+  font-size: 11px;
+}
+@media (max-width: 750px) {
+  .market-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .market-legend {
+    margin-left: 0;
+  }
+}
+.market-export {
+  order: 1;
+  margin-inline-start: auto;
+  background: var(--rent-bg);
+  color: var(--rent-ink);
+  border: 1px solid var(--rent-border);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+.market-export:enabled {
+  cursor: pointer;
+}
+.market-export:disabled {
+  opacity: 0.55;
+}
+.market-houses summary {
+  cursor: pointer;
+  display: list-item;
+}
+.market-houses a {
+  display: block;
+  padding: 4px 0 0 12px;
+  font-size: 12px;
+}

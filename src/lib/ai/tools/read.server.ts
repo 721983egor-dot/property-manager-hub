@@ -143,6 +143,13 @@ export function createReadTools(ctx: AssistantToolContext) {
   };
 
   return {
+    getRentalMarket: tool({
+      description: "Аналитика долгосрочной аренды по домам каталога: последние и помесячные срезы Metrapi, медиана ставок, число конкурентов. house или property открывает конкретный дом. Только администратор.",
+      inputSchema: z.object({ house: z.string().optional(), property: z.string().uuid().optional() }),
+      execute: async ({ house, property }) =>
+        (await import("@/lib/market/rental-market.server")).readRentalMarket(house, property),
+    }),
+    ...mailReadTools(),
     ...propertyKeyReadTools(),
     ...calendarReadTools(),
     ...yandexReadTools(),

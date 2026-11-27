@@ -64,7 +64,10 @@ function ObjectViewPage() {
   const { isAdmin, loading } = useAccess();
   const [full,setFull]=useState(false);
   if (loading) return <p className="p-6">Загрузка…</p>;
-  return full && isAdmin ? <><div className="px-6 pt-4"><Button variant="outline" onClick={()=>setFull(false)}>← Рабочая карточка</Button></div><AdminObjectViewPage /></> : <ManagerOfficeObject propertyId={id} onAdmin={isAdmin?()=>setFull(true):undefined} />;
+  return <>{isAdmin && <div className="px-6 pt-4 flex flex-wrap gap-2">
+    {full && <Button variant="outline" onClick={() => setFull(false)}>← Рабочая карточка</Button>}
+    <Button asChild variant="outline"><Link to="/promo/competitors" search={{house:undefined,property:id}}>Сравнить с рынком</Link></Button>
+  </div>}{full && isAdmin ? <AdminObjectViewPage /> : <ManagerOfficeObject propertyId={id} onAdmin={isAdmin ? () => setFull(true) : undefined} />}</>;
 }
 function AdminObjectViewPage() {
   const { id } = Route.useParams();

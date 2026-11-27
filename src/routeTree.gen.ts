@@ -56,6 +56,7 @@ import { Route as AuthenticatedOwnerIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPromoIndexRouteImport } from './routes/_authenticated/promo.index'
 import { Route as AuthenticatedPromoIdRouteImport } from './routes/_authenticated/promo.$id'
 import { Route as AuthenticatedPromoAvitoRouteImport } from './routes/_authenticated/promo.avito'
+import { Route as AuthenticatedPromoCompetitorsRouteImport } from './routes/_authenticated/promo.competitors'
 import { Route as AuthenticatedPromoImportRouteImport } from './routes/_authenticated/promo.import'
 import { Route as AuthenticatedSelectionsIndexRouteImport } from './routes/_authenticated/selections.index'
 import { Route as AuthenticatedSelectionsIdRouteImport } from './routes/_authenticated/selections.$id'
@@ -94,6 +95,7 @@ import { Route as ApiPublicCronAssistantActionsRouteImport } from './routes/api/
 import { Route as ApiPublicCronBnovoSyncRouteImport } from './routes/api/public/cron/bnovo-sync'
 import { Route as ApiPublicCronCianSyncRouteImport } from './routes/api/public/cron/cian-sync'
 import { Route as ApiPublicCronFinanceSeriesRouteImport } from './routes/api/public/cron/finance-series'
+import { Route as ApiPublicCronRentalMarketRouteImport } from './routes/api/public/cron/rental-market'
 import { Route as ApiPublicCronVideoPublishRouteImport } from './routes/api/public/cron/video-publish'
 import { Route as ApiPublicCronYandexMarketingRouteImport } from './routes/api/public/cron/yandex-marketing'
 import { Route as ApiPublicFeedPhotoSplatRouteImport } from './routes/api/public/feed-photo/$'
@@ -358,6 +360,12 @@ const AuthenticatedPromoAvitoRoute = AuthenticatedPromoAvitoRouteImport.update({
   path: '/promo/avito',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPromoCompetitorsRoute =
+  AuthenticatedPromoCompetitorsRouteImport.update({
+    id: '/promo/competitors',
+    path: '/promo/competitors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPromoImportRoute =
   AuthenticatedPromoImportRouteImport.update({
     id: '/promo/import',
@@ -577,6 +585,12 @@ const ApiPublicCronFinanceSeriesRoute =
     path: '/api/public/cron/finance-series',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronRentalMarketRoute =
+  ApiPublicCronRentalMarketRouteImport.update({
+    id: '/api/public/cron/rental-market',
+    path: '/api/public/cron/rental-market',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronVideoPublishRoute =
   ApiPublicCronVideoPublishRouteImport.update({
     id: '/api/public/cron/video-publish',
@@ -704,6 +718,7 @@ export interface FileRoutesByFullPath {
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
+  '/promo/competitors': typeof AuthenticatedPromoCompetitorsRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
   '/selections/$id': typeof AuthenticatedSelectionsIdRoute
   '/system/advertising': typeof AuthenticatedSystemAdvertisingRoute
@@ -741,6 +756,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
+  '/api/public/cron/rental-market': typeof ApiPublicCronRentalMarketRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/cron/yandex-marketing': typeof ApiPublicCronYandexMarketingRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
@@ -803,6 +819,7 @@ export interface FileRoutesByTo {
   '/objects/new': typeof AuthenticatedObjectsNewRoute
   '/promo/$id': typeof AuthenticatedPromoIdRoute
   '/promo/avito': typeof AuthenticatedPromoAvitoRoute
+  '/promo/competitors': typeof AuthenticatedPromoCompetitorsRoute
   '/promo/import': typeof AuthenticatedPromoImportRoute
   '/selections/$id': typeof AuthenticatedSelectionsIdRoute
   '/system/advertising': typeof AuthenticatedSystemAdvertisingRoute
@@ -840,6 +857,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
+  '/api/public/cron/rental-market': typeof ApiPublicCronRentalMarketRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/cron/yandex-marketing': typeof ApiPublicCronYandexMarketingRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
@@ -906,6 +924,7 @@ export interface FileRoutesById {
   '/_authenticated/objects/new': typeof AuthenticatedObjectsNewRoute
   '/_authenticated/promo/$id': typeof AuthenticatedPromoIdRoute
   '/_authenticated/promo/avito': typeof AuthenticatedPromoAvitoRoute
+  '/_authenticated/promo/competitors': typeof AuthenticatedPromoCompetitorsRoute
   '/_authenticated/promo/import': typeof AuthenticatedPromoImportRoute
   '/_authenticated/selections/$id': typeof AuthenticatedSelectionsIdRoute
   '/_authenticated/system/advertising': typeof AuthenticatedSystemAdvertisingRoute
@@ -943,6 +962,7 @@ export interface FileRoutesById {
   '/api/public/cron/bnovo-sync': typeof ApiPublicCronBnovoSyncRoute
   '/api/public/cron/cian-sync': typeof ApiPublicCronCianSyncRoute
   '/api/public/cron/finance-series': typeof ApiPublicCronFinanceSeriesRoute
+  '/api/public/cron/rental-market': typeof ApiPublicCronRentalMarketRoute
   '/api/public/cron/video-publish': typeof ApiPublicCronVideoPublishRoute
   '/api/public/cron/yandex-marketing': typeof ApiPublicCronYandexMarketingRoute
   '/api/public/feed-photo/$': typeof ApiPublicFeedPhotoSplatRoute
@@ -1009,6 +1029,7 @@ export interface FileRouteTypes {
     | '/objects/new'
     | '/promo/$id'
     | '/promo/avito'
+    | '/promo/competitors'
     | '/promo/import'
     | '/selections/$id'
     | '/system/advertising'
@@ -1046,6 +1067,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
+    | '/api/public/cron/rental-market'
     | '/api/public/cron/video-publish'
     | '/api/public/cron/yandex-marketing'
     | '/api/public/feed-photo/$'
@@ -1108,6 +1130,7 @@ export interface FileRouteTypes {
     | '/objects/new'
     | '/promo/$id'
     | '/promo/avito'
+    | '/promo/competitors'
     | '/promo/import'
     | '/selections/$id'
     | '/system/advertising'
@@ -1145,6 +1168,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
+    | '/api/public/cron/rental-market'
     | '/api/public/cron/video-publish'
     | '/api/public/cron/yandex-marketing'
     | '/api/public/feed-photo/$'
@@ -1210,6 +1234,7 @@ export interface FileRouteTypes {
     | '/_authenticated/objects/new'
     | '/_authenticated/promo/$id'
     | '/_authenticated/promo/avito'
+    | '/_authenticated/promo/competitors'
     | '/_authenticated/promo/import'
     | '/_authenticated/selections/$id'
     | '/_authenticated/system/advertising'
@@ -1247,6 +1272,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/bnovo-sync'
     | '/api/public/cron/cian-sync'
     | '/api/public/cron/finance-series'
+    | '/api/public/cron/rental-market'
     | '/api/public/cron/video-publish'
     | '/api/public/cron/yandex-marketing'
     | '/api/public/feed-photo/$'
@@ -1301,6 +1327,7 @@ export interface RootRouteChildren {
   ApiPublicCronBnovoSyncRoute: typeof ApiPublicCronBnovoSyncRoute
   ApiPublicCronCianSyncRoute: typeof ApiPublicCronCianSyncRoute
   ApiPublicCronFinanceSeriesRoute: typeof ApiPublicCronFinanceSeriesRoute
+  ApiPublicCronRentalMarketRoute: typeof ApiPublicCronRentalMarketRoute
   ApiPublicCronVideoPublishRoute: typeof ApiPublicCronVideoPublishRoute
   ApiPublicCronYandexMarketingRoute: typeof ApiPublicCronYandexMarketingRoute
   ApiPublicFeedPhotoSplatRoute: typeof ApiPublicFeedPhotoSplatRoute
@@ -1648,6 +1675,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPromoAvitoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/promo/competitors': {
+      id: '/_authenticated/promo/competitors'
+      path: '/promo/competitors'
+      fullPath: '/promo/competitors'
+      preLoaderRoute: typeof AuthenticatedPromoCompetitorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/promo/import': {
       id: '/_authenticated/promo/import'
       path: '/promo/import'
@@ -1914,6 +1948,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronFinanceSeriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/rental-market': {
+      id: '/api/public/cron/rental-market'
+      path: '/api/public/cron/rental-market'
+      fullPath: '/api/public/cron/rental-market'
+      preLoaderRoute: typeof ApiPublicCronRentalMarketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/video-publish': {
       id: '/api/public/cron/video-publish'
       path: '/api/public/cron/video-publish'
@@ -2039,6 +2080,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedObjectsNewRoute: typeof AuthenticatedObjectsNewRoute
   AuthenticatedPromoIdRoute: typeof AuthenticatedPromoIdRoute
   AuthenticatedPromoAvitoRoute: typeof AuthenticatedPromoAvitoRoute
+  AuthenticatedPromoCompetitorsRoute: typeof AuthenticatedPromoCompetitorsRoute
   AuthenticatedPromoImportRoute: typeof AuthenticatedPromoImportRoute
   AuthenticatedSelectionsIdRoute: typeof AuthenticatedSelectionsIdRoute
   AuthenticatedSystemAdvertisingRoute: typeof AuthenticatedSystemAdvertisingRoute
@@ -2096,6 +2138,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedObjectsNewRoute: AuthenticatedObjectsNewRoute,
   AuthenticatedPromoIdRoute: AuthenticatedPromoIdRoute,
   AuthenticatedPromoAvitoRoute: AuthenticatedPromoAvitoRoute,
+  AuthenticatedPromoCompetitorsRoute: AuthenticatedPromoCompetitorsRoute,
   AuthenticatedPromoImportRoute: AuthenticatedPromoImportRoute,
   AuthenticatedSelectionsIdRoute: AuthenticatedSelectionsIdRoute,
   AuthenticatedSystemAdvertisingRoute: AuthenticatedSystemAdvertisingRoute,
@@ -2200,6 +2243,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronBnovoSyncRoute: ApiPublicCronBnovoSyncRoute,
   ApiPublicCronCianSyncRoute: ApiPublicCronCianSyncRoute,
   ApiPublicCronFinanceSeriesRoute: ApiPublicCronFinanceSeriesRoute,
+  ApiPublicCronRentalMarketRoute: ApiPublicCronRentalMarketRoute,
   ApiPublicCronVideoPublishRoute: ApiPublicCronVideoPublishRoute,
   ApiPublicCronYandexMarketingRoute: ApiPublicCronYandexMarketingRoute,
   ApiPublicFeedPhotoSplatRoute: ApiPublicFeedPhotoSplatRoute,

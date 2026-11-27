@@ -1,0 +1,717 @@
+{
+  "checked": "26 ноября 2026",
+  "listings": [
+    {
+      "id": "3fe7cd28af0be6af2f844cc4",
+      "area": 70,
+      "floor": 3,
+      "layout": "2 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/336609278/",
+          "price": 55000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/3022452511-1.jpg",
+            "https://images.cdn-cian.ru/images/3022510413-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 60000,
+              "new": 55000,
+              "at": "2026-11-18T17:53:56.051080+00:00"
+            }
+          ],
+          "published": "2026-11-18T13:29:27.827000+00:00",
+          "updated": "2026-11-19T13:49:59+00:00",
+          "seen": "2026-11-26T12:59:22.862695+00:00",
+          "category": "Сезонная",
+          "terms": "От 6 месяцев. С мая по сентябрь +20 000 ₽ в месяц.",
+          "summerPrice": 75000
+        },
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/321429592/",
+          "price": 65000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2660165550-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2660165534-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 69000,
+              "new": 65000,
+              "at": "2026-11-23T08:23:02.788463+00:00"
+            },
+            {
+              "old": 79000,
+              "new": 69000,
+              "at": "2026-11-16T14:45:39.875294+00:00"
+            }
+          ],
+          "published": "2025-09-02T13:38:28.250000+00:00",
+          "updated": "2026-11-23T08:22:46+00:00",
+          "seen": "2026-11-25T10:20:20.562776+00:00",
+          "category": "Сезонная",
+          "terms": "В тексте срок до мая 2026 года уже истёк.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": 1
+    },
+    {
+      "id": "bb768c6edafd34e2929fff7d",
+      "area": 55.6,
+      "floor": 7,
+      "layout": "2 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Авито",
+          "url": "https://www.avito.ru/8502158183",
+          "price": 60000,
+          "photos": [
+            "https://c70.img.avito.st/image/1/1.WCedr7a49M6rGHbDoco6MJEP9sgjDnbYqwP2zC0G_MQr.frgrueyzVYkg37GIWtQ47grmgx897Oy0ksUsAIK3Uj8",
+            "https://80.img.avito.st/image/1/1.hsqY27a4KiOubKgumImgiZd7KCUmeqg1rncoIShyIiku.ENqtXHYEa_RrVIei1slqR-zCRu84_tVAakZF5zxppAM"
+          ],
+          "history": [],
+          "published": "2026-11-15T10:49:16+00:00",
+          "updated": "2026-11-15T10:50:08.349972+00:00",
+          "seen": "2026-11-26T11:59:58.205704+00:00",
+          "category": "Сезонная",
+          "terms": "Сдаётся до лета.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "83b5d52405e0e15c59927415",
+      "area": 55,
+      "floor": 11,
+      "layout": "1 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/336097098/",
+          "price": 50000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/3012506048-1.jpg",
+            "https://images.cdn-cian.ru/images/3012506066-1.jpg"
+          ],
+          "history": [],
+          "published": "2026-11-10T13:16:20.047000+00:00",
+          "updated": "2026-11-10T15:03:57+00:00",
+          "seen": "2026-11-26T12:57:16.176359+00:00",
+          "category": "Проверить цену",
+          "terms": "В описании 70 000 ₽ плюс ЖКУ.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "95865e69f1eff84dcf9ac636",
+      "area": 90,
+      "floor": 1,
+      "layout": "2 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/336039229/",
+          "price": 75000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-3010952723-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-3010952742-1.jpg"
+          ],
+          "history": [],
+          "published": "2026-11-09T08:40:59.927000+00:00",
+          "updated": "2026-11-09T08:41:02+00:00",
+          "seen": "2026-11-25T10:18:53.487232+00:00",
+          "category": "Срок по карточке",
+          "terms": "Длительная аренда",
+          "summerPrice": null
+        },
+        {
+          "source": "Авито",
+          "url": "https://www.avito.ru/8402184475",
+          "price": 75000,
+          "photos": [
+            "https://50.img.avito.st/image/1/1.eom-Xra41mCI6VRtxlNjpbD-1GYA_1R2iPLUYg733moI.PpTjdJLnVRacHHonUiCv4npe2nlSDrpmPkQvL5cXyxY",
+            "https://00.img.avito.st/image/1/1.Q2-nULa474aR522LrXVYQ6nw7YAZ8W2QkfzthBf554wR.uRyHY2DpTVEC70lgqof6kqIrLBt-gUNZkDCvpSS7XYM?cqp=2.YN7dHnrK-mhyvtTBpyubvaFoUVdTM3W7BFy5YaeXzZ_Q2glMrBb_s4irqaJhHlfJPgeDGUqVXQ=="
+          ],
+          "history": [],
+          "published": "2026-11-05T16:13:21+00:00",
+          "updated": "2026-11-05T16:15:50.342794+00:00",
+          "seen": "2026-11-26T11:30:04.171946+00:00",
+          "category": "Срок по карточке",
+          "terms": "Длительная аренда",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "5e537e27fd6b50a16afdf846",
+      "area": 550,
+      "floor": 17,
+      "layout": "5 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/336022517/",
+          "price": 500000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-3010928514-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-3010928246-1.jpg"
+          ],
+          "history": [],
+          "published": "2026-11-08T18:07:54.917000+00:00",
+          "updated": "2026-11-18T17:38:32+00:00",
+          "seen": "2026-11-26T11:52:27.751211+00:00",
+          "category": "Срок по карточке",
+          "terms": "Срок не указан",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "285ef0febe688e19b78d7ccf",
+      "area": 70,
+      "floor": 10,
+      "layout": "2 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/335295749/",
+          "price": 65000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2995037900-1.jpg",
+            "https://images.cdn-cian.ru/images/2995121625-1.jpg"
+          ],
+          "history": [],
+          "published": "2026-10-26T13:22:38.090000+00:00",
+          "updated": "2026-10-26T13:23:44+00:00",
+          "seen": "2026-11-25T10:19:01.742031+00:00",
+          "category": "Сезонная",
+          "terms": "С мая посуточно.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": 1
+    },
+    {
+      "id": "d4099a313dd1a7f9159ea907",
+      "area": 68,
+      "floor": 4,
+      "layout": "2 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/334343998/",
+          "price": 68000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2974228278-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2974244823-1.jpg"
+          ],
+          "history": [],
+          "published": "2026-09-28T14:15:05.200000+00:00",
+          "updated": "2026-10-29T09:04:34+00:00",
+          "seen": "2026-11-25T10:19:11.951892+00:00",
+          "category": "Без повышения летом",
+          "terms": "Срок по договорённости, без повышения на лето.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "91e7d96007320a0e0c557fe7",
+      "area": 70,
+      "floor": 16,
+      "layout": "Студия / комнаты не указаны",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Домклик",
+          "url": "https://sochi.domclick.ru/card/rent__flat__2080338690",
+          "price": 90424,
+          "photos": [
+            "https://img.dmclk.ru/s1200x800q80/rent/offer/38/88/388875f41de64f62b3ffe37dee398f5a.jpeg",
+            "https://img.dmclk.ru/s1200x800q80/rent/offer/40/a1/40a1ca6845b949f599283ae905c12004.jpeg"
+          ],
+          "history": [
+            {
+              "old": 97700,
+              "new": 90424,
+              "at": "2026-09-14T03:23:12.809218+00:00"
+            }
+          ],
+          "published": "2026-09-14T03:19:33+00:00",
+          "updated": "2026-09-14T03:22:13.368451+00:00",
+          "seen": "2026-11-26T08:10:07.788328+00:00",
+          "category": "Срок по карточке",
+          "terms": "Срок не указан",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "0417dbfaeb61413c48d47a03",
+      "area": 65,
+      "floor": 7,
+      "layout": "1 комн.",
+      "possibleOwn": true,
+      "offers": [
+        {
+          "source": "Яндекс",
+          "url": "https://realty.yandex.ru/offer/3449747965218039978",
+          "price": 65000,
+          "photos": [
+            "https://avatars.mds.yandex.net/get-realty-offers/13732998/bb410970-e276-4f40-b3f2-38fcc5872db9/large",
+            "https://avatars.mds.yandex.net/get-realty-offers/14918062/e0f4bf84-5c93-4be1-9374-7278e72e96f1/large"
+          ],
+          "history": [],
+          "published": "2026-09-12T12:21:07+00:00",
+          "updated": "2026-09-21T07:21:00+00:00",
+          "seen": "2026-11-23T12:50:43.321199+00:00",
+          "category": "Срок по карточке",
+          "terms": "Срок не указан",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": 1
+    },
+    {
+      "id": "edf6ea8e44fe991fec8fa1d1",
+      "area": 70,
+      "floor": 5,
+      "layout": "Студия / комнаты не указаны",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/333432397/",
+          "price": 79000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2954478442-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2954487061-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 89000,
+              "new": 79000,
+              "at": "2026-11-03T08:57:24.504305+00:00"
+            }
+          ],
+          "published": "2026-08-31T09:02:07.053000+00:00",
+          "updated": "2026-11-03T08:48:37+00:00",
+          "seen": "2026-11-25T10:19:54.258901+00:00",
+          "category": "Срок по карточке",
+          "terms": "Срок не указан",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "369f5c7e5908e3b1d081543d",
+      "area": 65,
+      "floor": 4,
+      "layout": "1 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/333375173/",
+          "price": 60000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/2953207082-1.jpg",
+            "https://images.cdn-cian.ru/images/2953219628-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 70000,
+              "new": 60000,
+              "at": "2026-10-20T23:38:46.859256+00:00"
+            }
+          ],
+          "published": "2026-08-28T11:00:08.887000+00:00",
+          "updated": "2026-10-30T14:05:16+00:00",
+          "seen": "2026-11-26T13:00:19.389121+00:00",
+          "category": "Длительная",
+          "terms": "Студия по описанию.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": 0
+    },
+    {
+      "id": "eafef0adbf701eab45ee972e",
+      "area": 65,
+      "floor": 16,
+      "layout": "Студия / комнаты не указаны",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://www.cian.ru/rent/flat/330330829",
+          "price": 60000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2885654691-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2885654669-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 120000,
+              "new": 60000,
+              "at": "2026-10-14T18:24:25.206499+00:00"
+            }
+          ],
+          "published": "2026-05-23T09:04:24+00:00",
+          "updated": "2026-11-15T13:34:40+00:00",
+          "seen": "2026-11-25T10:17:31.807949+00:00",
+          "category": "Сезонная",
+          "terms": "11 месяцев. Зимой по описанию 65 000 ₽ плюс ЖКУ.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "de5f9067fa8d405ba5910fd9",
+      "area": 68,
+      "floor": 14,
+      "layout": "2 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Домклик",
+          "url": "https://sochi.domclick.ru/card/rent__flat__2075201948",
+          "price": 90000,
+          "photos": [
+            "https://img.dmclk.ru/s1200x800q80/vitrina/38/14/3814cc93233867213537ac46128c294191f534a6.jpg",
+            "https://img.dmclk.ru/s1200x800q80/vitrina/4b/2e/4b2e86dda6b1ff418dbd218e264f904f77864f63.jpg"
+          ],
+          "history": [],
+          "published": "2026-03-06T19:27:30.009781+00:00",
+          "updated": "2026-11-13T17:41:43.281395+00:00",
+          "seen": "2026-11-26T08:10:09.707189+00:00",
+          "category": "Сезонная",
+          "terms": "Летом 150 000 ₽ плюс ЖКУ.",
+          "summerPrice": 150000
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "cbc9ddcce766efc8b68c1935",
+      "area": 88,
+      "floor": 15,
+      "layout": "3 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://www.cian.ru/rent/flat/327348097",
+          "price": 90000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2818306560-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2818298569-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 110000,
+              "new": 90000,
+              "at": "2026-11-16T02:11:27.280228+00:00"
+            },
+            {
+              "old": 140000,
+              "new": 110000,
+              "at": "2026-11-11T14:06:05.497705+00:00"
+            }
+          ],
+          "published": "2026-03-01T06:40:48+00:00",
+          "updated": "2026-11-16T02:09:40+00:00",
+          "seen": "2026-11-25T10:21:02.976112+00:00",
+          "category": "Срок по карточке",
+          "terms": "Длительная аренда",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "dec680d12ad235764b0c4eb1",
+      "area": 70,
+      "floor": 12,
+      "layout": "1 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/327261377/",
+          "price": 69000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2816084008-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2816074328-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 75000,
+              "new": 69000,
+              "at": "2026-11-23T08:23:02.788463+00:00"
+            },
+            {
+              "old": 85000,
+              "new": 75000,
+              "at": "2026-11-16T14:51:19.741755+00:00"
+            },
+            {
+              "old": 90000,
+              "new": 85000,
+              "at": "2026-11-09T07:31:54.561764+00:00"
+            }
+          ],
+          "published": "2026-02-26T10:16:34.733000+00:00",
+          "updated": "2026-11-23T08:22:31+00:00",
+          "seen": "2026-11-25T10:20:07.183374+00:00",
+          "category": "Сезонная",
+          "terms": "Аренда только на март.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "d7211ea75fcff78388582d8f",
+      "area": 88,
+      "floor": 8,
+      "layout": "4 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/321428533/",
+          "price": 130000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2615204785-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2615218297-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 120000,
+              "new": 130000,
+              "at": "2026-11-12T10:55:48.678196+00:00"
+            }
+          ],
+          "published": "2025-09-02T13:21:15.123000+00:00",
+          "updated": "2026-11-12T10:55:20+00:00",
+          "seen": "2026-11-25T10:22:16.849103+00:00",
+          "category": "Срок по карточке",
+          "terms": "Срок не указан",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "f0b6f3fdf3f987d616ab6bd6",
+      "area": 90,
+      "floor": 20,
+      "layout": "Студия / комнаты не указаны",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/310737784/",
+          "price": 90000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2339401080-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2339396092-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 100000,
+              "new": 90000,
+              "at": "2026-10-19T23:03:21.933654+00:00"
+            }
+          ],
+          "published": "2024-12-02T14:49:26.940000+00:00",
+          "updated": "2026-10-16T08:06:42+00:00",
+          "seen": "2026-11-25T10:21:07.293057+00:00",
+          "category": "Срок по карточке",
+          "terms": "Длительная аренда",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "df61ad66411ba7021538716f",
+      "area": 125,
+      "floor": 2,
+      "layout": "3 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/310343956/",
+          "price": 150000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2331475184-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2331475173-1.jpg"
+          ],
+          "history": [
+            {
+              "old": 90000,
+              "new": 150000,
+              "at": "2026-11-01T15:41:56.317414+00:00"
+            },
+            {
+              "old": 110000,
+              "new": 90000,
+              "at": "2026-10-25T17:11:28.797834+00:00"
+            }
+          ],
+          "published": "2024-11-23T06:12:06.760000+00:00",
+          "updated": "2026-11-01T15:36:15+00:00",
+          "seen": "2026-11-25T10:22:47.968799+00:00",
+          "category": "Срок по карточке",
+          "terms": "Срок не указан",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "7e328e60e21d8b38dcb8e8ec",
+      "area": 550,
+      "floor": 20,
+      "layout": "5 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/309349972/",
+          "price": 1000000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2312207186-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-2312207158-1.jpg"
+          ],
+          "history": [],
+          "published": "2024-10-31T18:41:39.617000+00:00",
+          "updated": "2026-11-21T08:03:53+00:00",
+          "seen": "2026-11-25T10:23:00.326178+00:00",
+          "category": "Срок по карточке",
+          "terms": "Срок не указан",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "5893e416c3a6c8e6e5a9498f",
+      "area": 88,
+      "floor": 6,
+      "layout": "3 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Яндекс",
+          "url": "https://realty.yandex.ru/offer/1639837164424287488",
+          "price": 90000,
+          "photos": [
+            "https://avatars.mds.yandex.net/get-realty-offers/10129302/add.23c6a9793ed7a1d5aee081d15bda292a.realty-api-vos/large",
+            "https://avatars.mds.yandex.net/get-realty-offers/12728172/add.64e342a0fedee3987399eb669571d70c.realty-api-vos/large"
+          ],
+          "history": [],
+          "published": "2024-06-16T06:46:42+00:00",
+          "updated": "2026-10-13T07:27:00+00:00",
+          "seen": "2026-11-23T12:51:40.638187+00:00",
+          "category": "Срок по карточке",
+          "terms": "Срок не указан",
+          "summerPrice": null
+        },
+        {
+          "source": "Яндекс",
+          "url": "https://realty.yandex.ru/offer/2074192048764054272",
+          "price": 90000,
+          "photos": [
+            "https://avatars.mds.yandex.net/get-realty-offers/14230192/184f5bff-d378-4eae-84a6-b836eb9a42d2/large",
+            "https://avatars.mds.yandex.net/get-realty-offers/14230192/88166379-790a-49d6-9365-1140036b79a4/large"
+          ],
+          "history": [],
+          "published": "2023-09-13T09:44:40+00:00",
+          "updated": "2026-10-13T07:05:00+00:00",
+          "seen": "2026-11-23T12:51:40.638187+00:00",
+          "category": "Срок по карточке",
+          "terms": "Длительная аренда",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "98fa573c53b19cf787866d41",
+      "area": 70,
+      "floor": 4,
+      "layout": "2 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/292345208/",
+          "price": 70000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-1934667556-1.jpg",
+            "https://images.cdn-cian.ru/images/kvartira-sochi-kurortnyy-prospekt-1934667573-1.jpg"
+          ],
+          "history": [],
+          "published": "2023-09-09T08:55:47.973000+00:00",
+          "updated": "2026-10-22T04:49:14+00:00",
+          "seen": "2026-11-25T10:20:44.056671+00:00",
+          "category": "Сезонная",
+          "terms": "Ставка действует до лета.",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    },
+    {
+      "id": "0109e2e44a1735f53e7e2886",
+      "area": 398,
+      "floor": 17,
+      "layout": "6 комн.",
+      "possibleOwn": false,
+      "offers": [
+        {
+          "source": "Циан",
+          "url": "https://sochi.cian.ru/rent/flat/282875193/",
+          "price": 495000,
+          "photos": [
+            "https://images.cdn-cian.ru/images/91/421/841/kvartira-sochi-kurortnyy-prospekt-1481241959-1.jpg",
+            "https://images.cdn-cian.ru/images/74/745/841/kvartira-sochi-kurortnyy-prospekt-1485474751-1.jpg"
+          ],
+          "history": [],
+          "published": "2023-01-25T18:41:55.290000+00:00",
+          "updated": "2026-11-26T08:11:49+00:00",
+          "seen": "2026-11-26T08:16:32.870714+00:00",
+          "category": "Срок по карточке",
+          "terms": "Длительная аренда",
+          "summerPrice": null
+        }
+      ],
+      "bedrooms": null
+    }
+  ],
+  "checkedAt": "2026-11-26T16:01:11+03:00"
+}

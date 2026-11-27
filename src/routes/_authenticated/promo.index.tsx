@@ -237,6 +237,9 @@ function PromoListPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" className="h-9">
+            <Link to="/promo/competitors" search={{house: undefined, property: undefined}}>Аналитика аренды</Link>
+          </Button>
+          <Button asChild variant="outline" className="h-9">
             <Link to="/promo/avito">
               <Link2 className="size-4" />
               Сопоставить Авито

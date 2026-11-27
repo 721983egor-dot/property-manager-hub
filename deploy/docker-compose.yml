@@ -36,6 +36,7 @@ services:
       - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_PROJECT_ID=${SUPABASE_PROJECT_ID}
+      - METRAPI_API_KEY=${METRAPI_API_KEY:-}
       - CIAN_API_KEY=${CIAN_API_KEY}
       - YANDEX_REALTY_TOKEN=${YANDEX_REALTY_TOKEN}
       - YANDEX_GEOCODER_API_KEY=${YANDEX_GEOCODER_API_KEY}
@@ -90,6 +91,7 @@ services:
       - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_PROJECT_ID=${SUPABASE_PROJECT_ID}
+      - METRAPI_API_KEY=${METRAPI_API_KEY:-}
       - CIAN_API_KEY=${CIAN_API_KEY}
       - YANDEX_REALTY_TOKEN=${YANDEX_REALTY_TOKEN}
       - YANDEX_GEOCODER_API_KEY=${YANDEX_GEOCODER_API_KEY}
@@ -261,6 +263,7 @@ services:
     restart: unless-stopped
     environment:
       - CRON_SECRET=${LOVABLE_CRON_SECRET:-}
+      - METRAPI_API_KEY=${METRAPI_API_KEY:-}
       - DEPLOY_AGENT_TOKEN=${DEPLOY_AGENT_TOKEN}
     command:
       - sh
@@ -284,6 +287,10 @@ services:
             -H "x-cron-secret: $$SECRET" || true
           curl -fsS --max-time 150 -X POST http://app:3000/api/public/cron/yandex-marketing \
             -H "x-cron-secret: $$SECRET" || true
+          if [ -n "$$CRON_SECRET" ] && [ -n "$$METRAPI_API_KEY" ]; then
+            curl -fsS --max-time 65 -X POST http://app:3000/api/public/cron/rental-market \
+              -H "Authorization: Bearer $$CRON_SECRET" || true
+          fi
           sleep 600
         done
     depends_on:
