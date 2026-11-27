@@ -48,7 +48,9 @@ export type MarketProperty = {
   price_month: number | null;
   summer_price_month: number | null;
   published: boolean;
+  publicUrl?: string;
 };
+export type MarketComplex = { id: string; name: string };
 export type MarketPoint = {
   day: string;
   checkedAt: string;
@@ -93,28 +95,59 @@ const streetTypes: [RegExp, string][] = [
 ];
 const neutral = (value: string) => value.toLocaleLowerCase("ru-RU").replaceAll("ё", "е");
 const houseNumber =
-  /^(?:д\.?\s*|дом\s+)?(\d+[а-яa-z]?(?:\s*[/-]\s*\d+[а-яa-z]?)*(?:\s*(?:корпус|корп\.?|к|строение|стр\.?)\s*\d+[а-яa-z]?)?)(?:\s|$)/u;
+  /^(?:д\.?\s*|дом\s+)?(\d+[а-яa-z]?(?:\s*[/-]\s*\d+(?:[а-яa-z]\d*)?)*(?:\s*(?:корпус|корп\.?|к\.?|строение|стр\.?)\s*[а-яa-z]?\d*[а-яa-z]?)?)(?:\s|$)/u;
+
+function addressNumber(part: string) {
+  return neutral(part.trim()).match(houseNumber)?.[1];
+}
+
+export function isMarketCatalogEntry(...values: (string | null)[]) {
+  return !values.some(
+    (value) =>
+      value &&
+      /(?:^|[^\p{L}\d])(?:тест(?:ов\p{L}*)?|test(?:ing)?|демонстрационн\p{L}*|[nhн]\s*[-‐‑–]?\s*11)(?=$|[^\p{L}\d])/iu.test(
+        value,
+      ),
+  );
+}
+
+function complexNameKey(name: string) {
+  return neutral(name)
+    .replace(/^жк\s+/u, "")
+    .replace(/[«»"„“”]/gu, "")
+    .trim();
+}
 
 export function marketAddress(address: string) {
   const parts = address.trim().split(/,\s*/u);
   for (const [index, part] of parts.entries()) {
-    const text = neutral(part).replace(/[.]/g, " ").replace(/\s+/g, " ").trim();
+    let text = neutral(part).replace(/[.]/g, " ").replace(/\s+/g, " ").trim();
+    text = text.replace(
+      /^ул(?:ица)? (?=.+ (?:улица|проспект|переулок|шоссе|набережная|бульвар|проезд)(?: |$))/u,
+      "",
+    );
     for (const [pattern, type] of streetTypes) {
       const rest = text.replace(pattern, " ").trim();
       if (rest === text) continue;
       const embedded = rest.match(/^(.*?)\s+(?=(?:дом\s+|д\s+)?\d+[а-яa-z]?(?:[\s/-]|$))(.+)$/u);
       const street = (embedded?.[1] ?? rest).trim();
-      const number = (embedded?.[2] ?? neutral(parts[index + 1] ?? "")).match(houseNumber)?.[1];
+      const following = addressNumber(parts[index + 1] ?? "");
+      const previous = parts[index - 1] ?? "";
+      const preceding =
+        !following && !embedded && addressNumber(previous) === neutral(previous.trim())
+          ? addressNumber(previous)
+          : undefined;
+      const number = embedded ? addressNumber(embedded[2] ?? "") : (following ?? preceding);
       if (!street || !number) continue;
       const suffix = neutral(parts[index + 2] ?? "");
       const block =
-        !embedded &&
+        following &&
         !/корп|стр|к\d/u.test(number) &&
         /^(?:корпус|корп\.?|к\.|строение|стр\.?)\s*\d/u.test(suffix)
           ? suffix
           : "";
       const canonical = (number + block)
-        .replace(/корпус|корп\.?/gu, "к")
+        .replace(/корпус|корп\.?|к\./gu, "к")
         .replace(/строение|стр\.?/gu, "с")
         .replace(/\s/g, "");
       return {
@@ -124,32 +157,45 @@ export function marketAddress(address: string) {
       };
     }
   }
+  // Some catalog addresses use a city and an adjectival street name without "ул.".
+  const short = neutral(address).match(/^сочи\s*,?\s+([а-я-]+(?:ая|яя))\s+(\d+[а-я]?)$/u);
+  if (short) return marketAddress(`улица ${short[1]}, ${short[2]}`);
   return null;
 }
 
 export function marketHomes(
   properties: MarketProperty[],
-  complexes: { id: string; name: string }[],
+  complexes: MarketComplex[],
 ): MarketHome[] {
   const houses = new Map<string, MarketHome>();
   const linked = new Set<string>();
   const names = new Map(complexes.map((c) => [c.id, c.name]));
+  const idsByName = new Map(complexes.map((c) => [complexNameKey(c.name), c.id]));
   for (const p of properties) {
     const address = marketAddress(p.address);
-    if (p.complex_id) linked.add(p.complex_id);
+    const named =
+      p.complex_name.trim() || p.title.match(/(?:^|\s)в\s+ЖК\s+(.+)$/iu)?.[1]?.trim() || "";
+    const nameKey = complexNameKey(named);
+    const complexId =
+      p.complex_id || (nameKey ? (idsByName.get(nameKey) ?? `name:${nameKey}`) : null);
+    if (complexId) linked.add(complexId);
     const kind = ["house", "villa", "townhouse"].includes(p.type) ? "house" : "flat";
     const locality =
       p.address.match(
         /(?:^|[,\s])(?:пос[её]лок\s+|пгт\s+|село\s+)?(Сириус|Дагомыс|Красная Поляна|Эсто[- ]Садок)(?=$|[,\s])/iu,
       )?.[1] ?? "Сочи";
-    const id = address ? `${kind}:${neutral(locality)}:${address.key}` : `property:${p.id}`;
+    const id = address
+      ? `${kind}:${neutral(locality)}:${address.key}`
+      : complexId
+        ? `complex:${complexId}`
+        : `property:${p.id}`;
     const name =
-      (p.complex_id ? names.get(p.complex_id) : p.complex_name) ||
+      (complexId ? (names.get(complexId) ?? named) : "") ||
       (kind === "house" ? p.title : address?.display || p.title);
     const existing = houses.get(id);
     if (existing) {
-      if (p.complex_id && existing.name === existing.address) existing.name = name;
-      existing.complexId ??= p.complex_id;
+      if (complexId && !existing.complexId) existing.name = name;
+      existing.complexId ??= complexId;
       existing.propertyIds.push(p.id);
     } else {
       houses.set(id, {
@@ -160,7 +206,7 @@ export function marketHomes(
         locality,
         query: address?.query ?? null,
         propertyIds: [p.id],
-        complexId: p.complex_id,
+        complexId,
         unresolved: !address,
       });
     }

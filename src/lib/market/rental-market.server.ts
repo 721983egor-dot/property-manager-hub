@@ -2,12 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { crmAccess } from "@/lib/crm-results.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import baseline from "./ideal-house.snapshot.json";
+import siteCatalog from "./site-catalog.snapshot.json";
 import {
+  isMarketCatalogEntry,
   marketAddress,
   marketHomes,
   monthPoints,
   summarizeMarket,
   type MarketBuilding,
+  type MarketComplex,
   type MarketGroup,
   type MarketPoint,
   type MarketProperty,
@@ -18,50 +21,94 @@ const baselineKey = "flat:сочи:" + marketAddress("Курортный про�
 const admin = supabaseAdmin as unknown as SupabaseClient;
 
 async function catalog(db: SupabaseClient) {
+  if (process.env["SUPABASE_PROJECT_ID"] === "local-test") {
+    return {
+      homes: marketHomes(siteCatalog.properties, siteCatalog.complexes),
+      properties: siteCatalog.properties as MarketProperty[],
+      published: new Set(siteCatalog.properties.map((property) => property.id)),
+      ownSourceIds: new Set<string>(),
+      siteAsOf: siteCatalog.asOf,
+    };
+  }
+  const recovery =
+    process.env["SUPABASE_PROJECT_ID"] === "rmos-recovery" && process.env["PREVIEW_MODE"] === "1";
   const properties: MarketProperty[] = [];
   for (let offset = 0; ; offset += 500) {
-    const { data, error } = await db
+    let query = db
       .from("properties")
       .select(
         "id,title,address,type,complex_id,complex_name,area,floor,price_month,summer_price_month,published",
       )
-      .order("id")
-      .range(offset, offset + 499);
+      .neq("status", "archived")
+      .neq("portfolio", "n11");
+    query = recovery
+      ? query.eq("crm_published", true).eq("preview_published", true)
+      : query.eq("published", true);
+    const { data, error } = await query.order("id").range(offset, offset + 499);
     if (error) throw new Error(error.message);
-    properties.push(...(data as MarketProperty[]));
+    properties.push(
+      ...(data as MarketProperty[]).filter((row) =>
+        isMarketCatalogEntry(row.title, row.address, row.complex_name),
+      ),
+    );
     if (!data || data.length < 500) break;
   }
-  const complexes: { id: string; name: string }[] = [];
+  const complexes: MarketComplex[] = [];
+  const excludedComplexes = new Set<string>();
+  const linkedComplexes = new Set(properties.map((property) => property.complex_id));
   for (let offset = 0; ; offset += 500) {
     const result = await db
       .from("complexes")
-      .select("id,name")
+      .select(
+        recovery
+          ? "id,name,show_in_site_filter,crm_published,preview_published"
+          : "id,name,show_in_site_filter",
+      )
       .order("id")
       .range(offset, offset + 499);
     if (result.error) throw new Error(result.error.message);
-    complexes.push(...(result.data as { id: string; name: string }[]));
+    for (const row of result.data as (MarketComplex & {
+      show_in_site_filter: boolean;
+      crm_published?: boolean;
+      preview_published?: boolean;
+    })[]) {
+      if (!isMarketCatalogEntry(row.name)) {
+        excludedComplexes.add(row.id);
+        continue;
+      }
+      const listedOnSite =
+        row.show_in_site_filter !== false &&
+        (!recovery || (row.crm_published && row.preview_published));
+      if (listedOnSite || linkedComplexes.has(row.id))
+        complexes.push({ id: row.id, name: row.name });
+    }
     if (result.data.length < 500) break;
   }
-  const published = new Set(
-    properties.filter((row) => row.published && row.price_month).map((row) => row.id),
+  const catalogProperties = properties.filter(
+    (row) => !row.complex_id || !excludedComplexes.has(row.complex_id),
   );
+  const published = new Set(catalogProperties.map((row) => row.id));
   const ids = new Set<string>();
   for (let offset = 0; ; offset += 500) {
     const platform = await db
       .from("property_listings")
-      .select("property_id,platform,external_id,external_url,published")
+      .select("platform,external_id,external_url")
       .order("id")
       .range(offset, offset + 499);
     if (platform.error) throw new Error(platform.error.message);
     for (const row of platform.data) {
-      const propertyId = String(row["property_id"]);
-      if (row["published"]) published.add(propertyId);
       const id = listingId(row["external_url"]) || String(row["external_id"] ?? "");
       if (id) ids.add(String(row["platform"]) + ":" + id);
     }
     if (platform.data.length < 500) break;
   }
-  return { homes: marketHomes(properties, complexes), properties, published, ownSourceIds: ids };
+  return {
+    homes: marketHomes(catalogProperties, complexes),
+    properties: catalogProperties,
+    published,
+    ownSourceIds: ids,
+    siteAsOf: null,
+  };
 }
 
 function listingId(url: unknown) {
@@ -98,29 +145,11 @@ const seed: MarketSnapshot = {
   checkedAt: baseline.checkedAt,
   listings: baseline.listings,
 };
-const pilotName = "Идеал Хаус";
-
-function catalogWithPilot(data: Awaited<ReturnType<typeof catalog>>) {
-  if (!data.homes.some((home) => home.id === baselineKey)) {
-    data.homes.unshift({
-      id: baselineKey,
-      name: pilotName,
-      address: "Курортный проспект, 92/5",
-      kind: "flat",
-      locality: "Сочи",
-      query: "Курортный проспект, 92/5",
-      propertyIds: [],
-      complexId: null,
-      unresolved: false,
-    });
-  }
-  return data;
-}
 
 export async function readRentalMarket(houseId?: string, propertyId?: string) {
   await crmAccess();
   const db = admin;
-  const data = catalogWithPilot(await catalog(db));
+  const data = await catalog(db);
   const allPoints = new Map<string, MarketPoint[]>();
   for (let offset = 0; ; offset += 500) {
     const result = await db
@@ -189,11 +218,16 @@ export async function readRentalMarket(houseId?: string, propertyId?: string) {
       own: data.properties.filter((property) => ids.has(property.id)),
     };
   }
-  return { houses, detail, updatesConfigured: Boolean(process.env["METRAPI_API_KEY"]) };
+  return {
+    houses,
+    detail,
+    siteAsOf: data.siteAsOf,
+    updatesConfigured: Boolean(process.env["METRAPI_API_KEY"]),
+  };
 }
 
 export async function rentalMarketSyncCatalog() {
-  const data = catalogWithPilot(await catalog(admin));
+  const data = await catalog(admin);
   const result = await admin
     .from("rental_market_snapshots")
     .select("house_key,snapshot_day")

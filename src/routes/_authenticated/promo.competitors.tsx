@@ -200,7 +200,7 @@ function Market() {
           : "Загружаем аналитику аренды…"}
       </p>
     );
-  const { houses, detail, updatesConfigured } = query.data;
+  const { houses, detail, siteAsOf, updatesConfigured } = query.data;
   return (
     <div className="rental-dashboard">
       <header className="rental-header">
@@ -209,7 +209,7 @@ function Market() {
             <ArrowLeft size={14} /> Публикация и реклама
           </Link>
           <h1>Аналитика аренды</h1>
-          <p>Рынок долгосрочной аренды по домам из каталога РМ ОС</p>
+          <p>Рынок долгосрочной аренды по домам из каталога сайта</p>
         </div>
         <span className="rental-date">
           <i /> Metrapi
@@ -225,6 +225,11 @@ function Market() {
         </Link>
         {detail && <span className="current">Квартиры в доме</span>}
       </nav>
+      {siteAsOf && (
+        <p className="market-message">
+          Список домов и наших объявлений с сайта на {day(siteAsOf)}.
+        </p>
+      )}
       {!updatesConfigured && (
         <p className="market-message">
           Для новых срезов нужен ключ Metrapi на сервере. Доступные срезы можно посмотреть ниже.
@@ -411,6 +416,7 @@ type ListingRow = {
   category: string;
   own: boolean;
   photo?: string | undefined;
+  publicUrl?: string | undefined;
   competitor?: MarketGroup;
 };
 type SortKey = "area" | "floor" | "price" | "summer" | "unit" | "source" | "category";
@@ -426,9 +432,10 @@ function ownRow(p: MarketProperty): ListingRow {
     floor: p.floor,
     price: p.price_month,
     summer: p.summer_price_month,
-    source: "РМ ОС",
+    source: p.publicUrl ? "Наш сайт" : "РМ ОС",
     category: "",
     own: true,
+    publicUrl: p.publicUrl,
   };
 }
 
@@ -445,7 +452,9 @@ function exportMarketRows(rows: ListingRow[]) {
           offer.summerPrice ?? null,
           offer.source,
           offer.url,
-        ]) ?? [[row.name, row.area, row.floor, row.price, row.summer, row.source, ""]],
+        ]) ?? [
+          [row.name, row.area, row.floor, row.price, row.summer, row.source, row.publicUrl ?? ""],
+        ],
     ),
   ];
   const csv = cells
@@ -579,11 +588,7 @@ function House({
           note="На одну квартиру, ₽ в месяц"
         />
         <Metric label="Диапазон цен" value={range} note="С учётом выбранных фильтров" />
-        <Metric
-          label="Наших объектов в базе"
-          value={own.length}
-          note={house.published + " опубликовано"}
-        />
+        <Metric label="Наши объявления на сайте" value={own.length} note="В этом доме" />
       </section>
       <MarketChart houses={[house]} />
       <section className="rental-panel market-table-panel">
@@ -697,6 +702,16 @@ function House({
                           </span>
                           <ChevronDown size={14} />
                         </button>
+                      ) : row.publicUrl ? (
+                        <a
+                          href={row.publicUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="market-link"
+                        >
+                          <small>Наше объявление на сайте</small>
+                          {row.name}
+                        </a>
                       ) : (
                         <Link to="/objects/$id" params={{ id: row.id }} className="market-link">
                           <small>Наш объект{row.id === propertyId ? " · выбран" : ""}</small>
