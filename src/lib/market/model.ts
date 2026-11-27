@@ -152,6 +152,7 @@ export function marketAddress(address: string) {
         .replace(/\s/g, "");
       return {
         key: `${type}:${street}:${canonical}`,
+        street,
         display: `${street[0]?.toLocaleUpperCase("ru-RU") ?? ""}${street.slice(1)} ${type}, ${canonical}`,
         query: `${street}, ${canonical}`,
       };
@@ -172,37 +173,30 @@ export function marketHomes(
   const names = new Map(complexes.map((c) => [c.id, c.name]));
   const idsByName = new Map(complexes.map((c) => [complexNameKey(c.name), c.id]));
   for (const p of properties) {
-    const address = marketAddress(p.address);
+    if (["house", "villa", "townhouse", "land"].includes(p.type)) continue;
     const named =
-      p.complex_name.trim() || p.title.match(/(?:^|\s)в\s+ЖК\s+(.+)$/iu)?.[1]?.trim() || "";
+      p.complex_name?.trim() || p.title.match(/(?:^|\s)в\s+ЖК\s+(.+)$/iu)?.[1]?.trim() || "";
     const nameKey = complexNameKey(named);
     const complexId =
       p.complex_id || (nameKey ? (idsByName.get(nameKey) ?? `name:${nameKey}`) : null);
-    if (complexId) linked.add(complexId);
-    const kind = ["house", "villa", "townhouse"].includes(p.type) ? "house" : "flat";
+    if (!complexId) continue;
+    linked.add(complexId);
+    const address = marketAddress(p.address);
     const locality =
       p.address.match(
         /(?:^|[,\s])(?:пос[её]лок\s+|пгт\s+|село\s+)?(Сириус|Дагомыс|Красная Поляна|Эсто[- ]Садок)(?=$|[,\s])/iu,
       )?.[1] ?? "Сочи";
-    const id = address
-      ? `${kind}:${neutral(locality)}:${address.key}`
-      : complexId
-        ? `complex:${complexId}`
-        : `property:${p.id}`;
-    const name =
-      (complexId ? (names.get(complexId) ?? named) : "") ||
-      (kind === "house" ? p.title : address?.display || p.title);
+    const id = address ? `flat:${neutral(locality)}:${address.key}` : `complex:${complexId}`;
+    const name = names.get(complexId) || named || p.title;
     const existing = houses.get(id);
     if (existing) {
-      if (complexId && !existing.complexId) existing.name = name;
-      existing.complexId ??= complexId;
       existing.propertyIds.push(p.id);
     } else {
       houses.set(id, {
         id,
         name,
         address: address?.display ?? p.address,
-        kind,
+        kind: "flat",
         locality,
         query: address?.query ?? null,
         propertyIds: [p.id],

@@ -81,14 +81,18 @@ async function fetchHouse(home: MarketHome, key: string, ownIds: Set<string>) {
   const address = marketAddress(home.address);
   if (!address) throw new Error("Точный адрес не определён");
   const parameters = new URLSearchParams({
-    q: home.address,
+    q: address.street,
     locality: home.locality,
     realty_type: home.kind,
     deal_type: "rent",
     price_history: "1",
-    limit: "50",
+    limit: "250",
     dedupe: "false",
   });
+  if (home.locality === "Дагомыс" || address.street === "прозрачная") {
+    parameters.set("locality", "Дагомыс");
+    parameters.append("locality", "Сочи");
+  }
   const groups = new Map<string, MarketGroup>();
   const cursors = new Set<string>();
   const seenIds = new Set<string>();
@@ -97,6 +101,7 @@ async function fetchHouse(home: MarketHome, key: string, ownIds: Set<string>) {
     lastRequest = Date.now();
     const response = await fetch("https://api.metrapi.ru/v1/items?" + parameters, {
       headers: { "X-Api-Key": key },
+      redirect: "error",
       signal: AbortSignal.timeout(12000),
     });
     if (!response.ok) throw new Error(`Metrapi HTTP ${response.status}`);
@@ -107,7 +112,7 @@ async function fetchHouse(home: MarketHome, key: string, ownIds: Set<string>) {
     };
     if (!Array.isArray(payload.items)) throw new Error("Metrapi не вернул список");
     for (const row of payload.items) {
-      if (row["delisted_at"] || (row["rent_period"] && row["rent_period"] !== "long")) continue;
+      if (row["delisted_at"] || row["rent_period"] === "daily") continue;
       const exact =
         typeof row["address"] === "string" && marketAddress(row["address"])?.key === address.key;
       if (!exact) continue;
@@ -141,18 +146,19 @@ async function fetchHouse(home: MarketHome, key: string, ownIds: Set<string>) {
 }
 
 let running = false;
-export async function syncRentalMarket() {
-  const key = process.env["METRAPI_API_KEY"]?.trim();
-  if (!key) return { configured: false, saved: 0, remaining: null };
-  if (running) return { configured: true, saved: 0, running: true };
+export async function syncRentalMarket(options?: { key?: string | undefined; skip?: string[] }) {
+  const key = options?.key || process.env["METRAPI_API_KEY"]?.trim();
+  if (!key) return { configured: false, saved: 0, remaining: null, errors: [] };
+  if (running) return { configured: true, saved: 0, remaining: null, errors: [], running: true };
   running = true;
   try {
     const { homes, ownSourceIds, seen } = await rentalMarketSyncCatalog();
     ownSourceIds.add("avito:7907008885");
     ownSourceIds.add("yandex:3449747965218039978");
     const day = marketDate(new Date());
+    const skip = new Set(options?.skip);
     const pending = homes
-      .filter((home) => !home.unresolved && seen.get(home.id) !== day)
+      .filter((home) => !home.unresolved && seen.get(home.id) !== day && !skip.has(home.id))
       .sort((a, b) => (seen.get(a.id) ?? "").localeCompare(seen.get(b.id) ?? ""));
     let saved = 0;
     const errors: { house: string; error: string }[] = [];

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Fragment, useState } from "react";
+import { Fragment, useState, type FormEvent } from "react";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import {
   CartesianGrid,
@@ -13,7 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { AdminOnly } from "@/components/AdminOnly";
-import { readRentOverview } from "@/lib/market/functions";
+import { readRentOverview, refreshRentOverview } from "@/lib/market/functions";
 import {
   marketDate,
   marketComplexes,
@@ -185,6 +185,98 @@ function MarketChart({ houses }: { houses: MarketBuilding[] }) {
   );
 }
 
+function RefreshMarket({ configured, local }: { configured: boolean; local: boolean }) {
+  const refresh = useServerFn(refreshRentOverview);
+  const client = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  if (!configured && !local) {
+    return (
+      <p className="market-message">Подключите ключ Metrapi на сервере для обновления срезов.</p>
+    );
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const form = event.currentTarget;
+    const key = String(new FormData(form).get("key") ?? "").trim() || undefined;
+    form.reset();
+    const skipped = new Set<string>();
+    let saved = 0;
+    setBusy(true);
+    setStatus("Загружаем объявления Metrapi…");
+    try {
+      while (true) {
+        const result = await refresh({ data: { key, skip: [...skipped] } });
+        if (!result.configured) {
+          setStatus("Для загрузки нужен ключ Metrapi.");
+          break;
+        }
+        if (result.running) {
+          setStatus("Обновление уже запущено.");
+          break;
+        }
+        saved += result.saved;
+        for (const failure of result.errors) skipped.add(failure.house);
+        if (result.saved) await client.invalidateQueries({ queryKey: ["rental-market"] });
+        const blocker = result.errors.find(({ error }) => /HTTP (401|403|429)/u.test(error));
+        if (blocker) {
+          setStatus(
+            (blocker.error.endsWith("429")
+              ? "Metrapi ограничил запросы."
+              : "Metrapi отклонил ключ или доступ.") +
+              (saved ? " Срезы загружены по " + saved + " адресам." : ""),
+          );
+          break;
+        }
+        if (result.remaining === null || result.remaining <= result.errors.length) {
+          setStatus(
+            skipped.size
+              ? "Обновлено адресов: " + saved + ". Не удалось загрузить: " + skipped.size + "."
+              : saved
+                ? "Обновлено адресов: " + saved + "."
+                : "На сегодня срезы уже загружены.",
+          );
+          break;
+        }
+        setStatus("Загружаем объявления Metrapi… Готово адресов: " + saved + ".");
+      }
+    } catch {
+      setStatus(
+        "Не удалось завершить обновление Metrapi." +
+          (saved ? " Загружено адресов: " + saved + "." : ""),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="market-message market-refresh" onSubmit={submit}>
+      {!configured && (
+        <label>
+          Ключ Metrapi
+          <input
+            name="key"
+            type="password"
+            autoComplete="off"
+            minLength={1}
+            maxLength={256}
+            required
+            disabled={busy}
+          />
+          <small>Для разовой загрузки. Ключ в РМ ОС не сохраняется.</small>
+        </label>
+      )}
+      <button type="submit" className="market-export" disabled={busy}>
+        {busy ? "Загрузка…" : "Загрузить срезы Metrapi"}
+      </button>
+      <span role="status">{status}</span>
+    </form>
+  );
+}
+
 function Market() {
   const search = Route.useSearch();
   const load = useServerFn(readRentOverview);
@@ -209,7 +301,7 @@ function Market() {
             <ArrowLeft size={14} /> Публикация и реклама
           </Link>
           <h1>Аналитика аренды</h1>
-          <p>Рынок долгосрочной аренды по домам из каталога сайта</p>
+          <p>Рынок долгосрочной аренды по жилым комплексам из каталога сайта</p>
         </div>
         <span className="rental-date">
           <i /> Metrapi
@@ -226,17 +318,11 @@ function Market() {
         {detail && <span className="current">Квартиры в доме</span>}
       </nav>
       {siteAsOf && (
-        <p className="market-message">
-          Список домов и наших объявлений с сайта на {day(siteAsOf)}.
-        </p>
+        <p className="market-message">Список ЖК и наших объявлений с сайта на {day(siteAsOf)}.</p>
       )}
-      {!updatesConfigured && (
-        <p className="market-message">
-          Для новых срезов нужен ключ Metrapi на сервере. Доступные срезы можно посмотреть ниже.
-        </p>
-      )}
+      {!detail && <RefreshMarket configured={updatesConfigured} local={Boolean(siteAsOf)} />}
       {(search.house || search.property) && !detail && (
-        <p className="market-message">Дом не найден в каталоге. Выберите адрес из списка.</p>
+        <p className="market-message">Выберите ЖК или корпус из списка.</p>
       )}
       {detail ? (
         <House key={detail.house.id} detail={detail} propertyId={search.property} />
@@ -271,16 +357,16 @@ function Portfolio({ houses }: { houses: MarketBuilding[] }) {
     <div className="market-stack">
       <section className="market-metrics" aria-label="Сводка рынка">
         <Metric
-          label="Домов в выборке"
-          value={shown.length}
-          note={shown.filter((h) => h.published > 0).length + " с нашими публикациями"}
+          label="ЖК в выборке"
+          value={groups.length}
+          note={shown.length + " адресов и корпусов"}
         />
         <Metric
           label="Активных предложений"
           value={
             current.length ? current.reduce((sum, h) => sum + (h.latest?.active ?? 0), 0) : "—"
           }
-          note={"По " + current.length + " ЖК и домам со срезом текущего месяца"}
+          note={"По " + current.length + " ЖК со срезом текущего месяца"}
         />
         <Metric
           label="Появились в выдаче"
@@ -297,7 +383,7 @@ function Portfolio({ houses }: { houses: MarketBuilding[] }) {
       <section className="rental-panel market-table-panel">
         <header className="market-heading market-block">
           <div>
-            <h2>ЖК и дома в каталоге</h2>
+            <h2>Жилые комплексы</h2>
             <p>Откройте дом, чтобы увидеть все предложения, фильтры и цены.</p>
           </div>
           <div className="market-controls">
